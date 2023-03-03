@@ -1,0 +1,19 @@
+# general
+pandas
+numpy
+
+# analysis
+jupyterlab
+matplotlib==3.6
+seaborn==0.12.2
+
+# core
+mosaik
+mosaik-api
+mosaik-csv
+# mosaik-hdf5
+# mosaik-web
+
+mosaik-pandapower
+pandapower
+# NREL-PySAM
