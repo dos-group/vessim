@@ -1,8 +1,12 @@
 import random
+from abc import ABC, abstractmethod
+from datetime import datetime, timedelta
 from typing import Tuple, Dict
 
 import mosaik
 from mosaik.util import connect_many_to_one
+
+from simulator.power_meter import PhysicalPowerMeter, AwsPowerMeter
 
 sim_config = {
     'Grid': {
@@ -34,7 +38,9 @@ def create_scenario_simple(world):
     computing_system_sim = world.start('ComputingSystemSim')
     collector = world.start('Collector')
 
-    computing_system = computing_system_sim.ComputingSystem(power_monitors=[PowerMonitor(p=10), PowerMonitor(p=20)])
+    aws_power_meter = AwsPowerMeter()
+    raspi_power_meter = PhysicalPowerMeter()
+    computing_system = computing_system_sim.ComputingSystem(power_meters=[aws_power_meter, raspi_power_meter])
     monitor = collector.Monitor()
 
     world.connect(computing_system, monitor, 'p_cons')
@@ -69,29 +75,6 @@ def create_scenario(world):
     world.connect(load, monitor, 'p_mw')
     world.connect(ext_grid, monitor, 'p_mw')
     mosaik.util.connect_many_to_one(world, lines, monitor, 'loading_percent')
-
-
-class PowerMonitor:
-    def __init__(self, p):
-        self.p = p
-
-    def measurement(self) -> Tuple[float, Dict[str, float]]:
-        # TODO implement cache of steptime duration
-        return self.power_usage(), self.resource_utilization()
-
-    def power_usage(self):
-        # TODO measure power from physical node
-        # OR measure CPU utilization of VM/cloud instance
-        # in case of a VM we need a power model e.g. self.p_static + utilization * (self.p_max - self.p_static)
-        return 10
-
-    def resource_utilization(self) -> Dict[str, float]:
-        # TODO measure resource utilization of containers/cgroups/processes
-        # in a first version we only care for CPU
-        return {
-            "process1": 1.98,
-            "process2": 0.23
-        }
 
 
 if __name__ == '__main__':

@@ -1,22 +1,15 @@
 import mosaik_api
-from loguru import logger
 
 
 class ComputingSystem:
-    """Simple model that increases its value *val* with some *delta* every
-    step.
-
-    You can optionally set the initial value *init_val*. It defaults to ``0``.
-
-    """
-    def __init__(self, power_monitors):
-        self.power_monitors = power_monitors
+    def __init__(self, power_meters):
+        self.power_meters = power_meters
         self.p_cons = 0
         # TODO implement e.g. PUE
 
     def step(self):
         p_cons = 0
-        for power_monitor in self.power_monitors:
+        for power_monitor in self.power_meters:
             p_cons += power_monitor.measurement()[0]
         self.p_cons = p_cons
 
@@ -28,7 +21,7 @@ class ComputingSystemSim(mosaik_api.Simulator):
             'models': {
                 'ComputingSystem': {
                     'public': True,
-                    'params': ['power_monitors'],
+                    'params': ['power_meters'],
                     'attrs': ['p_cons'],
                 },
             },
@@ -41,14 +34,14 @@ class ComputingSystemSim(mosaik_api.Simulator):
         self.time_resolution = time_resolution
         return self.meta
 
-    def create(self, num=1, model="ComputingSystem", power_monitors=None):
+    def create(self, num=1, model="ComputingSystem", power_meters=None):
         assert num == 1
         assert model == "ComputingSystem"
-        assert power_monitors is not None and len(power_monitors) >= 1
+        assert power_meters is not None and len(power_meters) >= 1
         next_eid = len(self.entities)
         entities = []
         for i in range(next_eid, next_eid + num):
-            model_instance = ComputingSystem(power_monitors)
+            model_instance = ComputingSystem(power_meters)
             eid = '%s%d' % (self.eid_prefix, i)
             self.entities[eid] = model_instance
             entities.append({'eid': eid, 'type': model})
