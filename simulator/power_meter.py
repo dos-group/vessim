@@ -1,16 +1,19 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Callable
 
 import boto3
 
 
-class PowerModel:
+PowerModel = Callable[[float], float]
+
+
+class LinearPowerModel:
     def __init__(self, p_static, p_max):
         self.p_static = p_static
         self.p_max = p_max
 
-    def __call__(self, utilization):
+    def __call__(self, utilization: float) -> float:
         return self.p_static + utilization * (self.p_max - self.p_static)
 
 
@@ -51,6 +54,8 @@ class AwsPowerMeter(VirtualPowerMeter):
         self.instance_id = instance_id
 
     def utilization(self) -> float:
+        return 0.8
+
         client = boto3.client('cloudwatch')
         response = client.get_metric_statistics(
             Namespace='AWS/EC2',
