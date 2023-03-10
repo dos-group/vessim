@@ -9,6 +9,9 @@ from mosaik.util import connect_many_to_one
 from simulator.power_meter import PhysicalPowerMeter, AwsPowerMeter, LinearPowerModel
 
 sim_config = {
+    'CSV': {
+        'python': 'mosaik_csv:CSV',
+    },
     'Grid': {
         'python': 'mosaik_pandapower.simulator:Pandapower'
     },
@@ -23,7 +26,7 @@ sim_config = {
 START = '2014-01-01 00:00:00'
 END = 300  # 30 * 24 * 3600  # 10 days
 GRID_FILE = 'data/custom.json'  # "data/custom.json"  # 'data/demo_lv_grid.json'
-PV_DATA = "pv_10kw.csv"
+PV_DATA = "data/pv_10kw.csv"
 
 
 def main():
@@ -39,8 +42,8 @@ def create_scenario_simple(world):
     raspi_power_meter = PhysicalPowerMeter()
     computing_system = computing_system_sim.ComputingSystem(power_meters=[aws_power_meter, raspi_power_meter])
 
-    pvsim = world.start('CSV', sim_start=START, datafile=PV_DATA)
-    pv = pvsim.PV.create(1)[0]
+    # pvsim = world.start('CSV', sim_start=START, datafile=PV_DATA)
+    # pv = pvsim.PV.create(1)[0]
 
     # gridsim = world.start('Grid', step_size=60)
     # buses = filter(lambda e: e.type == 'PQBus', grid)

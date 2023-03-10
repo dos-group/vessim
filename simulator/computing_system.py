@@ -9,8 +9,9 @@ class ComputingSystem:
 
     def step(self):
         p_cons = 0
-        for power_monitor in self.power_meters:
-            p_cons += power_monitor.measurement()[0]
+        for power_meter in self.power_meters:
+            p_node, p_applications = power_meter.power_usage()
+            p_cons += p_node
         self.p_cons = p_cons
 
 
