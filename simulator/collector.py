@@ -3,6 +3,7 @@ A simple data collector that prints all data when the simulation finishes.
 
 """
 import collections
+import csv
 from loguru import logger
 
 import mosaik_api
@@ -47,12 +48,21 @@ class Collector(mosaik_api.Simulator):
         return None
 
     def finalize(self):
-        return
         print('Collected data:')
-        for sim, sim_data in sorted(self.data.items()):
-            print('- %s:' % sim)
+        for _, sim_data in sorted(self.data.items()):
+            table = []
             for attr, values in sorted(sim_data.items()):
-                print('  - %s: %s' % (attr, values))
+                row = [attr]
+                for value in values.values():
+                    row.append(f'{value:3.2f}')
+                table.append(row)
+            end = list(list(sim_data.values())[0].keys())[-1] + 1
+            time_column = [str(i) for i in list(range(end))]
+            time_column[0] = 'time'
+            csv_data = [time_column] + table
+            with open("data.csv", "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerows(zip(*csv_data))
 
 
 if __name__ == '__main__':
