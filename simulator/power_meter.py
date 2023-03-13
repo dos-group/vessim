@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Tuple, Dict, Callable, Optional
-
+from ina219 import INA219
 
 PowerModel = Callable[[float], float]
 POWER_METER_COUNT = 0
@@ -30,10 +30,16 @@ class PowerMeter(ABC):
         """Measures and returns the current node power demand."""
 
 
+"""
+Physical power meter for a raspberry pi with an INA219 for power measurement.
+"""
 class PhysicalPowerMeter(PowerMeter):
+    def __init__(self, address=0x45) -> None:
+        self.ina = INA219(0.1, address=address)
+        self.ina.configure()
+
     def node_power(self):
-        # TODO measure device power usage
-        return 10
+        return round(self.ina.power() / 1000, 2)
 
 
 class VirtualPowerMeter(PowerMeter, ABC):
