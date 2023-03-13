@@ -38,9 +38,9 @@ def main():
 
 def create_scenario_simple(world):
     computing_system_sim = world.start('ComputingSystemSim')
-    aws_power_meter = AwsPowerMeter(instance_id="instance_id", power_model=LinearPowerModel(p_static=30, p_max=150))
+    # aws_power_meter = AwsPowerMeter(instance_id="instance_id", power_model=LinearPowerModel(p_static=30, p_max=150))
     raspi_power_meter = PhysicalPowerMeter()
-    computing_system = computing_system_sim.ComputingSystem(power_meters=[aws_power_meter, raspi_power_meter])
+    computing_system = computing_system_sim.ComputingSystem(power_meters=[raspi_power_meter])
 
     # pvsim = world.start('CSV', sim_start=START, datafile=PV_DATA)
     # pv = pvsim.PV.create(1)[0]

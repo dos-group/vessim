@@ -17,4 +17,4 @@ mosaik-pandapower
 # NREL-PySAM
 
 # custom
-boto3  # used in AwsPowerMeter
+# boto3  # used in AwsPowerMeter

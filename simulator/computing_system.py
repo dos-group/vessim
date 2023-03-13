@@ -2,17 +2,13 @@ import mosaik_api
 
 
 class ComputingSystem:
-    def __init__(self, power_meters):
+    def __init__(self, power_meters, pue: float):
         self.power_meters = power_meters
         self.p_cons = 0
-        # TODO implement e.g. PUE
+        self.pue = pue
 
     def step(self):
-        p_cons = 0
-        for power_meter in self.power_meters:
-            p_node, p_applications = power_meter.power_usage()
-            p_cons += p_node
-        self.p_cons = p_cons
+        self.p_cons = self.pue * sum(pm.node_power() for pm in self.power_meters)
 
 
 class ComputingSystemSim(mosaik_api.Simulator):
@@ -42,7 +38,7 @@ class ComputingSystemSim(mosaik_api.Simulator):
         next_eid = len(self.entities)
         entities = []
         for i in range(next_eid, next_eid + num):
-            model_instance = ComputingSystem(power_meters)
+            model_instance = ComputingSystem(power_meters, pue=1.5)
             eid = '%s%d' % (self.eid_prefix, i)
             self.entities[eid] = model_instance
             entities.append({'eid': eid, 'type': model})

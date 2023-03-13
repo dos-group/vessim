@@ -1,11 +1,10 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Tuple, Dict, Callable
-
-import boto3
+from typing import Tuple, Dict, Callable, Optional
 
 
 PowerModel = Callable[[float], float]
+POWER_METER_COUNT = 0
 
 
 class LinearPowerModel:
@@ -18,44 +17,47 @@ class LinearPowerModel:
 
 
 class PowerMeter(ABC):
-
-    def power_usage(self) -> Tuple[float, Dict[str, float]]:
-        return self.node_power_usage(), self.application_power_usage()
+    def __init__(self, name: Optional[str] = None):
+        global POWER_METER_COUNT
+        POWER_METER_COUNT += 1
+        if name is None:
+            self.name = f"power_meter_{POWER_METER_COUNT}"
+        else:
+            self.name = name
 
     @abstractmethod
-    def node_power_usage(self):
-        pass
+    def node_power(self) -> float:
+        """Measures and returns the current node power demand."""
 
-    def application_power_usage(self) -> Dict[str, float]:
-        # TODO Explain
-        # TODO measure resource utilization of containers/cgroups/processes
-        # in a first version we only care for CPU
-        return {
-            "process1": 1.98,
-            "process2": 0.23
-        }
+
+class PhysicalPowerMeter(PowerMeter):
+    def node_power(self):
+        # TODO measure device power usage
+        return 10
 
 
 class VirtualPowerMeter(PowerMeter, ABC):
-    def __init__(self, power_model: PowerModel):
+    def __init__(self, power_model: PowerModel, name: Optional[str] = None):
+        super().__init__(name)
         self.power_model = power_model
 
-    def node_power_usage(self):
+    def node_power(self):
         return self.power_model(self.utilization())
 
     @abstractmethod
     def utilization(self) -> float:
-        pass
+        """Measures and returns the current utilization [0,1] which is the input to the power model."""
 
 
 class AwsPowerMeter(VirtualPowerMeter):
-    def __init__(self, instance_id: str, power_model: PowerModel):
-        super().__init__(power_model)
+    def __init__(self, instance_id: str, power_model: PowerModel, name: Optional[str] = None):
+        super().__init__(power_model, name)
         self.instance_id = instance_id
 
     def utilization(self) -> float:
         return 0.8
 
+        import boto3
         client = boto3.client('cloudwatch')
         response = client.get_metric_statistics(
             Namespace='AWS/EC2',
@@ -78,10 +80,3 @@ class AwsPowerMeter(VirtualPowerMeter):
         for cpu in response['Datapoints']:
             if 'Average' in cpu:
                 print(cpu['Average'])
-
-
-class PhysicalPowerMeter(PowerMeter):
-
-    def node_power_usage(self):
-        # TODO measure device power usage
-        return 10
