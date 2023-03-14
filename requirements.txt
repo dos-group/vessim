@@ -18,3 +18,6 @@ mosaik-pandapower
 
 # custom
 # boto3  # used in AwsPowerMeter
+
+# mqtt for physical power meter
+paho-mqtt
