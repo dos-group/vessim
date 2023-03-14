@@ -33,7 +33,7 @@ def main():
     random.seed(23)
     world = mosaik.World(sim_config)
     create_scenario_simple(world)
-    world.run(until=END, print_progress=False)  # , rt_factor=1/600
+    world.run(until=END, print_progress=False, rt_factor=1)
 
 
 def create_scenario_simple(world):
