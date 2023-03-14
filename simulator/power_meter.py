@@ -32,14 +32,20 @@ class PowerMeter(ABC):
 
 """
 Physical power meter for a raspberry pi with an INA219 for power measurement.
+I2C-Bus must be enabled for pi.
+
+address: The I2C address of the INA219, defaults to 0x40 (optional)
 """
 class PhysicalPowerMeter(PowerMeter):
-    def __init__(self, address=0x45) -> None:
-        self.ina = INA219(0.1, address=address)
+    def __init__(self, address: int) -> None:
+        # shunt resistor of INA219 is .1 ohm
+        self.ina = INA219(shunt_ohms=.1, address=address)
+        # configure and calibrate how the INA219 will take measurements
         self.ina.configure()
 
-    def node_power(self):
-        return round(self.ina.power() / 1000, 2)
+    # measures the current power demand of the pi
+    def node_power(self) -> float:
+        return self.ina.power() / 1000
 
 
 class VirtualPowerMeter(PowerMeter, ABC):
