@@ -61,7 +61,7 @@ class PhysicalPowerMeter(PowerMeter):
         self.client.subscribe("node_power")
 
     # on_message method that gets called when a message is received on the subscribed topic
-    def on_message(self, client, userdata, msg)
+    def on_message(self, client, userdata, msg):
         # decode the message payload and store it as float in last_node_power
         self.last_node_power = float(msg.payload.decode())
 
