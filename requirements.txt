@@ -18,3 +18,6 @@ mosaik-pandapower
 
 # custom
 # boto3  # used in AwsPowerMeter
+
+# raspberry pi INA219 power meter
+pi-ina219
