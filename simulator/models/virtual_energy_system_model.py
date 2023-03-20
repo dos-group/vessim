@@ -1,19 +1,19 @@
 """
-This module contains the Ecovisor model.
+This module contains the Virtual Energy System Model.
 Author: Marvin Steinke and Henrik Nickel
 
 """
 
 from models.simple_battery_model import SimpleBatteryModel
-from models.simple_energy_grid_model import SimpleEnergyGridModel
+from models.carbon_intensity_model import CarbonIntensityModel
 import redis
 from redis.commands.json.path import Path
 import docker
 
-class EcovisorModel:
+class VirtualEnergySystemModel:
     def __init__(self, carbon_datafile, carbon_conversion_facor=1, sim_start=0, battery_capacity = 10, battery_charge_level = -1):
         self.battery = SimpleBatteryModel(battery_capacity, battery_charge_level)
-        self.energy_grid = SimpleEnergyGridModel(carbon_datafile, carbon_conversion_facor, sim_start)
+        self.energy_grid = CarbonIntensityModel(carbon_datafile, carbon_conversion_facor, sim_start)
         self.battery_charge_level = self.battery.charge
         self.battery_charge_rate = 0.0
         self.battery_discharge_rate = 0.0

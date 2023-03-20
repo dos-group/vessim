@@ -1,5 +1,5 @@
 """
-This module contains a simple energy grid model.
+This module contains a simple carbon intensity model.
 Author: Marvin Steinke
 
 """
@@ -7,9 +7,9 @@ Author: Marvin Steinke
 import csv
 from typing import Generator, Union
 
-class SimpleEnergyGridModel:
+class CarbonIntensityModel:
     """
-    This EnergyGridModel reads carbon information from a csv dataset either
+    This CarbonIntensityModel reads carbon information from a csv dataset either
     line by line, or for a given time. The conversion_factor is used to convert
     the carbon unit (e.g. from lb to kg: conversion_factor~=0,453592).
     """
