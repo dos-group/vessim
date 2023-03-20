@@ -2,21 +2,21 @@
 
 ```
 ssh pi@raspberrypi
-sudo apt update
+sudo apt update && sudo apt upgrade
 sudo apt install git vim python3-pip i2c-tools
 sudo pip install smbus psutil cpufreq pi-ina219
 git clone https://github.com/opsengine/cpulimit.git
-cd cpulimit; make; sudo cp src/cpulimit /usr/bin; rm -rf cpulimit
+cd cpulimit; make; sudo cp src/cpulimit /usr/bin; cd ..; rm -rf cpulimit
 git clone https://github.com/dos-group/vessim/
-sudo sh example_node/init.sh
+sudo sh vessim/example_node/init.sh
 sudo reboot
 ```
 
-The installation of PyTorch on Raspberry Pi via `pip` is not possible as the
-package is not compiled for the Pi's architecture. However, PyTorch can be
-installed on Raspberry Pi by compiling it manually or by using a pre-built
-wheel. For more detailed instructions on the installation process, please refer
-to the following resource:
+The installation of PyTorch and Torchvision on Raspberry Pi via `pip` is not
+possible as the package is not compiled for the Pi's architecture. However,
+PyTorch and Torchvision can be installed on Raspberry Pi by compiling it
+manually or by using a pre-built wheel. For more detailed instructions on the
+installation process, please refer to the following resource:
 https://qengineering.eu/install-pytorch-on-raspberry-pi-4.html.
 
 
