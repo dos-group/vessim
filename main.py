@@ -21,8 +21,8 @@ sim_config = {
     'Collector': {
         'python': 'simulator.collector:Collector',
     },
-    'Ecovisor': {
-        'python': 'simulator.ecovisor:Ecovisor',
+    'VirtualEnergySystem': {
+        'python': 'simulator.virtual_energy_system:VirtualEnergySystem',
     },
 }
 
@@ -54,9 +54,9 @@ def create_scenario_simple(world):
     pv_agent = pv_controller.PVAgent(kW_conversion_factor = 1)
 
     # Ecovisor Sim
-    ecovisor_sim = world.start('Ecovisor')
+    virtual_energy_system_sim = world.start('Ecovisor')
     # TODO need carbon data
-    ecovisor = ecovisor_sim.EcovisorModel(carbon_datafile=CARBON_DATA)
+    virtual_energy_system = virtual_energy_system_sim.EcovisorModel(carbon_datafile=CARBON_DATA)
 
     # gridsim = world.start('Grid', step_size=60)
     # buses = filter(lambda e: e.type == 'PQBus', grid)
@@ -76,10 +76,23 @@ def create_scenario_simple(world):
 
     ## PV -> PVAgent -> Ecovisor
     world.connect(pv, pv_agent, ('P', 'solar_power'))
-    world.connect(pv_agent, ecovisor, 'solar_power')
+    world.connect(pv_agent, virtual_energy_system, 'solar_power')
 
     ## computing_system -> Ecovisor
-    world.connect(computing_system, ecovisor, ('p_con', 'consumption'))
+    world.connect(computing_system, virtual_energy_system, ('p_con', 'consumption'))
+
+    world.connect(virtual_energy_system, monitor,
+                  'consumption',
+                  'battery_charge_rate',
+                  'battery_discharge_rate',
+                  'battery_max_discharge',
+                  'battery_charge_level',
+                  'battery_delta',
+                  'solar_power',
+                  'grid_carbon',
+                  'grid_power',
+                  'total_carbon',
+    )
 
     # world.connect(load, monitor, 'p_mw')
     # world.connect(ext_grid, monitor, 'p_mw')
