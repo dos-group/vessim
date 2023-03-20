@@ -21,6 +21,9 @@ sim_config = {
     'Collector': {
         'python': 'simulator.collector:Collector',
     },
+    'Ecovisor': {
+        'python': 'simulator.ecovisor:Ecovisor',
+    },
 }
 
 START = '2014-01-01 00:00:00'
@@ -42,8 +45,18 @@ def create_scenario_simple(world):
     raspi_power_meter = PhysicalPowerMeter()
     computing_system = computing_system_sim.ComputingSystem(power_meters=[raspi_power_meter])
 
-    # pvsim = world.start('CSV', sim_start=START, datafile=PV_DATA)
-    # pv = pvsim.PV.create(1)[0]
+    # PV Sim from CSV dataset
+    pv_sim = world.start('CSV', sim_start=START, datafile=PV_DATA)
+    pv = pv_sim.PV.create(1)[0]
+
+    # PV Controller acts as medium between pv module and ecovisor or direct consumer since producer is only a csv generator.
+    pv_controller = world.start('PVController')
+    pv_agent = pv_controller.PVAgent(kW_conversion_factor = 1)
+
+    # Ecovisor Sim
+    ecovisor_sim = world.start('Ecovisor')
+    # TODO need carbon data
+    ecovisor = ecovisor_sim.EcovisorModel(carbon_datafile=CARBON_DATA)
 
     # gridsim = world.start('Grid', step_size=60)
     # buses = filter(lambda e: e.type == 'PQBus', grid)
@@ -58,7 +71,16 @@ def create_scenario_simple(world):
     collector = world.start('Collector')
     monitor = collector.Monitor()
 
+    # Connect entities
     world.connect(computing_system, monitor, 'p_cons')
+
+    ## PV -> PVAgent -> Ecovisor
+    world.connect(pv, pv_agent, ('P', 'solar_power'))
+    world.connect(pv_agent, ecovisor, 'solar_power')
+
+    ## computing_system -> Ecovisor
+    world.connect(computing_system, ecovisor, ('p_con', 'consumption'))
+
     # world.connect(load, monitor, 'p_mw')
     # world.connect(ext_grid, monitor, 'p_mw')
     # mosaik.util.connect_many_to_one(world, lines, monitor, 'loading_percent')

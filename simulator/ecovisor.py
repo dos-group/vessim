@@ -5,8 +5,8 @@ Author: Marvin Steinke
 """
 
 import mosaik_api
-from utils.single_model_simulator import SingleModelSimulator # type: ignore
-from models.ecovisor_model import EcovisorModel # type: ignore
+from single_model_simulator import SingleModelSimulator
+from models.ecovisor_model import EcovisorModel
 
 META = {
     'type': 'time-based',
