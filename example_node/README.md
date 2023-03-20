@@ -1,4 +1,5 @@
 ## RPI Node Setup
+
 ```
 ssh pi@raspberrypi
 sudo apt update
@@ -10,6 +11,14 @@ git clone https://github.com/dos-group/vessim/
 sudo sh example_node/init.sh
 sudo reboot
 ```
+
+The installation of PyTorch on Raspberry Pi via `pip` is not possible as the
+package is not compiled for the Pi's architecture. However, PyTorch can be
+installed on Raspberry Pi by compiling it manually or by using a pre-built
+wheel. For more detailed instructions on the installation process, please refer
+to the following resource:
+https://qengineering.eu/install-pytorch-on-raspberry-pi-4.html.
+
 
 Base workload to run on a client
 
