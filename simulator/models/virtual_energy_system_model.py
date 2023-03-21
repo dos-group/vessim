@@ -72,16 +72,15 @@ class VirtualEnergySystemModel:
         self.redis.json().set('container',Path.root_path(),self.container)
 
     def get_redis_update(self) -> None:
-        key_dict = {"solar_power","grid_power","grid_carbon","battery_discharge_rate","battery_charge_level"}
+        key_dict = {"solar_power", "grid_power", "grid_carbon", "battery_charge_level"}
         data_dict = self.redis.mget(key_dict)
         data_dict = dict(zip(key_dict,data_dict))
         #print(data_dict)
-        #self.solar_power = float(data_dict["solar_power"])
-        #self.grid_power = float(data_dict["grid_power"])
-        self.battery_discharge_rate = float(data_dict["battery_discharge_rate"]) # type: ignore
+        self.solar_power = float(data_dict["solar_power"]) # type: ignore
+        self.grid_power = float(data_dict["grid_power"]) # type: ignore
+        self.grid_carbon = float(data_dict["grid_carbon"]) # type: ignore
         self.battery_charge_level = float(data_dict["battery_charge_level"]) # type: ignore
         self.container = self.redis.json().get("container")
-        #self.grid_carbon = float(data_dict["grid_carbon"])
 
         #compute total consumption of consumers
         d_values = self.container.values()

@@ -90,16 +90,13 @@ def create_scenario_simple(world):
     world.connect(computing_system, virtual_energy_system, ('p_con', 'consumption'))
 
     world.connect(virtual_energy_system, monitor,
-                  'consumption',
-                  'battery_charge_rate',
-                  'battery_discharge_rate',
-                  'battery_max_discharge',
-                  'battery_charge_level',
-                  'battery_delta',
-                  'solar_power',
-                  'grid_carbon',
-                  'grid_power',
-                  'total_carbon',
+                'consumption',
+                'battery_max_discharge',
+                'battery_charge_level',
+                'solar_power',
+                'grid_carbon',
+                'grid_power',
+                'total_carbon',
     )
 
     # world.connect(load, monitor, 'p_mw')

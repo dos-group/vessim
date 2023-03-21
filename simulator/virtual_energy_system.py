@@ -15,18 +15,18 @@ META = {
             'public': True,
             'params': [
                 'carbon_datafile',
-                'carbon_conversion_factor',
-                'sim_start',
                 'battery_capacity',
-                'battery_charge_level'
+                'battery_charge_level',
+                'battery_max_discharge',
+                'battery_c_rate',
+                'step_size',
+                'carbon_conversion_facor',
+                'sim_start'
             ],
             'attrs': [
                 'consumption',
-                'battery_charge_rate',
-                'battery_discharge_rate',
                 'battery_max_discharge',
                 'battery_charge_level',
-                'battery_delta',
                 'solar_power',
                 'grid_carbon',
                 'grid_power',
