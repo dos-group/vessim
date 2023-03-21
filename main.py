@@ -30,7 +30,11 @@ START = '2014-01-01 00:00:00'
 END = 300  # 30 * 24 * 3600  # 10 days
 GRID_FILE = 'data/custom.json'  # "data/custom.json"  # 'data/demo_lv_grid.json'
 PV_DATA = "data/pv_10kw.csv"
-
+# TODO CARBON_DATA =
+BATTERY_MAX_DISCHARGE = 0.6
+BATTERY_CAPACITY = 10 * 5 * 3600  # 10Ah * 5V * 3600 := Ws
+BATTERY_INITIAL_CHARGE_LEVEL = BATTERY_CAPACITY * 0.7
+BATTERY_C_RATE = 1/5
 
 def main():
     random.seed(23)
@@ -55,8 +59,12 @@ def create_scenario_simple(world):
 
     # Ecovisor Sim
     virtual_energy_system_sim = world.start('Ecovisor')
-    # TODO need carbon data
-    virtual_energy_system = virtual_energy_system_sim.EcovisorModel(carbon_datafile=CARBON_DATA)
+    virtual_energy_system = virtual_energy_system_sim.EcovisorModel(
+        carbon_datafile=CARBON_DATA,
+        battery_capacity=BATTERY_CAPACITY,
+        battery_charge_level=BATTERY_INITIAL_CHARGE_LEVEL,
+        battery_max_discharge=BATTERY_MAX_DISCHARGE,
+        battery_c_rate=BATTERY_C_RATE)
 
     # gridsim = world.start('Grid', step_size=60)
     # buses = filter(lambda e: e.type == 'PQBus', grid)
