@@ -43,14 +43,14 @@ def save_dict_to_csv(data_dict, filename):
             writer.writerow(row)
 
 
-def gather_data(monitor, frequency):
+def gather_data(monitor, frequency, runtime):
     # set specific frequency to use
     monitor.set_max_frequency(frequency)
     # give time to adjust
     time.sleep(3)
     data = Data()
-    # gather currents for 2 minutes
-    for i in range(120):
+    # gather currents for runtime
+    for i in range(runtime):
         data.add_entry(time=i + 1,
                        current=monitor.current(),
                        voltage=monitor.voltage(),
@@ -60,11 +60,14 @@ def gather_data(monitor, frequency):
     return data
 
 
+# runtime is specified in minutes at cli
+runtime = int(sys.argv[1]) * 60
 monitor = PiMonitor()
 directory = "data"
 if not os.path.exists(directory):
     os.makedirs(directory)
+
 for frequency in monitor.available_frequencies:
-    data = gather_data(monitor, frequency)
+    data = gather_data(monitor, frequency, runtime)
     output_file = f"/{directory}/{frequency / 100}.csv"
     save_dict_to_csv(data.to_dict(), output_file)
