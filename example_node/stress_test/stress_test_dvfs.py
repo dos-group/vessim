@@ -74,5 +74,5 @@ if not os.path.exists(directory):
 
 for frequency in monitor.available_frequencies:
     data = gather_data(monitor, frequency, runtime)
-    output_file = f"{directory}/{int(frequency/100)}.csv"
+    output_file = f"{directory}/{int(frequency/1000)}.csv"
     save_dict_to_csv(data.to_dict(), output_file)
