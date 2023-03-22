@@ -2,9 +2,10 @@
 
 import os
 import sys
+import subprocess
 sys.path.append('../lib')
 import time
-from pi_monitor import PiMonitor
+from pi_monitor import PiMonitor # type: ignore
 import csv
 
 
@@ -48,19 +49,23 @@ def gather_data(monitor, frequency, runtime):
     monitor.set_max_frequency(frequency)
     # give time to adjust
     time.sleep(3)
+    # start sysbench
+    process = subprocess.Popen(["sysbench", f"--time={runtime}", "--threads=4", "cpu", "run"])
     data = Data()
-    # gather currents for runtime
-    for i in range(runtime):
-        data.add_entry(time=i + 1,
+    # gather data for runtime
+    time_passed = 1
+    while process.poll() is None:
+        data.add_entry(time=time_passed,
                        current=monitor.current(),
                        voltage=monitor.voltage(),
                        power=monitor.power(),
                        frequency=frequency)
+        time_passed += 1
         time.sleep(1)
     return data
 
 
-# runtime is specified in minutes at cli
+# runtime is specified in minutes at cli level
 runtime = int(sys.argv[1]) * 60
 monitor = PiMonitor()
 directory = "data"
@@ -69,5 +74,5 @@ if not os.path.exists(directory):
 
 for frequency in monitor.available_frequencies:
     data = gather_data(monitor, frequency, runtime)
-    output_file = f"/{directory}/{frequency / 100}.csv"
+    output_file = f"{directory}/{int(frequency/100)}.csv"
     save_dict_to_csv(data.to_dict(), output_file)
