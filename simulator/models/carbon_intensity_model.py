@@ -6,6 +6,7 @@ Author: Marvin Steinke
 
 import csv
 from typing import Generator, Union
+from datetime import datetime
 
 class CarbonIntensityModel:
     """
@@ -13,10 +14,11 @@ class CarbonIntensityModel:
     line by line, or for a given time. The conversion_factor is used to convert
     the carbon unit (e.g. from lb to kg: conversion_factor~=0,453592).
     """
-    def __init__(self, datafile, conversion_factor=1, sim_start=0):
+    def __init__(self, datafile, conversion_factor=1, sim_start=0, step_size=1):
         self.datafile = datafile
         self.conversion_factor = conversion_factor
         self.sim_start = sim_start
+        self.step_size = step_size
         self.carbon = 0.0
         self.carbon_generator = self.generator()
 
@@ -26,10 +28,22 @@ class CarbonIntensityModel:
     def generator(self) -> Generator[float, None, None]:
         with open(self.datafile, 'r') as f:
             reader = csv.reader(f)
+            # first two lines only contain header
             for _ in range(2):
                 next(reader)
+            # yield first line of data
+            first_line = next(reader)
+            yield float(first_line[1] * self.conversion_factor)
+            old_timestamp = self.timestamp(first_line[0])
             for line in reader:
+                timestamp = self.timestamp(line[0])
+                if old_timestamp + self.step_size > timestamp:
+                    continue
+                old_timestamp = timestamp
                 yield float(line[1]) * self.conversion_factor
+
+    def timestamp(self, datetime_str: str) -> float:
+        return datetime.strptime(datetime_str, "%Y-%m-%d %H:%M:%S").timestamp()
 
     """
     Steps the generator.

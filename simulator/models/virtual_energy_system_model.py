@@ -11,9 +11,10 @@ from redis.commands.json.path import Path
 import docker
 
 class VirtualEnergySystemModel:
-    def __init__(self, carbon_datafile, battery_capacity, battery_charge_level, battery_max_discharge, battery_c_rate, step_size, carbon_conversion_facor=1, sim_start=0):
-        self.battery = SimpleBatteryModel(battery_capacity, battery_charge_level, battery_max_discharge, battery_c_rate, step_size)
-        self.carbon_model = CarbonIntensityModel(carbon_datafile, carbon_conversion_facor, sim_start)
+    def __init__(self, carbon_datafile, battery_capacity, battery_charge_level, battery_max_discharge, battery_c_rate, carbon_conversion_facor=1, sim_start=0):
+        self.step_size = 1
+        self.battery = SimpleBatteryModel(battery_capacity, battery_charge_level, battery_max_discharge, battery_c_rate, self.step_size)
+        self.carbon_model = CarbonIntensityModel(carbon_datafile, carbon_conversion_facor, sim_start, self.step_size)
         self.battery_charge_level = self.battery.charge_level
         self.battery_charge_rate = 0.0
         self.battery_discharge_rate = 0.0

@@ -19,7 +19,6 @@ META = {
                 'battery_charge_level',
                 'battery_max_discharge',
                 'battery_c_rate',
-                'step_size',
                 'carbon_conversion_facor',
                 'sim_start'
             ],

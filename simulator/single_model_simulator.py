@@ -13,13 +13,15 @@ class SingleModelSimulator(mosaik_api.Simulator):
         self.model_class = model_class
         self.entities = {}
         self.time = 0
+        self.step_size = 1
 
     """
-    Initialize Simulator and set *eid_prefix*.
+    Initialize Simulator and set *step_size* and *eid_prefix*.
     """
-    def init(self, sid, time_resolution, eid_prefix=None):
+    def init(self, sid, time_resolution, step_size=1, eid_prefix=None):
         if float(time_resolution) != 1.:
             raise ValueError(f'{self.__class__.__name__} only supports time_resolution=1., but {time_resolution} was set.')
+        self.step_size = step_size
         if eid_prefix is not None:
             self.eid_prefix = eid_prefix
         return self.meta
@@ -45,6 +47,8 @@ class SingleModelSimulator(mosaik_api.Simulator):
         self.time = time
         for eid, attrs in inputs.items():
             model_instance = self.entities[eid]
+            if hasattr(model_instance, 'step_size'):
+                setattr(model_instance, 'step_size', self.step_size)
             for attr, val_dict in attrs.items():
                 if len(val_dict) > 0:
                     # only one input per value expected -> take first item from dict
@@ -54,7 +58,7 @@ class SingleModelSimulator(mosaik_api.Simulator):
                         setattr(model_instance, attr, val)
             model_instance.step()
         # support all simulator types
-        return None if self.meta['type'] == 'event-based' else time + 1 # type: ignore
+        return None if self.meta['type'] == 'event-based' else time + self.step_size # type: ignore
 
     """
     Return all requested data as attr from the *model_instance*.
