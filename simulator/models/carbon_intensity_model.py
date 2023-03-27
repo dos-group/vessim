@@ -34,13 +34,16 @@ class CarbonIntensityModel:
             # yield first line of data
             first_line = next(reader)
             yield float(first_line[1] * self.conversion_factor)
-            old_timestamp = self.timestamp(first_line[0])
+            current_time = self.timestamp(first_line[0])
             for line in reader:
-                timestamp = self.timestamp(line[0])
-                if old_timestamp + self.step_size > timestamp:
+                next_timestamp = self.timestamp(line[0])
+                if current_time > next_timestamp:
+                    # the simulator time is ahead, continue until smaller or equal
                     continue
-                old_timestamp = timestamp
-                yield float(line[1]) * self.conversion_factor
+                while current_time <= next_timestamp:
+                    # the simulator time is either behind or equal, yield
+                    yield float(line[1]) * self.conversion_factor
+                    current_time += self.step_size
 
     def timestamp(self, datetime_str: str) -> float:
         return datetime.strptime(datetime_str, "%Y-%m-%d %H:%M:%S").timestamp()
