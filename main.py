@@ -21,6 +21,12 @@ sim_config = {
     'Collector': {
         'python': 'simulator.collector:Collector',
     },
+    'PVController': {
+        'python': 'simulator.pv_controller:PVController',
+    },
+    'CarbonController': {
+        'python': 'simulator.carbon_controller:CarbonController',
+    },
     'VirtualEnergySystem': {
         'python': 'simulator.virtual_energy_system:VirtualEnergySystem',
     },
@@ -48,6 +54,15 @@ def create_scenario_simple(world):
     # aws_power_meter = AwsPowerMeter(instance_id="instance_id", power_model=LinearPowerModel(p_static=30, p_max=150))
     raspi_power_meter = PhysicalPowerMeter()
     computing_system = computing_system_sim.ComputingSystem(power_meters=[raspi_power_meter])
+
+    # Carbon Sim from CSV dataset
+    carbon_sim = world.start('CSV', sim_start=START, datafile=CARBON_DATA)
+    carbon = carbon_sim.carbon.create(1)[0]
+
+    # Carbon Controller acts as a medium between carbon module and ecovisor or
+    # direct consumer since producer is only a CSV generator.
+    carbon_controller = world.start('CarbonController')
+    carbon_agent = carbon_controller.CarbonAgent(carbon_conversion_factor = 1)
 
     # PV Sim from CSV dataset
     pv_sim = world.start('CSV', sim_start=START, datafile=PV_DATA)
@@ -82,11 +97,15 @@ def create_scenario_simple(world):
     # Connect entities
     world.connect(computing_system, monitor, 'p_cons')
 
-    ## PV -> PVAgent -> Ecovisor
+    ## Carbon -> CarbonAgent -> VES
+    world.connect(carbon, carbon_agent, ('CarbonIntensity', 'carbon_intensity'))
+    world.connect(carbon_agent, virtual_energy_system, ('carbon_intensity', 'grid_carbon'))
+
+    ## PV -> PVAgent -> VES
     world.connect(pv, pv_agent, ('P', 'solar_power'))
     world.connect(pv_agent, virtual_energy_system, 'solar_power')
 
-    ## computing_system -> Ecovisor
+    ## computing_system -> VES
     world.connect(computing_system, virtual_energy_system, ('p_con', 'consumption'))
 
     world.connect(virtual_energy_system, monitor,

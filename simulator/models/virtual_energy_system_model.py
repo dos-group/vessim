@@ -11,10 +11,9 @@ from redis.commands.json.path import Path
 import docker
 
 class VirtualEnergySystemModel:
-    def __init__(self, carbon_datafile, battery_capacity, battery_charge_level, battery_max_discharge, battery_c_rate, carbon_conversion_facor=1, sim_start=0):
+    def __init__(self, battery_capacity, battery_charge_level, battery_max_discharge, battery_c_rate):
         self.step_size = 1
         self.battery = SimpleBatteryModel(battery_capacity, battery_charge_level, battery_max_discharge, battery_c_rate, self.step_size)
-        self.carbon_model = CarbonIntensityModel(carbon_datafile, carbon_conversion_facor, sim_start, self.step_size)
         self.battery_charge_level = self.battery.charge_level
         self.battery_charge_rate = 0.0
         self.battery_discharge_rate = 0.0
@@ -40,8 +39,6 @@ class VirtualEnergySystemModel:
 
     def step(self) -> None:
         self.get_redis_update()
-        self.carbon_model.step()
-        self.grid_carbon = self.carbon_model.carbon
         delta = self.solar_power - self.consumption
 
         # if carbon is low and battery does not have sufficient soc -> only charge battery

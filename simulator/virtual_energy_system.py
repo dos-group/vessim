@@ -14,13 +14,10 @@ META = {
         'VirtualEnergySystemModel': {
             'public': True,
             'params': [
-                'carbon_datafile',
                 'battery_capacity',
                 'battery_charge_level',
                 'battery_max_discharge',
                 'battery_c_rate',
-                'carbon_conversion_facor',
-                'sim_start'
             ],
             'attrs': [
                 'consumption',
