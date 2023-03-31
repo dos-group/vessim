@@ -1,5 +1,5 @@
-"""
-Generic class for single-model simulators or controllers.
+""" Generic class for single-model simulators or controllers.
+
 Author: Marvin Steinke
 
 """
@@ -7,6 +7,7 @@ Author: Marvin Steinke
 import mosaik_api
 
 class SingleModelSimulator(mosaik_api.Simulator):
+
     def __init__(self, META, model_class):
         super().__init__(META)
         self.eid_prefix = list(self.meta['models'])[0] + '_' # type: ignore
@@ -15,10 +16,8 @@ class SingleModelSimulator(mosaik_api.Simulator):
         self.time = 0
         self.step_size = 1
 
-    """
-    Initialize Simulator and set *step_size* and *eid_prefix*.
-    """
     def init(self, sid, time_resolution, step_size=1, eid_prefix=None):
+        """Initialize Simulator and set `step_size` and `eid_prefix`."""
         if float(time_resolution) != 1.:
             raise ValueError(f'{self.__class__.__name__} only supports time_resolution=1., but {time_resolution} was set.')
         self.step_size = step_size
@@ -26,24 +25,20 @@ class SingleModelSimulator(mosaik_api.Simulator):
             self.eid_prefix = eid_prefix
         return self.meta
 
-    """
-    Create *model_instance* and save it in *entities*.
-    """
     def create(self, num, model, *args, **kwargs):
+        """Create `model_instance` and save it in `entities`."""
         next_eid = len(self.entities)
         entities = []
         for i in range(next_eid, next_eid + num):
-            # instantiate model_class specified in contrstructor and passthrough args
+            # Instantiate `model_class` specified in constructor and pass through args
             model_instance = self.model_class(*args, **kwargs)
             eid = self.eid_prefix + str(i)
             self.entities[eid] = model_instance
             entities.append({'eid': eid, 'type': model})
         return entities
 
-    """
-    Set all *inputs* attr values to the *model_instance* attrs, then step the *model_instance*.
-    """
     def step(self, time, inputs, max_advance):
+        """Set all `inputs` attr values to the `model_instance` attrs, then step the `model_instance`."""
         self.time = time
         for eid, attrs in inputs.items():
             model_instance = self.entities[eid]
@@ -51,21 +46,19 @@ class SingleModelSimulator(mosaik_api.Simulator):
                 setattr(model_instance, 'step_size', self.step_size)
             for attr, val_dict in attrs.items():
                 if len(val_dict) > 0:
-                    # only one input per value expected -> take first item from dict
+                    # Only one input per value expected -> take first item from dict
                     val = list(val_dict.values())[0]
-                    # and set the attr for the *model_instance*
+                    # And set the attr for the `model_instance`
                     if hasattr(model_instance, attr):
                         setattr(model_instance, attr, val)
             model_instance.step()
-        # support all simulator types
+        # Support all simulator types
         return None if self.meta['type'] == 'event-based' else time + self.step_size # type: ignore
 
-    """
-    Return all requested data as attr from the *model_instance*.
-    """
     def get_data(self, outputs):
+        """Return all requested data as attr from the `model_instance`."""
         data = {}
-        model_name = list(self.meta['models'])[0] # type:ignore
+        model_name = list(self.meta['models'])[0] # type: ignore
         for eid, attrs in outputs.items():
             model = self.entities[eid]
             data['time'] = self.time

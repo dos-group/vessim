@@ -1,7 +1,6 @@
-"""
-Mosaik interface for the VirtualEnergySystem.
-Author: Marvin Steinke
+"""Mosaik interface for the VirtualEnergySystem.
 
+Author: Marvin Steinke
 """
 
 import mosaik_api
@@ -32,9 +31,14 @@ META = {
     },
 }
 
+
 class VirtualEnergySystem(SingleModelSimulator):
+    """VirtualEnergySystem class that inherits from SingleModelSimulator."""
+
     def __init__(self):
         super().__init__(META, VirtualEnergySystemModel)
 
+
 def main():
+    """Start the mosaik simulation."""
     return mosaik_api.start_simulation(VirtualEnergySystem())
