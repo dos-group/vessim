@@ -7,8 +7,8 @@ Author: Marvin Steinke
 """
 
 import mosaik_api
-from agents.carbon_agent import CarbonAgent  # type: ignore
-from single_model_simulator import SingleModelSimulator
+from .models.carbon_agent import CarbonAgent  # type: ignore
+from .single_model_simulator import SingleModelSimulator
 
 # Metadata for the CarbonAgent model
 META = {

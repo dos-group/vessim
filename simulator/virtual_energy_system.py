@@ -4,8 +4,8 @@ Author: Marvin Steinke
 """
 
 import mosaik_api
-from single_model_simulator import SingleModelSimulator
-from models.virtual_energy_system_model import VirtualEnergySystemModel
+from .single_model_simulator import SingleModelSimulator
+from simulator.models.virtual_energy_system_model import VirtualEnergySystemModel
 
 META = {
     'type': 'time-based',

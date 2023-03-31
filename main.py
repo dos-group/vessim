@@ -33,10 +33,10 @@ sim_config = {
 }
 
 START = '2014-01-01 00:00:00'
-END = 300  # 30 * 24 * 3600  # 10 days
+END = 10  # 30 * 24 * 3600  # 10 days
 GRID_FILE = 'data/custom.json'  # "data/custom.json"  # 'data/demo_lv_grid.json'
-PV_DATA = "data/pv_10kw.csv"
-# TODO CARBON_DATA =
+PV_DATA = 'data/pv_10kw.csv'
+CARBON_DATA = 'data/ger_ci_testing.csv'
 BATTERY_MAX_DISCHARGE = 0.6
 BATTERY_CAPACITY = 10 * 5 * 3600  # 10Ah * 5V * 3600 := Ws
 BATTERY_INITIAL_CHARGE_LEVEL = BATTERY_CAPACITY * 0.7
@@ -44,22 +44,22 @@ BATTERY_C_RATE = 1/5
 
 def main():
     random.seed(23)
-    world = mosaik.World(sim_config)
+    world = mosaik.World(sim_config) # type: ignore
     create_scenario_simple(world)
     world.run(until=END, print_progress=False, rt_factor=1)
 
 
 def create_scenario_simple(world):
-    computing_system_sim = world.start('ComputingSystemSim')
+    #computing_system_sim = world.start('ComputingSystemSim')
     # aws_power_meter = AwsPowerMeter(instance_id="instance_id", power_model=LinearPowerModel(p_static=30, p_max=150))
-    raspi_power_meter = PhysicalPowerMeter()
-    computing_system = computing_system_sim.ComputingSystem(power_meters=[raspi_power_meter])
+    #raspi_power_meter = PhysicalPowerMeter()
+    #computing_system = computing_system_sim.ComputingSystem(power_meters=[raspi_power_meter])
 
     # Carbon Sim from CSV dataset
     carbon_sim = world.start('CSV', sim_start=START, datafile=CARBON_DATA)
-    carbon = carbon_sim.carbon.create(1)[0]
+    carbon = carbon_sim.CarbonIntensity.create(1)[0]
 
-    # Carbon Controller acts as a medium between carbon module and ecovisor or
+    # Carbon Controller acts as a medium between carbon module and VES or
     # direct consumer since producer is only a CSV generator.
     carbon_controller = world.start('CarbonController')
     carbon_agent = carbon_controller.CarbonAgent(carbon_conversion_factor = 1)
@@ -68,13 +68,13 @@ def create_scenario_simple(world):
     pv_sim = world.start('CSV', sim_start=START, datafile=PV_DATA)
     pv = pv_sim.PV.create(1)[0]
 
-    # PV Controller acts as medium between pv module and ecovisor or direct consumer since producer is only a csv generator.
+    # PV Controller acts as medium between pv module and VES or direct consumer since producer is only a csv generator.
     pv_controller = world.start('PVController')
     pv_agent = pv_controller.PVAgent(kW_conversion_factor = 1)
 
-    # Ecovisor Sim
-    virtual_energy_system_sim = world.start('Ecovisor')
-    virtual_energy_system = virtual_energy_system_sim.EcovisorModel(
+    # VES Sim
+    virtual_energy_system_sim = world.start('VirtualEnergySystem')
+    virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystemModel(
         carbon_datafile=CARBON_DATA,
         battery_capacity=BATTERY_CAPACITY,
         battery_charge_level=BATTERY_INITIAL_CHARGE_LEVEL,
@@ -95,7 +95,7 @@ def create_scenario_simple(world):
     monitor = collector.Monitor()
 
     # Connect entities
-    world.connect(computing_system, monitor, 'p_cons')
+    #world.connect(computing_system, monitor, 'p_cons')
 
     ## Carbon -> CarbonAgent -> VES
     world.connect(carbon, carbon_agent, ('CarbonIntensity', 'carbon_intensity'))
@@ -106,7 +106,7 @@ def create_scenario_simple(world):
     world.connect(pv_agent, virtual_energy_system, 'solar_power')
 
     ## computing_system -> VES
-    world.connect(computing_system, virtual_energy_system, ('p_con', 'consumption'))
+    #world.connect(computing_system, virtual_energy_system, ('p_con', 'consumption'))
 
     world.connect(virtual_energy_system, monitor,
                 'consumption',
