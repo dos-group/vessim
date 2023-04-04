@@ -6,7 +6,7 @@ Authors:
     Philipp Wiesner
 """
 
-from models.simple_battery_model import SimpleBatteryModel
+from simulator.models.simple_battery_model import SimpleBatteryModel
 import redis
 from redis.commands.json.path import Path
 import docker

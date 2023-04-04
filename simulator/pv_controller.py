@@ -8,8 +8,8 @@ Author: Marvin Steinke
 """
 
 import mosaik_api
-from .models.pv_agent import PVAgent # type: ignore
-from .single_model_simulator import SingleModelSimulator # type: ignore
+from simulator.models.pv_agent import PVAgent
+from simulator.single_model_simulator import SingleModelSimulator
 
 META = {
     'type': 'event-based',
