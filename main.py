@@ -75,7 +75,6 @@ def create_scenario_simple(world):
     # VES Sim
     virtual_energy_system_sim = world.start('VirtualEnergySystem')
     virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystemModel(
-        carbon_datafile=CARBON_DATA,
         battery_capacity=BATTERY_CAPACITY,
         battery_charge_level=BATTERY_INITIAL_CHARGE_LEVEL,
         battery_max_discharge=BATTERY_MAX_DISCHARGE,
@@ -98,7 +97,7 @@ def create_scenario_simple(world):
     #world.connect(computing_system, monitor, 'p_cons')
 
     ## Carbon -> CarbonAgent -> VES
-    world.connect(carbon, carbon_agent, ('CarbonIntensity', 'carbon_intensity'))
+    world.connect(carbon, carbon_agent, ('Carbon Intensity', 'carbon_intensity'))
     world.connect(carbon_agent, virtual_energy_system, ('carbon_intensity', 'grid_carbon'))
 
     ## PV -> PVAgent -> VES

@@ -16,13 +16,11 @@ class PVAgent:
             convert production to kilowatts. Default is 1.
         """
         self.kW_conversion_factor = kW_conversion_factor
-        self.solar_power = 0
+        self.solar_power = 0.0
+        self.production = 0.0
 
-    def step(self, production: float) -> None:
+    def step(self) -> None:
         """Update the solar power based on the given production value and the
         conversion factor. Called every simulation step.
-
-        Args:
-            production (float): The solar power production in raw units.
         """
-        self.solar_power = abs(production * self.kW_conversion_factor)
+        self.solar_power = abs(self.production * self.kW_conversion_factor)

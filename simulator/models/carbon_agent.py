@@ -18,13 +18,11 @@ class CarbonAgent:
             conversion_factor~=0,453592).
         """
         self.carbon_conversion_factor = carbon_conversion_factor
-        self.carbon_intensity = 0
+        self.carbon_intensity = 0.0
+        self.intensity_input = 0.0
 
-    def step(self, intensity_input: float) -> None:
+    def step(self) -> None:
         """Calculate the carbon intensity based on the input intensity and the
         conversion factor. Called every simulation step.
-
-        Args:
-            intensity_input (float): The input intensity value.
         """
-        self.carbon_intensity = abs(intensity_input * self.carbon_conversion_factor)
+        self.carbon_intensity = abs(self.intensity_input * self.carbon_conversion_factor)
