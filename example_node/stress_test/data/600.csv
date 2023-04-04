@@ -1,4 +1,3 @@
-# events per second: 1192.27
 time,frequency,power,current,voltage
 1,600000,1114.15,239.7,5.1
 2,600000,1367.8,270.09,5.1
