@@ -1,12 +1,26 @@
-""" Generic class for single-model simulators or controllers.
-
-Author: Marvin Steinke
-
-"""
-
 import mosaik_api
 
 class SingleModelSimulator(mosaik_api.Simulator):
+    """ Generic class for single-model simulators or controllers: Many usecases
+    for simulators simply require setting all inputs attr values to the
+    model_instance attrs and then to step the model_instance. This class takes
+    care of all basic mosaik abstractions that are simple copy and paste tasks
+    for each new simulator.
+
+    Args:
+        META: A dictionary that describes the simulator's metadata.
+        model_class: The class of the model to be simulated. Model requires a
+        step() method with no args (must only utilizes object attributes).
+        Alternatively the step() method of this class must be overwritten and
+        implemented individually.
+
+    Attributes:
+        eid_prefix: The prefix to be used for entity IDs.
+        model_class: The class of the model to be simulated.
+        entities: A dictionary that maps entity IDs to their instances.
+        time: The current simulation time.
+        step_size: The simulation step size.
+    """
 
     def __init__(self, META, model_class):
         super().__init__(META)

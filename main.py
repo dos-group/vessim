@@ -21,8 +21,8 @@ sim_config = {
     'Collector': {
         'python': 'simulator.collector:Collector',
     },
-    'PVController': {
-        'python': 'simulator.pv_controller:PVController',
+    'SolarController': {
+        'python': 'simulator.solar_controller:SolarController',
     },
     'CarbonController': {
         'python': 'simulator.carbon_controller:CarbonController',
@@ -35,7 +35,7 @@ sim_config = {
 START = '2014-01-01 00:00:00'
 END = 10  # 30 * 24 * 3600  # 10 days
 GRID_FILE = 'data/custom.json'  # "data/custom.json"  # 'data/demo_lv_grid.json'
-PV_DATA = 'data/pv_10kw.csv'
+SOLAR_DATA = 'data/pv_10kw.csv'
 CARBON_DATA = 'data/ger_ci_testing.csv'
 BATTERY_MAX_DISCHARGE = 0.6
 BATTERY_CAPACITY = 10 * 5 * 3600  # 10Ah * 5V * 3600 := Ws
@@ -62,15 +62,15 @@ def create_scenario_simple(world):
     # Carbon Controller acts as a medium between carbon module and VES or
     # direct consumer since producer is only a CSV generator.
     carbon_controller = world.start('CarbonController')
-    carbon_agent = carbon_controller.CarbonAgent(carbon_conversion_factor = 1)
+    carbon_agent = carbon_controller.CarbonAgent()
 
-    # PV Sim from CSV dataset
-    pv_sim = world.start('CSV', sim_start=START, datafile=PV_DATA)
-    pv = pv_sim.PV.create(1)[0]
+    # Solar Sim from CSV dataset
+    solar_sim = world.start('CSV', sim_start=START, datafile=SOLAR_DATA)
+    solar = solar_sim.PV.create(1)[0]
 
-    # PV Controller acts as medium between pv module and VES or direct consumer since producer is only a csv generator.
-    pv_controller = world.start('PVController')
-    pv_agent = pv_controller.PVAgent(kW_conversion_factor = 1)
+    # Solar Controller acts as medium between Solar module and VES or direct consumer since producer is only a csv generator.
+    solar_controller = world.start('SolarController')
+    solar_agent = solar_controller.SolarAgent()
 
     # VES Sim
     virtual_energy_system_sim = world.start('VirtualEnergySystem')
@@ -100,9 +100,9 @@ def create_scenario_simple(world):
     world.connect(carbon, carbon_agent, ('Carbon Intensity', 'carbon_intensity'))
     world.connect(carbon_agent, virtual_energy_system, ('carbon_intensity', 'grid_carbon'))
 
-    ## PV -> PVAgent -> VES
-    world.connect(pv, pv_agent, ('P', 'solar_power'))
-    world.connect(pv_agent, virtual_energy_system, 'solar_power')
+    ## Solar -> SolarAgent -> VES
+    world.connect(solar, solar_agent, ('P', 'solar_power'))
+    world.connect(solar_agent, virtual_energy_system, 'solar_power')
 
     ## computing_system -> VES
     #world.connect(computing_system, virtual_energy_system, ('p_con', 'consumption'))
