@@ -39,7 +39,9 @@ class VirtualEnergySystem(SingleModelSimulator):
 
 
 class VirtualEnergySystemModel:
-    """A virtual energy system model."""
+    """A virtual energy system model.
+    TODO: add more doc
+    """
 
     def __init__(
         self,
