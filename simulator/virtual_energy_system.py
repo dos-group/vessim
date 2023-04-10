@@ -151,6 +151,30 @@ class VirtualEnergySystemModel:
         return True
 
 
+    # TODO adjust
+    #def init_fastapi(self) -> FastAPI:
+    #    app = FastAPI()
+
+    #    @self.app.get('/number')
+    #    def get_number():
+    #        return {'number': int(self.redis.get('number'))}
+
+    #    @self.app.put('/number/{number}')
+    #    def set_number(number: int):
+    #        self.redis.set('number', number)
+    #        return {'number': number}
+
+    #    @self.app.get('/word')
+    #    def get_word():
+    #        return {'word': self.redis.get('word').decode('utf-8')}
+
+    #    @self.app.put('/word/{word}')
+    #    def set_word(word: str):
+    #        self.redis.set('word', word)
+    #        return {'word': word}
+
+    #    return app
+
 def main():
     """Start the mosaik simulation."""
     return mosaik_api.start_simulation(VirtualEnergySystem())
