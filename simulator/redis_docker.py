@@ -21,8 +21,9 @@ class RedisDocker:
     def __init__(self, host: str = '127.0.0.1', port: int = 6379) -> None:
         self.host = host
         self.port = port
-        self.redis = self.init_docker()
-        self.connect_redis()
+        self.init_docker()
+        self.redis = self.connect_redis()
+
 
     def init_docker(self) -> None:
         """
@@ -35,6 +36,14 @@ class RedisDocker:
             ports={f'{self.port}/tcp': self.port},
             detach=True
         )
+
+        # Check if the container has started
+        while True:
+            container_info = client.containers.get(self.redis_container.id)
+            if container_info.status == 'running':
+                break
+            sleep(1)
+
 
     def connect_redis(self) -> Redis:
         """
@@ -52,6 +61,7 @@ class RedisDocker:
         assert redis != None
         return redis
 
+
     def run(self, f_api: FastAPI, host: str = '127.0.0.1', port: int = 8000) -> None:
         """
         Runs the given FastAPI application.
@@ -62,6 +72,7 @@ class RedisDocker:
             port: The port to run the FastAPI application, defaults to 8000.
         """
         uvicorn.run(f_api, host=host, port=port)
+
 
     def __del__(self) -> None:
         """
