@@ -2,6 +2,7 @@ import docker
 from time import sleep
 from fastapi import FastAPI
 from redis import Redis
+import threading
 import uvicorn
 
 
@@ -64,14 +65,23 @@ class RedisDocker:
 
     def run(self, f_api: FastAPI, host: str = '127.0.0.1', port: int = 8000) -> None:
         """
-        Runs the given FastAPI application.
+        Runs the given FastAPI application with a uvicorn server in a seperate
+        thread and waits until it finished startup.
 
         Args:
             f_api: FastAPI, the FastAPI application to run
             host: The host address, defaults to '127.0.0.1'.
             port: The port to run the FastAPI application, defaults to 8000.
         """
-        uvicorn.run(f_api, host=host, port=port)
+        self.server_thread = ServerThread(f_api, host, port)
+        self.server_thread.start()
+        self.server_thread.wait_for_startup_complete()
+
+    def stop(self):
+        """
+        Stops the FastAPI uvicorn server thread.
+        """
+        self.server_thread.stop()
 
 
     def __del__(self) -> None:
@@ -79,3 +89,49 @@ class RedisDocker:
         Stops the Docker container with Redis when the instance is deleted.
         """
         self.redis_container.stop()
+
+
+class ServerThread(threading.Thread):
+    """
+    Thread that runs a given FastAPI application with a uvicorn server.
+
+    Args:
+        f_api: FastAPI, the FastAPI application to run
+        host: The host address, defaults to '127.0.0.1'.
+        port: The port to run the FastAPI application, defaults to 8000.
+    """
+
+    def __init__(self, f_api: FastAPI, host: str, port: int) -> None:
+        super().__init__()
+        config = uvicorn.Config(app=f_api, host=host, port=port)
+        self.server = uvicorn.Server(config=config)
+        self.startup_complete = False
+
+        @f_api.on_event("startup")
+        async def startup_event():
+            self.startup_complete = True
+
+
+    def wait_for_startup_complete(self):
+        """
+        To ensure the server is operational for the simulation, the startup
+        needs to complete before any requests can be made. Waits for the
+        uvicorn server to finish startup.
+        """
+        while not self.startup_complete:
+            sleep(1)
+
+
+    def run(self):
+        """
+        Called when the thread is started. Runs the uvicorn server.
+        """
+        self.server.run()
+
+
+    def stop(self):
+        """
+        Mosaik does not stop the server on its own after the simulation has
+        finished. Gracefully stops the uvicorn server.
+        """
+        self.server.should_exit = True
