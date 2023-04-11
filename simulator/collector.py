@@ -1,7 +1,3 @@
-"""
-A simple data collector that prints all data when the simulation finishes.
-
-"""
 import collections
 import csv
 from loguru import logger
@@ -23,6 +19,8 @@ META = {
 
 
 class Collector(mosaik_api.Simulator):
+    """Simple data collector that prints all data when the simulation finishes. """
+
     def __init__(self):
         super().__init__(META)
         self.eid = None
