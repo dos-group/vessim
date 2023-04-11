@@ -7,7 +7,7 @@ META = {
         'SolarAgent': {
             'public': True,
             'params': ['scaling_factor'],
-            'attrs': ['solar_power'],
+            'attrs': ['solar'],
         },
     },
 }
@@ -34,14 +34,14 @@ class SolarAgent:
         """
     def __init__(self, scaling_factor: float = 1) -> None:
         self.scaling_factor = scaling_factor
-        self.solar_power = 0.0
+        self.solar = 0.0
         self.production = 0.0
 
     def step(self) -> None:
         """Update the solar power based on the given production value and the
         scaling factor. Called every simulation step.
         """
-        self.solar_power = abs(self.production * self.scaling_factor)
+        self.solar = abs(self.production * self.scaling_factor)
 
 
 def main():

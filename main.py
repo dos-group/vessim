@@ -33,11 +33,11 @@ sim_config = {
 }
 
 START = '2014-01-01 00:00:00'
-END = 10  # 30 * 24 * 3600  # 10 days
+END = 5  # 30 * 24 * 3600  # 10 days
 GRID_FILE = 'data/custom.json'  # "data/custom.json"  # 'data/demo_lv_grid.json'
 SOLAR_DATA = 'data/pv_10kw.csv'
 CARBON_DATA = 'data/ger_ci_testing.csv'
-BATTERY_MAX_DISCHARGE = 0.6
+BATTERY_MIN_SOC = 0.6
 BATTERY_CAPACITY = 10 * 5 * 3600  # 10Ah * 5V * 3600 := Ws
 BATTERY_INITIAL_CHARGE_LEVEL = BATTERY_CAPACITY * 0.7
 BATTERY_C_RATE = 1/5
@@ -76,8 +76,8 @@ def create_scenario_simple(world):
     virtual_energy_system_sim = world.start('VirtualEnergySystem')
     virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystemModel(
         battery_capacity=BATTERY_CAPACITY,
-        battery_charge_level=BATTERY_INITIAL_CHARGE_LEVEL,
-        battery_max_discharge=BATTERY_MAX_DISCHARGE,
+        battery_soc=BATTERY_INITIAL_CHARGE_LEVEL,
+        battery_min_soc=BATTERY_MIN_SOC,
         battery_c_rate=BATTERY_C_RATE)
 
     # gridsim = world.start('Grid', step_size=60)
@@ -97,24 +97,22 @@ def create_scenario_simple(world):
     #world.connect(computing_system, monitor, 'p_cons')
 
     ## Carbon -> CarbonAgent -> VES
-    world.connect(carbon, carbon_agent, ('Carbon Intensity', 'carbon_intensity'))
-    world.connect(carbon_agent, virtual_energy_system, ('carbon_intensity', 'grid_carbon'))
+    world.connect(carbon, carbon_agent, ('Carbon Intensity', 'ci'))
+    world.connect(carbon_agent, virtual_energy_system, 'ci')
 
     ## Solar -> SolarAgent -> VES
-    world.connect(solar, solar_agent, ('P', 'solar_power'))
-    world.connect(solar_agent, virtual_energy_system, 'solar_power')
+    world.connect(solar, solar_agent, ('P', 'solar'))
+    world.connect(solar_agent, virtual_energy_system, 'solar')
 
     ## computing_system -> VES
     #world.connect(computing_system, virtual_energy_system, ('p_con', 'consumption'))
 
     world.connect(virtual_energy_system, monitor,
                 'consumption',
-                'battery_max_discharge',
-                'battery_charge_level',
-                'solar_power',
-                'grid_carbon',
-                'grid_power',
-                'total_carbon',
+                'battery_min_soc',
+                'battery_soc',
+                'solar',
+                'ci',
     )
 
     # world.connect(load, monitor, 'p_mw')

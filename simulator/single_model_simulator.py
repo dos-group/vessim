@@ -46,6 +46,8 @@ class SingleModelSimulator(mosaik_api.Simulator):
         for i in range(next_eid, next_eid + num):
             # Instantiate `model_class` specified in constructor and pass through args
             model_instance = self.model_class(*args, **kwargs)
+            if hasattr(model_instance, 'step_size'):
+                setattr(model_instance, 'step_size', self.step_size)
             eid = self.eid_prefix + str(i)
             self.entities[eid] = model_instance
             entities.append({'eid': eid, 'type': model})
@@ -56,8 +58,6 @@ class SingleModelSimulator(mosaik_api.Simulator):
         self.time = time
         for eid, attrs in inputs.items():
             model_instance = self.entities[eid]
-            if hasattr(model_instance, 'step_size'):
-                setattr(model_instance, 'step_size', self.step_size)
             for attr, val_dict in attrs.items():
                 if len(val_dict) > 0:
                     # Only one input per value expected -> take first item from dict
