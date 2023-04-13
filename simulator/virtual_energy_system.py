@@ -3,7 +3,8 @@ from simulator.single_model_simulator import SingleModelSimulator
 from simulator.simple_battery_model import SimpleBatteryModel
 from simulator.redis_docker import RedisDocker
 from fastapi import FastAPI
-import threading
+from functools import partial
+import json
 
 
 META = {
@@ -75,13 +76,14 @@ class VirtualEnergySystemModel:
         # ves attributes
         self.battery_soc = self.battery.charge_level
         self.battery_min_soc = self.battery.max_discharge
+        self.grid_charge = 0.0
+        self.nodes = {}
         self.consumption = 0.0
         self.solar = 0.0
         self.ci = 0.0
         self.grid_power = 0.0
         self.total_carbon = 0.0
         # db & api
-        self.sim_progress = 0
         self.redis_docker = RedisDocker(host=db_host)
         f_api = self.init_fastapi()
         self.redis_docker.run(f_api, host=api_host)
@@ -113,30 +115,97 @@ class VirtualEnergySystemModel:
     def init_fastapi(self) -> FastAPI:
         app = FastAPI()
 
-        @app.get('/solar')
-        def get_solar():
-            redis_solar = self.redis_docker.redis.get('solar')
-            assert redis_solar != None
-            redis_solar = float(redis_solar)
-            assert self.solar == redis_solar
-            return {'solar': self.solar}
-
-        @app.put('/solar/{solar}')
-        def set_solar(solar: float):
-            self.solar = solar
-            self.redis_docker.redis.set('solar', solar)
-            return {'solar': solar}
-
-        @app.get('/word')
-        def get_word():
-            return {'word': self.redis_docker.redis.get('word').decode('utf-8')}
-
-        @app.put('/word/{word}')
-        def set_word(word: str):
-            self.redis_docker.redis.set('word', word)
-            return {'word': word}
+        GET_route_attrs = {
+            '/solar': 'solar',
+            '/ci': 'ci',
+            '/battery-soc': 'battery_soc',
+            '/forecasts/solar': 'solar_forecast',
+            '/forecasts/ci': 'ci_forecast'
+        }
+        self.init_GET_routes(GET_route_attrs, app)
 
         return app
+
+
+    def init_GET_routes(self, GET_route_attrs: dict, app: FastAPI) -> None:
+        """
+        Initializes GET routes for a FastAPI app with the given route attributes and
+        stores the initial values of the attributes in Redis key-value store.
+
+        Args:
+            GET_route_attrs: A dictionary containing the GET route as the key and
+                the corresponding attribute as the value.
+            app: A FastAPI app instance to which the GET routes will be added.
+
+        Raises:
+            AssertionError: If a Redis entry is not found for a given attribute or if
+                the attribute value does not match the value stored in Redis.
+
+        Example:
+            GET_route_attrs = {
+                "/route1": "attribute1",
+                "/route2": "attribute2",
+            }
+            init_GET_routes(GET_route_attrs, app)
+        """
+
+        # store attributes and its initial values in Redis key-value store
+        redis_content = {entry: getattr(self, entry) for entry in GET_route_attrs.values() if hasattr(self, entry)}
+        self.redis_docker.redis.mset(redis_content)
+
+        # FastAPI hook function for all GET routes to retrieve data from Redis
+        # and ensure it matches the attribute values
+        def get_data(attr):
+            redis_entry = self.redis_docker.redis.get(attr)
+            assert redis_entry != None
+            value = None
+            # entries may either be of primitive type or json
+            try:
+                value = json.loads(redis_entry)
+            except json.JSONDecodeError:
+                # cast redis entry the type of its corresponding attribute in this class
+                value = type(getattr(self, attr))(redis_entry)
+            assert getattr(self, attr) == value
+            return value
+
+        # connect get_data function to FastAPI for every route
+        for route, attr in GET_route_attrs:
+            if hasattr(self, attr):
+                app.get(route)(partial(get_data, attr))
+
+
+    def print_redis(self):
+        """
+        Debugging function that simply prints all entries of the redis db.
+        """
+
+        r = self.redis_docker.redis
+        # Start the SCAN iterator
+        cursor = 0
+        while True:
+            cursor, keys = r.scan(cursor)
+            for key in keys:
+                # Check the type of the key
+                key_type = r.type(key)
+
+                # Retrieve the value according to the key type
+                if key_type == b'string':
+                    value = r.get(key)
+                elif key_type == b'hash':
+                    value = r.hgetall(key)
+                elif key_type == b'list':
+                    value = r.lrange(key, 0, -1)
+                elif key_type == b'set':
+                    value = r.smembers(key)
+                elif key_type == b'zset':
+                    value = r.zrange(key, 0, -1, withscores=True)
+                else:
+                    value = None
+
+                print(f"Key: {key}, Type: {key_type}, Value: {value}")
+
+            if cursor == 0:
+                break
 
 def main():
     """Start the mosaik simulation."""
