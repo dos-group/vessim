@@ -33,7 +33,7 @@ sim_config = {
 }
 
 START = '2014-01-01 00:00:00'
-END = 5  # 30 * 24 * 3600  # 10 days
+END = 300  # 30 * 24 * 3600  # 10 days
 GRID_FILE = 'data/custom.json'  # "data/custom.json"  # 'data/demo_lv_grid.json'
 SOLAR_DATA = 'data/pv_10kw.csv'
 CARBON_DATA = 'data/ger_ci_testing.csv'
