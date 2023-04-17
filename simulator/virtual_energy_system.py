@@ -47,7 +47,7 @@ class VirtualEnergySystem(SingleModelSimulator):
         after the simulation has finished.
         """
         super().finalize()
-        for _, model_instance in self.entities.items():
+        for model_instance in self.entities.values():
             model_instance.redis_docker.stop()
 
 
