@@ -4,6 +4,7 @@ from simulator.simple_battery_model import SimpleBatteryModel
 from simulator.redis_docker import RedisDocker
 from fastapi import FastAPI
 from functools import partial
+from typing import Dict
 import json
 
 
@@ -76,8 +77,8 @@ class VirtualEnergySystemModel:
         # ves attributes
         self.battery_soc = self.battery.charge_level
         self.battery_min_soc = self.battery.max_discharge
-        self.grid_charge = 0.0
-        self.nodes = {}
+        self.battery_grid_charge = 0.0
+        self.nodes_power_mode = {}
         self.consumption = 0.0
         self.solar = 0.0
         self.ci = 0.0
@@ -124,10 +125,12 @@ class VirtualEnergySystemModel:
         }
         self.init_GET_routes(GET_route_attrs, app)
 
+        self.init_PUT_routes(app)
+
         return app
 
 
-    def init_GET_routes(self, GET_route_attrs: dict, app: FastAPI) -> None:
+    def init_GET_routes(self, GET_route_attrs: Dict[str, str], app: FastAPI) -> None:
         """
         Initializes GET routes for a FastAPI app with the given route attributes and
         stores the initial values of the attributes in Redis key-value store.
@@ -155,7 +158,7 @@ class VirtualEnergySystemModel:
 
         # FastAPI hook function for all GET routes to retrieve data from Redis
         # and ensure it matches the attribute values
-        def get_data(attr):
+        async def get_data(attr):
             redis_entry = self.redis_docker.redis.get(attr)
             assert redis_entry != None
             value = None
@@ -168,11 +171,76 @@ class VirtualEnergySystemModel:
             assert getattr(self, attr) == value
             return value
 
-        # connect get_data function to FastAPI for every route
-        for route, attr in GET_route_attrs:
+        # connect get_data function to FastAPI for every route (@app.get() in a loop)
+        for route, attr in GET_route_attrs.items():
             if hasattr(self, attr):
                 app.get(route)(partial(get_data, attr))
 
+
+    def init_PUT_routes(self, app: FastAPI) -> None:
+        """
+        Initialize PUT routes for the FastAPI application, specifically for
+        updating battery settings and node power modes.
+
+        This method sets up two PUT routes: '/ves/battery' and
+        '/cs/nodes/{item_id}'. The first route updates the battery settings,
+        while the second route updates the power mode of a specified node. The
+        method also handles data validation and updating of the corresponding
+        attributes in the application instance and Redis datastore.
+
+        Args:
+            app: The FastAPI application instance to add the PUT routes to.
+        """
+
+        # manual http routes for api
+        PUT_route_attrs = {
+            '/ves/battery': {
+                'min_soc': 'battery_min_soc',
+                'grid_charge': 'battery_grid_charge'
+            },
+            '/cs/nodes/{item_id}': {
+                'power_mode': 'nodes_power_mode'
+            }
+        }
+
+        @app.put('/ves/battery')
+        async def put_battery(data: Dict[str, float]):
+            # get the attributes dictionary for the '/ves/battery' route
+            attrs = PUT_route_attrs['/ves/battery']
+            for key, value in data.items():
+                # get the corresponding attribute name for the current key
+                attr = attrs[key]
+                assert hasattr(self, attr)
+                # raise a ValueError if the key is not present in the attributes dictionary
+                if key not in attrs.keys():
+                    raise ValueError(f"Attribute '{key}' does not exist")
+
+                # cast the value to the same type as the existing attribute value
+                value_casted = type(getattr(self, attr))(value)
+                # Update the value in the Redis datastore
+                self.redis_docker.redis.set(attr, value_casted)
+                # Update the value in the application instance
+                setattr(self, attr, value_casted)
+            return data
+
+        @app.put('/cs/nodes/{item_id}')
+        async def put_nodes(data: Dict[str, str], item_id: int):
+            for key, value in data.items():
+                # raise a ValueError if the key is not present in the
+                # PUT_route_attrs dictionary for the '/cs/nodes/{item_id}' route
+                if key not in PUT_route_attrs['/cs/nodes/{item_id}'].keys():
+                    raise ValueError(f"Attribute '{key}' does not exist")
+
+                # define the valid power modes
+                power_modes = ['power-saving', 'normal', 'high performance']
+                if value not in power_modes:
+                    raise ValueError(f'{value} is not a valid power mode. Available power modes: {power_modes}')
+
+                # update the power mode for the specified node in the application instance
+                self.nodes_power_mode[item_id] = value
+                # and in the Redis datastore
+                self.redis_docker.redis.hset('nodes_power_mode', str(item_id), value)
+            return data
 
     def print_redis(self):
         """
