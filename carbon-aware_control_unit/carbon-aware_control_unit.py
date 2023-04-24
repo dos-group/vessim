@@ -4,28 +4,30 @@ import simpy
 
 
 class Battery:
-    def __init__(self, soc: float = 0.0, min_soc: float = 0.0, grid_charge: float = 0.0) -> None:
-        """
-        Initializes a Battery instance with the given initial state.
+    """
+    Initializes a Battery instance with the given initial state.
 
-        Args:
-            soc: The initial state of the battery's state of charge (default 0.0).
-            min_soc: The minimum state of charge threshold for the battery (default 0.0).
-            grid_charge: The initial state of the battery's grid charge level (default 0.0).
-        """
+    Args:
+        soc: The initial state of the battery's state of charge (default 0.0).
+        min_soc: The minimum state of charge threshold for the battery (default 0.0).
+        grid_charge: The initial state of the battery's grid charge level (default 0.0).
+    """
+
+    def __init__(self, soc: float = 0.0, min_soc: float = 0.0, grid_charge: float = 0.0) -> None:
         self.soc = soc
         self.min_soc = min_soc
         self.grid_charge = grid_charge
 
 
 class CarbonAwareControlUnit:
-    def __init__(self, server_address: str) -> None:
-        """
-        Initializes a CarbonAwareControlUnit instance with the given server address.
+    """
+    Initializes a CarbonAwareControlUnit instance with the given server address.
 
-        Args:
-            server_address: The address of the server to connect to.
-        """
+    Args:
+        server_address: The address of the server to connect to.
+    """
+
+    def __init__(self, server_address: str) -> None:
         self.ci = 0.0
         self.solar = 0.0
         self.battery = Battery()
