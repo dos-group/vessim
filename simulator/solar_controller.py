@@ -7,7 +7,10 @@ META = {
         'SolarAgent': {
             'public': True,
             'params': ['scaling_factor'],
-            'attrs': ['solar'],
+            'attrs': [
+                'production',
+                'solar'
+            ],
         },
     },
 }

@@ -7,7 +7,10 @@ META = {
         'CarbonAgent': {
             'public': True,
             'params': ['carbon_conversion_factor'],
-            'attrs': ['ci'],
+            'attrs': [
+                'intensity_input',
+                'ci'
+            ],
         },
     },
 }
