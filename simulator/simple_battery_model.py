@@ -4,19 +4,21 @@ class SimpleBatteryModel:
     Args:
         capacity: Battery capacity in Ws
         charge_level: Initial charge level in Ws
-        max_discharge: Minimum allowed soc for the battery
+        min_soc: Minimum allowed soc for the battery
         c_rate: C-rate (https://www.batterydesign.net/electrical/c-rate/)
     """
-    def __init__(self, capacity: float, charge_level: float, max_discharge: float, c_rate: float, step_size: int):
+    def __init__(self, capacity: float, charge_level: float, min_soc: float, c_rate: float, step_size: int):
         self.capacity = capacity
         assert 0 <= charge_level <= self.capacity
         self.charge_level = charge_level
-        assert 0 <= max_discharge <= self.charge_level
-        self.max_discharge = max_discharge
+        # TODO min_soc is in % and charge_level in Ws, they should not be compared
+        assert 0 <= min_soc <= self.charge_level
+        self.min_soc = min_soc
         assert 0 < c_rate
         self.max_charge_power = c_rate * self.capacity / 3600
         assert 0 < step_size
         self.step_size = step_size
+
 
     def step(self, power) -> float:
         """Can be called during simulation to feed or draw energy.
@@ -37,15 +39,16 @@ class SimpleBatteryModel:
         excess_power = 0
 
         # TODO: implement conversion losses
-        abs_max_discharge = self.max_discharge * self.capacity
-        if self.charge_level < abs_max_discharge:
-            excess_power = (self.charge_level - abs_max_discharge) / self.step_size
-            self.charge_level = abs_max_discharge
+        abs_min_soc = self.min_soc * self.capacity
+        if self.charge_level < abs_min_soc:
+            excess_power = (self.charge_level - abs_min_soc) / self.step_size
+            self.charge_level = abs_min_soc
         elif self.charge_level > self.capacity:
             excess_power = (self.charge_level - self.capacity) / self.step_size
             self.charge_level = self.capacity
 
         return excess_power
+
 
     def soc(self):
         return self.charge_level / self.capacity
