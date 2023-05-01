@@ -4,8 +4,7 @@ from typing import Optional
 
 
 class Battery:
-    """
-    Initializes a Battery instance with the given initial state.
+    """Initializes a Battery instance with the given initial state.
 
     Args:
         soc: The initial state of the battery's state of charge.
@@ -20,8 +19,7 @@ class Battery:
 
 
 class CarbonAwareControlUnit:
-    """
-    Carbon-Aware Control Unit that manages power usage for a set of nodes.
+    """Carbon-Aware Control Unit that manages power usage for a set of nodes.
 
     Args:
         server_address: The address of the server to connect to.
@@ -59,7 +57,8 @@ class CarbonAwareControlUnit:
 
 
     def scenario(self):
-        """
+        """A Carbon-Aware Scenario.
+
         A SimPy process that runs the main control loop for the Carbon-Aware
         Control Unit. This process updates the Control Unit's values, sets the
         battery's minimum state of charge (SOC) based on the current time, and
@@ -93,8 +92,7 @@ class CarbonAwareControlUnit:
 
 
     def update_values(self) -> None:
-        """
-        Updates all relevant attributes of the instance by by sending a GET request to the server.
+        """Updates all relevant attributes of the instance by by sending a GET request to the server.
         """
         self.battery.soc = self.client.get('/battery-soc')
         self.solar = self.client.get('/solar')
@@ -102,9 +100,7 @@ class CarbonAwareControlUnit:
 
 
     def set_battery(self, min_soc: Optional[float] = None , grid_charge: Optional[float] = None) -> None:
-        """
-        Sets the minimum SOC threshold and grid charge level of the battery by
-        sending a put request to the server.
+        """Sets the minimum SOC threshold and grid charge level of the battery by sending a put request to the server.
 
         Args:
             min_soc: The new minimum SOC threshold to set.
@@ -123,8 +119,7 @@ class CarbonAwareControlUnit:
 
 
     def set_node_power_mode(self, node_id: int, power_mode: str) -> None:
-        """
-        Sets the power mode of a specified node by sending a PUT request to the server.
+        """Sets the power mode of a specified node by sending a PUT request to the server.
 
         Args:
             node_id: The ID of the node to set the power mode for.
