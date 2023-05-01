@@ -29,5 +29,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
     nodes = json.loads(args.nodes)
 
-    CACU = CarbonAwareControlUnit(args.server_address, nodes)
-    CACU.run_scenario(args.until)
+    cacu = CarbonAwareControlUnit(args.server_address, nodes)
+    cacu.run_scenario(args.until)
