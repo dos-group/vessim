@@ -44,6 +44,7 @@ class VirtualEnergySystem(SingleModelSimulator):
         for model_instance in self.entities.values():
             model_instance.redis_docker.stop()
 
+# TODO in the future we have to differentiate between the energy system and the virtualization layers.
 
 class VirtualEnergySystemModel:
     """
@@ -152,7 +153,7 @@ class VirtualEnergySystemModel:
         value = self.redis_docker.redis.get(entry)
         if value is None:
             raise ValueError(f'entry {entry} does not exist')
-        
+
         if desired_type == int:
             return int(value)
         elif desired_type == float:
