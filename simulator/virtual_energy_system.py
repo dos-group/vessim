@@ -93,7 +93,6 @@ class VirtualEnergySystemModel:
         excess solar power, the method will charge the battery or feed back
         into the grid.
         """
-
         power_deficit = self.consumption - self.solar
 
         if power_deficit > 0:
@@ -222,8 +221,8 @@ class VirtualEnergySystemModel:
             validate_keys(data, ['min_soc', 'grid_charge'])
             self.battery.min_soc = data['min_soc']
             self.redis_docker.redis.set('battery.min_soc', data['min_soc'])
-            self.battery_grid_charge = data['battery_grid_charge']
-            self.redis_docker.redis.set('battery_grid_charge', data['battery_grid_charge'])
+            self.battery_grid_charge = data['grid_charge']
+            self.redis_docker.redis.set('battery_grid_charge', data['grid_charge'])
             return data
 
         @app.put('/cs/nodes/{item_id}')
