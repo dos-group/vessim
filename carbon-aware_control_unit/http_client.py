@@ -1,6 +1,6 @@
 import requests
 import json
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict
 
 
 class HTTPClientError(Exception):
@@ -23,7 +23,7 @@ class HTTPClient:
         self.server_address = server_address
 
 
-    def GET(self, route: str) -> Optional[Union[Dict[str, Any], float, int, str]]:
+    def get(self, route: str) -> any:
         """
         Sends a GET request to the server and retrieves data.
 
@@ -48,7 +48,7 @@ class HTTPClient:
             raise HTTPClientError(response.status_code, f'Failed to retrieve data from {route}')
 
 
-    def PUT(self, route: str, data: Dict[str, Any]) -> None:
+    def put(self, route: str, data: Dict[str, Any]) -> None:
         """
         Sends a PUT request to the server to update data.
 
