@@ -92,55 +92,19 @@ class CarbonAwareControlUnit:
         yield self.env.timeout(1)
 
 
-    def update_ci(self) -> None:
-        """
-        Updates the CarbonIntensity attribute of the instance by sending a GET request to the server.
-        """
-        try:
-            value = self.client.GET('/ci')
-            assert isinstance(value, float)
-            self.ci = value
-        except HTTPClientError as e:
-            print(e)
-
-
-    def update_solar(self) -> None:
-        """
-        Updates the Solar attribute of the instance by sending a GET request to the server.
-        """
-        try:
-            value = self.client.GET('/solar')
-            assert isinstance(value, float)
-            self.solar = value
-        except HTTPClientError as e:
-            print(e)
-
-
-    def update_battery_soc(self) -> None:
-        """
-        Updates the State of Charge (SOC) attribute of the battery by sending a GET request to the server.
-        """
-        try:
-            value = self.client.GET('/battery-soc')
-            assert isinstance(value, float)
-            self.battery.soc = value
-        except HTTPClientError as e:
-            print(e)
-
-
     def update_values(self) -> None:
         """
-        Updates all relevant attributes of the instance by calling the corresponding update methods.
+        Updates all relevant attributes of the instance by by sending a GET request to the server.
         """
-        self.update_battery_soc()
-        self.update_ci()
-        self.update_solar()
+        self.battery.soc = self.client.get('/battery-soc')
+        self.solar = self.client.get('/solar')
+        self.ci = self.client.get('/ci')
 
 
     def set_battery(self, min_soc: Optional[float] = None , grid_charge: Optional[float] = None) -> None:
         """
         Sets the minimum SOC threshold and grid charge level of the battery by
-        sending a PUT request to the server.
+        sending a put request to the server.
 
         Args:
             min_soc: The new minimum SOC threshold to set.
@@ -151,7 +115,7 @@ class CarbonAwareControlUnit:
         if not grid_charge:
             grid_charge = self.battery.grid_charge
         try:
-            self.client.PUT('/ves/battery', {'min_soc': min_soc, 'grid_charge': grid_charge})
+            self.client.put('/ves/battery', {'min_soc': min_soc, 'grid_charge': grid_charge})
             self.battery.min_soc = min_soc
             self.battery.grid_charge = grid_charge
         except HTTPClientError as e:
@@ -169,6 +133,6 @@ class CarbonAwareControlUnit:
         """
         assert power_mode in self.power_modes
         try:
-            self.client.PUT(f'/ves/nodes/{node_id}', {'power_mode': power_mode})
+            self.client.put(f'/ves/nodes/{node_id}', {'power_mode': power_mode})
         except HTTPClientError as e:
             print(e)
