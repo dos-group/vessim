@@ -13,17 +13,19 @@ class ComputingSystem:
 
 class ComputingSystemSim(mosaik_api.Simulator):
     def __init__(self):
-        super().__init__({
-            'type': 'time-based',
-            'models': {
-                'ComputingSystem': {
-                    'public': True,
-                    'params': ['power_meters'],
-                    'attrs': ['p_cons'],
+        super().__init__(
+            {
+                "type": "time-based",
+                "models": {
+                    "ComputingSystem": {
+                        "public": True,
+                        "params": ["power_meters"],
+                        "attrs": ["p_cons"],
+                    },
                 },
-            },
-        })
-        self.eid_prefix = 'ComputingSystem_'
+            }
+        )
+        self.eid_prefix = "ComputingSystem_"
         self.entities = {}  # Maps EIDs to model instances/entities
         self.time = 0
 
@@ -39,9 +41,9 @@ class ComputingSystemSim(mosaik_api.Simulator):
         entities = []
         for i in range(next_eid, next_eid + num):
             model_instance = ComputingSystem(power_meters, pue=1.5)
-            eid = '%s%d' % (self.eid_prefix, i)
+            eid = "%s%d" % (self.eid_prefix, i)
             self.entities[eid] = model_instance
-            entities.append({'eid': eid, 'type': model})
+            entities.append({"eid": eid, "type": model})
         return entities
 
     def step(self, time, inputs, max_advance):
@@ -54,11 +56,11 @@ class ComputingSystemSim(mosaik_api.Simulator):
         data = {}
         for eid, attrs in outputs.items():
             model = self.entities[eid]
-            data['time'] = self.time
+            data["time"] = self.time
             data[eid] = {}
             for attr in attrs:
-                if attr not in self.meta['models']['ComputingSystem']['attrs']:
-                    raise ValueError('Unknown output attribute: %s' % attr)
+                if attr not in self.meta["models"]["ComputingSystem"]["attrs"]:
+                    raise ValueError("Unknown output attribute: %s" % attr)
 
                 # Get model.val or model.delta:
                 data[eid][attr] = getattr(model, attr)
@@ -70,5 +72,5 @@ def main():
     return mosaik_api.start_simulation(ComputingSystemSim())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

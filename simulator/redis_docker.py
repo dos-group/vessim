@@ -19,12 +19,11 @@ class RedisDocker:
         redis: The redis db that can be used to get and set key, value pairs.
     """
 
-    def __init__(self, host: str = '127.0.0.1', port: int = 6379) -> None:
+    def __init__(self, host: str = "127.0.0.1", port: int = 6379) -> None:
         self.host = host
         self.port = port
         self.init_docker()
         self.redis = self.connect_redis()
-
 
     def init_docker(self) -> None:
         """
@@ -32,19 +31,18 @@ class RedisDocker:
         """
         client = docker.from_env()
         self.redis_container = client.containers.run(
-            'redis:latest',
+            "redis:latest",
             auto_remove=True,
-            ports={f'{self.port}/tcp': self.port},
-            detach=True
+            ports={f"{self.port}/tcp": self.port},
+            detach=True,
         )
 
         # Check if the container has started
         while True:
             container_info = client.containers.get(self.redis_container.id)
-            if container_info.status == 'running':
+            if container_info.status == "running":
                 break
             sleep(1)
-
 
     def connect_redis(self) -> Redis:
         """
@@ -62,8 +60,7 @@ class RedisDocker:
         assert redis != None
         return redis
 
-
-    def run(self, f_api: FastAPI, host: str = '127.0.0.1', port: int = 8000) -> None:
+    def run(self, f_api: FastAPI, host: str = "127.0.0.1", port: int = 8000) -> None:
         """
         Runs the given FastAPI application with a uvicorn server in a seperate
         thread and waits until it finished startup.
@@ -82,7 +79,6 @@ class RedisDocker:
         Stops the FastAPI uvicorn server thread.
         """
         self.server_thread.stop()
-
 
     def __del__(self) -> None:
         """
@@ -111,7 +107,6 @@ class ServerThread(threading.Thread):
         async def startup_event():
             self.startup_complete = True
 
-
     def wait_for_startup_complete(self):
         """
         To ensure the server is operational for the simulation, the startup
@@ -121,13 +116,11 @@ class ServerThread(threading.Thread):
         while not self.startup_complete:
             sleep(1)
 
-
     def run(self):
         """
         Called when the thread is started. Runs the uvicorn server.
         """
         self.server.run()
-
 
     def stop(self):
         """

@@ -32,7 +32,13 @@ class PowerMeter(ABC):
 
 
 class PhysicalPowerMeter(PowerMeter):
-    def __init__(self, host: str = "localhost", port: int = 1883, keepalive: int = 60, name: Optional[str] = None):
+    def __init__(
+        self,
+        host: str = "localhost",
+        port: int = 1883,
+        keepalive: int = 60,
+        name: Optional[str] = None,
+    ):
         """
         Initializes a new instance of the PhysicalPowerMeter class, an MQTT
         wrapper that serves as an adapter for physical nodes (HIL) to submit
@@ -84,7 +90,9 @@ class VirtualPowerMeter(PowerMeter, ABC):
 
 
 class AwsPowerMeter(VirtualPowerMeter):
-    def __init__(self, instance_id: str, power_model: PowerModel, name: Optional[str] = None):
+    def __init__(
+        self, instance_id: str, power_model: PowerModel, name: Optional[str] = None
+    ):
         super().__init__(power_model, name)
         self.instance_id = instance_id
 
@@ -92,25 +100,23 @@ class AwsPowerMeter(VirtualPowerMeter):
         return 0.8
 
         import boto3
-        client = boto3.client('cloudwatch')
+
+        client = boto3.client("cloudwatch")
         response = client.get_metric_statistics(
-            Namespace='AWS/EC2',
-            MetricName='CPUUtilization',
+            Namespace="AWS/EC2",
+            MetricName="CPUUtilization",
             Dimensions=[
-                {
-                    'Name': 'InstanceId',
-                    'Value': self.instance_id
-                },
+                {"Name": "InstanceId", "Value": self.instance_id},
             ],
             StartTime=datetime(2018, 4, 23) - timedelta(seconds=600),
             EndTime=datetime(2018, 4, 24),
             Period=86400,
             Statistics=[
-                'Average',
+                "Average",
             ],
-            Unit='Percent'
+            Unit="Percent",
         )
 
-        for cpu in response['Datapoints']:
-            if 'Average' in cpu:
-                print(cpu['Average'])
+        for cpu in response["Datapoints"]:
+            if "Average" in cpu:
+                print(cpu["Average"])

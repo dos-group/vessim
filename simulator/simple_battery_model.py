@@ -7,7 +7,15 @@ class SimpleBatteryModel:
         max_discharge: Minimum allowed soc for the battery
         c_rate: C-rate (https://www.batterydesign.net/electrical/c-rate/)
     """
-    def __init__(self, capacity: float, charge_level: float, max_discharge: float, c_rate: float, step_size: int):
+
+    def __init__(
+        self,
+        capacity: float,
+        charge_level: float,
+        max_discharge: float,
+        c_rate: float,
+        step_size: int,
+    ):
         self.capacity = capacity
         assert 0 <= charge_level <= self.capacity
         self.charge_level = charge_level
@@ -30,8 +38,12 @@ class SimpleBatteryModel:
         - else 0
         """
         # TODO implement exceeding max charge power
-        assert power <= self.max_charge_power, f"Cannot charge {power} W: Exceeding max charge power of {self.max_charge_power}."
-        assert power >= -self.max_charge_power, f"Cannot discharge {power} W: Exceeding max discharge power of {self.max_charge_power}."
+        assert (
+            power <= self.max_charge_power
+        ), f"Cannot charge {power} W: Exceeding max charge power of {self.max_charge_power}."
+        assert (
+            power >= -self.max_charge_power
+        ), f"Cannot discharge {power} W: Exceeding max discharge power of {self.max_charge_power}."
 
         self.charge_level += power * self.step_size  # step_size seconds of charging
         excess_power = 0

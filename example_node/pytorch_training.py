@@ -20,7 +20,9 @@ def load_datasets():
     )
     trainset = CIFAR10("./dataset", train=True, download=True, transform=transform)
     testset = CIFAR10("./dataset", train=False, download=True, transform=transform)
-    return DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True), DataLoader(testset, batch_size=BATCH_SIZE)
+    return DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True), DataLoader(
+        testset, batch_size=BATCH_SIZE
+    )
 
 
 class Net(nn.Module):
@@ -84,10 +86,13 @@ def test(net, testloader):
     accuracy = correct / total
     return loss, accuracy
 
+
 trainloader, testloader = load_datasets()
 
-model = torchvision.models.resnet18(weights='DEFAULT')
-model.fc = torch.nn.Linear(model.fc.in_features, len(np.unique(testloader.dataset.targets)))
+model = torchvision.models.resnet18(weights="DEFAULT")
+model.fc = torch.nn.Linear(
+    model.fc.in_features, len(np.unique(testloader.dataset.targets))
+)
 net = Net().to(DEVICE)
 
 for epoch in range(100):

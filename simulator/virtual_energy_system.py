@@ -9,26 +9,26 @@ import json
 
 
 META = {
-    'type': 'time-based',
-    'models': {
-        'VirtualEnergySystemModel': {
-            'public': True,
-            'params': [
-                'battery_capacity',
-                'battery_soc',
-                'battery_min_soc',
-                'battery_c_rate',
-                'db_host',
-                'api_host'
+    "type": "time-based",
+    "models": {
+        "VirtualEnergySystemModel": {
+            "public": True,
+            "params": [
+                "battery_capacity",
+                "battery_soc",
+                "battery_min_soc",
+                "battery_c_rate",
+                "db_host",
+                "api_host",
             ],
-            'attrs': [
-                'consumption',
-                'battery_min_soc',
-                'battery_soc',
-                'solar',
-                'ci',
-                'grid_power',
-                'total_carbon',
+            "attrs": [
+                "consumption",
+                "battery_min_soc",
+                "battery_soc",
+                "solar",
+                "ci",
+                "grid_power",
+                "total_carbon",
             ],
         },
     },
@@ -62,8 +62,8 @@ class VirtualEnergySystemModel:
         battery_soc: float,
         battery_min_soc: float,
         battery_c_rate: float,
-        db_host: str='127.0.0.1',
-        api_host: str='127.0.0.1',
+        db_host: str = "127.0.0.1",
+        api_host: str = "127.0.0.1",
     ):
         # battery init
         self.step_size = 1
@@ -89,10 +89,9 @@ class VirtualEnergySystemModel:
         f_api = self.init_fastapi()
         self.redis_docker.run(f_api, host=api_host)
 
-
     def step(self) -> None:
         """Step the virtual energy system model."""
-        #self.get_redis_update()
+        # self.get_redis_update()
         delta = self.solar - self.consumption
 
         # TODO to consumer for scenario
@@ -110,25 +109,23 @@ class VirtualEnergySystemModel:
 
         self.grid_power = -delta
         self.total_carbon = self.ci * self.grid_power
-        #self.send_redis_update()
-
+        # self.send_redis_update()
 
     def init_fastapi(self) -> FastAPI:
         app = FastAPI()
 
         GET_route_attrs = {
-            '/solar': 'solar',
-            '/ci': 'ci',
-            '/battery-soc': 'battery_soc',
-            '/forecasts/solar': 'solar_forecast',
-            '/forecasts/ci': 'ci_forecast'
+            "/solar": "solar",
+            "/ci": "ci",
+            "/battery-soc": "battery_soc",
+            "/forecasts/solar": "solar_forecast",
+            "/forecasts/ci": "ci_forecast",
         }
         self.init_GET_routes(GET_route_attrs, app)
 
         self.init_PUT_routes(app)
 
         return app
-
 
     def init_GET_routes(self, GET_route_attrs: Dict[str, str], app: FastAPI) -> None:
         """
@@ -153,7 +150,11 @@ class VirtualEnergySystemModel:
         """
 
         # store attributes and its initial values in Redis key-value store
-        redis_content = {entry: getattr(self, entry) for entry in GET_route_attrs.values() if hasattr(self, entry)}
+        redis_content = {
+            entry: getattr(self, entry)
+            for entry in GET_route_attrs.values()
+            if hasattr(self, entry)
+        }
         self.redis_docker.redis.mset(redis_content)
 
         # FastAPI hook function for all GET routes to retrieve data from Redis
@@ -176,7 +177,6 @@ class VirtualEnergySystemModel:
             if hasattr(self, attr):
                 app.get(route)(partial(get_data, attr))
 
-
     def init_PUT_routes(self, app: FastAPI) -> None:
         """
         Initialize PUT routes for the FastAPI application, specifically for
@@ -194,19 +194,17 @@ class VirtualEnergySystemModel:
 
         # manual http routes for api
         PUT_route_attrs = {
-            '/ves/battery': {
-                'min_soc': 'battery_min_soc',
-                'grid_charge': 'battery_grid_charge'
+            "/ves/battery": {
+                "min_soc": "battery_min_soc",
+                "grid_charge": "battery_grid_charge",
             },
-            '/cs/nodes/{item_id}': {
-                'power_mode': 'nodes_power_mode'
-            }
+            "/cs/nodes/{item_id}": {"power_mode": "nodes_power_mode"},
         }
 
-        @app.put('/ves/battery')
+        @app.put("/ves/battery")
         async def put_battery(data: Dict[str, float]):
             # get the attributes dictionary for the '/ves/battery' route
-            attrs = PUT_route_attrs['/ves/battery']
+            attrs = PUT_route_attrs["/ves/battery"]
             for key, value in data.items():
                 # get the corresponding attribute name for the current key
                 attr = attrs[key]
@@ -223,23 +221,25 @@ class VirtualEnergySystemModel:
                 setattr(self, attr, value_casted)
             return data
 
-        @app.put('/cs/nodes/{item_id}')
+        @app.put("/cs/nodes/{item_id}")
         async def put_nodes(data: Dict[str, str], item_id: int):
             for key, value in data.items():
                 # raise a ValueError if the key is not present in the
                 # PUT_route_attrs dictionary for the '/cs/nodes/{item_id}' route
-                if key not in PUT_route_attrs['/cs/nodes/{item_id}'].keys():
+                if key not in PUT_route_attrs["/cs/nodes/{item_id}"].keys():
                     raise ValueError(f"Attribute '{key}' does not exist")
 
                 # define the valid power modes
-                power_modes = ['power-saving', 'normal', 'high performance']
+                power_modes = ["power-saving", "normal", "high performance"]
                 if value not in power_modes:
-                    raise ValueError(f'{value} is not a valid power mode. Available power modes: {power_modes}')
+                    raise ValueError(
+                        f"{value} is not a valid power mode. Available power modes: {power_modes}"
+                    )
 
                 # update the power mode for the specified node in the application instance
                 self.nodes_power_mode[item_id] = value
                 # and in the Redis datastore
-                self.redis_docker.redis.hset('nodes_power_mode', str(item_id), value)
+                self.redis_docker.redis.hset("nodes_power_mode", str(item_id), value)
             return data
 
     def print_redis(self):
@@ -257,15 +257,15 @@ class VirtualEnergySystemModel:
                 key_type = r.type(key)
 
                 # Retrieve the value according to the key type
-                if key_type == b'string':
+                if key_type == b"string":
                     value = r.get(key)
-                elif key_type == b'hash':
+                elif key_type == b"hash":
                     value = r.hgetall(key)
-                elif key_type == b'list':
+                elif key_type == b"list":
                     value = r.lrange(key, 0, -1)
-                elif key_type == b'set':
+                elif key_type == b"set":
                     value = r.smembers(key)
-                elif key_type == b'zset':
+                elif key_type == b"zset":
                     value = r.zrange(key, 0, -1, withscores=True)
                 else:
                     value = None
@@ -274,6 +274,7 @@ class VirtualEnergySystemModel:
 
             if cursor == 0:
                 break
+
 
 def main():
     """Start the mosaik simulation."""
