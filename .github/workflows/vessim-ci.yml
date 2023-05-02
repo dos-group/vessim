@@ -1,0 +1,37 @@
+name: vessim CI
+
+# event that triggers workflow
+# here when a "push" is made on test_ci_cd branch
+on: 
+  push:
+    branches:
+       - test_ci_cd
+      #- master    
+
+jobs:
+  linting-and-testing:
+    # specifies the os that the job will run on 
+    runs-on: ubuntu-latest
+
+    steps:
+    # downloads the repository code to the runner's file system for workflow access
+    - uses: actions/checkout@v2
+       
+    # sets up python environment with specified version 
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+
+    # installs dependencies from requirements.txt and linter package 
+    - name: Install dependencies and linter
+      run: |
+        pip install -r requirements.txt
+        pip install pylint
+
+    # run pylint on Python files
+    - name: Run pylint
+      run: pylint $(git ls-files '*.py') 
+    
+      # - name: Run tests
+      # run: pytest
