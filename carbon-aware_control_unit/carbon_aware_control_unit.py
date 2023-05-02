@@ -4,7 +4,7 @@ from typing import Dict
 
 
 class Battery:
-    """Initializes a Battery instance that holds some info of the remote battery.
+    """Initializes a battery instance that holds some info of the remote battery.
 
     Args:
         soc: The initial state of the battery's state of charge in %.
@@ -19,7 +19,15 @@ class Battery:
 
 
 class CarbonAwareControlUnit:
-    """Carbon-Aware Control Unit that manages power usage for a set of nodes.
+    """The Carbon Aware Control Unit uses the VESSIM API to execute real-time carbon-aware scenarios.
+
+    The Carbon Aware control unit uses an API server to communicate with the VES
+    simulation and retrieve real-time data about energy demand, solar power
+    production, and grid carbon intensity via GET requests. Under predefined
+    scenarios, the control unit sends SET requests to adjust the VES simulation and
+    computing system behavior. The Carbon Aware control unit's objective is to
+    optimize the use of renewable energy sources and minimize carbon emissions by
+    taking real-time decisions and actions based on these scenarios.
 
     Args:
         server_address: The address of the server to connect to.
@@ -28,7 +36,6 @@ class CarbonAwareControlUnit:
 
     Attributes:
         power_modes: The list of available power modes for the nodes.
-        nodes_power_mode: A dictionary mapping node IDs to their current power modes.
         nodes: A dictionary representing the nodes that the Control
             Unit manages, with node IDs as keys and node objects as values.
         client: The HTTPClient object used to communicate with the server.
@@ -86,6 +93,7 @@ class CarbonAwareControlUnit:
         # Delay the process by one unit of time
         self.send_battery(battery)
         self.send_nodes_power_mode(nodes_power_mode)
+
         yield self.env.timeout(1)
 
 
