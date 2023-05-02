@@ -3,6 +3,7 @@ import simpy
 from typing import Dict
 
 
+# TODO rename
 class Battery:
     """Initializes a battery instance that holds some info of the remote battery.
 
