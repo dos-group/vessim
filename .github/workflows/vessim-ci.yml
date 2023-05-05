@@ -27,9 +27,10 @@ jobs:
     - name: Install dependencies
       run: pip install -r requirements.txt
 
-    # run pylint on Python files
-    - name: Run pylint
-      run: pylint $(git ls-files '*.py') 
+    # run ruff on Python files
+    - name: Run ruff
+      run: ruff ./
     
-      # - name: Run tests
-      # run: pytest
+    # run tests
+    - name: Run tests
+      run: pytest tests.py
