@@ -7,6 +7,12 @@ jupyterlab
 matplotlib==3.6
 seaborn==0.12.2
 
+# database
+docker
+redis
+uvicorn
+fastapi
+
 # core
 mosaik
 mosaik-api
@@ -21,3 +27,11 @@ mosaik-pandapower
 
 # mqtt for physical power meter
 paho-mqtt
+
+# testing
+pytest
+
+# linting
+black
+pre-commit
+ruff
