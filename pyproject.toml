@@ -1,7 +1,7 @@
 [tool.black]
-line-length = 90
+line-length = 80
 target-version = ['py36', 'py37', 'py38']
-include = '\.py$'
+include = '\.pyi?$'
 exclude = '''
 /(
   \.toml
@@ -15,21 +15,25 @@ exclude = '''
 '''
 
 [tool.ruff]
-# Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
-select = ["E", "F"]
+# Enable Ruff to check for docstring-related (D), pycodestyle-related (E), and Pyflakes-related (F) issues
+select = ["D", "E", "F"]
 ignore = []
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["A", "B", "C", "D", "E", "F", "G", "I", "N", "Q", "S", "T", "W", "ANN", "ARG", "BLE", "COM", "DJ", "DTZ", "EM", "ERA", "EXE", "FBT", "ICN", "INP", "ISC", "NPY", "PD", "PGH", "PIE", "PL", "PT", "PTH", "PYI", "RET", "RSE", "RUF", "SIM", "SLF", "TCH", "TID", "TRY", "UP", "YTT"]
 unfixable = []
 
-line-length = 90
+line-length = 80
 target-version = "py38"
 include = ["*.py", "*.pyi"]
 exclude = [".toml", ".git", ".github", ".ini", ".ipynb", ".csv"]
 
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+# Configure Ruff to enforce Google-style docstrings when checking documentation
+[tool.ruff.pydocstyle]
+convention = "google"
 
 [tool.ruff.mccabe]
 max-complexity = 10
