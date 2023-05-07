@@ -89,9 +89,11 @@ class VirtualEnergySystemModel:
         f_api = self.init_fastapi()
         self.redis_docker.run(f_api, host=api_host)
 
-
-    def step(self) -> None:
+    def step(self, solar: float, ci: float) -> None:
         """Step the virtual energy system model."""
+        self.solar = solar
+        self.ci = ci
+
         #self.get_redis_update()
         delta = self.solar - self.consumption
 
