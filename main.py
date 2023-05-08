@@ -78,8 +78,7 @@ def create_scenario_simple(world):
             capacity=BATTERY_CAPACITY,
             charge_level=BATTERY_INITIAL_CHARGE_LEVEL,
             min_soc=BATTERY_MIN_SOC,
-            c_rate=BATTERY_C_RATE,
-            step_size=1
+            c_rate=BATTERY_C_RATE
     )
     virtual_energy_system_sim = world.start('VirtualEnergySystem')
     virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystemModel(battery=simple_battery)

@@ -97,7 +97,7 @@ class VirtualEnergySystemModel:
 
         if power_deficit > 0:
             # not enough solar power, try to use the battery
-            battery_power = self.battery.step(-power_deficit)
+            battery_power = self.battery.step(-power_deficit, self.step_size)
             remaining_deficit = power_deficit + battery_power
 
             if remaining_deficit > 0:
@@ -109,7 +109,7 @@ class VirtualEnergySystemModel:
         else:
             # excess solar power, charge the battery
             excess_power = -power_deficit
-            battery_excess = self.battery.step(excess_power)
+            battery_excess = self.battery.step(excess_power, self.step_size)
 
             if battery_excess > 0:
                 # battery is full, curtail or feed back to the grid
