@@ -97,11 +97,11 @@ def create_scenario_simple(world):
     #world.connect(computing_system, monitor, 'p_cons')
 
     ## Carbon -> CarbonAgent -> VES
-    world.connect(carbon, carbon_agent, ('Carbon Intensity', 'intensity_input'))
+    world.connect(carbon, carbon_agent, ('Carbon Intensity', 'ci'))
     world.connect(carbon_agent, virtual_energy_system, 'ci')
 
     ## Solar -> SolarAgent -> VES
-    world.connect(solar, solar_agent, ('P', 'production'))
+    world.connect(solar, solar_agent, ('P', 'solar'))
     world.connect(solar_agent, virtual_energy_system, 'solar')
 
     ## computing_system -> VES
