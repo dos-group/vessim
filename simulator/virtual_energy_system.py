@@ -92,36 +92,31 @@ class VirtualEnergySystemModel:
         excess solar power, the method will charge the battery or feed back
         into the grid.
         """
-        power_deficit = self.consumption - self.solar
+        # If delta is positive there is excess power,
+        # if negative there is a power deficit.
+        delta = self.solar - self.consumption
 
-        if power_deficit > 0:
-            # not enough solar power, try to use the battery
-            battery_power = self.battery.step(-power_deficit, self.step_size)
-            remaining_deficit = power_deficit + battery_power
+        # battery charge is the value the battery is (dis)charged with
+        battery_charge = min(self.battery.max_charge_power, max(delta, -self.battery.max_charge_power))
 
-            if remaining_deficit > 0:
-                # battery reached threshold, use grid power
-                self.grid_power = remaining_deficit
-            else:
-                self.grid_power = 0
+        delta -= battery_charge
+        # (dis)charge the battery
+        battery_excess = self.battery.update(power=battery_charge,
+                                             duration=self.step_size)
 
-        else:
-            # excess solar power, charge the battery
-            excess_power = -power_deficit
-            battery_excess = self.battery.step(excess_power, self.step_size)
+        # battery_excess contains the excess energy after an update:
+        #   - positive if the battery is fully charged
+        #   - negative if the battery is empty
+        #   - else 0
+        delta -= battery_excess
+        # draw or feed back into the grid
+        self.grid_power = delta
 
-            if battery_excess > 0:
-                # battery is full, curtail or feed back to the grid
-                self.grid_power = -battery_excess
-            else:
-                self.grid_power = 0
-
-        # TODO add battery grid charge behaviour
+        # TODO implement battery grid charge behaviour
 
 
     def init_fastapi(self) -> FastAPI:
-        """
-        Initializes the FastAPI application.
+        """Initializes the FastAPI application.
 
         Returns:
             FastAPI: The initialized FastAPI application.
@@ -135,8 +130,7 @@ class VirtualEnergySystemModel:
 
 
     def redis_get(self, entry: str) -> any:
-        """
-        Method for getting data from Redis database.
+        """Method for getting data from Redis database.
 
         Args:
             entry: The name of the key to retrieve from Redis.
@@ -154,8 +148,8 @@ class VirtualEnergySystemModel:
 
 
     def init_get_routes(self, app: FastAPI) -> None:
-        """
-        Initializes GET routes of the FastAPI app with the initial values of the energy system model.
+        """Initializes GET routes of the FastAPI app with the initial values of
+        the energy system model.
 
         Args:
             app (FastAPI): The FastAPI app to add the GET routes to.
@@ -185,9 +179,8 @@ class VirtualEnergySystemModel:
 
 
     def init_put_routes(self, app: FastAPI) -> None:
-        """
-        Initializes PUT routes for the FastAPI application to allow updating
-        battery settings and node power modes.
+        """ Initializes PUT routes for the FastAPI application to allow
+        updating battery settings and node power modes.
 
         Two PUT routes are set up: '/ves/battery' to update the battery
         settings, and '/cs/nodes/{item_id}' to update the power mode of a
@@ -226,9 +219,7 @@ class VirtualEnergySystemModel:
 
 
     def print_redis(self):
-        """
-        Debugging function that simply prints all entries of the redis db.
-        """
+        """Debugging function that simply prints all entries of the redis db."""
 
         r = self.redis_docker.redis
         # Start the SCAN iterator

@@ -17,7 +17,7 @@ class SimpleBatteryModel:
         assert 0 < c_rate
         self.max_charge_power = c_rate * self.capacity / 3600
 
-    def step(self, power: float, duration: int) -> float:
+    def update(self, power: float, duration: int) -> float:
         """Can be called during simulation to feed or draw energy for a specified duration.
 
         Args:
