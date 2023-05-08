@@ -35,9 +35,26 @@ class Collector(mosaik_api.Simulator):
         )
 
     def init(self, sid, time_resolution):
+        """Initializes the simulator instance.
+
+        Returns:
+            dict: Simulator metadata.
+        """
         return self.meta
 
     def create(self, num, model):
+        """Creates the collector instance.
+
+        Args:
+            num (int): Number of instances to create (1 allowed).
+            model (str): Model type.
+
+        Returns:
+            list: List containing the instance description.
+
+        Raises:
+            RuntimeError: When creating more than one Collector instance.
+        """
         if num > 1 or self.eid is not None:
             raise RuntimeError("Can only create one instance of Monitor.")
 
@@ -45,6 +62,18 @@ class Collector(mosaik_api.Simulator):
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
+        """Logging and saving of data from current step.
+
+        Executed every simulation step.
+
+        Args:
+            time (float): Current simulation time.
+            inputs (dict): Dictionary containing input data.
+            max_advance (float): Maximum time to advance in this step.
+
+        Returns:
+            None: Indicates no further time advancement.
+        """
         data = inputs.get(self.eid, {})
         logger.info(f"# {str(time):>5} ----------")
         for attr, values in data.items():
@@ -54,6 +83,7 @@ class Collector(mosaik_api.Simulator):
         return None
 
     def finalize(self):
+        """Collected data is printed to file at simulation end."""
         print("Collected data:")
         for _, sim_data in sorted(self.data.items()):
             table = []
