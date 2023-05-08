@@ -20,9 +20,8 @@ from simulator.power_meter import (
     LinearPowerModel,
 )
 
+# Config file for parameters and settings specification.
 sim_config = {
-    """config file for parameters and settings specification"""
-
     "CSV": {
         "python": "mosaik_csv:CSV",
     },
@@ -44,10 +43,9 @@ sim_config = {
     },
 }
 
+#Arguments that customize and parameterize the simulation.
 sim_args = {
-    """Arguments that customize and parameterize the simulation."""
-
-    "START": "2014-01-01 00:00:20",
+    "START": "2014-01-01 00:00:00",
     "END": 300,  # 30 * 24 * 3600  # 10 days
     "GRID_FILE": "data/custom.json",#"data/custom.json" 'data/demo_lv_grid.json'
     "SOLAR_DATA": "data/pv_10kw.csv",
