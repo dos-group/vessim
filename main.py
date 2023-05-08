@@ -1,3 +1,11 @@
+"""Runs a simulation of a virtual energy system using Mosaik.
+
+It is connecting various entities such as physical and cloud power meters, 
+carbon and solar controllers, and a virtual energy system model.
+The simulation configuration is specified in sim_config, 
+while the arguments are specified in sim_args.
+"""
+
 import random
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
@@ -6,9 +14,15 @@ from typing import Tuple, Dict
 import mosaik
 from mosaik.util import connect_many_to_one
 
-from simulator.power_meter import PhysicalPowerMeter, AwsPowerMeter, LinearPowerModel
+from simulator.power_meter import (
+    PhysicalPowerMeter,
+    AwsPowerMeter,
+    LinearPowerModel,
+)
 
 sim_config = {
+    """config file for parameters and settings specification"""
+
     "CSV": {
         "python": "mosaik_csv:CSV",
     },
@@ -31,9 +45,11 @@ sim_config = {
 }
 
 sim_args = {
-    "START": "2014-01-01 00:00:00",
+    """Arguments that customize and parameterize the simulation."""
+
+    "START": "2014-01-01 00:00:20",
     "END": 300,  # 30 * 24 * 3600  # 10 days
-    "GRID_FILE": "data/custom.json",  # "data/custom.json"  # 'data/demo_lv_grid.json'
+    "GRID_FILE": "data/custom.json",#"data/custom.json" 'data/demo_lv_grid.json'
     "SOLAR_DATA": "data/pv_10kw.csv",
     "CARBON_DATA": "data/ger_ci_testing.csv",
     "BATTERY_MIN_SOC": 0.6,
@@ -42,19 +58,38 @@ sim_args = {
     "BATTERY_C_RATE": 0.2,
 }
 
-
 def main(simulation_args):
-    random.seed(23)
+    """The main function for mosaik world creation.
+
+    Creates a Mosaik world, sets up the simulation scenario using 
+    create_scenario_simple(), and runs the simulation for the specified duration
+
+    Args:
+        simulation_args: carbon sim from CSV dataset as specified in sim_config
+    """
+    random.seed(23) 
     world = mosaik.World(sim_config)  # type: ignore
     create_scenario_simple(world, simulation_args)
     world.run(until=simulation_args["END"], print_progress=False, rt_factor=1)
 
 
 def create_scenario_simple(world, simulation_args):
+    """Sets up the simulation scenario.
+
+    It creates and connects various entities, 
+    including the carbon and solar controllers, the virtual energy system model,
+    and a 'Collector' entity to monitor the simulation.
+
+    Args:
+        world: holds all data required to specify and run scenario
+        simulation_args: carbon sim from CSV dataset as specified in sim_config
+    """
     # computing_system_sim = world.start('ComputingSystemSim')
-    # aws_power_meter = AwsPowerMeter(instance_id="instance_id", power_model=LinearPowerModel(p_static=30, p_max=150))
+    # aws_power_meter = AwsPowerMeter(instance_id="instance_id"
+    # power_model=LinearPowerModel(p_static=30, p_max=150))
     # raspi_power_meter = PhysicalPowerMeter()
-    # computing_system = computing_system_sim.ComputingSystem(power_meters=[raspi_power_meter])
+    # computing_system = 
+    # computing_system_sim.ComputingSystem(power_meters=[raspi_power_meter])
 
     # Carbon Sim from CSV dataset
     carbon_sim = world.start(
@@ -77,8 +112,8 @@ def create_scenario_simple(world, simulation_args):
     )
     solar = solar_sim.PV.create(1)[0]
 
-    # Solar Controller acts as medium between Solar module and VES or direct consumer
-    # since producer is only a csv generator.
+    # Solar Controller acts as medium between solar module and VES or consumer, 
+    # as the producer only generates CSV data.
     solar_controller = world.start("SolarController")
     solar_agent = solar_controller.SolarAgent()
 
@@ -117,7 +152,11 @@ def create_scenario_simple(world, simulation_args):
     world.connect(solar_agent, virtual_energy_system, "solar")
 
     ## computing_system -> VES
-    # world.connect(computing_system, virtual_energy_system, ('p_con', 'consumption'))
+    # world.connect(
+    #   computing_system, virtual_energy_system, (
+    #       'p_con', 'consumption'
+    #   )
+    # )
 
     world.connect(
         virtual_energy_system,

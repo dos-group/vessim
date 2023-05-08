@@ -14,7 +14,7 @@ BATCH_SIZE = 32
 
 
 def load_datasets():
-    # Download and transform CIFAR-10 (train and test)
+    """Download and transform CIFAR-10 (train and test)."""
     transform = transforms.Compose(
         [
             transforms.ToTensor(),
@@ -33,6 +33,7 @@ def load_datasets():
 
 
 class Net(nn.Module):
+    """Neural network model."""
     def __init__(self) -> None:
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(3, 6, 5)
@@ -41,7 +42,8 @@ class Net(nn.Module):
         self.fc1 = nn.Linear(16 * 5 * 5, 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 10)
-
+    
+    """Forward pass of the network."""
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.pool(F.relu(self.conv1(x)))
         x = self.pool(F.relu(self.conv2(x)))
@@ -74,7 +76,8 @@ def train(net, trainloader, epochs: int, verbose=False):
         epoch_acc = correct / total
         if verbose:
             print(
-                f"Epoch {epoch+1}: train loss {epoch_loss}, accuracy {epoch_acc}"
+                f"Epoch {epoch+1}: train loss {epoch_loss},"
+                    + f"accuracy {epoch_acc}"
             )
 
 
@@ -107,4 +110,5 @@ net = Net().to(DEVICE)
 for epoch in range(100):
     train(net, trainloader, 1)
     loss, accuracy = test(net, testloader)
-    # print(f"\nEpoch {epoch+1}: validation loss {loss:.5f}, accuracy {accuracy}")
+    # print(f"\nEpoch {epoch+1}: validation loss {loss:.5f}," 
+    #    + f"accuracy {accuracy}")
