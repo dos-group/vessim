@@ -56,7 +56,7 @@ class Collector(mosaik_api.Simulator):
                 table.append(row)
             end = list(list(sim_data.values())[0].keys())[-1] + 1
             time_column = [str(i) for i in list(range(end))]
-            time_column[0] = 'time'
+            time_column.insert(0, "time")
             csv_data = [time_column] + table
             with open("data.csv", "w", newline="") as f:
                 writer = csv.writer(f)
