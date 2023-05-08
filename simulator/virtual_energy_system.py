@@ -4,7 +4,6 @@ from simulator.simple_battery_model import SimpleBatteryModel
 from simulator.redis_docker import RedisDocker
 from fastapi import FastAPI, HTTPException
 from typing import Dict, List, Any
-import json
 
 
 META = {
@@ -135,34 +134,23 @@ class VirtualEnergySystemModel:
         return app
 
 
-    def redis_get(self, entry: str, desired_type: type) -> any:
+    def redis_get(self, entry: str) -> any:
         """
-        Method for getting data from Redis database with type conversion.
+        Method for getting data from Redis database.
 
         Args:
             entry: The name of the key to retrieve from Redis.
-            desired_type: The data type that the retrieved value should be converted to.
 
         Returns:
-            any: The value retrieved from Redis, converted to the specified data type.
+            any: The value retrieved from Redis.
 
         Raises:
-            ValueError: If the key does not exist in Redis or the desired type is not supported.
+            ValueError: If the key does not exist in Redis.
         """
         value = self.redis_docker.redis.get(entry)
         if value is None:
             raise ValueError(f'entry {entry} does not exist')
-
-        if desired_type == int:
-            return int(value)
-        elif desired_type == float:
-            return float(value)
-        elif desired_type == str:
-            return str(value)
-        elif desired_type == dict:
-            return json.loads(value)
-        else:
-            raise ValueError(f'unsupported type: {desired_type}')
+        return value
 
 
     def init_get_routes(self, app: FastAPI) -> None:
@@ -185,15 +173,15 @@ class VirtualEnergySystemModel:
 
         @app.get('/solar')
         async def get_solar() -> float:
-            return self.redis_get('solar', float)
+            return float(self.redis_get('solar'))
 
         @app.get('/ci')
         async def get_ci() -> float:
-            return self.redis_get('ci', float)
+            return float(self.redis_get('ci'))
 
         @app.get('/battery-soc')
         async def get_battery_soc() -> float:
-            return self.redis_get('battery.soc', float)
+            return float(self.redis_get('battery.soc'))
 
 
     def init_put_routes(self, app: FastAPI) -> None:
