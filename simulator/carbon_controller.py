@@ -41,10 +41,7 @@ class CarbonAgent:
         Attributes:
             carbon_conversion_factor: the conversion factor used to calculate
             carbon intensity based on the unit of measurement.
-            ci: the carbon intensity of the electricity being
-            produced
-            intensity_input: the input value used to calculate the carbon
-            intensity
+            ci: the grid carbon intensity
         """
 
     def __init__(self, unit: str ='g_per_kWh') -> None:
@@ -56,13 +53,12 @@ class CarbonAgent:
         else:
             raise ValueError(f'{unit} is not supported by vessim')
         self.ci = 0.0
-        self.intensity_input = 0.0
 
-    def step(self) -> None:
+    def step(self, ci: float) -> None:
         """Calculate the carbon intensity based on the input intensity and the
         conversion factor. Called every simulation step.
         """
-        self.ci = abs(self.intensity_input * self.carbon_conversion_factor)
+        self.ci = abs(ci * self.carbon_conversion_factor)
 
 
 def main():
