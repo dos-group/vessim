@@ -1,11 +1,9 @@
 name: vessim CI
 
 # event that triggers workflow
-# here when a "push" is made on linting_testing branch
+# here when a "push" is made
 on: 
   push:
-    branches:
-       - linting_testing
 
 jobs:
   linting-and-testing:

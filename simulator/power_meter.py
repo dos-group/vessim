@@ -39,8 +39,7 @@ class PhysicalPowerMeter(PowerMeter):
         keepalive: int = 60,
         name: Optional[str] = None,
     ):
-        """
-        Initializes a new instance of the PhysicalPowerMeter class, an MQTT
+        """Initializes a new instance of the PhysicalPowerMeter class, an MQTT
         wrapper that serves as an adapter for physical nodes (HIL) to submit
         their power usage.
 
@@ -48,7 +47,6 @@ class PhysicalPowerMeter(PowerMeter):
         :param port: The port number to use for the MQTT connection. Default is 1883.
         :param keepalive: The maximum period in seconds allowed between communications with the MQTT broker. Default is 60.
         """
-
         super().__init__(name)
         # create MQTT client instance
         self.client = mqtt.Client()
@@ -91,7 +89,10 @@ class VirtualPowerMeter(PowerMeter, ABC):
 
 class AwsPowerMeter(VirtualPowerMeter):
     def __init__(
-        self, instance_id: str, power_model: PowerModel, name: Optional[str] = None
+        self,
+        instance_id: str,
+        power_model: PowerModel,
+        name: Optional[str] = None,
     ):
         super().__init__(power_model, name)
         self.instance_id = instance_id

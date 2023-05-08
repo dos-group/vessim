@@ -8,7 +8,9 @@ class ComputingSystem:
         self.pue = pue
 
     def step(self):
-        self.p_cons = self.pue * sum(pm.node_power() for pm in self.power_meters)
+        self.p_cons = self.pue * sum(
+            pm.node_power() for pm in self.power_meters
+        )
 
 
 class ComputingSystemSim(mosaik_api.Simulator):

@@ -17,7 +17,7 @@ exclude = '''
 [tool.ruff]
 # Enable Ruff to check for docstring-related (D), pycodestyle-related (E), and Pyflakes-related (F) issues
 select = ["D", "E", "F"]
-ignore = []
+ignore = ["D100"]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["A", "B", "C", "D", "E", "F", "G", "I", "N", "Q", "S", "T", "W", "ANN", "ARG", "BLE", "COM", "DJ", "DTZ", "EM", "ERA", "EXE", "FBT", "ICN", "INP", "ISC", "NPY", "PD", "PGH", "PIE", "PL", "PT", "PTH", "PYI", "RET", "RSE", "RUF", "SIM", "SLF", "TCH", "TID", "TRY", "UP", "YTT"]

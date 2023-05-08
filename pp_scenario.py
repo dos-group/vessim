@@ -18,10 +18,20 @@ pp.create_load(net, bus=b3, p_mw=0.1, q_mvar=0.05, name="load")
 
 # create branch elements
 pp.create_line(
-    net, from_bus=b1, to_bus=b2, length_km=0.1, name="line1", std_type="NAYY 4x50 SE"
+    net,
+    from_bus=b1,
+    to_bus=b2,
+    length_km=0.1,
+    name="line1",
+    std_type="NAYY 4x50 SE",
 )
 pp.create_line(
-    net, from_bus=b2, to_bus=b3, length_km=0.1, name="line2", std_type="NAYY 4x50 SE"
+    net,
+    from_bus=b2,
+    to_bus=b3,
+    length_km=0.1,
+    name="line2",
+    std_type="NAYY 4x50 SE",
 )
 
 with pd.option_context("display.expand_frame_repr", False):

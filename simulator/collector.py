@@ -19,12 +19,20 @@ META = {
 
 
 class Collector(mosaik_api.Simulator):
-    """Simple data collector that prints all data when the simulation finishes."""
+    """Simple data collector for printing data at the end of simulation.
+
+    Attributes:
+        eid: Identifier of Simulator Instance
+        data: Dictionary for holding the necessary simulation data
+    """
 
     def __init__(self):
+        """Initialies the collector instance."""
         super().__init__(META)
         self.eid = None
-        self.data = collections.defaultdict(lambda: collections.defaultdict(dict))
+        self.data = collections.defaultdict(
+            lambda: collections.defaultdict(dict)
+        )
 
     def init(self, sid, time_resolution):
         return self.meta

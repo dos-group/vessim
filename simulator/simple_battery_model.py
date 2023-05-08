@@ -1,12 +1,5 @@
 class SimpleBatteryModel:
-    """(Way too) simple battery.
-
-    Args:
-        capacity: Battery capacity in Ws
-        charge_level: Initial charge level in Ws
-        max_discharge: Minimum allowed soc for the battery
-        c_rate: C-rate (https://www.batterydesign.net/electrical/c-rate/)
-    """
+    """(Way too) simple battery."""
 
     def __init__(
         self,
@@ -16,6 +9,14 @@ class SimpleBatteryModel:
         c_rate: float,
         step_size: int,
     ):
+        """Initialization of a SimpleBattery instance.
+
+        Args:
+            capacity: Battery capacity in Ws
+            charge_level: Initial charge level in Ws
+            max_discharge: Minimum allowed soc for the battery
+            c_rate: C-rate (https://www.batterydesign.net/electrical/c-rate/)
+        """
         self.capacity = capacity
         assert 0 <= charge_level <= self.capacity
         self.charge_level = charge_level
@@ -40,18 +41,24 @@ class SimpleBatteryModel:
         # TODO implement exceeding max charge power
         assert (
             power <= self.max_charge_power
-        ), f"Cannot charge {power} W: Exceeding max charge power of {self.max_charge_power}."
+        ), f"Cannot charge {power} W: Exceeding max charge power of \
+            {self.max_charge_power}."
         assert (
             power >= -self.max_charge_power
-        ), f"Cannot discharge {power} W: Exceeding max discharge power of {self.max_charge_power}."
+        ), f"Cannot discharge {power} W: Exceeding max discharge power of \
+            {self.max_charge_power}."
 
-        self.charge_level += power * self.step_size  # step_size seconds of charging
+        self.charge_level += (
+            power * self.step_size
+        )  # step_size seconds of charging
         excess_power = 0
 
         # TODO: implement conversion losses
         abs_max_discharge = self.max_discharge * self.capacity
         if self.charge_level < abs_max_discharge:
-            excess_power = (self.charge_level - abs_max_discharge) / self.step_size
+            excess_power = (
+                self.charge_level - abs_max_discharge
+            ) / self.step_size
             self.charge_level = abs_max_discharge
         elif self.charge_level > self.capacity:
             excess_power = (self.charge_level - self.capacity) / self.step_size
@@ -60,4 +67,5 @@ class SimpleBatteryModel:
         return excess_power
 
     def soc(self):
+        """Get the state of charge of the battery."""
         return self.charge_level / self.capacity

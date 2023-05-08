@@ -19,7 +19,12 @@ class Data:
         self.time = []
 
     def add_entry(
-        self, time: int, current: float, voltage: float, power: float, frequency: int
+        self,
+        time: int,
+        current: float,
+        voltage: float,
+        power: float,
+        frequency: int,
     ) -> None:
         self.time.append(time)
         self.current.append(current)

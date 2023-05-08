@@ -39,12 +39,13 @@ class VirtualEnergySystem(SingleModelSimulator):
     """Virtual Energy System (VES) simulator that executes the VES model."""
 
     def __init__(self) -> None:
+        """Initializes the VES."""
         super().__init__(META, VirtualEnergySystemModel)
 
     def finalize(self) -> None:
-        """
-        Overwrites mosaik_api.Simulator.finalize(). Stops the uvicorn server
-        after the simulation has finished.
+        """Stops the uvicorn server after end of the simulation.
+
+        Overwrites mosaik_api.Simulator.finalize().
         """
         super().finalize()
         for model_instance in self.entities.values():
@@ -52,8 +53,9 @@ class VirtualEnergySystem(SingleModelSimulator):
 
 
 class VirtualEnergySystemModel:
-    """A virtual energy system model.
-    TODO: add more doc
+    """Class to represent virtual energy system model.
+
+    TODO: add more doc.
     """
 
     def __init__(
@@ -95,7 +97,8 @@ class VirtualEnergySystemModel:
         delta = self.solar - self.consumption
 
         # TODO to consumer for scenario
-        # If carbon is low and battery does not have sufficient SOC, only charge battery
+        # If carbon is low and battery does not have sufficient SOC,
+        # only charge battery
         if self.ci <= 250 and self.battery.soc() < self.battery_min_soc:
             excess_power = self.battery.step(self.battery.max_charge_power)
             assert excess_power == 0
@@ -112,6 +115,7 @@ class VirtualEnergySystemModel:
         # self.send_redis_update()
 
     def init_fastapi(self) -> FastAPI:
+        """Initializes and returns the FastAPI for the RedisDocker."""
         app = FastAPI()
 
         GET_route_attrs = {
@@ -127,19 +131,22 @@ class VirtualEnergySystemModel:
 
         return app
 
-    def init_GET_routes(self, GET_route_attrs: Dict[str, str], app: FastAPI) -> None:
-        """
-        Initializes GET routes for a FastAPI app with the given route attributes and
-        stores the initial values of the attributes in Redis key-value store.
+    def init_GET_routes(
+        self, GET_route_attrs: Dict[str, str], app: FastAPI
+    ) -> None:
+        """Initializes GET routes for a FastAPI.
+
+        With the given route attributes, the initial values of the attributes
+        are stored in Redis key-value store.
 
         Args:
-            GET_route_attrs: A dictionary containing the GET route as the key and
-                the corresponding attribute as the value.
+            GET_route_attrs: A dictionary containing the GET route as the key
+                and the corresponding attribute as the value.
             app: A FastAPI app instance to which the GET routes will be added.
 
         Raises:
-            AssertionError: If a Redis entry is not found for a given attribute or if
-                the attribute value does not match the value stored in Redis.
+            AssertionError: If Redis entry is not found for a given attribute or
+                if the attribute value does not match the value stored in Redis.
 
         Example:
             GET_route_attrs = {
@@ -148,7 +155,6 @@ class VirtualEnergySystemModel:
             }
             init_GET_routes(GET_route_attrs, app)
         """
-
         # store attributes and its initial values in Redis key-value store
         redis_content = {
             entry: getattr(self, entry)
@@ -161,26 +167,25 @@ class VirtualEnergySystemModel:
         # and ensure it matches the attribute values
         async def get_data(attr):
             redis_entry = self.redis_docker.redis.get(attr)
-            assert redis_entry != None
+            assert redis_entry is not None
             value = None
             # entries may either be of primitive type or json
             try:
                 value = json.loads(redis_entry)
             except json.JSONDecodeError:
-                # cast redis entry the type of its corresponding attribute in this class
+                # cast redis entry to type of its
+                # corresponding attribute in this class
                 value = type(getattr(self, attr))(redis_entry)
             assert getattr(self, attr) == value
             return value
 
-        # connect get_data function to FastAPI for every route (@app.get() in a loop)
+        # connect get_data function to FastAPI for every route
         for route, attr in GET_route_attrs.items():
             if hasattr(self, attr):
                 app.get(route)(partial(get_data, attr))
 
     def init_PUT_routes(self, app: FastAPI) -> None:
-        """
-        Initialize PUT routes for the FastAPI application, specifically for
-        updating battery settings and node power modes.
+        """Initialize PUT routes for the FastAPI application.
 
         This method sets up two PUT routes: '/ves/battery' and
         '/cs/nodes/{item_id}'. The first route updates the battery settings,
@@ -191,7 +196,6 @@ class VirtualEnergySystemModel:
         Args:
             app: The FastAPI application instance to add the PUT routes to.
         """
-
         # manual http routes for api
         PUT_route_attrs = {
             "/ves/battery": {
@@ -209,11 +213,11 @@ class VirtualEnergySystemModel:
                 # get the corresponding attribute name for the current key
                 attr = attrs[key]
                 assert hasattr(self, attr)
-                # raise a ValueError if the key is not present in the attributes dictionary
+                # raise ValueError if the key is not present in  attributes dict
                 if key not in attrs.keys():
                     raise ValueError(f"Attribute '{key}' does not exist")
 
-                # cast the value to the same type as the existing attribute value
+                # cast the value to same type as the existing attribute value
                 value_casted = type(getattr(self, attr))(value)
                 # Update the value in the Redis datastore
                 self.redis_docker.redis.set(attr, value_casted)
@@ -233,20 +237,20 @@ class VirtualEnergySystemModel:
                 power_modes = ["power-saving", "normal", "high performance"]
                 if value not in power_modes:
                     raise ValueError(
-                        f"{value} is not a valid power mode. Available power modes: {power_modes}"
+                        f"{value} is not a valid power mode." +
+                            "Available power modes: {power_modes}"
                     )
 
-                # update the power mode for the specified node in the application instance
+                # update power mode for specified node in application instance
                 self.nodes_power_mode[item_id] = value
                 # and in the Redis datastore
-                self.redis_docker.redis.hset("nodes_power_mode", str(item_id), value)
+                self.redis_docker.redis.hset(
+                    "nodes_power_mode", str(item_id), value
+                )
             return data
 
     def print_redis(self):
-        """
-        Debugging function that simply prints all entries of the redis db.
-        """
-
+        """Debugging function that simply prints all entries of the redis db."""
         r = self.redis_docker.redis
         # Start the SCAN iterator
         cursor = 0

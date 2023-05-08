@@ -31,7 +31,7 @@ sim_config = {
 }
 
 sim_args = {
-    "START": "2014-01-01 00:00:20",
+    "START": "2014-01-01 00:00:00",
     "END": 300,  # 30 * 24 * 3600  # 10 days
     "GRID_FILE": "data/custom.json",  # "data/custom.json"  # 'data/demo_lv_grid.json'
     "SOLAR_DATA": "data/pv_10kw.csv",

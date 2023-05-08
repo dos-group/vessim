@@ -16,30 +16,34 @@ META = {
 class SolarController(SingleModelSimulator):
     """Solar Controller.
 
-    Acts as medium between Solar CSV module and ecovisor or direct consumer since producer
-    is only a csv generator.
+    Acts as medium between Solar CSV module and ecovisor or direct consumer
+    since producer is only a csv generator.
 
     """
 
     def __init__(self):
+        """Initializes the Solar Controller Simulator."""
         super().__init__(META, SolarAgent)
 
 
 class SolarAgent:
-    """Class representing a solar agent for solar power production control.
-
-    Args:
-        scaling_factor: Scaling factor, e.g. for converting from mW to kW.
-        Default is 1.
-    """
+    """Class representing a solar agent for solar power production control."""
 
     def __init__(self, scaling_factor: float = 1) -> None:
+        """Initializes the Carbon Controller Simulator.
+
+        Args:
+            scaling_factor: Scaling factor, e.g. for converting from mW to kW.
+            Default is 1.
+        """
         self.scaling_factor = scaling_factor
         self.solar = 0.0
         self.production = 0.0
 
     def step(self) -> None:
-        """Update the solar power based on the given production value and the
+        """Compute new production value.
+        
+        Update the solar power based on the given production value and the
         scaling factor. Called every simulation step.
         """
         self.solar = abs(self.production * self.scaling_factor)

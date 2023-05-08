@@ -3,6 +3,8 @@
 .texpadtmp
 .DS_Store
 .ipynb_checkpoints
+.ruff_cache
+.pytest_cache
 __pycache__
 
 .eggs
