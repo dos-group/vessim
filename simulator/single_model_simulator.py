@@ -66,15 +66,16 @@ class SingleModelSimulator(mosaik_api.Simulator):
 
     def step(self, time, inputs, max_advance):
         """Perform simulation step.
-        
-        Set all model_instance attrs to input values, then step model_instance.
+
+        Set all `model_instance` attrs to `inputs` attr values,
+        then step `model_instance`.
         """
         self.time = time
         for eid, attrs in inputs.items():
             model_instance = self.entities[eid]
             for attr, val_dict in attrs.items():
                 if len(val_dict) > 0:
-                    # Only one input per value expected 
+                    # Only one input per value expected
                     # -> take first item from dict
                     val = list(val_dict.values())[0]
                     # And set the attr for the `model_instance`
@@ -82,8 +83,11 @@ class SingleModelSimulator(mosaik_api.Simulator):
                         setattr(model_instance, attr, val)
             model_instance.step()
         # Support all simulator types
-        return (None if self.meta["type"] ==
-         "event-based" else time + self.step_size)
+        return (
+            None
+            if self.meta["type"] == "event-based"
+            else time + self.step_size
+        )
 
     def get_data(self, outputs):
         """Return all requested data as attr from the `model_instance`."""

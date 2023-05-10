@@ -22,7 +22,6 @@ class SolarController(SingleModelSimulator):
     """
 
     def __init__(self):
-        """Initializes the Solar Controller Simulator."""
         super().__init__(META, SolarAgent)
 
 
@@ -42,7 +41,7 @@ class SolarAgent:
 
     def step(self) -> None:
         """Compute new production value.
-        
+
         Update the solar power based on the given production value and the
         scaling factor. Called every simulation step.
         """

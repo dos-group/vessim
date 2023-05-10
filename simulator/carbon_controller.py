@@ -21,7 +21,6 @@ class CarbonController(SingleModelSimulator):
     """
 
     def __init__(self):
-        """Initializes the Carbon Controller Simulator."""
         super().__init__(META, CarbonAgent)
 
 

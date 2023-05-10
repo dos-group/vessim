@@ -33,5 +33,4 @@ pytest
 
 # linting
 black
-pre-commit
 ruff

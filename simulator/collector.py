@@ -27,7 +27,6 @@ class Collector(mosaik_api.Simulator):
     """
 
     def __init__(self):
-        """Initialies the collector instance."""
         super().__init__(META)
         self.eid = None
         self.data = collections.defaultdict(

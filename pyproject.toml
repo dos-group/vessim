@@ -1,39 +1,60 @@
 [tool.black]
+# Set the maximum characters per line
 line-length = 80
-target-version = ['py36', 'py37', 'py38']
-include = '\.pyi?$'
+
+# Set python version that black should format the code for
+target-version = ['py311']
+
+# Format only python files
+include = '\.py$'
+
+# Exclude specific directories from formatting for efficiency
 exclude = '''
 /(
-  \.toml
-  |\.sh
-  |\.git
-  |\.github
-  |\.ini
-  |\.ipynb
-  |\.csv
+  \.git
+  | \.github
+  | \data
+  | \.idea
+  | \.vscode
+  | \.eggs
+  | \.texpadtmp
+  | \.DS_Store
+  | \.ipynb_checkpoints
+  | \.ruff_cache
+  | \.pytest_cache
+  | \__pycache__
 )/
 '''
 
+
 [tool.ruff]
-# Enable Ruff to check for docstring-related (D), pycodestyle-related (E), and Pyflakes-related (F) issues
-select = ["D", "E", "F"]
-ignore = ["D100"]
+# Enable Ruff to check for docstring-related (D), pycodestyle-related (E, W), and Pyflakes-related (F) issues
+select = ["D", "E", "F", "W"]
+
+# For now the following rules are disabled:
+#   D100: Missing docstring in public module
+#   D101: Missing docstring in public class
+#   D102: Missing docstring in public method
+#   D107: Missing docstring in __init__
+ignore = ["D100", "D101", "D102", "D107"]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
-fixable = ["A", "B", "C", "D", "E", "F", "G", "I", "N", "Q", "S", "T", "W", "ANN", "ARG", "BLE", "COM", "DJ", "DTZ", "EM", "ERA", "EXE", "FBT", "ICN", "INP", "ISC", "NPY", "PD", "PGH", "PIE", "PL", "PT", "PTH", "PYI", "RET", "RSE", "RUF", "SIM", "SLF", "TCH", "TID", "TRY", "UP", "YTT"]
-unfixable = []
+fixable = ["D", "E", "W"]
+unfixable = ["F"]
 
+# Set the maximum characters per line (similar to black)
 line-length = 80
-target-version = "py38"
-include = ["*.py", "*.pyi"]
-exclude = [".toml", ".git", ".github", ".ini", ".ipynb", ".csv"]
 
-# Allow unused variables when underscore-prefixed.
-dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+# Set python version for linting (similar to black)
+target-version = "py311"
+
+# Only enable linting for python files (similar to black)
+include = ["*.py"]
+
+# Exclude specific directories and all defaults
+extend-exclude = [".github", ".pytest_cache", ".vscode", "data", ".texpadtmp", ".DS_Store",
+ ".ipynb_checkpoints", "__pycache__"]
 
 # Configure Ruff to enforce Google-style docstrings when checking documentation
 [tool.ruff.pydocstyle]
 convention = "google"
-
-[tool.ruff.mccabe]
-max-complexity = 10

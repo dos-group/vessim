@@ -237,8 +237,8 @@ class VirtualEnergySystemModel:
                 power_modes = ["power-saving", "normal", "high performance"]
                 if value not in power_modes:
                     raise ValueError(
-                        f"{value} is not a valid power mode." +
-                            "Available power modes: {power_modes}"
+                        f"{value} is not a valid power mode."
+                        + "Available power modes: {power_modes}"
                     )
 
                 # update power mode for specified node in application instance

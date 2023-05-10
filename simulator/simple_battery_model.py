@@ -39,18 +39,18 @@ class SimpleBatteryModel:
         - else 0
         """
         # TODO implement exceeding max charge power
-        assert (
-            power <= self.max_charge_power
-        ), f"Cannot charge {power} W: Exceeding max charge power of \
-            {self.max_charge_power}."
-        assert (
-            power >= -self.max_charge_power
-        ), f"Cannot discharge {power} W: Exceeding max discharge power of \
-            {self.max_charge_power}."
+        assert power <= self.max_charge_power, (
+            f"Cannot charge {power} W: Exceeding max charge power of "
+            f"{self.max_charge_power}."
+        )
+        assert power >= -self.max_charge_power, (
+            f"Cannot discharge {power} W: Exceeding max discharge power of "
+            f"{self.max_charge_power}."
+        )
 
-        self.charge_level += (
-            power * self.step_size
-        )  # step_size seconds of charging
+        # step_size seconds of charging
+        self.charge_level += power * self.step_size
+
         excess_power = 0
 
         # TODO: implement conversion losses
