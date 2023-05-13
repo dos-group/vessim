@@ -94,7 +94,7 @@ class VirtualEnergySystemModel:
         """
         # If delta is positive there is excess power,
         # if negative there is a power deficit.
-        delta = self.solar - self.consumption
+        delta = self.battery_grid_charge + self.solar - self.consumption
 
         # battery charge is the value the battery is (dis)charged with
         battery_charge = min(self.battery.max_charge_power, max(delta, -self.battery.max_charge_power))
@@ -108,11 +108,9 @@ class VirtualEnergySystemModel:
         #   - positive if the battery is fully charged
         #   - negative if the battery is empty
         #   - else 0
-        delta -= battery_excess
+        delta -= battery_excess + self.battery_grid_charge
         # draw or feed back into the grid
         self.grid_power = delta
-
-        # TODO implement battery grid charge behaviour
 
 
     def init_fastapi(self) -> FastAPI:
