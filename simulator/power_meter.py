@@ -33,14 +33,12 @@ class PowerMeter(ABC):
 
 class PhysicalPowerMeter(PowerMeter):
     def __init__(self, host: str = "localhost", port: int = 1883, keepalive: int = 60, name: Optional[str] = None):
-        """
-        Initializes a new instance of the PhysicalPowerMeter class, an MQTT
-        wrapper that serves as an adapter for physical nodes (HIL) to submit
-        their power usage.
+        """MQTT wrapper that serves as an adapter for physical nodes (HIL) to
+        submit their power usage.
 
-        :param host: The hostname or IP address of the MQTT broker. Default is "localhost".
-        :param port: The port number to use for the MQTT connection. Default is 1883.
-        :param keepalive: The maximum period in seconds allowed between communications with the MQTT broker. Default is 60.
+        host: The hostname or IP address of the MQTT broker. Default is "localhost".
+        port: The port number to use for the MQTT connection. Default is 1883.
+        keepalive: The maximum period in seconds allowed between communications with the MQTT broker. Default is 60.
         """
 
         super().__init__(name)
