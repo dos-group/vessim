@@ -1,6 +1,6 @@
 [tool.black]
 # Set the maximum characters per line
-line-length = 80
+line-length = 90
 
 # Set python version that black should format the code for
 target-version = ['py311']
@@ -43,7 +43,7 @@ fixable = ["D", "E", "W"]
 unfixable = ["F"]
 
 # Set the maximum characters per line (similar to black)
-line-length = 80
+line-length = 90
 
 # Set python version for linting (similar to black)
 target-version = "py311"
