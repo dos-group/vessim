@@ -2,6 +2,9 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Tuple, Dict, Callable, Optional
 import paho.mqtt.client as mqtt
+from google.cloud import monitoring_v3
+from google.protobuf.timestamp_pb2 import Timestamp
+from google.auth import default
 
 
 PowerModel = Callable[[float], float]
@@ -79,6 +82,76 @@ class VirtualPowerMeter(PowerMeter, ABC):
     @abstractmethod
     def utilization(self) -> float:
         """Measures and returns the current utilization [0,1] which is the input to the power model."""
+
+
+class GcpPowerMeter(VirtualPowerMeter):
+    """ A power meter class that fetches the CPU utilization data of an
+    instance in Google Cloud Platform (GCP).
+
+    The `GOOGLE_APPLICATION_CREDENTIALS` environment variable needs to be set
+    to the authentication details like a service account keyfile.
+
+    Args:
+        instance_id: The instance ID of the GCP instance.
+        power_model: The power model used for energy estimation.
+        name: The name of the power meter. Defaults to None.
+    """
+
+    def __init__(self, instance_id: str, power_model: PowerModel, name: Optional[str] = None):
+        super().__init__(power_model, name)
+        self.instance_id = instance_id
+
+
+    def create_timestamp(self, time: datetime) -> Timestamp:
+        """Creates a google.protobuf.timestamp_pb2 timestamp from a datetime object.
+
+        Args:
+            time: The datetime object.
+
+        Returns:
+            Timestamp: The google.protobuf.timestamp_pb2 timestamp.
+        """
+        timestamp = Timestamp()
+        timestamp.FromDatetime(time)
+        return timestamp
+
+
+    def utilization(self) -> float:
+        """Fetches the CPU utilization data of the GCP instance.
+
+        Raises:
+            ValueError: If no CPU utilization data is found.
+
+        Returns:
+            float: The CPU utilization as a float value.
+        """
+        # get the default credentials and project ID
+        credentials, project_id = default()
+
+        # create an instance of MetricServiceClient using the credentials
+        client = monitoring_v3.MetricServiceClient(credentials=credentials)
+        project_name = f'projects/{project_id}'
+
+        # set interval
+        interval = monitoring_v3.TimeInterval()
+        now = datetime.utcnow()
+        interval.end_time = self.create_timestamp(now)
+        interval.start_time = self.create_timestamp(now - timedelta(minutes=5))
+
+        filter = f'metric.type = "compute.googleapis.com/instance/cpu/utilization" AND resource.labels.instance_id = "{self.instance_id}"'
+        results = client.list_time_series(
+            request={
+                "name": project_name,
+                "filter": filter,
+                "interval": interval,
+                "view": monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
+            }
+        )
+        results = list(results)
+        if not results:
+            raise ValueError('No CPU utilization data found.')
+
+        return results[0].points[0].value.double_value
 
 
 class AwsPowerMeter(VirtualPowerMeter):
