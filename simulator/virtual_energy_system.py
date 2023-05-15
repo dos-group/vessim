@@ -83,7 +83,7 @@ class VirtualEnergySystemModel:
         self.redis_docker.run(f_api, host=api_host)
 
 
-    def step(self) -> None:
+    def step(self, consumption: float, solar: float, ci: float) -> None:
         """
         Executes a single time step of the energy system model, calculating
         energy consumption and generation and determining how much power to
@@ -92,6 +92,11 @@ class VirtualEnergySystemModel:
         excess solar power, the method will charge the battery or feed back
         into the grid.
         """
+        # update input
+        self.consumption = consumption
+        self.solar = solar
+        self.ci = ci
+
         # If delta is positive there is excess power,
         # if negative there is a power deficit.
         delta = self.battery_grid_charge + self.solar - self.consumption
