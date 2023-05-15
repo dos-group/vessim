@@ -7,6 +7,7 @@ import mosaik
 from mosaik.util import connect_many_to_one
 
 from simulator.power_meter import PhysicalPowerMeter, AwsPowerMeter, LinearPowerModel
+from simulator.simple_battery_model import SimpleBatteryModel
 
 sim_config = {
     'CSV': {
@@ -72,13 +73,15 @@ def create_scenario_simple(world):
     solar_controller = world.start('SolarController')
     solar_agent = solar_controller.SolarAgent()
 
-    # VES Sim
+    # VES Sim & Battery Sim
+    simple_battery = SimpleBatteryModel(
+            capacity=BATTERY_CAPACITY,
+            charge_level=BATTERY_INITIAL_CHARGE_LEVEL,
+            min_soc=BATTERY_MIN_SOC,
+            c_rate=BATTERY_C_RATE
+    )
     virtual_energy_system_sim = world.start('VirtualEnergySystem')
-    virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystemModel(
-        battery_capacity=BATTERY_CAPACITY,
-        battery_soc=BATTERY_INITIAL_CHARGE_LEVEL,
-        battery_min_soc=BATTERY_MIN_SOC,
-        battery_c_rate=BATTERY_C_RATE)
+    virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystemModel(battery=simple_battery)
 
     # gridsim = world.start('Grid', step_size=60)
     # buses = filter(lambda e: e.type == 'PQBus', grid)
@@ -107,13 +110,11 @@ def create_scenario_simple(world):
     ## computing_system -> VES
     #world.connect(computing_system, virtual_energy_system, ('p_con', 'consumption'))
 
-    world.connect(virtual_energy_system, monitor,
-                'consumption',
-                'battery_min_soc',
-                'battery_soc',
-                'solar',
-                'ci',
-    )
+    #world.connect(virtual_energy_system, monitor,
+    #            'consumption',
+    #            'solar',
+    #            'ci',
+    #)
 
     # world.connect(load, monitor, 'p_mw')
     # world.connect(ext_grid, monitor, 'p_mw')
