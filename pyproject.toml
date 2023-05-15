@@ -54,7 +54,7 @@ include = ["*.py"]
 
 # Exclude specific directories and all defaults
 extend-exclude = [".github", ".pytest_cache", ".vscode", "data", ".texpadtmp", ".DS_Store",
- ".ipynb_checkpoints", "__pycache__"]
+ ".ipynb_checkpoints", "__pycache__", "example_node"]
 
 # Configure Ruff to enforce Google-style docstrings when checking documentation
 [tool.ruff.pydocstyle]
