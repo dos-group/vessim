@@ -21,6 +21,7 @@ class ComputingSystem(SingleModelSimulator):
     def __init__(self):
         super().__init__(META, ComputingSystem)
 
+
     def create(self, num, model, *args, **kwargs):
         if num != 1:
             raise ValueError('Only one instance of the ComputingSystem can exist.')
@@ -51,6 +52,7 @@ class ComputingSystemModel:
         self.power_meters = power_meters
         self.p_cons = 0
         self.pue = pue
+
 
     def step(self):
         """Updates the power consumption of the system.
