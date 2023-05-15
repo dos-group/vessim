@@ -35,13 +35,12 @@ class SolarAgent:
     def __init__(self, scaling_factor: float = 1) -> None:
         self.scaling_factor = scaling_factor
         self.solar = 0.0
-        self.production = 0.0
 
-    def step(self) -> None:
+    def step(self, solar: float) -> None:
         """Update the solar power based on the given production value and the
         scaling factor. Called every simulation step.
         """
-        self.solar = abs(self.production * self.scaling_factor)
+        self.solar = abs(solar * self.scaling_factor)
 
 
 def main():

@@ -8,7 +8,7 @@ class SingleModelSimulator(mosaik_api.Simulator):
     for each new simulator.
 
     Args:
-        META: A dictionary that describes the simulator's metadata.
+        meta: A dictionary that describes the simulator's metadata.
         model_class: The class of the model to be simulated. Model requires a
         step() method with no args (must only utilizes object attributes).
         Alternatively the step() method of this class must be overwritten and
@@ -22,8 +22,8 @@ class SingleModelSimulator(mosaik_api.Simulator):
         step_size: The simulation step size.
     """
 
-    def __init__(self, META, model_class):
-        super().__init__(META)
+    def __init__(self, meta, model_class):
+        super().__init__(meta)
         self.eid_prefix = list(self.meta['models'])[0] + '_' # type: ignore
         self.model_class = model_class
         self.entities = {}
@@ -54,18 +54,13 @@ class SingleModelSimulator(mosaik_api.Simulator):
         return entities
 
     def step(self, time, inputs, max_advance):
-        """Set all `inputs` attr values to the `model_instance` attrs, then step the `model_instance`."""
+        """Set all `inputs` attr values to the `entity` attrs, then step the `entity`."""
         self.time = time
         for eid, attrs in inputs.items():
-            model_instance = self.entities[eid]
-            for attr, val_dict in attrs.items():
-                if len(val_dict) > 0:
-                    # Only one input per value expected -> take first item from dict
-                    val = list(val_dict.values())[0]
-                    # And set the attr for the `model_instance`
-                    if hasattr(model_instance, attr):
-                        setattr(model_instance, attr, val)
-            model_instance.step()
+            entity = self.entities[eid]
+            # We assume a single input per value -> take first item from dict
+            args = {attr: list(val_dict.values())[0] for attr, val_dict in attrs.items()}
+            entity.step(**args)
         # Support all simulator types
         return None if self.meta['type'] == 'event-based' else time + self.step_size # type: ignore
 
