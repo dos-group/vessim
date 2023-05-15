@@ -20,6 +20,13 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: '3.8'
+    
+    # get rid of DeprecationWarning related to Jupyter paths when running pytest
+    - name: Set JUPYTER_PLATFORM_DIRS environment variable
+      env:
+        JUPYTER_PLATFORM_DIRS: 1
+      run: |
+        echo "JUPYTER_PLATFORM_DIRS=${JUPYTER_PLATFORM_DIRS}" >> $GITHUB_ENV   
 
     # installs dependencies from requirements.txt
     - name: Install dependencies
