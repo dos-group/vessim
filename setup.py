@@ -1,5 +1,3 @@
-from setuptools import setup, find_packages
-
 import os
 from setuptools import setup, find_packages
 
@@ -24,7 +22,7 @@ if __name__ == "__main__":
         description="A simulator for virtualized energy systems",
         # long_description=long_description,
         # long_description_content_type='text/markdown',
-        # keywords=["carbon awareness", "federated learning", "client selection", "flower"],
+        # keywords=["carbon awareness", "federated learning","client selection","flower"],
         url="https://github.com/dos-group/vessim",
         packages=[],
         # license="MIT",

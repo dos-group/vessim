@@ -16,6 +16,7 @@ class SimpleBatteryModel:
             charge_level: Initial charge level in Ws
             max_discharge: Minimum allowed soc for the battery
             c_rate: C-rate (https://www.batterydesign.net/electrical/c-rate/)
+            step_size: currently not used
         """
         self.capacity = capacity
         assert 0 <= charge_level <= self.capacity
