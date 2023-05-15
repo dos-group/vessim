@@ -13,6 +13,7 @@ exclude = '''
 /(
   \.git
   | \.github
+  | \example_node
   | \data
   | \.idea
   | \.vscode
