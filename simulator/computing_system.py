@@ -1,4 +1,3 @@
-import mosaik_api
 from simulator.single_model_simulator import SingleModelSimulator
 from simulator.power_meter import PowerMeter
 from typing import List
