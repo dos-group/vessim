@@ -61,7 +61,3 @@ class ComputingSystemModel:
         sum of the node power of all power meters.
         """
         self.p_cons = self.pue * sum(pm.node_power() for pm in self.power_meters)
-
-
-def main():
-    return mosaik_api.start_simulation(ComputingSystem())

@@ -61,7 +61,3 @@ class Collector(mosaik_api.Simulator):
             with open("data.csv", "w", newline="") as f:
                 writer = csv.writer(f)
                 writer.writerows(zip(*csv_data))
-
-
-if __name__ == '__main__':
-    mosaik_api.start_simulation(Collector())
