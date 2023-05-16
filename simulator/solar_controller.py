@@ -41,8 +41,3 @@ class SolarAgent:
         scaling factor. Called every simulation step.
         """
         self.solar = abs(solar * self.scaling_factor)
-
-
-def main():
-    """Main function that starts the simulation."""
-    return mosaik_api.start_simulation(SolarController())

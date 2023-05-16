@@ -59,8 +59,3 @@ class CarbonAgent:
         conversion factor. Called every simulation step.
         """
         self.ci = abs(ci * self.carbon_conversion_factor)
-
-
-def main():
-    """Main function that starts the simulation."""
-    return mosaik_api.start_simulation(CarbonController())
