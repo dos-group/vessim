@@ -127,8 +127,10 @@ def create_scenario_simple(world, simulation_args):
         min_soc=simulation_args["BATTERY_MIN_SOC"],
         c_rate=simulation_args["BATTERY_C_RATE"],
     )
-    virtual_energy_system_sim = world.start('VirtualEnergySystem')
-    virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystemModel(battery=simple_battery)
+    virtual_energy_system_sim = world.start("VirtualEnergySystem")
+    virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystemModel(
+        battery=simple_battery
+    )
 
     # gridsim = world.start('Grid', step_size=60)
     # buses = filter(lambda e: e.type == 'PQBus', grid)
