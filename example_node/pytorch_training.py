@@ -14,13 +14,18 @@ BATCH_SIZE = 32
 
 
 def load_datasets():
-    # Download and transform CIFAR-10 (train and test)
+    """Download and transform CIFAR-10 (train and test)."""
     transform = transforms.Compose(
-        [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+        [
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ]
     )
     trainset = CIFAR10("./dataset", train=True, download=True, transform=transform)
     testset = CIFAR10("./dataset", train=False, download=True, transform=transform)
-    return DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True), DataLoader(testset, batch_size=BATCH_SIZE)
+    return DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True), DataLoader(
+        testset, batch_size=BATCH_SIZE
+    )
 
 
 class Net(nn.Module):
@@ -64,7 +69,7 @@ def train(net, trainloader, epochs: int, verbose=False):
         epoch_loss /= len(trainloader.dataset)
         epoch_acc = correct / total
         if verbose:
-            print(f"Epoch {epoch+1}: train loss {epoch_loss}, accuracy {epoch_acc}")
+            print(f"Epoch {epoch+1}: train loss {epoch_loss}," + f"accuracy {epoch_acc}")
 
 
 def test(net, testloader):
@@ -84,13 +89,17 @@ def test(net, testloader):
     accuracy = correct / total
     return loss, accuracy
 
+
 trainloader, testloader = load_datasets()
 
-model = torchvision.models.resnet18(weights='DEFAULT')
-model.fc = torch.nn.Linear(model.fc.in_features, len(np.unique(testloader.dataset.targets)))
+model = torchvision.models.resnet18(weights="DEFAULT")
+model.fc = torch.nn.Linear(
+    model.fc.in_features, len(np.unique(testloader.dataset.targets))
+)
 net = Net().to(DEVICE)
 
 for epoch in range(100):
     train(net, trainloader, 1)
     loss, accuracy = test(net, testloader)
-    # print(f"\nEpoch {epoch+1}: validation loss {loss:.5f}, accuracy {accuracy}")
+    # print(f"\nEpoch {epoch+1}: validation loss {loss:.5f},"
+    #    + f"accuracy {accuracy}")

@@ -1,0 +1,41 @@
+name: vessim CI
+
+# event that triggers workflow
+# here when a "push" is made
+on: 
+  push:
+
+jobs:
+  linting-and-testing:
+    # specifies the os that the job will run on 
+    runs-on: ubuntu-latest
+
+    steps:
+    # downloads the repository code to the runner's file system for workflow access
+    - uses: actions/checkout@v2
+    - uses: chartboost/ruff-action@v1
+       
+    # sets up python environment with specified version 
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.11'
+    
+    # get rid of DeprecationWarning related to Jupyter paths when running pytest
+    - name: Set JUPYTER_PLATFORM_DIRS environment variable
+      env:
+        JUPYTER_PLATFORM_DIRS: 1
+      run: |
+        echo "JUPYTER_PLATFORM_DIRS=${JUPYTER_PLATFORM_DIRS}" >> $GITHUB_ENV   
+
+    # installs dependencies from requirements.txt
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    # run ruff on Python files
+    - name: Run ruff
+      run: ruff ./
+    
+    # run tests
+    - name: Run tests
+      run: pytest tests.py

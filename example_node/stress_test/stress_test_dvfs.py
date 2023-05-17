@@ -3,13 +3,14 @@
 import os
 import sys
 import subprocess
-sys.path.append('../lib')
+
+sys.path.append("../lib")
 import time
-from pi_monitor import PiMonitor # type: ignore
+from pi_monitor import PiMonitor  # type: ignore
 import csv
 
 
-class Data():
+class Data:
     def __init__(self) -> None:
         self.current = []
         self.voltage = []
@@ -17,7 +18,14 @@ class Data():
         self.freqency = []
         self.time = []
 
-    def add_entry(self, time: int, current: float, voltage: float, power: float, frequency: int) -> None:
+    def add_entry(
+        self,
+        time: int,
+        current: float,
+        voltage: float,
+        power: float,
+        frequency: int,
+    ) -> None:
         self.time.append(time)
         self.current.append(current)
         self.voltage.append(voltage)
@@ -25,11 +33,13 @@ class Data():
         self.freqency.append(frequency)
 
     def to_dict(self) -> dict:
-        return {"time": self.time,
-                "frequency": self.freqency,
-                "power": self.power,
-                "current": self.current,
-                "voltage": self.voltage}
+        return {
+            "time": self.time,
+            "frequency": self.freqency,
+            "power": self.power,
+            "current": self.current,
+            "voltage": self.voltage,
+        }
 
 
 def save_dict_to_csv(data_dict, filename):
@@ -40,7 +50,10 @@ def save_dict_to_csv(data_dict, filename):
         num_rows = max([len(lst) for lst in data_dict.values()])
         # Write the data rows
         for i in range(num_rows):
-            row = [data_dict[key][i] if i < len(data_dict[key]) else "" for key in data_dict.keys()]
+            row = [
+                data_dict[key][i] if i < len(data_dict[key]) else ""
+                for key in data_dict.keys()
+            ]
             writer.writerow(row)
 
 
@@ -50,16 +63,20 @@ def gather_data(monitor, frequency, runtime):
     # give time to adjust
     time.sleep(3)
     # start sysbench
-    process = subprocess.Popen(["sysbench", f"--time={runtime}", "--threads=4", "cpu", "run"])
+    process = subprocess.Popen(
+        ["sysbench", f"--time={runtime}", "--threads=4", "cpu", "run"]
+    )
     data = Data()
     # gather data for runtime
     time_passed = 1
     while process.poll() is None:
-        data.add_entry(time=time_passed,
-                       current=monitor.current(),
-                       voltage=monitor.voltage(),
-                       power=monitor.power(),
-                       frequency=frequency)
+        data.add_entry(
+            time=time_passed,
+            current=monitor.current(),
+            voltage=monitor.voltage(),
+            power=monitor.power(),
+            frequency=frequency,
+        )
         time_passed += 1
         time.sleep(1)
     return data
