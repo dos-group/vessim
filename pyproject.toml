@@ -37,7 +37,7 @@ target-version = "py311"
 include = ["*.py"]
 
 # Exclude specific directories and all defaults
-extend-exclude = ["example_node", "simulator/power_meter.py"]
+extend-exclude = ["example_node", "simulator/power_meter.py", "carbon-aware_control_unit"]
 
 # Configure Ruff to enforce Google-style docstrings when checking documentation
 [tool.ruff.pydocstyle]
