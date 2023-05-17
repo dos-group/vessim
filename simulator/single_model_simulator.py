@@ -83,11 +83,7 @@ class SingleModelSimulator(mosaik_api.Simulator):
                         setattr(model_instance, attr, val)
             model_instance.step()
         # Support all simulator types
-        return (
-            None
-            if self.meta["type"] == "event-based"
-            else time + self.step_size
-        )
+        return None if self.meta["type"] == "event-based" else time + self.step_size
 
     def get_data(self, outputs):
         """Return all requested data as attr from the `model_instance`."""

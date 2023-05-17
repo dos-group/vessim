@@ -61,9 +61,7 @@ class RedisDocker:
         assert redis is not None
         return redis
 
-    def run(
-        self, f_api: FastAPI, host: str = "127.0.0.1", port: int = 8000
-    ) -> None:
+    def run(self, f_api: FastAPI, host: str = "127.0.0.1", port: int = 8000) -> None:
         """Starts the given FastAPI application.
 
         Runs FastAPI with a uvicorn server in a seperate thread

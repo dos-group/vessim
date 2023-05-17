@@ -7,9 +7,7 @@ with open(os.path.join(here, "README.md"), encoding="utf-8") as f:
 
 open_api_packages = [
     f"carbon_sdk_client.{package}"
-    for package in find_packages(
-        where="carbon_sdk_client", exclude=["test", "tests"]
-    )
+    for package in find_packages(where="carbon_sdk_client", exclude=["test", "tests"])
 ]
 
 

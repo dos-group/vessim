@@ -131,9 +131,7 @@ class VirtualEnergySystemModel:
 
         return app
 
-    def init_GET_routes(
-        self, GET_route_attrs: Dict[str, str], app: FastAPI
-    ) -> None:
+    def init_GET_routes(self, GET_route_attrs: Dict[str, str], app: FastAPI) -> None:
         """Initializes GET routes for a FastAPI.
 
         With the given route attributes, the initial values of the attributes
@@ -244,9 +242,7 @@ class VirtualEnergySystemModel:
                 # update power mode for specified node in application instance
                 self.nodes_power_mode[item_id] = value
                 # and in the Redis datastore
-                self.redis_docker.redis.hset(
-                    "nodes_power_mode", str(item_id), value
-                )
+                self.redis_docker.redis.hset("nodes_power_mode", str(item_id), value)
             return data
 
     def print_redis(self):

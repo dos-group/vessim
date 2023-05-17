@@ -29,9 +29,7 @@ class Collector(mosaik_api.Simulator):
     def __init__(self):
         super().__init__(META)
         self.eid = None
-        self.data = collections.defaultdict(
-            lambda: collections.defaultdict(dict)
-        )
+        self.data = collections.defaultdict(lambda: collections.defaultdict(dict))
 
     def init(self, sid, time_resolution):
         """Initializes the simulator instance.

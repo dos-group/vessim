@@ -21,20 +21,14 @@ def load_datasets():
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         ]
     )
-    trainset = CIFAR10(
-        "./dataset", train=True, download=True, transform=transform
+    trainset = CIFAR10("./dataset", train=True, download=True, transform=transform)
+    testset = CIFAR10("./dataset", train=False, download=True, transform=transform)
+    return DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True), DataLoader(
+        testset, batch_size=BATCH_SIZE
     )
-    testset = CIFAR10(
-        "./dataset", train=False, download=True, transform=transform
-    )
-    return DataLoader(
-        trainset, batch_size=BATCH_SIZE, shuffle=True
-    ), DataLoader(testset, batch_size=BATCH_SIZE)
 
 
 class Net(nn.Module):
-    """Neural network model."""
-
     def __init__(self) -> None:
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(3, 6, 5)
@@ -43,8 +37,6 @@ class Net(nn.Module):
         self.fc1 = nn.Linear(16 * 5 * 5, 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 10)
-
-    """Forward pass of the network."""
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.pool(F.relu(self.conv1(x)))
@@ -77,10 +69,7 @@ def train(net, trainloader, epochs: int, verbose=False):
         epoch_loss /= len(trainloader.dataset)
         epoch_acc = correct / total
         if verbose:
-            print(
-                f"Epoch {epoch+1}: train loss {epoch_loss},"
-                + f"accuracy {epoch_acc}"
-            )
+            print(f"Epoch {epoch+1}: train loss {epoch_loss}," + f"accuracy {epoch_acc}")
 
 
 def test(net, testloader):

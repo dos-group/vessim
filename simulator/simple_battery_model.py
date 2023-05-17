@@ -57,9 +57,7 @@ class SimpleBatteryModel:
         # TODO: implement conversion losses
         abs_max_discharge = self.max_discharge * self.capacity
         if self.charge_level < abs_max_discharge:
-            excess_power = (
-                self.charge_level - abs_max_discharge
-            ) / self.step_size
+            excess_power = (self.charge_level - abs_max_discharge) / self.step_size
             self.charge_level = abs_max_discharge
         elif self.charge_level > self.capacity:
             excess_power = (self.charge_level - self.capacity) / self.step_size
