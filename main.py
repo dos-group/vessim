@@ -14,11 +14,13 @@ from typing import Tuple, Dict
 import mosaik
 from mosaik.util import connect_many_to_one
 
+
 from simulator.power_meter import (
     PhysicalPowerMeter,
     AwsPowerMeter,
     LinearPowerModel,
 )
+from simulator.simple_battery_model import SimpleBatteryModel
 
 # Config file for parameters and settings specification.
 sim_config = {
@@ -117,15 +119,16 @@ def create_scenario_simple(world, simulation_args):
     solar_controller = world.start("SolarController")
     solar_agent = solar_controller.SolarAgent()
 
-    # VES Sim
-    virtual_energy_system_sim = world.start("VirtualEnergySystem")
-    virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystemModel(
-        battery_capacity=simulation_args["BATTERY_CAPACITY"],
-        battery_soc=simulation_args["BATTERY_INITIAL_CHARGE_LEVEL"]
+    # VES Sim & Battery Sim
+    simple_battery = SimpleBatteryModel(
+        capacity=simulation_args["BATTERY_CAPACITY"],
+        charge_level=simulation_args["BATTERY_INITIAL_CHARGE_LEVEL"]
         * simulation_args["BATTERY_CAPACITY"],
-        battery_min_soc=simulation_args["BATTERY_MIN_SOC"],
-        battery_c_rate=simulation_args["BATTERY_C_RATE"],
+        min_soc=simulation_args["BATTERY_MIN_SOC"],
+        c_rate=simulation_args["BATTERY_C_RATE"],
     )
+    virtual_energy_system_sim = world.start('VirtualEnergySystem')
+    virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystemModel(battery=simple_battery)
 
     # gridsim = world.start('Grid', step_size=60)
     # buses = filter(lambda e: e.type == 'PQBus', grid)

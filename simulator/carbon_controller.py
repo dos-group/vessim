@@ -32,8 +32,6 @@ class CarbonAgent:
         carbon intensity based on the unit of measurement.
         ci: the carbon intensity of the electricity being
         produced
-        intensity_input: the input value used to calculate the carbon
-        intensity
     """
 
     def __init__(self, unit: str = "g_per_kWh") -> None:
@@ -58,17 +56,11 @@ class CarbonAgent:
         else:
             raise ValueError(f"{unit} is not supported by vessim")
         self.ci = 0.0
-        self.intensity_input = 0.0
 
-    def step(self) -> None:
+    def step(self, ci: float) -> None:
         """Calculation of carbon intensity.
 
         Based on the intensity input from the data and the conversion factor,
         a carbon intensity is calculated. Called every simulation step.
         """
-        self.ci = abs(self.intensity_input * self.carbon_conversion_factor)
-
-
-def main():
-    """Main function that starts the simulation."""
-    return mosaik_api.start_simulation(CarbonController())
+        self.ci = abs(ci * self.carbon_conversion_factor)
