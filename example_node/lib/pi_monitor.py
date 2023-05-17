@@ -2,7 +2,8 @@ from cpufreq import cpuFreq
 from ina219 import INA219
 import psutil
 
-class PiMonitor():
+
+class PiMonitor:
     def __init__(self) -> None:
         self.ina = INA219(0.1, address=0x45)
         self.ina.configure()

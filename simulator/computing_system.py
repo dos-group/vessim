@@ -3,32 +3,31 @@ from simulator.power_meter import PowerMeter
 from typing import List
 
 META = {
-    'type': 'time-based',
-    'models': {
-        'ComputingSystem': {
-            'public': True,
-            'params': ['power_meters'],
-            'attrs': ['p_cons'],
+    "type": "time-based",
+    "models": {
+        "ComputingSystem": {
+            "public": True,
+            "params": ["power_meters"],
+            "attrs": ["p_cons"],
         },
     },
 }
 
 
 class ComputingSystem(SingleModelSimulator):
-    """ Computing System simulator that executes its model"""
+    """Computing System simulator that executes its model."""
 
     def __init__(self):
         super().__init__(META, ComputingSystem)
 
-
     def create(self, num, model, *args, **kwargs):
         if num != 1:
-            raise ValueError('Only one instance of the ComputingSystem can exist.')
+            raise ValueError("Only one instance of the ComputingSystem can exist.")
 
         # access power_meters from kwargs
         power_meters = kwargs.get("power_meters")
         if not power_meters:
-            raise ValueError('At least one power meter needs to be specified.')
+            raise ValueError("At least one power meter needs to be specified.")
 
         return super().create(num, model, *args, **kwargs)
 
@@ -51,7 +50,6 @@ class ComputingSystemModel:
         self.power_meters = power_meters
         self.p_cons = 0
         self.pue = pue
-
 
     def step(self):
         """Updates the power consumption of the system.

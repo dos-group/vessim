@@ -7,7 +7,10 @@ class SimpleBatteryModel:
         min_soc: Minimum allowed soc for the battery
         c_rate: C-rate (https://www.batterydesign.net/electrical/c-rate/)
     """
-    def __init__(self, capacity: float, charge_level: float, min_soc: float, c_rate: float):
+
+    def __init__(
+        self, capacity: float, charge_level: float, min_soc: float, c_rate: float
+    ):
         self.capacity = capacity
         assert 0 <= charge_level <= self.capacity
         self.charge_level = charge_level
@@ -18,14 +21,14 @@ class SimpleBatteryModel:
         self.max_charge_power = c_rate * self.capacity / 3600
 
     def update(self, power: float, duration: int) -> float:
-        """Can be called during simulation to feed or draw energy for a specified duration.
+        """Can be called during simulation to feed or draw energy for specified duration.
 
         Args:
             power:
                 If `power` is positive, the battery is charged.
                 If `power` is negative, the battery is discharged.
             duration:
-                The duration in seconds for which the battery will be charged or discharged.
+                The duration in seconds for which battery will be charged or discharged.
 
         Returns:
             The excess energy after the update:
@@ -34,8 +37,14 @@ class SimpleBatteryModel:
                 - else 0
         """
         # TODO implement exceeding max charge power
-        assert power <= self.max_charge_power, f"Cannot charge {power} W: Exceeding max charge power of {self.max_charge_power}."
-        assert power >= -self.max_charge_power, f"Cannot discharge {power} W: Exceeding max discharge power of {self.max_charge_power}."
+        assert power <= self.max_charge_power, (
+            f"Cannot charge {power} W: Exceeding max charge power of "
+            f"{self.max_charge_power}."
+        )
+        assert power >= -self.max_charge_power, (
+            f"Cannot discharge {power} W: Exceeding max discharge power of "
+            f"{self.max_charge_power}."
+        )
 
         self.charge_level += power * duration  # duration seconds of charging
         excess_power = 0
@@ -50,7 +59,6 @@ class SimpleBatteryModel:
             self.charge_level = self.capacity
 
         return excess_power
-
 
     def soc(self):
         return self.charge_level / self.capacity
