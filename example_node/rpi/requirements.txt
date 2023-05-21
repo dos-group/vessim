@@ -1,0 +1,5 @@
+cpufreq
+psutil
+fastapi
+smbus
+pi-ina219

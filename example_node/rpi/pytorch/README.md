@@ -1,17 +1,3 @@
-## RPI Node Setup
-
-```
-ssh pi@raspberrypi
-sudo apt update && sudo apt upgrade
-sudo apt install git vim python3-pip i2c-tools
-sudo pip install smbus psutil cpufreq pi-ina219
-git clone https://github.com/opsengine/cpulimit.git
-cd cpulimit; make; sudo cp src/cpulimit /usr/bin; cd ..; rm -rf cpulimit
-git clone https://github.com/dos-group/vessim/
-sudo sh vessim/example_node/init.sh
-sudo reboot
-```
-
 The installation of PyTorch and Torchvision on Raspberry Pi via `pip` is not
 possible as the package is not compiled for the Pi's architecture. However,
 PyTorch and Torchvision can be installed on Raspberry Pi by compiling it
