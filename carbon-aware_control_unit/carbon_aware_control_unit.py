@@ -1,4 +1,4 @@
-from http_client import HTTPClient
+from ..lib.http_client import HTTPClient
 import simpy
 from typing import Dict
 
