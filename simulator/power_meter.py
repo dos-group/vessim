@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Callable, Optional
-from ..lib.http_client import HTTPClient
+from lib.http_client import HTTPClient
 
 # Callable for power model
 PowerModel = Callable[[float], float]
