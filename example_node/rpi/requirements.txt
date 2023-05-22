@@ -3,3 +3,4 @@ psutil
 fastapi
 smbus
 pi-ina219
+uvicorn
