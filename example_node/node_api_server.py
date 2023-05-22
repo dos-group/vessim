@@ -40,7 +40,7 @@ class FastApiServer(ABC):
         async def get_power() -> float:
             return self.get_power()
 
-        @self.app.get("/pid")
+        @self.app.put("/pid")
         async def set_pid(pid: int) -> int:
             return self.set_pid(pid)
 
