@@ -1,4 +1,6 @@
-from ..node_api_server import FastApiServer
+import sys
+sys.path.append("../")
+from node_api_server import FastApiServer
 from fastapi import HTTPException
 import subprocess
 
@@ -11,7 +13,7 @@ class VirtualNodeApiServer(FastApiServer):
         port: The port on which to run the FastAPI application.
     """
 
-    def __init__(self, host: str = "localhost", port: int = 8000):
+    def __init__(self, host: str = "0.0.0.0", port: int = 8000):
         super().__init__(host, port)
         self.pid = None
         self.power_config = {

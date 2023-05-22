@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from fastapi import FastAPI, HTTPException
 import psutil
+import uvicorn
 
 class FastApiServer(ABC):
     """An abstract base class that represents a FastAPI server.
@@ -10,7 +11,7 @@ class FastApiServer(ABC):
         port: The port on which to run the FastAPI application.
     """
 
-    def __init__(self, host: str = "localhost", port: int = 8000):
+    def __init__(self, host: str = "0.0.0.0", port: int = 8000):
         self.app = FastAPI()
         self.host = host
         self.port = port
@@ -89,6 +90,5 @@ class FastApiServer(ABC):
 
 
     def start(self):
-        """Start the FastAPI application.
-        """
-        self.app.run(host=self.host, port=self.port)
+        """Start the FastAPI application with a uvicorn server."""
+        uvicorn.run(self.app, host=self.host, port=self.port)

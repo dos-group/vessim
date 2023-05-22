@@ -1,4 +1,6 @@
-from ..node_api_server import FastApiServer
+import sys
+sys.path.append("../")
+from node_api_server import FastApiServer
 from lib.pi_controller import PiController
 from fastapi import HTTPException
 
@@ -13,7 +15,7 @@ class RpiNodeApiServer(FastApiServer):
 
     def __init__(self, host: str = "localhost", port: int = 8000):
         super().__init__(host, port)
-        self.pi_controller = PiMonitor()
+        self.pi_controller = PiController()
         self.power_config = {
             "power-saving": 800 * 1000,
             "normal": 1100 * 1000,
