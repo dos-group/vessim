@@ -8,7 +8,7 @@ resource "google_compute_instance" "node" {
   name                    = "node"
   machine_type            = var.machine_type
   tags                    = ["allow-ssh", "allow-http"]
-  metadata_startup_script = "apt update && apt upgrade -y; apt install python3-pip"
+  #metadata_startup_script =
   metadata                = {
     ssh-keys = "${local.user}:${tls_private_key.ssh.public_key_openssh}"
   }
@@ -26,6 +26,21 @@ resource "google_compute_instance" "node" {
     }
   }
 
+  # TODO this does not work
+  provisioner "remote-exec" {
+    inline = [
+      "sudo apt-get update",
+      "sudo apt-get upgrade -y",
+      "sudo apt-get install python3-pip -y",
+      "mkdir api_server"
+    ]
+    connection {
+      host = google_compute_address.external.address
+      user = local.user
+      private_key = local_file.ssh_private_key_pem.content
+    }
+  }
+
   provisioner "file" {
     source      = "../example_node/"
     destination = "api_server"
@@ -40,9 +55,8 @@ resource "google_compute_instance" "node" {
     inline = [
       "cd api_server/virtual_node",
       "sudo pip install -r requirements.txt",
-      "sudo python v_node_api_server.py"
+      "sudo python3 v_node_api_server.py"
     ]
-
     connection {
       host = google_compute_address.external.address
       user = local.user
