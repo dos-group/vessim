@@ -13,7 +13,7 @@ class RpiNodeApiServer(FastApiServer):
         port: The port on which to run the FastAPI application.
     """
 
-    def __init__(self, host: str = "localhost", port: int = 8000):
+    def __init__(self, host: str = "0.0.0.0", port: int = 8000):
         super().__init__(host, port)
         self.pi_controller = PiController()
         self.power_config = {
