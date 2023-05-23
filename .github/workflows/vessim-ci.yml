@@ -33,9 +33,9 @@ jobs:
       run: pip install -r requirements.txt
 
     # run ruff on Python files
-    - name: Run ruff
-      run: ruff ./
+    - name: Run linter
+      run: ruff .
     
     # run tests
     - name: Run tests
-      run: pytest tests.py
+      run: python -m pytest

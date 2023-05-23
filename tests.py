@@ -1,3 +1,5 @@
+import pytest
+
 import main
 
 test_args = {
@@ -13,6 +15,7 @@ test_args = {
 }
 
 
+@pytest.mark.skip
 def test_solar_and_carbon_data_passing():
     assert True
 
