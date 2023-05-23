@@ -18,7 +18,12 @@ class ComputingSystem(SingleModelSimulator):
     """Computing System simulator that executes its model."""
 
     def __init__(self):
+        self.step_size = None
         super().__init__(META, ComputingSystem)
+
+    def init(self, sid, time_resolution, step_size, eid_prefix=None):
+        self.step_size = step_size
+        super().init(sid, time_resolution, eid_prefix=eid_prefix)
 
     def create(self, num, model, *args, **kwargs):
         if num != 1:
@@ -30,6 +35,9 @@ class ComputingSystem(SingleModelSimulator):
             raise ValueError("At least one power meter needs to be specified.")
 
         return super().create(num, model, *args, **kwargs)
+
+    def next_step(self, time):
+        return time + self.step_size
 
 
 class ComputingSystemModel:
