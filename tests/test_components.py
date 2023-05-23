@@ -8,7 +8,6 @@ class TestCarbonIntensityAPI:
 
     @pytest.fixture
     def ci_api(self) -> CarbonIntensityAPI:
-        """This fixture will only be available within the scope of TestGroup"""
         index = [pd.to_datetime("2023-01-01T00:00:00"),
                  pd.to_datetime("2023-01-01T00:30:00"),
                  pd.to_datetime("2023-01-01T01:00:00")]

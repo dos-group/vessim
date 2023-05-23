@@ -16,7 +16,7 @@ class CarbonIntensityAPI:
         self.data = data
 
     def zones(self) -> List:
-        """Returns a list of all available zones"""
+        """Returns a list of all available zones."""
         return list(self.data.columns)
 
     def carbon_intensity_at(self, now: Time, zone: str):
