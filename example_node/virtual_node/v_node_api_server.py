@@ -1,8 +1,10 @@
 import sys
 sys.path.append("../")
+from linear_power_model import LinearPowerModel
 from node_api_server import FastApiServer
 from fastapi import HTTPException
 import subprocess
+import psutil
 
 class VirtualNodeApiServer(FastApiServer):
     """This class represents a virtual node API server, extending the base
@@ -21,6 +23,7 @@ class VirtualNodeApiServer(FastApiServer):
             "normal": 70,
             "high performance": 100
         }
+        self.power_model = LinearPowerModel(p_static=30, p_max=150)
 
 
     def set_power_mode(self, power_mode: str) -> str:
@@ -47,15 +50,12 @@ class VirtualNodeApiServer(FastApiServer):
 
 
     def get_power(self) -> float:
-        """Virtual nodes can not measure their own power consumption.
+        """Get the power usage of the virtual node.
 
-        Raises:
-            HTTPException: Always.
+        Returns:
+            The current power usage.
         """
-        raise HTTPException(
-            status_code=405,
-            detail="Virtual nodes can not measure their own power consumption."
-        )
+        return self.power_model(psutil.cpu_percent(1))
 
 
     def set_pid(self, pid: int) -> int:

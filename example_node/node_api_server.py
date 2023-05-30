@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from fastapi import FastAPI, HTTPException
-import psutil
 import uvicorn
 
 class FastApiServer(ABC):
@@ -32,10 +31,6 @@ class FastApiServer(ABC):
         @self.app.get("/power_mode")
         async def get_power_mode() -> str:
             return self.power_mode
-
-        @self.app.get("/cpu")
-        async def get_cpu() -> float:
-            return psutil.cpu_percent(1)
 
         @self.app.get("/power")
         async def get_power() -> float:

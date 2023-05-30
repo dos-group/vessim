@@ -1,3 +1,4 @@
 psutil
 fastapi
 uvicorn
+psutil
