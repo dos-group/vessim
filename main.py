@@ -7,19 +7,10 @@ while the arguments are specified in sim_args.
 """
 
 import random
-from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
-from typing import Tuple, Dict
-
 import mosaik
-from mosaik.util import connect_many_to_one
 
 
-from simulator.power_meter import (
-    PhysicalPowerMeter,
-    AwsPowerMeter,
-    LinearPowerModel,
-)
+from simulator.power_meter import PowerMeter
 from simulator.simple_battery_model import SimpleBatteryModel
 
 # Config file for parameters and settings specification.
