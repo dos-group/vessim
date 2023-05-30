@@ -8,6 +8,7 @@ while the arguments are specified in sim_args.
 
 import random
 import mosaik
+import time
 
 
 from simulator.power_meter import PowerMeter
@@ -77,11 +78,11 @@ def create_scenario_simple(world, simulation_args):
         world: holds all data required to specify and run scenario
         simulation_args: carbon sim from CSV dataset as specified in sim_config
     """
+    gcp_power_meter = PowerMeter("http://34.159.204.246:8000")
+    while True:
+        print(gcp_power_meter.power())
+        time.sleep(1)
     # computing_system_sim = world.start('ComputingSystemSim')
-    # aws_power_meter = AwsPowerMeter(instance_id="instance_id"
-    # power_model=LinearPowerModel(p_static=30, p_max=150))
-    # raspi_power_meter = PhysicalPowerMeter()
-    # computing_system =
     # computing_system_sim.ComputingSystem(power_meters=[raspi_power_meter])
 
     # Carbon Sim from CSV dataset

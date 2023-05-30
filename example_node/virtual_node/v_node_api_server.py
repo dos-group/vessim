@@ -16,7 +16,6 @@ class VirtualNodeApiServer(FastApiServer):
     """
 
     def __init__(self, host: str = "0.0.0.0", port: int = 8000):
-        super().__init__(host, port)
         self.pid = None
         self.power_config = {
             "power-saving": 50,
@@ -24,6 +23,7 @@ class VirtualNodeApiServer(FastApiServer):
             "high performance": 100
         }
         self.power_model = LinearPowerModel(p_static=30, p_max=150)
+        super().__init__(host, port)
 
 
     def set_power_mode(self, power_mode: str) -> str:
@@ -93,7 +93,11 @@ class VirtualNodeApiServer(FastApiServer):
 
             # start a new cpulimit process targeting the specified PID
             command = ["cpulimit", "-p", str(pid), "-l", str(limit_percent)]
-            subprocess.run(command, check=True)
+            subprocess.Popen(
+                command,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
         except subprocess.CalledProcessError as e:
             raise HTTPException(
                 status_code=500,

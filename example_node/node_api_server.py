@@ -15,7 +15,7 @@ class FastApiServer(ABC):
         self.host = host
         self.port = port
 
-        self.power_mode = "high-performance"
+        self.power_mode = "high performance"
 
         self.setup_routes()
         self.start()
