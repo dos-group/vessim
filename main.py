@@ -78,12 +78,9 @@ def create_scenario_simple(world, simulation_args):
         world: holds all data required to specify and run scenario
         simulation_args: carbon sim from CSV dataset as specified in sim_config
     """
-    gcp_power_meter = PowerMeter("http://34.159.204.246:8000")
-    while True:
-        print(gcp_power_meter.power())
-        time.sleep(1)
-    # computing_system_sim = world.start('ComputingSystemSim')
-    # computing_system_sim.ComputingSystem(power_meters=[raspi_power_meter])
+    gcp_power_meter = PowerMeter("http://34.159.204.246", name="gcp_power_meter")
+    computing_system_sim = world.start('ComputingSystemSim')
+    computing_system_sim.ComputingSystem(power_meters=[gcp_power_meter])
 
     # Carbon Sim from CSV dataset
     carbon_sim = world.start(

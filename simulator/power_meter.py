@@ -12,8 +12,8 @@ class PowerMeter():
         name: Name of the power meter as a string. Default to None.
     """
 
-    def __init__(self, server_address: str, name: Optional[str] = None):
-        self.http_client = HTTPClient(server_address)
+    def __init__(self, server_address: str, port: int = 8000, name: Optional[str] = None):
+        self.http_client = HTTPClient(f"{server_address}:{port}")
         global POWER_METER_COUNT
         POWER_METER_COUNT += 1
         if name is None:
@@ -22,6 +22,6 @@ class PowerMeter():
             self.name = name
 
 
-    def power(self) -> float:
+    def __call__(self) -> float:
         """Measure and return the current node power demand."""
         return float(self.http_client.get("/power"))
