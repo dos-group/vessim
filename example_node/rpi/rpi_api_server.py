@@ -5,8 +5,7 @@ from lib.pi_controller import PiController
 from fastapi import HTTPException
 
 class RpiNodeApiServer(FastApiServer):
-    """This class represents a Raspberry Pi node API server, extending the base
-    FastApiServer class.
+    """A Raspberry Pi node API server, extending the base FastApiServer class.
 
     Args:
         host: The host on which to run the FastAPI application.
@@ -14,18 +13,16 @@ class RpiNodeApiServer(FastApiServer):
     """
 
     def __init__(self, host: str = "0.0.0.0", port: int = 8000):
-        super().__init__(host, port)
         self.pi_controller = PiController()
         self.power_config = {
             "power-saving": 800 * 1000,
             "normal": 1100 * 1000,
-            "high performance": 1400 * 1000
+            "high performance": 1400 * 1000,
         }
-
+        super().__init__(host, port)
 
     def set_power_mode(self, power_mode: str) -> str:
-        """Set the power mode for the server and adjusts the max frequency of
-        the Pi accordingly.
+        """Sets power mode for server and adjusts the max frequency of Pi accordingly.
 
         Args:
             power_mode: The power mode to set.
@@ -37,7 +34,6 @@ class RpiNodeApiServer(FastApiServer):
         self.pi_controller.set_max_frequency(self.power_config[power_mode])
         return power_mode
 
-
     def get_power(self) -> float:
         """Get the power usage of the Raspberry Pi.
 
@@ -46,10 +42,8 @@ class RpiNodeApiServer(FastApiServer):
         """
         return self.pi_controller.power()
 
-
     def set_pid(self, pid: int) -> int:
-        """The Raspberry Pi node uses DVFS instead of cpulimit and doesn't
-        require a PID to be set.
+        """Raspberry Pi node uses DVFS instead of cpulimit and therefore can't set PID.
 
         Args:
             pid: The PID to set.
@@ -60,7 +54,7 @@ class RpiNodeApiServer(FastApiServer):
         raise HTTPException(
             status_code=405,
             detail="The Raspberry Pi node uses DVFS instead of cpulimit "
-                   "and requires no pid."
+            "and requires no pid.",
         )
 
 

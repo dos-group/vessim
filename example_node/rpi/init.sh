@@ -20,6 +20,10 @@ PROJ_PATH=$(pwd)
 echo "Copying project to /root..."
 cp -r $PROJ_PATH /root/
 
+# copy the node_api_server module to /root
+echo "Copying node_api_server to /root/"
+cp $PROJ_PATH/../node_api_server.py /root/
+
 # change the permissions of the project
 echo "Setting permissions..."
 chown -R root:root /root/rpi
