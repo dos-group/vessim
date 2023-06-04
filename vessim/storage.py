@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 
+from loguru import logger
+
 
 class Storage(ABC):
 
@@ -26,6 +28,7 @@ class SimpleBattery(Storage):
         min_soc: Minimum allowed soc for the battery
         c_rate: C-rate (https://www.batterydesign.net/electrical/c-rate/)
     """
+    # TODO Test battery
 
     def __init__(self,
                  capacity: float,
@@ -39,17 +42,18 @@ class SimpleBattery(Storage):
         self.min_soc = min_soc
         assert 0 < c_rate
         self.max_charge_power = c_rate * self.capacity / 3600
+        self.max_discharge_power = -c_rate * self.capacity / 3600
 
     def update(self, power: float, duration: int) -> float:
-        # TODO implement exceeding max charge power
-        assert power <= self.max_charge_power, (
-            f"Cannot charge {power} W: Exceeding max charge power of "
-            f"{self.max_charge_power}."
-        )
-        assert power >= -self.max_charge_power, (
-            f"Cannot discharge {power} W: Exceeding max discharge power of "
-            f"{self.max_charge_power}."
-        )
+        if power <= self.max_charge_power:
+            logger.info(f"Trying to charge storage '{__class__.__name__}' with "
+                        f"{power}W but only {self.max_charge_power} are supported.")
+            power = self.max_charge_power
+
+        if power <= self.max_discharge_power:
+            logger.info(f"Trying to discharge storage '{__class__.__name__}' with "
+                        f"{power}W but only {self.max_discharge_power} are supported.")
+            power = self.max_discharge_power
 
         self.charge_level += power * duration  # duration seconds of charging
         excess_power = 0
