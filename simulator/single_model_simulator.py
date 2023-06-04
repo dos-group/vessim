@@ -1,7 +1,9 @@
+from abc import ABC, abstractmethod
+
 import mosaik_api
 
 
-class SingleModelSimulator(mosaik_api.Simulator):
+class SingleModelSimulator(mosaik_api.Simulator, ABC):
     """Generic class for single-model simulators or controllers.
 
     Many usecases for simulators simply require setting all inputs attr values
@@ -32,16 +34,14 @@ class SingleModelSimulator(mosaik_api.Simulator):
         self.model_class = model_class
         self.entities = {}
         self.time = 0
-        self.step_size = 1
 
-    def init(self, sid, time_resolution, step_size=1, eid_prefix=None):
+    def init(self, sid, time_resolution, eid_prefix=None):
         """Initialize Simulator and set `step_size` and `eid_prefix`."""
         if float(time_resolution) != 1.0:
             raise ValueError(
                 f"{self.__class__.__name__} only supports time_resolution=1., "
                 f"but {time_resolution} was set."
             )
-        self.step_size = step_size
         if eid_prefix is not None:
             self.eid_prefix = eid_prefix
         return self.meta
@@ -53,8 +53,6 @@ class SingleModelSimulator(mosaik_api.Simulator):
         for i in range(next_eid, next_eid + num):
             # Instantiate `model_class` specified in constructor and pass through args
             model_instance = self.model_class(*args, **kwargs)
-            if hasattr(model_instance, "step_size"):
-                setattr(model_instance, "step_size", self.step_size)
             eid = self.eid_prefix + str(i)
             self.entities[eid] = model_instance
             entities.append({"eid": eid, "type": model})
@@ -68,8 +66,11 @@ class SingleModelSimulator(mosaik_api.Simulator):
             # We assume a single input per value -> take first item from dict
             args = {attr: list(val_dict.values())[0] for attr, val_dict in attrs.items()}
             entity.step(**args)
-        # Support all simulator types
-        return None if self.meta["type"] == "event-based" else time + self.step_size
+        return self.next_step(time)
+
+    @abstractmethod
+    def next_step(self, time):
+        """Return time of next simulation step (None for event-based)."""
 
     def get_data(self, outputs):
         """Return all requested data as attr from the `model_instance`."""

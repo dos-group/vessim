@@ -22,7 +22,12 @@ class VirtualEnergySystem(SingleModelSimulator):
     """Virtual Energy System (VES) simulator that executes the VES model."""
 
     def __init__(self) -> None:
+        self.step_size = None
         super().__init__(META, VirtualEnergySystemModel)
+
+    def init(self, sid, time_resolution, step_size, eid_prefix=None):
+        self.step_size = step_size
+        super().init(sid, time_resolution, eid_prefix=eid_prefix)
 
     def finalize(self) -> None:
         """Stops the uvicorn server after the simulation has finished."""
@@ -30,9 +35,11 @@ class VirtualEnergySystem(SingleModelSimulator):
         for model_instance in self.entities.values():
             model_instance.redis_docker.stop()
 
+    def next_step(self, time):
+        return time + self.step_size
 
 # TODO in the future we have to differentiate between the energy system
-# and the virtualization layers.
+#   and the virtualization layers.
 
 
 class VirtualEnergySystemModel:

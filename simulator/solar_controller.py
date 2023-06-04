@@ -23,6 +23,9 @@ class SolarController(SingleModelSimulator):
     def __init__(self):
         super().__init__(META, SolarAgent)
 
+    def next_step(self, time):
+        return None
+
 
 class SolarAgent:
     """Class representing a solar agent for solar power production control.
