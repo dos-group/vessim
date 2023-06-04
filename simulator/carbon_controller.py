@@ -23,6 +23,9 @@ class CarbonController(SingleModelSimulator):
     def __init__(self):
         super().__init__(META, CarbonAgent)
 
+    def next_step(self, time):
+        return None
+
 
 class CarbonAgent:
     """Class to represent the Carbon Agent.
