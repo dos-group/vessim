@@ -1,0 +1,4 @@
+psutil
+fastapi
+uvicorn
+psutil
