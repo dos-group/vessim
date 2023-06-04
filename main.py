@@ -66,7 +66,7 @@ def main(start_date: str,
     solar_agent = solar_controller.SolarAgent()
 
     # VES Sim & Battery Sim
-    simple_battery = SimpleBattery(
+    battery = SimpleBattery(
         capacity=battery_capacity,
         charge_level=battery_capacity * battery_initial_soc,
         min_soc=battery_min_soc,
@@ -74,7 +74,7 @@ def main(start_date: str,
     )
     virtual_energy_system_sim = world.start("VirtualEnergySystem")
     virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystemModel(
-        battery=simple_battery
+        battery=battery
     )
 
     collector = world.start("Collector")
