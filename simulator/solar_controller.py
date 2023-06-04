@@ -1,5 +1,5 @@
 import mosaik_api
-from simulator.single_model_simulator import SingleModelSimulator
+from vessim.core import VessimSimulator, VessimModel
 
 META = {
     "type": "event-based",
@@ -13,7 +13,7 @@ META = {
 }
 
 
-class SolarController(SingleModelSimulator):
+class SolarController(VessimSimulator):
     """Solar Controller.
 
     Acts as medium between Solar CSV module and ecovisor or direct consumer since producer
@@ -27,7 +27,7 @@ class SolarController(SingleModelSimulator):
         return None
 
 
-class SolarAgent:
+class SolarAgent(VessimModel):
     """Class representing a solar agent for solar power production control.
 
     Args:
@@ -39,7 +39,7 @@ class SolarAgent:
         self.scaling_factor = scaling_factor
         self.solar = 0.0
 
-    def step(self, solar: float) -> None:
+    def step(self, solar: float, time: int) -> None:
         """Compute new production value.
 
         Update the solar power based on the given production value and the

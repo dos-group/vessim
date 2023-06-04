@@ -1,4 +1,4 @@
-from simulator.single_model_simulator import SingleModelSimulator
+from vessim.core import VessimSimulator, VessimModel
 from simulator.power_meter import PowerMeter
 from typing import List
 
@@ -14,12 +14,12 @@ META = {
 }
 
 
-class ComputingSystem(SingleModelSimulator):
+class ComputingSystem(VessimSimulator):
     """Computing System simulator that executes its model."""
 
     def __init__(self):
         self.step_size = None
-        super().__init__(META, ComputingSystem)
+        super().__init__(META, ComputingSystemModel)
 
     def init(self, sid, time_resolution, step_size, eid_prefix=None):
         self.step_size = step_size
@@ -40,7 +40,7 @@ class ComputingSystem(SingleModelSimulator):
         return time + self.step_size
 
 
-class ComputingSystemModel:
+class ComputingSystemModel(VessimModel):
     """Model of the computing system.
 
     This model considers the power usage effectiveness (PUE) and power
@@ -59,7 +59,7 @@ class ComputingSystemModel:
         self.p_cons = 0
         self.pue = pue
 
-    def step(self):
+    def step(self, time: int):
         """Updates the power consumption of the system.
 
         The power consumption is calculated as the product of the PUE and the

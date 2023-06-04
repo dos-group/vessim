@@ -1,5 +1,5 @@
 import mosaik_api
-from simulator.single_model_simulator import SingleModelSimulator
+from vessim.core import VessimSimulator, VessimModel
 from vessim.storage import SimpleBattery
 from simulator.redis_docker import RedisDocker
 from fastapi import FastAPI, HTTPException
@@ -18,7 +18,7 @@ META = {
 }
 
 
-class VirtualEnergySystem(SingleModelSimulator):
+class VirtualEnergySystem(VessimSimulator):
     """Virtual Energy System (VES) simulator that executes the VES model."""
 
     def __init__(self) -> None:
@@ -42,7 +42,7 @@ class VirtualEnergySystem(SingleModelSimulator):
 #   and the virtualization layers.
 
 
-class VirtualEnergySystemModel:
+class VirtualEnergySystemModel(VessimModel):
     """A virtual energy system model.
 
     Args:
@@ -83,7 +83,7 @@ class VirtualEnergySystemModel:
         f_api = self.init_fastapi()
         self.redis_docker.run(f_api, host=api_host)
 
-    def step(self, consumption: float, solar: float, ci: float) -> None:
+    def step(self, consumption: float, solar: float, ci: float, time: int) -> None:
         """Step the virtual energy system model.
 
         Executes a single time step of the energy system model, calculating
