@@ -20,7 +20,7 @@ class CarbonIntensityApi:
         if unit == "lb_per_MWh":
             self.data = self.data * 0.45359237
         elif unit != "g_per_kWh":
-            raise ValueError(f"Carbin intensity unit '{unit}' is not supported.")
+            raise ValueError(f"Carbon intensity unit '{unit}' is not supported.")
 
     def zones(self) -> List:
         """Returns a list of all available zones."""
