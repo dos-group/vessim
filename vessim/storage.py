@@ -1,4 +1,23 @@
-class SimpleBatteryModel:
+from abc import ABC, abstractmethod
+
+
+class Storage(ABC):
+
+    @abstractmethod
+    def update(self, power: float, duration: int) -> float:
+        """Feed or draw energy for specified duration.
+
+        Args:
+            power: Charging if positive, discharging if negative.
+            duration: Duration in seconds for which the storage will be (dis)charged.
+
+        Returns:
+            The excess energy after the update: Positive if fully charged, negative if
+            empty, 0 otherwise.
+        """
+
+
+class SimpleBattery(Storage):
     """(Way too) simple battery.
 
     Args:
@@ -8,34 +27,20 @@ class SimpleBatteryModel:
         c_rate: C-rate (https://www.batterydesign.net/electrical/c-rate/)
     """
 
-    def __init__(
-        self, capacity: float, charge_level: float, min_soc: float, c_rate: float
-    ):
+    def __init__(self,
+                 capacity: float,
+                 charge_level: float,
+                 min_soc: float,
+                 c_rate: float):
         self.capacity = capacity
         assert 0 <= charge_level <= self.capacity
         self.charge_level = charge_level
-        # TODO min_soc is in % and charge_level in Ws, they should not be compared
-        assert 0 <= min_soc <= self.charge_level
+        assert 0 <= min_soc <= self.soc()
         self.min_soc = min_soc
         assert 0 < c_rate
         self.max_charge_power = c_rate * self.capacity / 3600
 
     def update(self, power: float, duration: int) -> float:
-        """Can be called during simulation to feed or draw energy for specified duration.
-
-        Args:
-            power:
-                If `power` is positive, the battery is charged.
-                If `power` is negative, the battery is discharged.
-            duration:
-                The duration in seconds for which battery will be charged or discharged.
-
-        Returns:
-            The excess energy after the update:
-                - Positive if your battery is fully charged
-                - Negative if your battery is empty
-                - else 0
-        """
         # TODO implement exceeding max charge power
         assert power <= self.max_charge_power, (
             f"Cannot charge {power} W: Exceeding max charge power of "
@@ -49,7 +54,6 @@ class SimpleBatteryModel:
         self.charge_level += power * duration  # duration seconds of charging
         excess_power = 0
 
-        # TODO: implement conversion losses
         abs_min_soc = self.min_soc * self.capacity
         if self.charge_level < abs_min_soc:
             excess_power = (self.charge_level - abs_min_soc) / duration
