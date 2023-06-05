@@ -8,10 +8,8 @@ while the arguments are specified in sim_args.
 
 import random
 import mosaik
-import time
 
-
-from simulator.power_meter import PowerMeter
+from simulator.power_meter import NodeApiMeter
 from simulator.simple_battery_model import SimpleBatteryModel
 
 # Config file for parameters and settings specification.
@@ -78,7 +76,7 @@ def create_scenario_simple(world, simulation_args):
         world: holds all data required to specify and run scenario
         simulation_args: carbon sim from CSV dataset as specified in sim_config
     """
-    gcp_power_meter = PowerMeter("http://34.159.204.246", name="gcp_power_meter")
+    gcp_power_meter = NodeApiMeter("http://34.159.204.246", name="gcp_power_meter")
     computing_system_sim = world.start('ComputingSystemSim')
     computing_system_sim.ComputingSystem(power_meters=[gcp_power_meter])
 
