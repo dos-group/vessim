@@ -1,34 +1,70 @@
-## RPI Node Setup
+# VESSIM Node API Server
 
-```
+This repository contains an API server designed to run on different types of
+nodes, specifically tailored for a Raspberry Pi and a Linux node. The project
+is designed to be integrated into the VESSIM environment.
+
+## Description
+
+The API server is implemented as two distinct classes - `RpiNodeApiServer` and
+`VirtualNodeApiServer` - both inheriting from the abstract `FastApiServer`
+class.
+
+The `RpiNodeApiServer` is specifically tailored for a Raspberry Pi, using
+dynamic voltage and frequency scaling (DVFS) for power management, while the
+`VirtualNodeApiServer` is designed to run on a Linux node, using `cpulimit` for
+process CPU usage limitation. Both implementations allow the control of power
+modes via API calls.
+
+## Setup
+### Raspberry Pi Node Setup
+
+For setting up the project on a Raspberry Pi, follow the below instructions:
+
+1. SSH into your Raspberry Pi:
+```bash
 ssh pi@raspberrypi
+```
+
+2. Update and upgrade your Pi:
+```bash
 sudo apt update && sudo apt upgrade
+```
+
+3. Install necessary dependencies:
+```bash
 sudo apt install git vim python3-pip i2c-tools
-sudo pip install smbus psutil cpufreq pi-ina219
-git clone https://github.com/opsengine/cpulimit.git
-cd cpulimit; make; sudo cp src/cpulimit /usr/bin; cd ..; rm -rf cpulimit
+```
+
+4. Clone the repository:
+```bash
 git clone https://github.com/dos-group/vessim/
-sudo sh vessim/example_node/init.sh
+```
+
+5. Navigate to the example_node directory and install Python dependencies:
+```bash
+cd vessim/example_node/rpi
+sudo pip install -r requirements.txt
+```
+
+6. Execute initialization script:
+```bash
+sudo sh init.sh
+```
+
+7. Reboot your Raspberry Pi:
+```bash
 sudo reboot
 ```
 
-The installation of PyTorch and Torchvision on Raspberry Pi via `pip` is not
-possible as the package is not compiled for the Pi's architecture. However,
-PyTorch and Torchvision can be installed on Raspberry Pi by compiling it
-manually or by using a pre-built wheel. For more detailed instructions on the
-installation process, please refer to the following resource:
-https://qengineering.eu/install-pytorch-on-raspberry-pi-4.html.
+## Usage
 
+Once installed and set up, you can start the API server. It will start
+listening for incoming HTTP requests on the defined host and port.
 
-Base workload to run on a client
+The server exposes the following endpoints:
 
-1. Install the requirements: `pip3 install -r requirements.txt`
-2. Run the PyTorch training script in the background: `python pytorch_training.py &`
-    - Via `jobs` you can list background jobs and retrieve them via `fg`
-3. Store PID of the last executed process in variable: `pytorch=$!`
-
-TODO:
-- `cpulimit`?
-- Measure CPU usage of process?
-  - e.g. `top -b -n 2 -d 1 -p $pytorch | tail -1 | awk '{print $9}'` (https://stackoverflow.com/a/52751050/5373209)
-
+- `PUT /power_mode`: Set the power mode for the server. The available power modes are `power-saving`, `normal`, and `high performance`.
+- `GET /power_mode`: Retrieve the current power mode of the server.
+- `GET /power`: Retrieve the current power usage of the node.
+- `PUT /pid`: Set the PID of a process for virtual nodes to limit its CPU usage. For the Raspberry Pi node, this operation is not supported, as DVFS is used instead of `cpulimit`.

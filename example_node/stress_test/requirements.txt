@@ -1,3 +1,0 @@
-cpufreq==0.3.5
-pi_ina219==1.4.0
-psutil==5.9.1

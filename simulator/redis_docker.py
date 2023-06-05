@@ -24,7 +24,10 @@ class RedisDocker:
         """
         self.host = host
         self.port = port
-        self.init_docker()
+        try:
+            self.init_docker()
+        except docker.errors.DockerException:
+            raise RuntimeError("Please start Docker before execution.")
         self.redis = self.connect_redis()
 
     def init_docker(self) -> None:
@@ -82,7 +85,8 @@ class RedisDocker:
 
     def __del__(self) -> None:
         """Stops the Docker container with Redis wheninstance is deleted."""
-        self.redis_container.stop()
+        if hasattr(self, "redis_container"):
+            self.redis_container.stop()
 
 
 class ServerThread(threading.Thread):

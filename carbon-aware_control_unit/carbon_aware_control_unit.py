@@ -1,10 +1,9 @@
-from http_client import HTTPClient
+from ..lib.http_client import HTTPClient
 import simpy
 from typing import Dict
 
 
-# TODO rename
-class Battery:
+class RemoteBattery:
     """Initializes a battery instance that holds some info of the remote battery.
 
     Args:
@@ -69,7 +68,7 @@ class CarbonAwareControlUnit:
         Yields:
             A SimPy timeout event that delays the process by one unit of time.
         """
-        battery = Battery(soc=self.client.get('/battery-soc'))
+        battery = RemoteBattery(soc=self.client.get('/battery-soc'))
         solar = self.client.get('/solar')
         ci = self.client.get('/ci')
         nodes_power_mode = {}

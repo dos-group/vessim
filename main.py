@@ -5,6 +5,7 @@ applications'.
 """
 
 import mosaik
+from simulator.power_meter import NodeApiMeter
 from simulator.simple_battery_model import SimpleBatteryModel
 
 # Config file for parameters and settings specification.
@@ -42,12 +43,9 @@ def main(start_date: str,
     """Execute the example scenario simulation."""
     world = mosaik.World(sim_config)
 
-    # computing_system_sim = world.start('ComputingSystemSim')
-    # aws_power_meter = AwsPowerMeter(instance_id="instance_id"
-    # power_model=LinearPowerModel(p_static=30, p_max=150))
-    # raspi_power_meter = PhysicalPowerMeter()
-    # computing_system =
-    # computing_system_sim.ComputingSystem(power_meters=[raspi_power_meter])
+    gcp_power_meter = NodeApiMeter("http://34.159.204.246", name="gcp_power_meter")
+    computing_system_sim = world.start('ComputingSystemSim')
+    computing_system_sim.ComputingSystem(power_meters=[gcp_power_meter])
 
     # Carbon Sim from CSV dataset
     carbon_sim = world.start("CSV", sim_start=start_date, datafile=carbon_data_file)
