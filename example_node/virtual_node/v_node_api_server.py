@@ -25,7 +25,6 @@ class VirtualNodeApiServer(FastApiServer):
         self.power_model = LinearPowerModel(p_static=30, p_max=150)
         super().__init__(host, port)
 
-
     def set_power_mode(self, power_mode: str) -> str:
         """Set the power mode for the server and limits the cpu usage of the
         process with the given PID.
@@ -40,14 +39,8 @@ class VirtualNodeApiServer(FastApiServer):
             HTTPException: If no PID is set before calling this method.
         """
         super().set_power_mode(power_mode)
-        if self.pid is None:
-            raise HTTPException(
-                status_code=400,
-                detail="Please first specify the PID of a process to limit its cpu usage."
-            )
-        self.cpulimit(self.pid, self.power_config[power_mode])
+        # TODO
         return power_mode
-
 
     def get_power(self) -> float:
         """Get the power usage of the virtual node.
@@ -57,8 +50,7 @@ class VirtualNodeApiServer(FastApiServer):
         """
         return self.power_model(psutil.cpu_percent(1))
 
-
-    def set_pid(self, pid: int) -> int:
+    def _set_pid(self, pid: int) -> int:
         """Set the PID for the server and limit its cpu usage according to the
         current power mode.
 
@@ -69,11 +61,10 @@ class VirtualNodeApiServer(FastApiServer):
             The new PID.
         """
         self.pid = pid
-        self.cpulimit(pid, self.power_config[self.power_mode])
+        self._cpulimit(pid, self.power_config[self.power_mode])
         return pid
 
-
-    def cpulimit(self, pid: int, limit_percent: int) -> None:
+    def _cpulimit(self, pid: int, limit_percent: int) -> None:
         """Limits the cpu usage of the process with the given PID.
 
         Args:

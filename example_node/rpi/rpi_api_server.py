@@ -42,21 +42,6 @@ class RpiNodeApiServer(FastApiServer):
         """
         return self.pi_controller.power()
 
-    def set_pid(self, pid: int) -> int:
-        """Raspberry Pi node uses DVFS instead of cpulimit and therefore can't set PID.
-
-        Args:
-            pid: The PID to set.
-
-        Raises:
-            HTTPException: Always.
-        """
-        raise HTTPException(
-            status_code=405,
-            detail="The Raspberry Pi node uses DVFS instead of cpulimit "
-            "and requires no pid.",
-        )
-
 
 if __name__ == "__main__":
     server = RpiNodeApiServer()
