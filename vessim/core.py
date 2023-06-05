@@ -7,7 +7,7 @@ import mosaik_api
 class VessimModel:
 
     @abstractmethod
-    def step(self):
+    def step(self, time: int, **kwargs):
         pass
 
 

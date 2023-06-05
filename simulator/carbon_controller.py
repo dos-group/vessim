@@ -1,4 +1,3 @@
-import mosaik_api
 from vessim.core import VessimSimulator, VessimModel
 
 META = {
@@ -60,7 +59,7 @@ class CarbonAgent(VessimModel):
             raise ValueError(f"{unit} is not supported by vessim")
         self.ci = 0.0
 
-    def step(self, ci: float, time: int) -> None:
+    def step(self, time: int, ci: float) -> None:
         """Calculation of carbon intensity.
 
         Based on the intensity input from the data and the conversion factor,

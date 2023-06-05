@@ -107,10 +107,6 @@ def main(start_date: str,
         "ci",
     )
 
-    # world.connect(load, monitor, 'p_mw')
-    # world.connect(ext_grid, monitor, 'p_mw')
-    # mosaik.util.connect_many_to_one(world, lines, monitor, 'loading_percent')
-
     world.run(until=duration, print_progress=False, rt_factor=1)
 
 

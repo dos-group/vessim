@@ -1,4 +1,3 @@
-import mosaik_api
 from vessim.core import VessimSimulator, VessimModel
 
 META = {
@@ -39,7 +38,7 @@ class SolarAgent(VessimModel):
         self.scaling_factor = scaling_factor
         self.solar = 0.0
 
-    def step(self, solar: float, time: int) -> None:
+    def step(self, time: int, solar: float) -> None:
         """Compute new production value.
 
         Update the solar power based on the given production value and the
