@@ -83,7 +83,7 @@ class VirtualEnergySystemModel(VessimModel):
         f_api = self.init_fastapi()
         self.redis_docker.run(f_api, host=api_host)
 
-    def step(self, consumption: float, solar: float, ci: float, time: int) -> None:
+    def step(self, time: int, consumption: float, solar: float, ci: float) -> None:
         """Step the virtual energy system model.
 
         Executes a single time step of the energy system model, calculating
