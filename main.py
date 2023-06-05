@@ -1,14 +1,10 @@
-"""Runs a simulation of a virtual energy system using Mosaik.
+"""1st example scenario.
 
-It is connecting various entities such as physical and cloud power meters,
-carbon and solar controllers, and a virtual energy system model.
-The simulation configuration is specified in sim_config,
-while the arguments are specified in sim_args.
+As described in 'Software-in-the-loop simulation for developing and testing carbon-aware
+applications'.
 """
 
-import random
 import mosaik
-
 from simulator.power_meter import NodeApiMeter
 from simulator.simple_battery_model import SimpleBatteryModel
 
@@ -35,57 +31,24 @@ sim_config = {
     },
 }
 
-# Arguments that customize and parameterize the simulation.
-sim_args = {
-    "START": "2014-01-01 00:00:00",
-    "END": 300,  # 30 * 24 * 3600  # 10 days
-    "GRID_FILE": "data/custom.json",  # "data/custom.json" 'data/demo_lv_grid.json'
-    "SOLAR_DATA": "data/pv_10kw.csv",
-    "CARBON_DATA": "data/ger_ci_testing.csv",
-    "BATTERY_MIN_SOC": 0.6,
-    "BATTERY_CAPACITY": 10 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
-    "BATTERY_INITIAL_CHARGE_LEVEL": 0.7,
-    "BATTERY_C_RATE": 0.2,
-}
 
+def main(start_date: str,
+         duration: int,
+         carbon_data_file: str,
+         solar_data_file: str,
+         battery_capacity: float,
+         battery_initial_soc: float,
+         battery_min_soc: float,
+         battery_c_rate: float):
+    """Execute the example scenario simulation."""
+    world = mosaik.World(sim_config)
 
-def main(simulation_args):
-    """The main function for mosaik world creation.
-
-    Creates a Mosaik world, sets up the simulation scenario using
-    create_scenario_simple(), and runs the simulation for the specified duration
-
-    Args:
-        simulation_args: directory with necessary arguments for the mosaik
-            simulation as can be seen above
-    """
-    random.seed(23)
-    world = mosaik.World(sim_config)  # type: ignore
-    create_scenario_simple(world, simulation_args)
-    world.run(until=simulation_args["END"], print_progress=False, rt_factor=1)
-
-
-def create_scenario_simple(world, simulation_args):
-    """Sets up the simulation scenario.
-
-    It creates and connects various entities,
-    including the carbon and solar controllers, the virtual energy system model,
-    and a 'Collector' entity to monitor the simulation.
-
-    Args:
-        world: holds all data required to specify and run scenario
-        simulation_args: carbon sim from CSV dataset as specified in sim_config
-    """
     gcp_power_meter = NodeApiMeter("http://34.159.204.246", name="gcp_power_meter")
     computing_system_sim = world.start('ComputingSystemSim')
     computing_system_sim.ComputingSystem(power_meters=[gcp_power_meter])
 
     # Carbon Sim from CSV dataset
-    carbon_sim = world.start(
-        "CSV",
-        sim_start=simulation_args["START"],
-        datafile=simulation_args["CARBON_DATA"],
-    )
+    carbon_sim = world.start("CSV", sim_start=start_date, datafile=carbon_data_file)
     carbon = carbon_sim.CarbonIntensity.create(1)[0]
 
     # Carbon Controller acts as a medium between carbon module and VES or
@@ -94,11 +57,7 @@ def create_scenario_simple(world, simulation_args):
     carbon_agent = carbon_controller.CarbonAgent()
 
     # Solar Sim from CSV dataset
-    solar_sim = world.start(
-        "CSV",
-        sim_start=simulation_args["START"],
-        datafile=simulation_args["SOLAR_DATA"],
-    )
+    solar_sim = world.start("CSV", sim_start=start_date, datafile=solar_data_file)
     solar = solar_sim.PV.create(1)[0]
 
     # Solar Controller acts as medium between solar module and VES or consumer,
@@ -108,11 +67,10 @@ def create_scenario_simple(world, simulation_args):
 
     # VES Sim & Battery Sim
     simple_battery = SimpleBatteryModel(
-        capacity=simulation_args["BATTERY_CAPACITY"],
-        charge_level=simulation_args["BATTERY_INITIAL_CHARGE_LEVEL"]
-        * simulation_args["BATTERY_CAPACITY"],
-        min_soc=simulation_args["BATTERY_MIN_SOC"],
-        c_rate=simulation_args["BATTERY_C_RATE"],
+        capacity=battery_capacity,
+        charge_level=battery_capacity * battery_initial_soc,
+        min_soc=battery_min_soc,
+        c_rate=battery_c_rate,
     )
     virtual_energy_system_sim = world.start("VirtualEnergySystem")
     virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystemModel(
@@ -164,6 +122,17 @@ def create_scenario_simple(world, simulation_args):
     # world.connect(ext_grid, monitor, 'p_mw')
     # mosaik.util.connect_many_to_one(world, lines, monitor, 'loading_percent')
 
+    world.run(until=duration, print_progress=False, rt_factor=1)
+
 
 if __name__ == "__main__":
-    main(sim_args)
+    main(
+        start_date="2014-01-01 00:00:00",
+        duration=300,
+        carbon_data_file="data/ger_ci_testing.csv",
+        solar_data_file="data/pv_10kw.csv",
+        battery_capacity=10 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
+        battery_initial_soc=.7,
+        battery_min_soc=.6,
+        battery_c_rate=.2,
+    )
