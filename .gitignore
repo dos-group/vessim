@@ -24,6 +24,7 @@ data.csv
 *.tfstate.backup
 *.tfplan
 *.terraform.*
+*.tfvars
 
 # Ignore any .terraform directories
 **/.terraform/*
