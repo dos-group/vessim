@@ -11,8 +11,7 @@ class HTTPClientError(Exception):
 
 
 class HTTPClient:
-    """
-    Class for making HTTP requests to the VESSIM API server.
+    """Class for making HTTP requests to the VESSIM API server.
 
     Args:
         server_address: The address of the server to connect to.
@@ -22,10 +21,8 @@ class HTTPClient:
     def __init__(self, server_address: str) -> None:
         self.server_address = server_address
 
-
     def get(self, route: str) -> any:
-        """
-        Sends a GET request to the server and retrieves data.
+        """Sends a GET request to the server and retrieves data.
 
         Args:
             route: The path of the endpoint to send the request to.
@@ -45,12 +42,13 @@ class HTTPClient:
                 data = response.content.decode('utf-8') # fallback to string if not JSON
             return data
         else:
-            raise HTTPClientError(response.status_code, f'Failed to retrieve data from {route}')
-
+            raise HTTPClientError(
+                response.status_code,
+                f'Failed to retrieve data from {route}'
+            )
 
     def put(self, route: str, data: Dict[str, Any]) -> None:
-        """
-        Sends a PUT request to the server to update data.
+        """Sends a PUT request to the server to update data.
 
         Raises:
             HTTPClientError if the data could not be updated at route
@@ -60,8 +58,15 @@ class HTTPClient:
             data: The data to be updated, in dictionary format.
         """
         headers = {'Content-type': 'application/json'}
-        response = requests.put(self.server_address + route, data=json.dumps(data), headers=headers)
+        response = requests.put(
+            self.server_address + route,
+            data=json.dumps(data),
+            headers=headers
+        )
         if response.status_code == 200:
             print(f'Data successfully updated at {route}')
         else:
-            raise HTTPClientError(response.status_code, f'Failed to update data at {route}')
+            raise HTTPClientError(
+                response.status_code,
+                f'Failed to update data at {route}'
+            )

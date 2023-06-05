@@ -1,12 +1,15 @@
+locals {
+  user = split("@", data.google_client_openid_userinfo.me.email)[0]
+}
+
 ### node
 
 resource "google_compute_instance" "node" {
   name                    = "node"
   machine_type            = var.machine_type
-  tags                    = ["allow-ssh"]
-  # metadata_startup_script = "apt update && apt upgrade"
+  tags                    = ["allow-ssh", "allow-http", "allow-icmp"]
   metadata                = {
-    ssh-keys = "${split("@", data.google_client_openid_userinfo.me.email)[0]}:${tls_private_key.ssh.public_key_openssh}"
+    ssh-keys = "${local.user}:${tls_private_key.ssh.public_key_openssh}"
   }
 
   boot_disk {
@@ -19,6 +22,34 @@ resource "google_compute_instance" "node" {
     network = google_compute_network.vpc_network.name
     access_config {
       nat_ip = google_compute_address.external.address
+    }
+  }
+
+  metadata_startup_script = <<SCRIPT
+    #!/bin/bash
+
+    server_dir=/home/${local.user}/api_server
+    mkdir -p $server_dir
+    chown -R ${local.user}:${local.user} $server_dir
+
+    until [ -d $server_dir/virtual_node ]; do
+      sleep 1
+    done
+
+    apt-get update
+    apt-get install python3-pip cpulimit -y
+    cd $server_dir/virtual_node
+    pip3 install -r requirements.txt
+    python3 v_node_api_server.py
+SCRIPT
+
+  provisioner "file" {
+    source      = "../example_node/"
+    destination = "api_server"
+    connection {
+      host = google_compute_address.external.address
+      user = local.user
+      private_key = local_file.ssh_private_key_pem.content
     }
   }
 }
@@ -43,6 +74,30 @@ resource "google_compute_firewall" "allow_ssh" {
     protocol = "tcp"
     ports    = ["22"]
   }
+}
+
+resource "google_compute_firewall" "allow_http" {
+  name          = "allow-http"
+  network       = google_compute_network.vpc_network.name
+  target_tags   = ["allow-http"]
+  source_ranges = ["0.0.0.0/0"]
+
+  allow {
+    protocol = "tcp"
+    ports    = ["80", "8000"]
+  }
+}
+
+resource "google_compute_firewall" "allow_icmp" {
+  name    = "allow-icmp"
+  network = google_compute_network.vpc_network.name
+
+  allow {
+    protocol = "icmp"
+  }
+
+  target_tags   = ["allow-icmp"]
+  source_ranges = ["0.0.0.0/0"]
 }
 
 ### local ssh keys
