@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Optional
-from ..lib.http_client import HTTPClient
+from lib.http_client import HTTPClient
 
 POWER_METER_COUNT = 0
 
