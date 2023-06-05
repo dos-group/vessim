@@ -66,6 +66,5 @@ The server exposes the following endpoints:
 
 - `PUT /power_mode`: Set the power mode for the server. The available power modes are `power-saving`, `normal`, and `high performance`.
 - `GET /power_mode`: Retrieve the current power mode of the server.
-- `GET /cpu`: Retrieve the current CPU utilization as a percentage.
 - `GET /power`: Retrieve the current power usage of the node.
 - `PUT /pid`: Set the PID of a process for virtual nodes to limit its CPU usage. For the Raspberry Pi node, this operation is not supported, as DVFS is used instead of `cpulimit`.
