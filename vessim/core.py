@@ -8,7 +8,12 @@ class VessimModel:
 
     @abstractmethod
     def step(self, time: int, **kwargs) -> None:
-        pass
+        """Performs a simulation step on the model.
+
+        Args:
+            time: The current simulation time
+            **kwargs: The inputs from other simulators
+        """
 
 
 class VessimSimulator(mosaik_api.Simulator, ABC):
@@ -72,8 +77,8 @@ class VessimSimulator(mosaik_api.Simulator, ABC):
         for eid, attrs in inputs.items():
             entity = self.entities[eid]
             # We assume a single input per value -> take first item from dict
-            args = {attr: list(val_dict.values())[0] for attr, val_dict in attrs.items()}
-            entity.step(time, **args)
+            kwargs = {key: list(val_dict.values())[0] for key, val_dict in attrs.items()}
+            entity.step(time, **kwargs)
         return self.next_step(time)
 
     @abstractmethod
