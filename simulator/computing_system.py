@@ -56,10 +56,10 @@ class ComputingSystemModel(VessimModel):
 
     def __init__(self, power_meters: List[PowerMeter], pue: float):
         self.power_meters = power_meters
-        self.p_cons = 0
+        self.p_cons = 0.0
         self.pue = pue
 
-    def step(self, time: int):
+    def step(self, time: int, inputs: dict) -> None:
         """Updates the power consumption of the system.
 
         The power consumption is calculated as the product of the PUE and the

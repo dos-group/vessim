@@ -56,7 +56,7 @@ class SimpleBattery(Storage):
             power = self.max_discharge_power
 
         self.charge_level += power * duration  # duration seconds of charging
-        excess_power = 0
+        excess_power = 0.0
 
         abs_min_soc = self.min_soc * self.capacity
         if self.charge_level < abs_min_soc:

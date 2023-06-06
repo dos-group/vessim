@@ -1,5 +1,7 @@
 import docker
 from time import sleep
+
+import redis
 from fastapi import FastAPI
 from redis import Redis
 import threading
@@ -52,17 +54,17 @@ class RedisDocker:
 
         Waits until a connection is established.
         """
-        redis = None
+        db = None
         connected = False
         while not connected:
             try:
-                redis = Redis(host=self.host, port=self.port, db=0)
-                connected = redis.ping()
+                db = Redis(host=self.host, port=self.port, db=0)
+                connected = db.ping()
             except redis.exceptions.RedisError as redis_error:
                 print(f"Error connecting to Redis: {redis_error}")
                 sleep(1)
-        assert redis is not None
-        return redis
+        assert db is not None
+        return db
 
     def run(self, f_api: FastAPI, host: str = "127.0.0.1", port: int = 8000) -> None:
         """Starts the given FastAPI application.

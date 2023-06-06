@@ -21,7 +21,7 @@ class HTTPClient:
     def __init__(self, server_address: str) -> None:
         self.server_address = server_address
 
-    def get(self, route: str) -> any:
+    def get(self, route: str) -> Any:
         """Sends a GET request to the server and retrieves data.
 
         Args:

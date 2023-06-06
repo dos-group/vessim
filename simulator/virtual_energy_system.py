@@ -71,8 +71,8 @@ class VirtualEnergySystemModel(VessimModel):
     ):
         # ves attributes
         self.battery = battery
-        self.battery_grid_charge = 0
-        self.nodes_power_mode = {}
+        self.battery_grid_charge = 0.0
+        self.nodes_power_mode: Dict[str, str] = {}
         self.consumption = 0
         self.solar = 0
         self.ci = 0
@@ -83,7 +83,7 @@ class VirtualEnergySystemModel(VessimModel):
         f_api = self.init_fastapi()
         self.redis_docker.run(f_api, host=api_host)
 
-    def step(self, time: int, consumption: float, solar: float, ci: float) -> None:
+    def step(self, time: int, inputs: dict) -> None:
         """Step the virtual energy system model.
 
         Executes a single time step of the energy system model, calculating
@@ -94,9 +94,9 @@ class VirtualEnergySystemModel(VessimModel):
         into the grid.
         """
         # update input
-        self.consumption = consumption
-        self.solar = solar
-        self.ci = ci
+        self.consumption = inputs["consumption"]
+        self.solar = inputs["solar"]
+        self.ci = inputs["ci"]
 
         # If delta is positive there is excess power,
         # if negative there is a power deficit.
@@ -134,7 +134,7 @@ class VirtualEnergySystemModel(VessimModel):
 
         return app
 
-    def redis_get(self, entry: str) -> any:
+    def redis_get(self, entry: str) -> Any:
         """Method for getting data from Redis database.
 
         Args:

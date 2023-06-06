@@ -52,17 +52,17 @@ class CarbonAgent(VessimModel):
         """
         if unit == "g_per_kWh":
             # standard unit used in vessim
-            self.carbon_conversion_factor = 1
+            self.carbon_conversion_factor = 1.0
         elif unit == "lb_per_MWh":
             self.carbon_conversion_factor = 0.45359237
         else:
             raise ValueError(f"{unit} is not supported by vessim")
         self.ci = 0.0
 
-    def step(self, time: int, ci: float) -> None:
+    def step(self, time: int, inputs: dict) -> None:
         """Calculation of carbon intensity.
 
         Based on the intensity input from the data and the conversion factor,
         a carbon intensity is calculated. Called every simulation step.
         """
-        self.ci = abs(ci * self.carbon_conversion_factor)
+        self.ci = abs(inputs["ci"] * self.carbon_conversion_factor)
