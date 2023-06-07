@@ -70,3 +70,32 @@ class SimpleBattery(Storage):
 
     def soc(self):
         return self.charge_level / self.capacity
+
+
+class StoragePolicy(ABC):
+
+    @abstractmethod
+    def apply(self, storage: Storage, p_delta: float, time_since_last_step: int) -> float:
+        """(Dis)charge the storage according to the policy"""
+
+
+class DefaultStoragePolicy(StoragePolicy):
+
+    def __init__(self, grid_power: float = 0):
+        """Storage policy which tries to (dis)charge as much of the delta as possible.
+
+        Args:
+            grid_power: If not 0, the battery is in "charge mode" and will draw the
+                provided power from the grid. In this case, the delta simply returned
+                together with the demand for charging.
+        """
+        self.grid_power = grid_power
+
+    def apply(self, storage: Storage, p_delta: float, time_since_last_step: int) -> float:
+        if self.grid_power == 0:
+            return storage.update(power=p_delta, duration=time_since_last_step)
+        else:
+            excess_energy = storage.update(power=self.grid_power,
+                                           duration=time_since_last_step)
+            real_charge_power = self.grid_power - excess_energy / time_since_last_step
+            return p_delta - real_charge_power

@@ -13,6 +13,9 @@ sim_config = {
     "CSV": {
         "python": "mosaik_csv:CSV",
     },
+    "Microgrid": {
+        "python": "vessim.microgrid:MicrogridSim"
+    },
     "ComputingSystem": {
         "python": "simulator.computing_system:ComputingSystemSim",
     },
@@ -70,6 +73,24 @@ def main(start_date: str,
     ## Solar -> SolarAgent -> VES
     world.connect(solar, solar_agent, ("P", "solar"))
 
+    microgrid_sim = world.start("Microgrid")
+    storage = SimpleBattery(
+        capacity=battery_capacity,
+        charge_level=battery_capacity * battery_initial_soc,
+        min_soc=battery_min_soc,
+        c_rate=battery_c_rate,
+    )
+    policy = DefaultStoragePolicy()
+    microgrid = microgrid_sim.MicrogridModel.create(1, storage=storage, policy=policy)[0]
+
+    world.connect(solar_agent, microgrid, ("solar", "p_gen"))
+    world.connect(computing_system, microgrid, ('p_cons', 'p_cons'))
+
+    # Monitor
+    collector = world.start("Collector")
+    monitor = collector.Monitor()  # TODO pass battery
+    world.connect(microgrid, monitor, "p_gen", "p_cons", "p_grid")
+    world.connect(carbon_agent, monitor, "ci")
 
     world.run(until=duration)
 
