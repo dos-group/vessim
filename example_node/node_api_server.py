@@ -18,11 +18,8 @@ class FastApiServer(ABC):
         self.app = FastAPI()
         self.host = host
         self.port = port
-
         self.power_mode = "high performance"
-
         self.setup_routes()
-        self.start()
 
     def setup_routes(self) -> None:
         """Setup the routes for the FastAPI application. """

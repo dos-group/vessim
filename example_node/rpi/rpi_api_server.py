@@ -13,13 +13,14 @@ class RpiNodeApiServer(FastApiServer):
     """
 
     def __init__(self, host: str = "0.0.0.0", port: int = 8000):
+        super().__init__(host, port)
         self.pi_controller = PiController()
         self.power_config = {
             "power-saving": 800 * 1000,
             "normal": 1100 * 1000,
             "high performance": 1400 * 1000,
         }
-        super().__init__(host, port)
+        self.start()
 
     def set_power_mode(self, power_mode: str) -> str:
         """Sets power mode for server and adjusts the max frequency of Pi accordingly.
