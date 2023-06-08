@@ -49,6 +49,13 @@ def main(start_date: str,
         pue=1.5
     )
 
+    #data = pd.read_csv(carbon_data_file)
+    #carbon_intensity_api = CarbonIntensityApi(data=data)
+    #carbon_api_simulator = world.start("CarbonIntensityApiSim",
+    #                                   sim_start=start_date,
+    #                                   carbon_intensity_api=carbon_intensity_api)
+    #carbon_api_de = carbon_api_simulator.CarbonIntensityApiModel(zone="DE")
+
     # Carbon Sim from CSV dataset
     carbon_sim = world.start("CSV", sim_start=start_date, datafile=carbon_data_file)
     carbon = carbon_sim.CarbonIntensity.create(1)[0]
@@ -74,21 +81,26 @@ def main(start_date: str,
     world.connect(solar, solar_agent, ("P", "solar"))
 
     microgrid_sim = world.start("Microgrid")
-    storage = SimpleBattery(
+    battery = SimpleBattery(
         capacity=battery_capacity,
         charge_level=battery_capacity * battery_initial_soc,
         min_soc=battery_min_soc,
         c_rate=battery_c_rate,
     )
     policy = DefaultStoragePolicy()
-    microgrid = microgrid_sim.MicrogridModel.create(1, storage=storage, policy=policy)[0]
+    microgrid = microgrid_sim.MicrogridModel.create(1, storage=battery, policy=policy)[0]
 
     world.connect(solar_agent, microgrid, ("solar", "p_gen"))
     world.connect(computing_system, microgrid, ('p_cons', 'p_cons'))
 
+    def monitor_fn():
+        return {
+            "battery_soc": battery.soc()
+        }
+
     # Monitor
     collector = world.start("Collector")
-    monitor = collector.Monitor()  # TODO pass battery
+    monitor = collector.Monitor(fn=monitor_fn)
     world.connect(microgrid, monitor, "p_gen", "p_cons", "p_grid")
     world.connect(carbon_agent, monitor, "ci")
 
@@ -98,7 +110,7 @@ def main(start_date: str,
 if __name__ == "__main__":
     main(
         start_date="2014-01-01 00:00:00",
-        duration=600,
+        duration=3600 * 5,
         carbon_data_file="data/ger_ci_testing.csv",
         solar_data_file="data/pv_10kw.csv",
         battery_capacity=10 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws

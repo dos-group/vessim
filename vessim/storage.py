@@ -80,11 +80,12 @@ class SimpleBattery(Storage):
         return self.charge_level / self.capacity
 
 
+
 class StoragePolicy(ABC):
 
     @abstractmethod
     def apply(self, storage: Storage, p_delta: float, time_since_last_step: int) -> float:
-        """(Dis)charge the storage according to the policy"""
+        """(Dis)charge the storage according to the policy."""
 
 
 class DefaultStoragePolicy(StoragePolicy):
