@@ -19,8 +19,8 @@ sim_config = {
     "ComputingSystem": {
         "python": "simulator.computing_system:ComputingSystemSim",
     },
-    "Collector": {
-        "python": "simulator.collector:Collector",
+    "Monitor": {
+        "python": "vessim.monitor:Monitor",
     },
     "SolarController": {
         "python": "simulator.solar_controller:SolarController",
@@ -95,12 +95,13 @@ def main(start_date: str,
 
     def monitor_fn():
         return {
-            "battery_soc": battery.soc()
+            "battery_soc": battery.soc(),
+            "battery_min_soc": battery.min_soc
         }
 
     # Monitor
-    collector = world.start("Collector")
-    monitor = collector.Monitor(fn=monitor_fn)
+    monitor_sim = world.start("Monitor")
+    monitor = monitor_sim.Monitor(fn=monitor_fn, start_date=start_date)
     world.connect(microgrid, monitor, "p_gen", "p_cons", "p_grid")
     world.connect(carbon_agent, monitor, "ci")
 
@@ -110,11 +111,11 @@ def main(start_date: str,
 if __name__ == "__main__":
     main(
         start_date="2014-01-01 00:00:00",
-        duration=3600 * 5,
+        duration=3600 * 12,
         carbon_data_file="data/ger_ci_testing.csv",
         solar_data_file="data/pv_10kw.csv",
         battery_capacity=10 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
         battery_initial_soc=.7,
         battery_min_soc=.6,
-        battery_c_rate=.2,
+        battery_c_rate=1,
     )

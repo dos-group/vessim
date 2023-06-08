@@ -17,8 +17,8 @@ sim_config = {
     "ComputingSystemSim": {
         "python": "simulator.computing_system:ComputingSystemSim",
     },
-    "Collector": {
-        "python": "simulator.collector:Collector",
+    "Monitor": {
+        "python": "vessim.monitor:Monitor",
     },
     "SolarController": {
         "python": "simulator.solar_controller:SolarController",
@@ -77,7 +77,7 @@ def main(start_date: str,
         battery=battery
     )
 
-    collector = world.start("Collector")
+    collector = world.start("Monitor")
     monitor = collector.Monitor()
 
     # Connect entities

@@ -57,7 +57,7 @@ class SimpleBattery(Storage):
 
             if power <= -max_rate:
                 logger.info(f"Trying to discharge storage '{__class__.__name__}' with "
-                            f"{power}W but only {max_rate} are supported.")
+                            f"{power} W but only {max_rate} W are supported.")
                 max_charge_p_delta = power + max_rate
                 power = -self.c_rate
 
