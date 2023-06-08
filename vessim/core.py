@@ -1,12 +1,25 @@
 from abc import ABC, abstractmethod
+from typing import Type
 
 import mosaik_api
 
 
-class SingleModelSimulator(mosaik_api.Simulator, ABC):
-    """Generic class for single-model simulators or controllers.
+class VessimModel:
 
-    Many usecases for simulators simply require setting all inputs attr values
+    @abstractmethod
+    def step(self, time: int, **kwargs) -> None:
+        """Performs a simulation step on the model.
+
+        Args:
+            time: The current simulation time
+            **kwargs: The inputs from other simulators
+        """
+
+
+class VessimSimulator(mosaik_api.Simulator, ABC):
+    """Utility class for single-model simulators as supported by Vessim.
+
+    Most use cases for simulators simply require setting all inputs attr values
     to model_instance attrs and then step the model_instance. This class takes
     care of all basic mosaik abstractions that are simple copy and paste tasks
     for each new simulator.
@@ -19,7 +32,7 @@ class SingleModelSimulator(mosaik_api.Simulator, ABC):
         step_size: The simulation step size.
     """
 
-    def __init__(self, meta, model_class):
+    def __init__(self, meta, model_class: Type[VessimModel]):
         """Initialization of a basic simulator with given model.
 
         Args:
@@ -47,14 +60,14 @@ class SingleModelSimulator(mosaik_api.Simulator, ABC):
         return self.meta
 
     def create(self, num, model, *args, **kwargs):
-        """Create `model_instance` and save it in `entities`."""
+        """Create model instance and save it in `entities`."""
         next_eid = len(self.entities)
         entities = []
         for i in range(next_eid, next_eid + num):
             # Instantiate `model_class` specified in constructor and pass through args
-            model_instance = self.model_class(*args, **kwargs)
+            entity = self.model_class(*args, **kwargs)
             eid = self.eid_prefix + str(i)
-            self.entities[eid] = model_instance
+            self.entities[eid] = entity
             entities.append({"eid": eid, "type": model})
         return entities
 
@@ -64,8 +77,8 @@ class SingleModelSimulator(mosaik_api.Simulator, ABC):
         for eid, attrs in inputs.items():
             entity = self.entities[eid]
             # We assume a single input per value -> take first item from dict
-            args = {attr: list(val_dict.values())[0] for attr, val_dict in attrs.items()}
-            entity.step(**args)
+            kwargs = {key: list(val_dict.values())[0] for key, val_dict in attrs.items()}
+            entity.step(time, **kwargs)
         return self.next_step(time)
 
     @abstractmethod

@@ -1,5 +1,4 @@
-import mosaik_api
-from simulator.single_model_simulator import SingleModelSimulator
+from vessim.core import VessimSimulator, VessimModel
 
 META = {
     "type": "event-based",
@@ -13,7 +12,7 @@ META = {
 }
 
 
-class CarbonController(SingleModelSimulator):
+class CarbonController(VessimSimulator):
     """Carbon Controller.
 
     Acts as a medium between carbon module and ecovisor or direct consumer since
@@ -27,7 +26,7 @@ class CarbonController(SingleModelSimulator):
         return None
 
 
-class CarbonAgent:
+class CarbonAgent(VessimModel):
     """Class to represent the Carbon Agent.
 
     Attributes:
@@ -60,7 +59,7 @@ class CarbonAgent:
             raise ValueError(f"{unit} is not supported by vessim")
         self.ci = 0.0
 
-    def step(self, ci: float) -> None:
+    def step(self, time: int, ci: float) -> None:
         """Calculation of carbon intensity.
 
         Based on the intensity input from the data and the conversion factor,
