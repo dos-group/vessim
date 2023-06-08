@@ -31,7 +31,7 @@ sim_config = {
 }
 
 
-def main(start_date: str,
+def main(sim_start: str,
          duration: int,
          carbon_data_file: str,
          solar_data_file: str,
@@ -66,7 +66,7 @@ def main(start_date: str,
     carbon_agent = carbon_controller.CarbonAgent()
 
     # Solar Sim from CSV dataset
-    solar_sim = world.start("CSV", sim_start=start_date, datafile=solar_data_file)
+    solar_sim = world.start("CSV", sim_start=sim_start, datafile=solar_data_file)
     solar = solar_sim.PV.create(1)[0]
 
     # Solar Controller acts as medium between solar module and VES or consumer,
@@ -101,7 +101,7 @@ def main(start_date: str,
 
     # Monitor
     monitor_sim = world.start("Monitor")
-    monitor = monitor_sim.Monitor(fn=monitor_fn, start_date=start_date)
+    monitor = monitor_sim.Monitor(fn=monitor_fn, start_date=sim_start)
     world.connect(microgrid, monitor, "p_gen", "p_cons", "p_grid")
     world.connect(carbon_agent, monitor, "ci")
 
@@ -110,7 +110,7 @@ def main(start_date: str,
 
 if __name__ == "__main__":
     main(
-        start_date="2014-01-01 00:00:00",
+        sim_start="2014-01-01 00:00:00",
         duration=3600 * 12,
         carbon_data_file="data/ger_ci_testing.csv",
         solar_data_file="data/pv_10kw.csv",

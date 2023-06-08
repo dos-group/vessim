@@ -8,6 +8,7 @@ from loguru import logger
 
 import mosaik_api
 
+from vessim._util import Clock
 
 META = {
     "type": "event-based",
@@ -35,14 +36,14 @@ class Monitor(mosaik_api.Simulator):
         self.eid = None
         self.data = defaultdict(dict)
         self.fn = None
-        self.start_date = None
+        self._clock = None
 
     def init(self, sid, time_resolution):
         return self.meta
 
-    def create(self, num, model, fn: Callable[[], Dict[str, Any]], start_date: datetime):
+    def create(self, num, model, fn: Callable[[], Dict[str, Any]], sim_start: datetime):
         self.fn = fn
-        self.start_date = pd.to_datetime(start_date)
+        self._clock = Clock(sim_start)
         if num > 1 or self.eid is not None:
             raise RuntimeError("Can only create one instance of Monitor.")
 
@@ -50,7 +51,7 @@ class Monitor(mosaik_api.Simulator):
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
-        dt = self.start_date + timedelta(seconds=time)
+        dt = self._clock.to_datetime(time)
         data = inputs.get(self.eid, {})
         logger.info(f"# --- {str(dt):>5} ---")
         for attr, values in data.items():
