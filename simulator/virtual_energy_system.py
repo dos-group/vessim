@@ -1,6 +1,6 @@
 import mosaik_api
 from simulator.single_model_simulator import SingleModelSimulator
-from simulator.simple_battery_model import SimpleBatteryModel
+from vessim.storage import SimpleBattery
 from simulator.redis_docker import RedisDocker
 from fastapi import FastAPI, HTTPException
 from typing import Dict, List, Any
@@ -65,18 +65,18 @@ class VirtualEnergySystemModel:
 
     def __init__(
         self,
-        battery: SimpleBatteryModel,
+        battery: SimpleBattery,
         db_host: str = "127.0.0.1",
         api_host: str = "127.0.0.1",
     ):
         # ves attributes
         self.battery = battery
-        self.battery_grid_charge = 0.0
+        self.battery_grid_charge = 0
         self.nodes_power_mode = {}
-        self.consumption = 0.0
-        self.solar = 0.0
-        self.ci = 0.0
-        self.grid_power = 0.0
+        self.consumption = 0
+        self.solar = 0
+        self.ci = 0
+        self.grid_power = 0
 
         # db & api
         self.redis_docker = RedisDocker(host=db_host)

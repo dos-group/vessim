@@ -6,7 +6,7 @@ applications'.
 
 import mosaik
 from simulator.power_meter import NodeApiMeter
-from simulator.simple_battery_model import SimpleBatteryModel
+from vessim.storage import SimpleBattery
 
 
 # Config file for parameters and settings specification.
@@ -14,7 +14,6 @@ sim_config = {
     "CSV": {
         "python": "mosaik_csv:CSV",
     },
-    "Grid": {"python": "mosaik_pandapower.simulator:Pandapower"},
     "ComputingSystemSim": {
         "python": "simulator.computing_system:ComputingSystemSim",
     },
@@ -67,7 +66,7 @@ def main(start_date: str,
     solar_agent = solar_controller.SolarAgent()
 
     # VES Sim & Battery Sim
-    simple_battery = SimpleBatteryModel(
+    battery = SimpleBattery(
         capacity=battery_capacity,
         charge_level=battery_capacity * battery_initial_soc,
         min_soc=battery_min_soc,
@@ -75,18 +74,8 @@ def main(start_date: str,
     )
     virtual_energy_system_sim = world.start("VirtualEnergySystem")
     virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystemModel(
-        battery=simple_battery
+        battery=battery
     )
-
-    # gridsim = world.start('Grid', step_size=60)
-    # buses = filter(lambda e: e.type == 'PQBus', grid)
-    # buses = {b.eid.split('-')[1]: b for b in buses}
-    # world.connect(consumer, buses["node_a1"], ('P_out', 'P'))
-    # world.connect(pvs[0], [e for e in grid if 'node' in e.eid][0], 'P')
-    # nodes = [e for e in grid if e.type in ('RefBus, PQBus')]
-    # load = [e for e in grid if e.eid == "0-load"][0]
-    # ext_grid = [e for e in grid if e.type == "Ext_grid"][0]
-    # lines = [e for e in grid if e.type == "Line"]
 
     collector = world.start("Collector")
     monitor = collector.Monitor()
