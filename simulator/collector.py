@@ -48,9 +48,8 @@ class Collector(mosaik_api.Simulator):
         logger.info(f"# {str(time):>5} ----------")
         for attr, values in data.items():
             for src, value in values.items():
-                key = f"{src}[{attr}]"
-                logger.info(f"{key} = {value}")
-                self.data[key][time] = value
+                logger.info(f"{src}[{attr}] = {value}")
+                self.data[attr][time] = value
         return None
 
     def finalize(self):
