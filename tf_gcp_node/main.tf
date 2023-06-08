@@ -37,7 +37,7 @@ resource "google_compute_instance" "node" {
     done
 
     apt-get update
-    apt-get install python3-pip cpulimit -y
+    apt-get install python3-pip sysbench -y
     cd $server_dir/virtual_node
     pip3 install -r requirements.txt
     python3 v_node_api_server.py
