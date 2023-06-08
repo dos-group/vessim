@@ -13,13 +13,14 @@ class RpiNodeApiServer(FastApiServer):
     """
 
     def __init__(self, host: str = "0.0.0.0", port: int = 8000):
+        super().__init__(host, port)
         self.pi_controller = PiController()
         self.power_config = {
             "power-saving": 800 * 1000,
             "normal": 1100 * 1000,
             "high performance": 1400 * 1000,
         }
-        super().__init__(host, port)
+        self.start()
 
     def set_power_mode(self, power_mode: str) -> str:
         """Sets power mode for server and adjusts the max frequency of Pi accordingly.
@@ -41,21 +42,6 @@ class RpiNodeApiServer(FastApiServer):
             The current power usage.
         """
         return self.pi_controller.power()
-
-    def set_pid(self, pid: int) -> int:
-        """Raspberry Pi node uses DVFS instead of cpulimit and therefore can't set PID.
-
-        Args:
-            pid: The PID to set.
-
-        Raises:
-            HTTPException: Always.
-        """
-        raise HTTPException(
-            status_code=405,
-            detail="The Raspberry Pi node uses DVFS instead of cpulimit "
-            "and requires no pid.",
-        )
 
 
 if __name__ == "__main__":
