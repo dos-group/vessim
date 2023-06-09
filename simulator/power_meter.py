@@ -48,9 +48,9 @@ class NodeApiMeter(PowerMeter):
     that updates the power demand from the node API at a given interval.
 
     Args:
+        interval: The interval in seconds to update the power demand.
         server_address: The server address of the node API.
         port: The port number for the node API. Defaults to 8000.
-        interval: The interval in seconds to update the power demand. Defaults to 5.
         name: The name of the power meter. If None, a default name will be assigned. Defaults to None.
 
     Attributes:
@@ -60,9 +60,9 @@ class NodeApiMeter(PowerMeter):
 
     def __init__(
         self,
+        interval: int,
         server_address: str,
         port: int = 8000,
-        interval: int = 5,
         name: Optional[str] = None
     ) -> None:
         super().__init__(name)
