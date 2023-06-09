@@ -4,37 +4,31 @@ dynamic = ["version"]
 description = "A simulator for carbon-aware applications and systems"
 readme = "README.md"
 requires-python = ">=3.7"
+license = {file = "LICENSE"}
 keywords = ["simulation", "energy system", "testbed", "carbon-aware"]
 authors = [{name = "Philipp Wiesner", email = "wiesner@tu-berlin.de"}]
-classifiers = [  # Optional
-  #   3 - Alpha
-  #   4 - Beta
-  #   5 - Production/Stable
+classifiers = [
   "Development Status :: 3 - Alpha",
-
-  # Indicate who your project is intended for
+  "Intended Audience :: Science/Research",
   "Intended Audience :: Developers",
-  "Topic :: Software Development :: Build Tools",
-
   "License :: OSI Approved :: MIT License",
-
+  "Topic :: Scientific/Engineering",
+  "Topic :: Software Development :: Testing",
+  "Topic :: Education",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.7",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3 :: Only",
 ]
 
-# This field lists other packages that your project depends on to run.
-# Any package you put here will be installed by pip when your project is
-# installed, so they must be valid existing projects.
-#
-# For an analysis of this field vs pip's requirements files see:
-# https://packaging.python.org/discussions/install-requires-vs-requirements/
 dependencies = [ # Optional
-  "peppercorn"
+  "pandas",
+  "mosaik",
+  "mosaik-api"
 ]
 
 # [project.optional-dependencies] # Optional
@@ -50,6 +44,7 @@ dependencies = [ # Optional
 # which executes the function `main` from this package when invoked.
 # [project.scripts]  # Optional
 # sample = "sample:main"
+
 
 [build-system]
 # These are the assumed default build requirements from pip:
