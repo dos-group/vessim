@@ -42,3 +42,7 @@ extend-exclude = ["example_node", "simulator/power_meter.py", "carbon-aware_cont
 # Configure Ruff to enforce Google-style docstrings when checking documentation
 [tool.ruff.pydocstyle]
 convention = "google"
+
+
+[mypy]
+ignore_missing_imports = true

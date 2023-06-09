@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Type
+from typing import Type, Dict
 
 import mosaik_api
 
@@ -7,12 +7,12 @@ import mosaik_api
 class VessimModel:
 
     @abstractmethod
-    def step(self, time: int, **kwargs) -> None:
+    def step(self, time: int, inputs: dict) -> None:
         """Performs a simulation step on the model.
 
         Args:
             time: The current simulation time
-            **kwargs: The inputs from other simulators
+            inputs: The inputs from other simulators
         """
 
 
@@ -45,7 +45,7 @@ class VessimSimulator(mosaik_api.Simulator, ABC):
         super().__init__(meta)
         self.eid_prefix = list(self.meta["models"])[0] + "_"  # type: ignore
         self.model_class = model_class
-        self.entities = {}
+        self.entities: Dict[int, VessimModel] = {}
         self.time = 0
 
     def init(self, sid, time_resolution, eid_prefix=None):
@@ -77,8 +77,8 @@ class VessimSimulator(mosaik_api.Simulator, ABC):
         for eid, attrs in inputs.items():
             entity = self.entities[eid]
             # We assume a single input per value -> take first item from dict
-            kwargs = {key: list(val_dict.values())[0] for key, val_dict in attrs.items()}
-            entity.step(time, **kwargs)
+            inputs_ = {key: list(val_dict.values())[0] for key, val_dict in attrs.items()}
+            entity.step(time, inputs_)
         return self.next_step(time)
 
     @abstractmethod
