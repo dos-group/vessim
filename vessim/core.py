@@ -17,7 +17,8 @@ class Node:
         power_mode: The power mode of the node. Default is "high performance".
 
     Attributes:
-        id: A unique ID assigned to each node. The ID is auto-incremented for each new node.
+        id: A unique ID assigned to each node. The ID is auto-incremented for
+            each new node.
         address: The network address of the node.
         power_meter: A power meter instance to monitor the power consumption of the node.
         power_mode: The power mode of the node. Default is "high performance".
