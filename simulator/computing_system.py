@@ -54,4 +54,4 @@ class ComputingSystemModel(VessimModel):
         The power consumption is calculated as the product of the PUE and the
         sum of the node power of all power meters.
         """
-        self.p_cons = self.pue * sum(pm() for pm in self.power_meters)
+        self.p_cons = self.pue * sum(pm.measure() for pm in self.power_meters)

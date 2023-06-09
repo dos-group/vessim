@@ -5,7 +5,7 @@ applications'.
 """
 
 import mosaik
-from simulator.power_meter import NodeApiMeter
+from simulator.power_meter import MockPowerMeter
 from vessim.storage import SimpleBattery, DefaultStoragePolicy
 
 # Config file for parameters and settings specification.
@@ -42,10 +42,10 @@ def main(sim_start: str,
     """Execute the example scenario simulation."""
     world = mosaik.World(sim_config)
 
-    gcp_power_meter = NodeApiMeter("http://34.159.204.246", name="gcp_power_meter")
+    power_meter = MockPowerMeter(return_value=50)
     computing_system_sim = world.start('ComputingSystem', step_size=60)
     computing_system = computing_system_sim.ComputingSystemModel(
-        power_meters=[gcp_power_meter],
+        power_meters=[power_meter],
         pue=1.5
     )
 
