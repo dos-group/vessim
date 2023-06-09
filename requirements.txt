@@ -40,3 +40,6 @@ types-redis
 # linting
 black
 ruff
+
+# build
+flit
