@@ -57,7 +57,7 @@ def main(sim_start: str,
     #carbon_api_de = carbon_api_simulator.CarbonIntensityApiModel(zone="DE")
 
     # Carbon Sim from CSV dataset
-    carbon_sim = world.start("CSV", sim_start=start_date, datafile=carbon_data_file)
+    carbon_sim = world.start("CSV", sim_start=sim_start, datafile=carbon_data_file)
     carbon = carbon_sim.CarbonIntensity.create(1)[0]
 
     # Carbon Controller acts as a medium between carbon module and VES or

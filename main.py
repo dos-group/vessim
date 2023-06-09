@@ -32,7 +32,7 @@ sim_config = {
 }
 
 
-def main(start_date: str,
+def main(sim_start: str,
          duration: int,
          carbon_data_file: str,
          solar_data_file: str,
@@ -48,7 +48,7 @@ def main(start_date: str,
     computing_system_sim.ComputingSystem(power_meters=[gcp_power_meter])
 
     # Carbon Sim from CSV dataset
-    carbon_sim = world.start("CSV", sim_start=start_date, datafile=carbon_data_file)
+    carbon_sim = world.start("CSV", sim_start=sim_start, datafile=carbon_data_file)
     carbon = carbon_sim.CarbonIntensity.create(1)[0]
 
     # Carbon Controller acts as a medium between carbon module and VES or
@@ -57,7 +57,7 @@ def main(start_date: str,
     carbon_agent = carbon_controller.CarbonAgent()
 
     # Solar Sim from CSV dataset
-    solar_sim = world.start("CSV", sim_start=start_date, datafile=solar_data_file)
+    solar_sim = world.start("CSV", sim_start=sim_start, datafile=solar_data_file)
     solar = solar_sim.PV.create(1)[0]
 
     # Solar Controller acts as medium between solar module and VES or consumer,
@@ -113,7 +113,7 @@ def main(start_date: str,
 
 if __name__ == "__main__":
     main(
-        start_date="2014-01-01 00:00:00",
+        sim_start="2014-01-01 00:00:00",
         duration=300,
         carbon_data_file="data/ger_ci_testing.csv",
         solar_data_file="data/pv_10kw.csv",
