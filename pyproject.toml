@@ -1,7 +1,6 @@
 [project]
 name = "vessim"
-dynamic = ["version"]
-description = "A simulator for carbon-aware applications and systems"
+dynamic = ["version", "description"]
 readme = "README.md"
 requires-python = ">=3.7"
 license = {file = "LICENSE"}
@@ -28,7 +27,7 @@ classifiers = [
 dependencies = [ # Optional
   "pandas",
   "mosaik",
-  "mosaik-api"
+  "mosaik-api",
 ]
 
 # [project.optional-dependencies] # Optional
@@ -45,12 +44,9 @@ dependencies = [ # Optional
 # [project.scripts]  # Optional
 # sample = "sample:main"
 
-
 [build-system]
-# These are the assumed default build requirements from pip:
-# https://pip.pypa.io/en/stable/reference/pip/#pep-517-and-518-support
-requires = ["setuptools>=43.0.0", "setuptools_scm[toml]>=6.2"]  #, "wheel"
-build-backend = "setuptools.build_meta"
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
 
 
 [tool.black]
