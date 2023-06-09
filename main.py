@@ -11,6 +11,7 @@ import pandas as pd
 from simulator.power_meter import HttpPowerMeter
 from vessim.carbon_api import CarbonApi
 from vessim.storage import SimpleBattery
+from vessim.core import Node
 
 
 # Config file for parameters and settings specification.
@@ -47,9 +48,11 @@ def main(sim_start: str,
     """Execute the example scenario simulation."""
     world = mosaik.World(sim_config)
 
-    gcp_power_meter = HttpPowerMeter("http://35.242.197.234", name="gcp_power_meter")
+
+    gcp_node = Node("http://35.242.197.234")
+    gcp_node.power_meter = HttpPowerMeter(gcp_node.address, name="gcp_power_meter")
     computing_system_sim = world.start('ComputingSystemSim')
-    computing_system_sim.ComputingSystem(power_meters=[gcp_power_meter])
+    computing_system_sim.ComputingSystem(power_meters=[gcp_node.power_meter])
 
     # Carbon Intensity API
     data = pd.read_csv(carbon_data_file, index_col="Time", parse_dates=True)
@@ -76,6 +79,7 @@ def main(sim_start: str,
     )
     virtual_energy_system_sim = world.start("VirtualEnergySystem")
     virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystem(
+        nodes=[gcp_node],
         battery=battery
     )
 
