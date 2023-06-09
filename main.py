@@ -19,10 +19,10 @@ sim_config = {
         "python": "mosaik_csv:CSV",
     },
     "ComputingSystemSim": {
-        "python": "simulator.computing_system:ComputingSystemSim",
+        "python": "vessim.computing_system:ComputingSystemSim",
     },
     "Monitor": {
-        "python": "vessim.monitor:Monitor",
+        "python": "vessim.monitor:MonitorSim",
     },
     "SolarController": {
         "python": "simulator.solar_controller:SolarController",
@@ -75,7 +75,7 @@ def main(sim_start: str,
         c_rate=battery_c_rate,
     )
     virtual_energy_system_sim = world.start("VirtualEnergySystem")
-    virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystemModel(
+    virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystem(
         battery=battery
     )
 

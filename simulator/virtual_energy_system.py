@@ -6,24 +6,23 @@ from fastapi import FastAPI, HTTPException
 from typing import Dict, List, Any
 
 
-META = {
-    "type": "time-based",
-    "models": {
-        "VirtualEnergySystemModel": {
-            "public": True,
-            "params": ["battery", "db_host", "api_host"],
-            "attrs": ["consumption", "battery", "solar", "ci", "grid_power"],
-        },
-    },
-}
-
-
-class VirtualEnergySystem(VessimSimulator):
+class VirtualEnergySystemSim(VessimSimulator):
     """Virtual Energy System (VES) simulator that executes the VES model."""
+
+    META = {
+        "type": "time-based",
+        "models": {
+            "VirtualEnergySystem": {
+                "public": True,
+                "params": ["battery", "db_host", "api_host"],
+                "attrs": ["consumption", "battery", "solar", "ci", "grid_power"],
+            },
+        },
+    }
 
     def __init__(self) -> None:
         self.step_size = None
-        super().__init__(META, VirtualEnergySystemModel)
+        super().__init__(self.META, VirtualEnergySystemModel)
 
     def init(self, sid, time_resolution, step_size, eid_prefix=None):
         self.step_size = step_size
@@ -256,8 +255,3 @@ class VirtualEnergySystemModel(VessimModel):
 
             if cursor == 0:
                 break
-
-
-def main():
-    """Start the mosaik simulation."""
-    return mosaik_api.start_simulation(VirtualEnergySystem())

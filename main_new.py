@@ -20,10 +20,10 @@ sim_config = {
         "python": "vessim.microgrid:MicrogridSim"
     },
     "ComputingSystem": {
-        "python": "simulator.computing_system:ComputingSystemSim",
+        "python": "vessim.computing_system:ComputingSystemSim",
     },
     "Monitor": {
-        "python": "vessim.monitor:Monitor",
+        "python": "vessim.monitor:MonitorSim",
     },
     "SolarController": {
         "python": "simulator.solar_controller:SolarController",
@@ -47,7 +47,7 @@ def main(sim_start: str,
 
     power_meter = MockPowerMeter(return_value=50)
     computing_system_sim = world.start('ComputingSystem', step_size=60)
-    computing_system = computing_system_sim.ComputingSystemModel(
+    computing_system = computing_system_sim.ComputingSystem(
         power_meters=[power_meter],
         pue=1.5
     )
@@ -79,7 +79,7 @@ def main(sim_start: str,
         c_rate=battery_c_rate,
     )
     policy = DefaultStoragePolicy()
-    microgrid = microgrid_sim.MicrogridModel.create(1, storage=battery, policy=policy)[0]
+    microgrid = microgrid_sim.Microgrid.create(1, storage=battery, policy=policy)[0]
 
     world.connect(solar_agent, microgrid, ("solar", "p_gen"))
     world.connect(computing_system, microgrid, ('p_cons', 'p_cons'))
