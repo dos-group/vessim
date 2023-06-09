@@ -1,18 +1,18 @@
 import pandas as pd
 import pytest
 
-from vessim.components import CarbonIntensityApi
+from vessim.carbon_api import CarbonApi
 
 
-class TestCarbonIntensityApi:
+class TestCarbonApi:
 
     @pytest.fixture
-    def ci_api(self) -> CarbonIntensityApi:
+    def ci_api(self) -> CarbonApi:
         index = [pd.to_datetime("2023-01-01T00:00:00"),
                  pd.to_datetime("2023-01-01T00:30:00"),
                  pd.to_datetime("2023-01-01T01:00:00")]
         data = pd.DataFrame({"a": [1, 2, 3], "b": [0, 3, 0]}, index=index)
-        return CarbonIntensityApi(data)
+        return CarbonApi(data)
 
     def test_zones(self, ci_api):
         assert ci_api.zones() == ["a", "b"]
