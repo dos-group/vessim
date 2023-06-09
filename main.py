@@ -50,7 +50,11 @@ def main(sim_start: str,
 
 
     gcp_node = Node("http://35.242.197.234")
-    gcp_node.power_meter = HttpPowerMeter(gcp_node.address, name="gcp_power_meter")
+    gcp_node.power_meter = HttpPowerMeter(
+        interval=3, 
+        server_address=gcp_node.address, 
+        name="gcp_power_meter"
+    )
     computing_system_sim = world.start('ComputingSystemSim')
     computing_system_sim.ComputingSystem(power_meters=[gcp_node.power_meter])
 
