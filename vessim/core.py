@@ -74,11 +74,16 @@ class VessimSimulator(mosaik_api.Simulator, ABC):
     def step(self, time, inputs, max_advance):
         """Set all `inputs` attr values to the `entity` attrs, then step the `entity`."""
         self.time = time
+
+        input_mapping: Dict[VessimModel, Dict] = {}
         for eid, attrs in inputs.items():
-            entity = self.entities[eid]
             # We assume a single input per value -> take first item from dict
             inputs_ = {key: list(val_dict.values())[0] for key, val_dict in attrs.items()}
-            entity.step(time, inputs_)
+            input_mapping[eid] = inputs_
+
+        for eid, entity in self.entities.items():
+            entity.step(time, input_mapping.get(eid, {}))
+
         return self.next_step(time)
 
     @abstractmethod
