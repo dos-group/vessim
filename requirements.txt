@@ -31,6 +31,15 @@ paho-mqtt
 # testing
 pytest
 
+# typechecking
+mypy
+pandas-stubs
+types-requests
+types-redis
+
 # linting
 black
 ruff
+
+# build
+flit

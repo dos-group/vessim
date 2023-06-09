@@ -38,10 +38,10 @@ class SolarAgent(VessimModel):
         self.scaling_factor = scaling_factor
         self.solar = 0.0
 
-    def step(self, time: int, solar: float) -> None:
+    def step(self, time: int, inputs: dict) -> None:
         """Compute new production value.
 
         Update the solar power based on the given production value and the
         scaling factor. Called every simulation step.
         """
-        self.solar = abs(solar * self.scaling_factor)
+        self.solar = abs(inputs["solar"] * self.scaling_factor)

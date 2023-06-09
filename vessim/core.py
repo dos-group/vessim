@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Type, Optional
+from typing import Type, Optional, Dict
 from simulator.power_meter import PowerMeter
 
 import mosaik_api
@@ -42,12 +42,12 @@ class Node:
 class VessimModel:
 
     @abstractmethod
-    def step(self, time: int, **kwargs) -> None:
+    def step(self, time: int, inputs: dict) -> None:
         """Performs a simulation step on the model.
 
         Args:
             time: The current simulation time
-            **kwargs: The inputs from other simulators
+            inputs: The inputs from other simulators
         """
 
 
@@ -80,7 +80,7 @@ class VessimSimulator(mosaik_api.Simulator, ABC):
         super().__init__(meta)
         self.eid_prefix = list(self.meta["models"])[0] + "_"  # type: ignore
         self.model_class = model_class
-        self.entities = {}
+        self.entities: Dict[int, VessimModel] = {}
         self.time = 0
 
     def init(self, sid, time_resolution, eid_prefix=None):
@@ -109,11 +109,16 @@ class VessimSimulator(mosaik_api.Simulator, ABC):
     def step(self, time, inputs, max_advance):
         """Set all `inputs` attr values to the `entity` attrs, then step the `entity`."""
         self.time = time
+
+        input_mapping: Dict[VessimModel, Dict] = {}
         for eid, attrs in inputs.items():
-            entity = self.entities[eid]
             # We assume a single input per value -> take first item from dict
-            kwargs = {key: list(val_dict.values())[0] for key, val_dict in attrs.items()}
-            entity.step(time, **kwargs)
+            inputs_ = {key: list(val_dict.values())[0] for key, val_dict in attrs.items()}
+            input_mapping[eid] = inputs_
+
+        for eid, entity in self.entities.items():
+            entity.step(time, input_mapping.get(eid, {}))
+
         return self.next_step(time)
 
     @abstractmethod
