@@ -2,39 +2,28 @@ from vessim.core import VessimSimulator, VessimModel
 from simulator.power_meter import PowerMeter
 from typing import List
 
-META = {
-    "type": "time-based",
-    "models": {
-        "ComputingSystem": {
-            "public": True,
-            "params": ["power_meters"],
-            "attrs": ["p_cons"],
-        },
-    },
-}
 
-
-class ComputingSystem(VessimSimulator):
+class ComputingSystemSim(VessimSimulator):
     """Computing System simulator that executes its model."""
+
+    META = {
+        "type": "time-based",
+        "models": {
+            "ComputingSystemModel": {
+                "public": True,
+                "params": ["power_meters", "pue"],
+                "attrs": ["p_cons"],
+            },
+        },
+    }
 
     def __init__(self):
         self.step_size = None
-        super().__init__(META, ComputingSystemModel)
+        super().__init__(self.META, ComputingSystemModel)
 
     def init(self, sid, time_resolution, step_size, eid_prefix=None):
         self.step_size = step_size
-        super().init(sid, time_resolution, eid_prefix=eid_prefix)
-
-    def create(self, num, model, *args, **kwargs):
-        if num != 1:
-            raise ValueError("Only one instance of the ComputingSystem can exist.")
-
-        # access power_meters from kwargs
-        power_meters = kwargs.get("power_meters")
-        if not power_meters:
-            raise ValueError("At least one power meter needs to be specified.")
-
-        return super().create(num, model, *args, **kwargs)
+        return super().init(sid, time_resolution, eid_prefix=eid_prefix)
 
     def next_step(self, time):
         return time + self.step_size
@@ -56,8 +45,8 @@ class ComputingSystemModel(VessimModel):
 
     def __init__(self, power_meters: List[PowerMeter], pue: float):
         self.power_meters = power_meters
-        self.p_cons = 0.0
         self.pue = pue
+        self.p_cons = 0.0
 
     def step(self, time: int, inputs: dict) -> None:
         """Updates the power consumption of the system.
