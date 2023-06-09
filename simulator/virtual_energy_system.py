@@ -1,9 +1,8 @@
-import mosaik_api
 from vessim.core import VessimSimulator, VessimModel, Node
 from vessim.storage import SimpleBattery
 from simulator.redis_docker import RedisDocker
 from fastapi import FastAPI, HTTPException
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 
 class VirtualEnergySystemSim(VessimSimulator):
@@ -75,7 +74,6 @@ class VirtualEnergySystemModel(VessimModel):
         self.battery = battery
         self.nodes = nodes
         self.battery_grid_charge = 0.0
-        self.nodes_power_mode: Dict[str, str] = {}
         self.consumption = 0
         self.solar = 0
         self.ci = 0
@@ -99,7 +97,17 @@ class VirtualEnergySystemModel(VessimModel):
         # update input
         self.consumption = inputs["consumption"]
         self.solar = inputs["solar"]
+        self.redis_docker.redis.set("solar", self.solar)
         self.ci = inputs["ci"]
+        self.redis_docker.redis.set("ci", self.ci)
+
+        # get redis update
+        self.battery.min_soc = self.redis_get("battery.min_soc")
+        self.battery_grid_charge = self.redis_get("battery_grid_charge")
+        # update power mode
+        for node in self.nodes:
+            node.power_mode = self.redis_get("node.power_mode", str(node.id))
+            # TODO update the power_mode remotely
 
         # If delta is positive there is excess power,
         # if negative there is a power deficit.
@@ -137,21 +145,29 @@ class VirtualEnergySystemModel(VessimModel):
 
         return app
 
-    def redis_get(self, entry: str) -> Any:
+    def redis_get(self, entry: str, field: Optional[str] = None) -> Any:
         """Method for getting data from Redis database.
 
         Args:
             entry: The name of the key to retrieve from Redis.
+            field: The field (or item_id in your case) to retrieve from the hash at the specified key.
 
         Returns:
             any: The value retrieved from Redis.
 
         Raises:
-            ValueError: If the key does not exist in Redis.
+            ValueError: If the key or the field does not exist in Redis.
         """
-        value = self.redis_docker.redis.get(entry)
+        if self.redis_docker.redis.type(entry) == b'hash' and field is not None:
+            value = self.redis_docker.redis.hget(entry, field)
+        else:
+            value = self.redis_docker.redis.get(entry)
+
         if value is None:
-            raise ValueError(f"entry {entry} does not exist")
+            if field:
+                raise ValueError(f"field {field} does not exist in the hash {entry}")
+            else:
+                raise ValueError(f"entry {entry} does not exist")
         return value
 
     def init_get_routes(self, app: FastAPI) -> None:
@@ -176,15 +192,15 @@ class VirtualEnergySystemModel(VessimModel):
 
         @app.get("/solar")
         async def get_solar() -> float:
-            return float(self.redis_get("solar"))
+            return self.solar
 
         @app.get("/ci")
         async def get_ci() -> float:
-            return float(self.redis_get("ci"))
+            return self.ci
 
         @app.get("/battery-soc")
         async def get_battery_soc() -> float:
-            return float(self.redis_get("battery.soc"))
+            return self.battery.soc()
 
     def init_put_routes(self, app: FastAPI) -> None:
         """Initialize PUT routes for the FastAPI application.
@@ -209,9 +225,7 @@ class VirtualEnergySystemModel(VessimModel):
         @app.put("/ves/battery")
         async def put_battery(data: Dict[str, float]):
             validate_keys(data, ["min_soc", "grid_charge"])
-            self.battery.min_soc = data["min_soc"]
             self.redis_docker.redis.set("battery.min_soc", data["min_soc"])
-            self.battery_grid_charge = data["grid_charge"]
             self.redis_docker.redis.set("battery_grid_charge", data["grid_charge"])
             return data
 
@@ -226,8 +240,7 @@ class VirtualEnergySystemModel(VessimModel):
                 detail=f"{value} is not a valid power mode. "
                 f"Available power modes: {power_modes}",
             )
-            self.nodes_power_mode[item_id] = value
-            self.redis_docker.redis.hset("nodes_power_mode", str(item_id), value)
+            self.redis_docker.redis.hset("node.power_mode", str(item_id), value)
             return data
 
     def print_redis(self):
