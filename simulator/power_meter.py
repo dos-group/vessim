@@ -1,36 +1,22 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 from lib.http_client import HTTPClient
-from threading import Thread
+import threading
 import time
 
-POWER_METER_COUNT = 0
 
 class PowerMeter(ABC):
     """Abstract base class for power meters.
 
     Args:
         name: Optional; The name of the power meter.
-              If none is provided, a default name will be assigned.
-
-    Attributes:
-        name: Optional; The name of the power meter.
-              If none is provided, a default name will be assigned.
-
-    Methods:
-        __call__: Abstract method to measure and return the current node power demand.
     """
 
     def __init__(self, name: Optional[str] = None):
-        global POWER_METER_COUNT
-        POWER_METER_COUNT += 1
-        if name is None:
-            self.name = f"power_meter_{POWER_METER_COUNT}"
-        else:
-            self.name = name
+        self.name = name
 
     @abstractmethod
-    def __call__(self) -> float:
+    def measure(self) -> float:
         """Abstract method to measure and return the current node power demand.
 
         Returns:
@@ -39,9 +25,7 @@ class PowerMeter(ABC):
         pass
 
 
-import threading
-
-class NodeApiMeter(PowerMeter):
+class HttpPowerMeter(PowerMeter):
     """Power meter for an external node that implements the vessim node API.
 
     This class represents a power meter for an external node. It creates a thread
@@ -79,7 +63,7 @@ class NodeApiMeter(PowerMeter):
             self.power = float(self.http_client.get("/power"))
             time.sleep(interval)
 
-    def __call__(self) -> float:
+    def measure(self) -> float:
         """Returns the current power demand of the node."""
         return self.power
 
@@ -89,3 +73,12 @@ class NodeApiMeter(PowerMeter):
         if self.update_thread.is_alive():
             self.update_thread.join()
 
+
+class MockPowerMeter(PowerMeter):
+
+    def __init__(self, return_value: float, name: Optional[str] = None):
+        super().__init__(name)
+        self.return_value = return_value
+
+    def measure(self) -> float:
+        return self.return_value

@@ -8,17 +8,18 @@ from datetime import timedelta
 import mosaik
 import pandas as pd
 
-from simulator.power_meter import HttpPowerMeter
+from simulator.power_meter import MockPowerMeter
 from vessim.carbon_api import CarbonApi
-from vessim.storage import SimpleBattery
+from vessim.storage import SimpleBattery, DefaultStoragePolicy
 
-
-# Config file for parameters and settings specification.
 sim_config = {
     "CSV": {
         "python": "mosaik_csv:CSV",
     },
-    "ComputingSystemSim": {
+    "Microgrid": {
+        "python": "vessim.microgrid:MicrogridSim"
+    },
+    "ComputingSystem": {
         "python": "vessim.computing_system:ComputingSystemSim",
     },
     "Monitor": {
@@ -29,9 +30,6 @@ sim_config = {
     },
     "CarbonApi": {
         "python": "vessim.carbon_api:CarbonApiSim",
-    },
-    "VirtualEnergySystem": {
-        "python": "simulator.virtual_energy_system:VirtualEnergySystem",
     },
 }
 
@@ -47,9 +45,12 @@ def main(sim_start: str,
     """Execute the example scenario simulation."""
     world = mosaik.World(sim_config)
 
-    gcp_power_meter = HttpPowerMeter("http://35.242.197.234", name="gcp_power_meter")
-    computing_system_sim = world.start('ComputingSystemSim')
-    computing_system_sim.ComputingSystem(power_meters=[gcp_power_meter])
+    power_meter = MockPowerMeter(return_value=50)
+    computing_system_sim = world.start('ComputingSystem', step_size=60)
+    computing_system = computing_system_sim.ComputingSystem(
+        power_meters=[power_meter],
+        pue=1.5
+    )
 
     # Carbon Intensity API
     data = pd.read_csv(carbon_data_file, index_col="Time", parse_dates=True)
@@ -67,59 +68,45 @@ def main(sim_start: str,
     solar_controller = world.start("SolarController")
     solar_agent = solar_controller.SolarAgent()
 
-    # VES Sim & Battery Sim
+    ## Solar -> SolarAgent
+    world.connect(solar, solar_agent, ("P", "solar"))
+
+    microgrid_sim = world.start("Microgrid")
     battery = SimpleBattery(
         capacity=battery_capacity,
         charge_level=battery_capacity * battery_initial_soc,
         min_soc=battery_min_soc,
         c_rate=battery_c_rate,
     )
-    virtual_energy_system_sim = world.start("VirtualEnergySystem")
-    virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystem(
-        battery=battery
-    )
+    policy = DefaultStoragePolicy()
+    microgrid = microgrid_sim.Microgrid.create(1, storage=battery, policy=policy)[0]
 
-    collector = world.start("Monitor")
-    monitor = collector.Monitor()
+    world.connect(solar_agent, microgrid, ("solar", "p_gen"))
+    world.connect(computing_system, microgrid, ('p_cons', 'p_cons'))
 
-    # Connect entities
-    # world.connect(computing_system, monitor, 'p_cons')
+    def monitor_fn():
+        return {
+            "battery_soc": battery.soc(),
+            "battery_min_soc": battery.min_soc
+        }
 
-    ## Carbon -> VES
-    world.connect(carbon_api_de, virtual_energy_system, ("carbon_intensity", "ci"))
+    # Monitor
+    monitor_sim = world.start("Monitor")
+    monitor = monitor_sim.Monitor(fn=monitor_fn, sim_start=sim_start)
+    world.connect(microgrid, monitor, "p_gen", "p_cons", "p_grid")
+    world.connect(carbon_api_de, monitor, "carbon_intensity")
 
-    ## Solar -> SolarAgent -> VES
-    world.connect(solar, solar_agent, ("P", "solar"))
-    world.connect(solar_agent, virtual_energy_system, "solar")
-
-    ## computing_system -> VES
-    # world.connect(
-    #   computing_system, virtual_energy_system, (
-    #       'p_con', 'consumption'
-    #   )
-    # )
-
-    world.connect(
-        virtual_energy_system,
-        monitor,
-        "consumption",
-        "battery_min_soc",
-        "battery_soc",
-        "solar",
-        "ci",
-    )
-
-    world.run(until=duration, print_progress=False, rt_factor=1)
+    world.run(until=duration)
 
 
 if __name__ == "__main__":
     main(
         sim_start="2014-01-01 00:00:00",
-        duration=300,
+        duration=3600 * 12,
         carbon_data_file="data/carbon_intensity.csv",
         solar_data_file="data/pv_10kw.csv",
         battery_capacity=10 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
         battery_initial_soc=.7,
         battery_min_soc=.6,
-        battery_c_rate=.2,
+        battery_c_rate=1,
     )
