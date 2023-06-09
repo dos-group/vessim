@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import datetime, timedelta
 from typing import Dict, Callable, Any
 
 import pandas as pd
@@ -7,6 +8,7 @@ from loguru import logger
 
 import mosaik_api
 
+from vessim._util import Clock
 
 META = {
     "type": "event-based",
@@ -14,14 +16,14 @@ META = {
         "Monitor": {
             "public": True,
             "any_inputs": True,
-            "params": ["fn"],
+            "params": ["fn", "sim_start"],
             "attrs": [],
         },
     },
 }
 
 
-class Collector(mosaik_api.Simulator):
+class Monitor(mosaik_api.Simulator):
     """Simple data collector for printing data at the end of simulation.
 
     Attributes:
@@ -34,12 +36,14 @@ class Collector(mosaik_api.Simulator):
         self.eid = None
         self.data = defaultdict(dict)
         self.fn = None
+        self._clock = None
 
     def init(self, sid, time_resolution):
         return self.meta
 
-    def create(self, num, model, fn: Callable[[], Dict[str, Any]]):
+    def create(self, num, model, fn: Callable[[], Dict[str, Any]], sim_start: datetime):
         self.fn = fn
+        self._clock = Clock(sim_start)
         if num > 1 or self.eid is not None:
             raise RuntimeError("Can only create one instance of Monitor.")
 
@@ -47,16 +51,17 @@ class Collector(mosaik_api.Simulator):
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
+        dt = self._clock.to_datetime(time)
         data = inputs.get(self.eid, {})
-        logger.info(f"# {str(time):>5} ----------")
+        logger.info(f"# --- {str(dt):>5} ---")
         for attr, values in data.items():
             for src, value in values.items():
                 logger.info(f"{attr}: {value}")
-                self.data[attr][time] = value
+                self.data[attr][dt] = value
         if self.fn is not None:
             for attr, value in self.fn().items():
                 logger.info(f"{attr}: {value}")
-                self.data[attr][time] = value
+                self.data[attr][dt] = value
         return None
 
     def finalize(self):

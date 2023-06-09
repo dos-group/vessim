@@ -19,8 +19,8 @@ sim_config = {
     "ComputingSystem": {
         "python": "simulator.computing_system:ComputingSystemSim",
     },
-    "Collector": {
-        "python": "simulator.collector:Collector",
+    "Monitor": {
+        "python": "vessim.monitor:Monitor",
     },
     "SolarController": {
         "python": "simulator.solar_controller:SolarController",
@@ -31,7 +31,7 @@ sim_config = {
 }
 
 
-def main(start_date: str,
+def main(sim_start: str,
          duration: int,
          carbon_data_file: str,
          solar_data_file: str,
@@ -57,7 +57,7 @@ def main(start_date: str,
     #carbon_api_de = carbon_api_simulator.CarbonIntensityApiModel(zone="DE")
 
     # Carbon Sim from CSV dataset
-    carbon_sim = world.start("CSV", sim_start=start_date, datafile=carbon_data_file)
+    carbon_sim = world.start("CSV", sim_start=sim_start, datafile=carbon_data_file)
     carbon = carbon_sim.CarbonIntensity.create(1)[0]
 
     # Carbon Controller acts as a medium between carbon module and VES or
@@ -66,7 +66,7 @@ def main(start_date: str,
     carbon_agent = carbon_controller.CarbonAgent()
 
     # Solar Sim from CSV dataset
-    solar_sim = world.start("CSV", sim_start=start_date, datafile=solar_data_file)
+    solar_sim = world.start("CSV", sim_start=sim_start, datafile=solar_data_file)
     solar = solar_sim.PV.create(1)[0]
 
     # Solar Controller acts as medium between solar module and VES or consumer,
@@ -95,12 +95,13 @@ def main(start_date: str,
 
     def monitor_fn():
         return {
-            "battery_soc": battery.soc()
+            "battery_soc": battery.soc(),
+            "battery_min_soc": battery.min_soc
         }
 
     # Monitor
-    collector = world.start("Collector")
-    monitor = collector.Monitor(fn=monitor_fn)
+    monitor_sim = world.start("Monitor")
+    monitor = monitor_sim.Monitor(fn=monitor_fn, sim_start=sim_start)
     world.connect(microgrid, monitor, "p_gen", "p_cons", "p_grid")
     world.connect(carbon_agent, monitor, "ci")
 
@@ -109,12 +110,12 @@ def main(start_date: str,
 
 if __name__ == "__main__":
     main(
-        start_date="2014-01-01 00:00:00",
-        duration=3600 * 5,
+        sim_start="2014-01-01 00:00:00",
+        duration=3600 * 12,
         carbon_data_file="data/ger_ci_testing.csv",
         solar_data_file="data/pv_10kw.csv",
         battery_capacity=10 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
         battery_initial_soc=.7,
         battery_min_soc=.6,
-        battery_c_rate=.2,
+        battery_c_rate=1,
     )
