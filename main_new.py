@@ -101,7 +101,7 @@ def main(sim_start: str,
 
     # Monitor
     monitor_sim = world.start("Monitor")
-    monitor = monitor_sim.Monitor(fn=monitor_fn, start_date=sim_start)
+    monitor = monitor_sim.Monitor(fn=monitor_fn, sim_start=sim_start)
     world.connect(microgrid, monitor, "p_gen", "p_cons", "p_grid")
     world.connect(carbon_agent, monitor, "ci")
 

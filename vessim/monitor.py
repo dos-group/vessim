@@ -16,7 +16,7 @@ META = {
         "Monitor": {
             "public": True,
             "any_inputs": True,
-            "params": ["fn", "start_date"],
+            "params": ["fn", "sim_start"],
             "attrs": [],
         },
     },
@@ -56,11 +56,11 @@ class Monitor(mosaik_api.Simulator):
         logger.info(f"# --- {str(dt):>5} ---")
         for attr, values in data.items():
             for src, value in values.items():
-                logger.info(f"{attr}: {value:.1f}")
+                logger.info(f"{attr}: {value}")
                 self.data[attr][dt] = value
         if self.fn is not None:
             for attr, value in self.fn().items():
-                logger.info(f"{attr}: {value:.1f}")
+                logger.info(f"{attr}: {value}")
                 self.data[attr][dt] = value
         return None
 
