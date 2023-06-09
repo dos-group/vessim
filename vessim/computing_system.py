@@ -9,7 +9,7 @@ class ComputingSystemSim(VessimSimulator):
     META = {
         "type": "time-based",
         "models": {
-            "ComputingSystemModel": {
+            "ComputingSystem": {
                 "public": True,
                 "params": ["power_meters", "pue"],
                 "attrs": ["p_cons"],

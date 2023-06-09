@@ -23,7 +23,7 @@ META = {
 }
 
 
-class Monitor(mosaik_api.Simulator):
+class MonitorSim(mosaik_api.Simulator):
     """Simple data collector for printing data at the end of simulation.
 
     Attributes:

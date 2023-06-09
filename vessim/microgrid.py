@@ -10,7 +10,7 @@ class MicrogridSim(VessimSimulator):
     META = {
         "type": "event-based",
         "models": {
-            "MicrogridModel": {
+            "Microgrid": {
                 "public": True,
                 "params": ["storage", "policy"],
                 "attrs": ["p_gen", "p_cons", "p_grid"],
