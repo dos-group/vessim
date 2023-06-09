@@ -48,6 +48,9 @@ dependencies = [ # Optional
 requires = ["flit_core >=3.2,<4"]
 build-backend = "flit_core.buildapi"
 
+[tool.flit.sdist]
+exclude = ["data"]
+
 
 [tool.black]
 line-length = 90  # Set the maximum characters per line
