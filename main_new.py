@@ -3,12 +3,15 @@
 As described in 'Software-in-the-loop simulation for developing and testing carbon-aware
 applications'.
 """
+from datetime import timedelta
 
 import mosaik
+import pandas as pd
+
 from simulator.power_meter import MockPowerMeter
+from vessim.carbon_api import CarbonApi
 from vessim.storage import SimpleBattery, DefaultStoragePolicy
 
-# Config file for parameters and settings specification.
 sim_config = {
     "CSV": {
         "python": "mosaik_csv:CSV",
@@ -25,8 +28,8 @@ sim_config = {
     "SolarController": {
         "python": "simulator.solar_controller:SolarController",
     },
-    "CarbonController": {
-        "python": "simulator.carbon_controller:CarbonController",
+    "CarbonApi": {
+        "python": "vessim.carbon_api:CarbonApiSim",
     },
 }
 
@@ -49,21 +52,12 @@ def main(sim_start: str,
         pue=1.5
     )
 
-    #data = pd.read_csv(carbon_data_file)
-    #carbon_intensity_api = CarbonIntensityApi(data=data)
-    #carbon_api_simulator = world.start("CarbonIntensityApiSim",
-    #                                   sim_start=start_date,
-    #                                   carbon_intensity_api=carbon_intensity_api)
-    #carbon_api_de = carbon_api_simulator.CarbonIntensityApiModel(zone="DE")
-
-    # Carbon Sim from CSV dataset
-    carbon_sim = world.start("CSV", sim_start=start_date, datafile=carbon_data_file)
-    carbon = carbon_sim.CarbonIntensity.create(1)[0]
-
-    # Carbon Controller acts as a medium between carbon module and VES or
-    # direct consumer since producer is only a CSV generator.
-    carbon_controller = world.start("CarbonController")
-    carbon_agent = carbon_controller.CarbonAgent()
+    # Carbon Intensity API
+    data = pd.read_csv(carbon_data_file, index_col="Time", parse_dates=True)
+    data.index -= timedelta(days=365 * 6)
+    carbon_api_sim = world.start("CarbonApi", sim_start=sim_start,
+                                 carbon_api=CarbonApi(data=data))
+    carbon_api_de = carbon_api_sim.CarbonApi.create(1, zone="DE")[0]
 
     # Solar Sim from CSV dataset
     solar_sim = world.start("CSV", sim_start=sim_start, datafile=solar_data_file)
@@ -74,10 +68,7 @@ def main(sim_start: str,
     solar_controller = world.start("SolarController")
     solar_agent = solar_controller.SolarAgent()
 
-    ## Carbon -> CarbonAgent -> VES
-    world.connect(carbon, carbon_agent, ("Carbon Intensity", "ci"))
-
-    ## Solar -> SolarAgent -> VES
+    ## Solar -> SolarAgent
     world.connect(solar, solar_agent, ("P", "solar"))
 
     microgrid_sim = world.start("Microgrid")
@@ -103,7 +94,7 @@ def main(sim_start: str,
     monitor_sim = world.start("Monitor")
     monitor = monitor_sim.Monitor(fn=monitor_fn, sim_start=sim_start)
     world.connect(microgrid, monitor, "p_gen", "p_cons", "p_grid")
-    world.connect(carbon_agent, monitor, "ci")
+    world.connect(carbon_api_de, monitor, "carbon_intensity")
 
     world.run(until=duration)
 
@@ -112,7 +103,7 @@ if __name__ == "__main__":
     main(
         sim_start="2014-01-01 00:00:00",
         duration=3600 * 12,
-        carbon_data_file="data/ger_ci_testing.csv",
+        carbon_data_file="data/carbon_intensity.csv",
         solar_data_file="data/pv_10kw.csv",
         battery_capacity=10 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
         battery_initial_soc=.7,

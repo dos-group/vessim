@@ -3,9 +3,13 @@
 As described in 'Software-in-the-loop simulation for developing and testing carbon-aware
 applications'.
 """
+from datetime import timedelta
 
 import mosaik
+import pandas as pd
+
 from simulator.power_meter import HttpPowerMeter
+from vessim.carbon_api import CarbonApi
 from vessim.storage import SimpleBattery
 
 
@@ -23,8 +27,8 @@ sim_config = {
     "SolarController": {
         "python": "simulator.solar_controller:SolarController",
     },
-    "CarbonController": {
-        "python": "simulator.carbon_controller:CarbonController",
+    "CarbonApi": {
+        "python": "vessim.carbon_api:CarbonApiSim",
     },
     "VirtualEnergySystem": {
         "python": "simulator.virtual_energy_system:VirtualEnergySystem",
@@ -32,7 +36,7 @@ sim_config = {
 }
 
 
-def main(start_date: str,
+def main(sim_start: str,
          duration: int,
          carbon_data_file: str,
          solar_data_file: str,
@@ -47,17 +51,15 @@ def main(start_date: str,
     computing_system_sim = world.start('ComputingSystemSim')
     computing_system_sim.ComputingSystem(power_meters=[gcp_power_meter])
 
-    # Carbon Sim from CSV dataset
-    carbon_sim = world.start("CSV", sim_start=start_date, datafile=carbon_data_file)
-    carbon = carbon_sim.CarbonIntensity.create(1)[0]
-
-    # Carbon Controller acts as a medium between carbon module and VES or
-    # direct consumer since producer is only a CSV generator.
-    carbon_controller = world.start("CarbonController")
-    carbon_agent = carbon_controller.CarbonAgent()
+    # Carbon Intensity API
+    data = pd.read_csv(carbon_data_file, index_col="Time", parse_dates=True)
+    data.index -= timedelta(days=365 * 6)
+    carbon_api_sim = world.start("CarbonApi", sim_start=sim_start,
+                                 carbon_api=CarbonApi(data=data))
+    carbon_api_de = carbon_api_sim.CarbonApi.create(1, zone="DE")[0]
 
     # Solar Sim from CSV dataset
-    solar_sim = world.start("CSV", sim_start=start_date, datafile=solar_data_file)
+    solar_sim = world.start("CSV", sim_start=sim_start, datafile=solar_data_file)
     solar = solar_sim.PV.create(1)[0]
 
     # Solar Controller acts as medium between solar module and VES or consumer,
@@ -83,9 +85,8 @@ def main(start_date: str,
     # Connect entities
     # world.connect(computing_system, monitor, 'p_cons')
 
-    ## Carbon -> CarbonAgent -> VES
-    world.connect(carbon, carbon_agent, ("Carbon Intensity", "ci"))
-    world.connect(carbon_agent, virtual_energy_system, "ci")
+    ## Carbon -> VES
+    world.connect(carbon_api_de, virtual_energy_system, ("carbon_intensity", "ci"))
 
     ## Solar -> SolarAgent -> VES
     world.connect(solar, solar_agent, ("P", "solar"))
@@ -113,9 +114,9 @@ def main(start_date: str,
 
 if __name__ == "__main__":
     main(
-        start_date="2014-01-01 00:00:00",
+        sim_start="2014-01-01 00:00:00",
         duration=300,
-        carbon_data_file="data/ger_ci_testing.csv",
+        carbon_data_file="data/carbon_intensity.csv",
         solar_data_file="data/pv_10kw.csv",
         battery_capacity=10 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
         battery_initial_soc=.7,
