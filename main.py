@@ -5,7 +5,7 @@ applications'.
 """
 
 import mosaik
-from simulator.power_meter import NodeApiMeter
+from simulator.power_meter import HttpPowerMeter
 from vessim.storage import SimpleBattery
 
 
@@ -43,7 +43,7 @@ def main(sim_start: str,
     """Execute the example scenario simulation."""
     world = mosaik.World(sim_config)
 
-    gcp_power_meter = NodeApiMeter("http://35.242.197.234", name="gcp_power_meter")
+    gcp_power_meter = HttpPowerMeter("http://35.242.197.234", name="gcp_power_meter")
     computing_system_sim = world.start('ComputingSystemSim')
     computing_system_sim.ComputingSystem(power_meters=[gcp_power_meter])
 
