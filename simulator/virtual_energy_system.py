@@ -1,5 +1,5 @@
 import mosaik_api
-from vessim.core import VessimSimulator, VessimModel
+from vessim.core import VessimSimulator, VessimModel, Node
 from vessim.storage import SimpleBattery
 from simulator.redis_docker import RedisDocker
 from fastapi import FastAPI, HTTPException
@@ -47,12 +47,14 @@ class VirtualEnergySystemModel(VessimModel):
 
     Args:
         battery: SimpleBatteryModel used by the system.
+        nodes: List of physical or virtual computing nodes.
         db_host (optional): The host address for the database, defaults to '127.0.0.1'.
         api_host (optional): The host address for the API, defaults to '127.0.0.1'.
 
     Attributes:
         step_size: The time step in seconds for the model.
         battery: The battery model used by the system.
+        nodes: List of physical or virtual computing nodes.
         battery_grid_charge: The amount of energy charged to the battery from the grid.
         nodes_power_mode: The power mode of individual nodes.
         consumption: The current total energy consumption of the system.
@@ -65,12 +67,14 @@ class VirtualEnergySystemModel(VessimModel):
 
     def __init__(
         self,
+        nodes: list[Node],
         battery: SimpleBattery,
         db_host: str = "127.0.0.1",
         api_host: str = "127.0.0.1",
     ):
         # ves attributes
         self.battery = battery
+        self.nodes = nodes
         self.battery_grid_charge = 0
         self.nodes_power_mode = {}
         self.consumption = 0
