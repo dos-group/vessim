@@ -3,6 +3,8 @@ from vessim.storage import SimpleBattery
 from simulator.redis_docker import RedisDocker
 from fastapi import FastAPI, HTTPException
 from typing import Dict, List, Any, Optional
+from lib.http_client import HTTPClient, HTTPClientError
+from threading import Thread
 
 
 class VirtualEnergySystemSim(VessimSimulator):
@@ -104,10 +106,19 @@ class VirtualEnergySystemModel(VessimModel):
         # get redis update
         self.battery.min_soc = self.redis_get("battery.min_soc")
         self.battery_grid_charge = self.redis_get("battery_grid_charge")
-        # update power mode
+        # update power mode for the node remotely
         for node in self.nodes:
             node.power_mode = self.redis_get("node.power_mode", str(node.id))
-            # TODO update the power_mode remotely
+            http_client = HTTPClient(f"{node.address}:{node.port}")
+
+            def update_power_model():
+                try:
+                    http_client.put("/power_mode", {"power_mode": node.power_mode})
+                except HTTPClientError as e:
+                    print(e)
+            # use thread to not slow down simulation
+            update_thread = Thread(target=update_power_model)
+            update_thread.start()
 
         # If delta is positive there is excess power,
         # if negative there is a power deficit.
@@ -150,7 +161,8 @@ class VirtualEnergySystemModel(VessimModel):
 
         Args:
             entry: The name of the key to retrieve from Redis.
-            field: The field (or item_id in your case) to retrieve from the hash at the specified key.
+            field: The field (or item_id in your case) to retrieve from the
+                hash at the specified key.
 
         Returns:
             any: The value retrieved from Redis.
