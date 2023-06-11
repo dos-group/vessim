@@ -10,26 +10,24 @@ import pandas as pd
 
 from simulator.power_meter import MockPowerMeter
 from vessim.carbon_api import CarbonApi
+from vessim.generator import Generator
 from vessim.storage import SimpleBattery, DefaultStoragePolicy
 
 sim_config = {
-    "CSV": {
-        "python": "mosaik_csv:CSV",
-    },
     "Microgrid": {
         "python": "vessim.microgrid:MicrogridSim"
     },
     "ComputingSystem": {
         "python": "vessim.computing_system:ComputingSystemSim",
     },
-    "Monitor": {
-        "python": "vessim.monitor:MonitorSim",
-    },
-    "SolarController": {
-        "python": "simulator.solar_controller:SolarController",
+    "Generator": {
+        "python": "vessim.generator:GeneratorSim",
     },
     "CarbonApi": {
         "python": "vessim.carbon_api:CarbonApiSim",
+    },
+    "Monitor": {
+        "python": "vessim.monitor:MonitorSim",
     },
 }
 
@@ -59,17 +57,11 @@ def main(sim_start: str,
                                  carbon_api=CarbonApi(data=data))
     carbon_api_de = carbon_api_sim.CarbonApi.create(1, zone="DE")[0]
 
-    # Solar Sim from CSV dataset
-    solar_sim = world.start("CSV", sim_start=sim_start, datafile=solar_data_file)
-    solar = solar_sim.PV.create(1)[0]
-
-    # Solar Controller acts as medium between solar module and VES or consumer,
-    # as the producer only generates CSV data.
-    solar_controller = world.start("SolarController")
-    solar_agent = solar_controller.SolarAgent()
-
-    ## Solar -> SolarAgent
-    world.connect(solar, solar_agent, ("P", "solar"))
+    # Solar generator
+    data = pd.read_csv(solar_data_file, index_col="Date", parse_dates=True)["P"]
+    solar_sim = world.start("Generator", sim_start=sim_start,
+                            generator=Generator(data=data))
+    solar = solar_sim.Generator.create(1)[0]
 
     microgrid_sim = world.start("Microgrid")
     battery = SimpleBattery(
@@ -81,8 +73,8 @@ def main(sim_start: str,
     policy = DefaultStoragePolicy()
     microgrid = microgrid_sim.Microgrid.create(1, storage=battery, policy=policy)[0]
 
-    world.connect(solar_agent, microgrid, ("solar", "p_gen"))
     world.connect(computing_system, microgrid, ('p_cons', 'p_cons'))
+    world.connect(solar, microgrid, "p")
 
     def monitor_fn():
         return {
