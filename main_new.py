@@ -51,7 +51,7 @@ def main(sim_start: str,
     )
 
     # Carbon Intensity API
-    data = pd.read_csv(carbon_data_file, index_col="Time", parse_dates=True)
+    data = pd.read_csv(carbon_data_file, index_col="Date", parse_dates=True)
     data.index -= timedelta(days=365 * 6)
     carbon_api_sim = world.start("CarbonApi", sim_start=sim_start,
                                  carbon_api=CarbonApi(data=data))
