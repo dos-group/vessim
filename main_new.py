@@ -43,7 +43,7 @@ def main(sim_start: str,
     """Execute the example scenario simulation."""
     world = mosaik.World(sim_config)
 
-    power_meter = MockPowerMeter(return_value=50)
+    power_meter = MockPowerMeter(p=-50)
     computing_system_sim = world.start('ComputingSystem', step_size=60)
     computing_system = computing_system_sim.ComputingSystem(
         power_meters=[power_meter],
@@ -73,8 +73,8 @@ def main(sim_start: str,
     policy = DefaultStoragePolicy()
     microgrid = microgrid_sim.Microgrid.create(1, storage=battery, policy=policy)[0]
 
-    world.connect(computing_system, microgrid, ('p_cons', 'p_cons'))
     world.connect(solar, microgrid, "p")
+    world.connect(computing_system, microgrid, "p")
 
     def monitor_fn():
         return {
@@ -85,7 +85,9 @@ def main(sim_start: str,
     # Monitor
     monitor_sim = world.start("Monitor")
     monitor = monitor_sim.Monitor(fn=monitor_fn, sim_start=sim_start)
-    world.connect(microgrid, monitor, "p_gen", "p_cons", "p_grid")
+    world.connect(solar, monitor, ("p", "p_solar"))
+    world.connect(computing_system, monitor, ("p", "p_computing_system"))
+    world.connect(microgrid, monitor, ("p_delta", "p_grid"))
     world.connect(carbon_api_de, monitor, "carbon_intensity")
 
     world.run(until=duration)
