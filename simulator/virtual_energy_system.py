@@ -15,7 +15,7 @@ class VirtualEnergySystemSim(VessimSimulator):
             "VirtualEnergySystem": {
                 "public": True,
                 "params": ["battery", "db_host", "api_host"],
-                "attrs": ["consumption", "battery", "solar", "ci", "grid_power"],
+                "attrs": ["battery", "p_cons", "p_gen", "p_grid", "ci"],
             },
         },
     }
@@ -66,8 +66,8 @@ class VirtualEnergySystemModel(VessimModel):
 
         self.p_cons = 0
         self.p_gen = 0
-        self.ci = 0
         self.p_grid = 0
+        self.ci = 0
 
         # db & api
         self.redis_docker = RedisDocker(host=db_host)
@@ -123,7 +123,7 @@ class VirtualEnergySystemModel(VessimModel):
         """
         # store attributes and its initial values in Redis key-value store
         redis_init_content = {
-            "solar": self.solar,
+            "solar": self.p_gen,
             "ci": self.ci,
             "battery.soc": self.battery.soc(),
             # TODO implement forecasts:
