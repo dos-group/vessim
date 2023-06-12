@@ -1,15 +1,13 @@
 from datetime import datetime
-from typing import Union, List
+from typing import List, Optional
 
 import pandas as pd
 
-from vessim._util import Clock
+from vessim._util import Clock, Time, TraceSimulator
 from vessim.core import VessimSimulator, VessimModel
 
-Time = Union[int, float, str, datetime]
 
-
-class CarbonApi:
+class CarbonApi(TraceSimulator):
     def __init__(self, data: pd.DataFrame, unit: str = "g_per_kWh"):
         """Service for querying the carbon intensity at different times and locations.
 
@@ -20,7 +18,7 @@ class CarbonApi:
                 (`lb_per_MWh`). Note that Vessim internally assumes gCO2/kWh, so choosing
                 lb/MWh will simply convert this data to gCO2/kWh.
         """
-        self.data = data
+        super().__init__(data)
         if unit == "lb_per_MWh":
             self.data = self.data * 0.45359237
         elif unit != "g_per_kWh":
@@ -30,12 +28,17 @@ class CarbonApi:
         """Returns a list of all available zones."""
         return list(self.data.columns)
 
-    def carbon_intensity_at(self, dt: Time, zone: str) -> float:
+    def carbon_intensity_at(self, dt: Time, zone: Optional[str] = None) -> float:
         """Returns the carbon intensity at a given time and zone.
 
         If the queried timestamp is not available in the `data` dataframe, the last valid
         datapoint is being returned.
         """
+        if zone is None:
+            if len(self.zones()) == 1:
+                zone = self.zones()[0]
+            else:
+                raise ValueError("Need to specify carbon intensity zone.")
         try:
             zone_carbon_intensity = self.data[zone]
         except KeyError:
@@ -69,7 +72,7 @@ class CarbonApiSim(VessimSimulator):
         },
     }
 
-    def __init__(self, ):
+    def __init__(self):
         super().__init__(self.META, CarbonApiModel)
         self.clock = None
         self.sim_start = None

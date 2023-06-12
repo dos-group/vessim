@@ -51,7 +51,7 @@ class SimpleBattery(Storage):
             max_rate = self.c_rate * self.capacity / 3600
             if power >= max_rate:
                 logger.info(f"Trying to charge storage '{__class__.__name__}' with "
-                            f"{power}W but only {max_rate} are supported.")
+                            f"{power} W but only {max_rate} W are supported.")
                 max_charge_p_delta = power - max_rate
                 power = max_rate
 

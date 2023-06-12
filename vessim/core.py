@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Type, Optional, Dict
-from simulator.power_meter import PowerMeter
+from typing import Type, Optional, Dict, Any, Union
 
 import mosaik_api
+
 
 class Node:
     """Represents a physical or virtual computing node.
@@ -12,15 +12,12 @@ class Node:
 
     Args:
         address: The network address of the node.
-        power_meter: A power meter instance to monitor the power consumption of
-            the node. Default is None.
         power_mode: The power mode of the node. Default is "high performance".
 
     Attributes:
         id: A unique ID assigned to each node. The ID is auto-incremented for
             each new node.
         address: The network address of the node.
-        power_meter: A power meter instance to monitor the power consumption of the node.
         power_mode: The power mode of the node. Default is "high performance".
     """
 
@@ -31,15 +28,14 @@ class Node:
         self,
         address: str,
         port: int = 8000,
-        power_meter: Optional[PowerMeter] = None,
         power_mode: str = "high performance"
     ) -> None:
         Node.id += 1
         self.id = Node.id
         self.address = address
         self.port = port
-        self.power_meter = power_meter
         self.power_mode = power_mode
+
 
 class VessimModel:
 
@@ -111,16 +107,9 @@ class VessimSimulator(mosaik_api.Simulator, ABC):
     def step(self, time, inputs, max_advance):
         """Set all `inputs` attr values to the `entity` attrs, then step the `entity`."""
         self.time = time
-
-        input_mapping: Dict[VessimModel, Dict] = {}
-        for eid, attrs in inputs.items():
-            # We assume a single input per value -> take first item from dict
-            inputs_ = {key: list(val_dict.values())[0] for key, val_dict in attrs.items()}
-            input_mapping[eid] = inputs_
-
+        input_mapping = {eid: _convert_inputs(attrs) for eid, attrs in inputs.items()}
         for eid, entity in self.entities.items():
             entity.step(time, input_mapping.get(eid, {}))
-
         return self.next_step(time)
 
     @abstractmethod
@@ -141,3 +130,29 @@ class VessimSimulator(mosaik_api.Simulator, ABC):
                 if hasattr(model, attr):
                     data[eid][attr] = getattr(model, attr)
         return data
+
+
+def _convert_inputs(
+    attrs: dict[str, dict[str, Any]]
+) -> dict[str, Union[Any, list[Any]]]:
+    """Converts Mosaik step inputs into a simpler format suitable for Vessim.
+
+    If there is a single input, only the input is being returned.
+    If there are multiple inputs, they are returned as a list.
+
+    Examples:
+        >>> _convert_inputs({'p': {'ComputingSystem-0.ComputingSystem_0': -50})
+        -50
+
+        >>> _convert_inputs({'p': {'ComputingSystem-0.ComputingSystem_0': -50,
+        >>>                        'Generator-0.Generator_0': 12})
+        [-50, 12]
+    """
+    result = {}
+    for key, val_dict in attrs.items():
+        values = list(val_dict.values())
+        if len(values) == 1:
+            result[key] = values[0]
+        else:
+            result[key] = values
+    return result

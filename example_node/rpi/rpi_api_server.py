@@ -2,7 +2,6 @@ import sys
 sys.path.append("../")
 from node_api_server import FastApiServer
 from lib.pi_controller import PiController
-from fastapi import HTTPException
 
 class RpiNodeApiServer(FastApiServer):
     """A Raspberry Pi node API server, extending the base FastApiServer class.
@@ -23,7 +22,7 @@ class RpiNodeApiServer(FastApiServer):
         self.start()
 
     def set_power_mode(self, power_mode: str) -> None:
-        """Sets power mode for server and adjusts the max frequency of Pi accordingly.
+        """Sets power mode for server and adjusts the max frequency of Pi.
 
         Args:
             power_mode: The power mode to set.
