@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from typing import Type, Optional, Dict, Any, Union
-from simulator.power_meter import PowerMeter
 
 import mosaik_api
 
@@ -13,15 +12,12 @@ class Node:
 
     Args:
         address: The network address of the node.
-        power_meter: A power meter instance to monitor the power consumption of
-            the node. Default is None.
         power_mode: The power mode of the node. Default is "high performance".
 
     Attributes:
         id: A unique ID assigned to each node. The ID is auto-incremented for
             each new node.
         address: The network address of the node.
-        power_meter: A power meter instance to monitor the power consumption of the node.
         power_mode: The power mode of the node. Default is "high performance".
     """
 
@@ -31,13 +27,11 @@ class Node:
     def __init__(
         self,
         address: str,
-        power_meter: Optional[PowerMeter] = None,
         power_mode: str = "high performance"
     ) -> None:
         Node.id += 1
         self.id = Node.id
         self.address = address
-        self.power_meter = power_meter
         self.power_mode = power_mode
 
 

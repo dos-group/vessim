@@ -43,7 +43,7 @@ class ComputingSystemModel(VessimModel):
             Is always <= 0.
     """
 
-    def __init__(self, power_meters: List[PowerMeter], pue: float):
+    def __init__(self, power_meters: List[PowerMeter], pue: float = 1):
         self.power_meters = power_meters
         self.pue = pue
         self.p = 0.0
