@@ -15,8 +15,8 @@ META = {
 class SolarController(VessimSimulator):
     """Solar Controller.
 
-    Acts as medium between Solar CSV module and ecovisor or direct consumer since producer
-    is only a csv generator.
+    Acts as medium between Solar CSV module and ecovisor or direct consumer
+    since producer is only a csv generator.
     """
 
     def __init__(self):

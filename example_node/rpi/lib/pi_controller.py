@@ -49,7 +49,7 @@ class PiController:
         return self.cpu.get_frequencies()[0]
 
     def frequency_index(self) -> int:
-        """Get the index of the current CPU frequency in list of available frequencies.
+        """Get the index of the current CPU frequency of available frequencies.
 
         Returns:
             The index of the current CPU frequency.
