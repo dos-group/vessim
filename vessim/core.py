@@ -27,11 +27,13 @@ class Node:
     def __init__(
         self,
         address: str,
+        port: int = 8000,
         power_mode: str = "high performance"
     ) -> None:
         Node.id += 1
         self.id = Node.id
         self.address = address
+        self.port = port
         self.power_mode = power_mode
 
 
