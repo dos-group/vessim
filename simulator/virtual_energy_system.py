@@ -80,11 +80,11 @@ class VirtualEnergySystemModel(VessimModel):
         self.ci = inputs["ci"]
         self.p_grid = inputs["p_grid"]
 
-		# update redis
+        # update redis
         self.redis_docker.redis.set("solar", self.p_gen)
         self.redis_docker.redis.set("ci", self.ci)
 
-		# get redis update
+        # get redis update
         self.battery.min_soc = self.redis_get("battery.min_soc")
         self.battery_grid_charge = self.redis_get("battery_grid_charge")
         # update power mode for the node remotely
@@ -103,9 +103,6 @@ class VirtualEnergySystemModel(VessimModel):
             # use thread to not slow down simulation
             update_thread = Thread(target=update_power_model)
             update_thread.start()
-
-        # TODO where do we push the current simulation state to redis and collect pending
-        #   set requests?
 
     def init_fastapi(self) -> FastAPI:
         """Initializes the FastAPI application.
