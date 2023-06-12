@@ -108,7 +108,10 @@ class VirtualEnergySystemModel(VessimModel):
         self.battery_grid_charge = self.redis_get("battery_grid_charge")
         # update power mode for the node remotely
         for node in self.nodes:
-            node.power_mode = self.redis_get("node.power_mode", str(node.id))
+            updated_power_mode = self.redis_get("node.power_mode", str(node.id))
+            if node.power_mode == updated_power_mode:
+                continue
+            node.power_mode = updated_power_mode
             http_client = HTTPClient(f"{node.address}:{node.port}")
 
             def update_power_model():
