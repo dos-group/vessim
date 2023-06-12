@@ -29,19 +29,15 @@ class VirtualNodeApiServer(FastApiServer):
         self._restart_sysbench(run_forever=True)
         self.start()
 
-    def set_power_mode(self, power_mode: str) -> str:
+    def set_power_mode(self, power_mode: str) -> None:
         """Set the power mode for the server.
 
         Args:
             power_mode: The desired power mode. Can be "high performance",
                 "normal" or "power-saving".
-
-        Returns:
-            str: The power mode that has been set.
         """
         super().set_power_mode(power_mode)
         self._restart_sysbench(run_forever=True)
-        return power_mode
 
     def get_power(self) -> float:
         """Get the power usage of the virtual node.
