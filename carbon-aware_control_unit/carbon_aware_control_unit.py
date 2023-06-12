@@ -4,12 +4,13 @@ from typing import Dict
 
 
 class RemoteBattery:
-    """Initializes a battery instance that holds some info of the remote battery.
+    """Initializes a battery instance that holds info of the remote battery.
 
     Args:
         soc: The initial state of the battery's state of charge in %.
         min_soc: The minimum state of charge threshold for the battery in %.
-        grid_charge: The power which the battery is charged with from the public grid in W.
+        grid_charge: The power which the battery is charged with from the
+            public grid in W.
     """
 
     def __init__(self, soc: float = 0.0, min_soc: float = 0.0, grid_charge: float = 0.0) -> None:
@@ -19,15 +20,16 @@ class RemoteBattery:
 
 
 class CarbonAwareControlUnit:
-    """The Carbon Aware Control Unit uses the VESSIM API to execute real-time carbon-aware scenarios.
+    """The CACU uses the VESSIM API for real-time carbon-aware scenarios.
 
-    The Carbon Aware control unit uses an API server to communicate with the VES
-    simulation and retrieve real-time data about energy demand, solar power
+    The Carbon Aware control unit uses an API server to communicate with the
+    VES simulation and retrieve real-time data about energy demand, solar power
     production, and grid carbon intensity via GET requests. Under predefined
-    scenarios, the control unit sends SET requests to adjust the VES simulation and
-    computing system behavior. The Carbon Aware control unit's objective is to
-    optimize the use of renewable energy sources and minimize carbon emissions by
-    taking real-time decisions and actions based on these scenarios.
+    scenarios, the control unit sends SET requests to adjust the VES simulation
+    and computing system behavior. The Carbon Aware control unit's objective is
+    to optimize the use of renewable energy sources and minimize carbon
+    emissions by taking real-time decisions and actions based on these
+    scenarios.
 
     Args:
         server_address: The address of the server to connect to.
@@ -110,7 +112,8 @@ class CarbonAwareControlUnit:
         """Sends power mode data for nodes to the VES API.
 
         Args:
-            nodes_power_mode: A dictionary containing node IDs as keys and their respective power modes as values.
+            nodes_power_mode: A dictionary containing node IDs as keys and
+                their respective power modes as values.
 
         """
         for node_id, power_mode in nodes_power_mode.items():
