@@ -23,7 +23,7 @@ class RpiNodeApiServer(FastApiServer):
         self.start()
 
     def set_power_mode(self, power_mode: str) -> str:
-        """Sets power mode for server and adjusts the max frequency of Pi accordingly.
+        """Sets power mode for server and adjusts the max frequency of Pi.
 
         Args:
             power_mode: The power mode to set.
