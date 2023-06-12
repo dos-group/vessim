@@ -32,7 +32,7 @@ sim_config = {
         "python": "vessim.monitor:MonitorSim",
     },
     "VirtualEnergySystem": {
-        "python": "simulator.virtual_energy_system:VirtualEnergySystem",
+        "python": "simulator.virtual_energy_system:VirtualEnergySystemSim",
     },
 }
 
@@ -46,7 +46,7 @@ def main():
         nodes = []
         power_meters = [MockPowerMeter(p=-50)]
     else:
-        ip = "http://35.242.197.234"
+        ip = "http://192.168.149.71"
         nodes = [Node(ip)]
         power_meters = [HttpPowerMeter(interval=3, server_address=ip)]
 
@@ -105,7 +105,7 @@ def run_simulation(sim_start: str,
 
     # If real scenario, init and connect VES
     if nodes:
-        virtual_energy_system_sim = world.start("VirtualEnergySystem")
+        virtual_energy_system_sim = world.start("VirtualEnergySystem", step_size=60)
         virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystem(
             nodes=nodes,
             battery=battery

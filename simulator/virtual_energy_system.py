@@ -15,7 +15,7 @@ class VirtualEnergySystemSim(VessimSimulator):
         "models": {
             "VirtualEnergySystem": {
                 "public": True,
-                "params": ["battery", "db_host", "api_host"],
+                "params": ["battery", "db_host", "api_host", "nodes"],
                 "attrs": ["battery", "p_cons", "p_gen", "p_grid", "ci"],
             },
         },
@@ -27,7 +27,7 @@ class VirtualEnergySystemSim(VessimSimulator):
 
     def init(self, sid, time_resolution, step_size, eid_prefix=None):
         self.step_size = step_size
-        super().init(sid, time_resolution, eid_prefix=eid_prefix)
+        return super().init(sid, time_resolution, eid_prefix=eid_prefix)
 
     def finalize(self) -> None:
         """Stops the uvicorn server after the simulation has finished."""
@@ -85,8 +85,8 @@ class VirtualEnergySystemModel(VessimModel):
         self.redis_docker.redis.set("ci", self.ci)
 
         # get redis update
-        self.battery.min_soc = self.redis_get("battery.min_soc")
-        self.battery_grid_charge = self.redis_get("battery_grid_charge")
+        self.battery.min_soc = float(self.redis_get("battery.min_soc"))
+        self.battery_grid_charge = float(self.redis_get("battery_grid_charge"))
         # update power mode for the node remotely
         for node in self.nodes:
             updated_power_mode = self.redis_get("node.power_mode", str(node.id))
@@ -152,14 +152,20 @@ class VirtualEnergySystemModel(VessimModel):
         """
         # store attributes and its initial values in Redis key-value store
         redis_init_content = {
+            "p_cons": self.p_cons,
             "solar": self.p_gen,
+            "p_grid": self.p_grid,
             "ci": self.ci,
             "battery.soc": self.battery.soc(),
+            "battery.min_soc": self.battery.min_soc,
+            "battery_grid_charge": self.battery_grid_charge
             # TODO implement forecasts:
             #'ci_forecast': self.ci_forecast,
             #'solar_forecast': self.solar_forecast
         }
         self.redis_docker.redis.mset(redis_init_content)
+        for node in self.nodes:
+            self.redis_docker.redis.hset("node.power_mode", str(node.id), node.power_mode)
 
         @app.get("/solar")
         async def get_solar() -> float:
