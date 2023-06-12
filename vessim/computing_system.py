@@ -12,7 +12,7 @@ class ComputingSystemSim(VessimSimulator):
             "ComputingSystem": {
                 "public": True,
                 "params": ["power_meters", "pue"],
-                "attrs": ["p_cons"],
+                "attrs": ["p"],
             },
         },
     }
@@ -39,14 +39,14 @@ class ComputingSystemModel(VessimModel):
         power_meters: A list of PowerMeter objects
             representing power meters in the system.
         pue: The power usage effectiveness of the system.
-        p_cons: The power consumption of the system, computed in the step
-            method.
+        p: The power consumption of the system, computed in the step method.
+            Is always <= 0.
     """
 
     def __init__(self, power_meters: List[PowerMeter], pue: float):
         self.power_meters = power_meters
         self.pue = pue
-        self.p_cons = 0.0
+        self.p = 0.0
 
     def step(self, time: int, inputs: dict) -> None:
         """Updates the power consumption of the system.
@@ -54,4 +54,4 @@ class ComputingSystemModel(VessimModel):
         The power consumption is calculated as the product of the PUE and the
         sum of the node power of all power meters.
         """
-        self.p_cons = self.pue * sum(pm.measure() for pm in self.power_meters)
+        self.p = self.pue * sum(pm.measure() for pm in self.power_meters)

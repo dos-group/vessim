@@ -76,9 +76,10 @@ class HttpPowerMeter(PowerMeter):
 
 class MockPowerMeter(PowerMeter):
 
-    def __init__(self, return_value: float, name: Optional[str] = None):
+    def __init__(self, p: float, name: Optional[str] = None):
         super().__init__(name)
-        self.return_value = return_value
+        assert p <= 0
+        self.p = p
 
     def measure(self) -> float:
-        return self.return_value
+        return self.p
