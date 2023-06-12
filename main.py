@@ -10,26 +10,24 @@ import pandas as pd
 
 from simulator.power_meter import HttpPowerMeter
 from vessim.carbon_api import CarbonApi
+from vessim.generator import Generator
 from vessim.storage import SimpleBattery
 from vessim.core import Node
 
 
 # Config file for parameters and settings specification.
 sim_config = {
-    "CSV": {
-        "python": "mosaik_csv:CSV",
-    },
     "ComputingSystemSim": {
         "python": "vessim.computing_system:ComputingSystemSim",
     },
-    "Monitor": {
-        "python": "vessim.monitor:MonitorSim",
-    },
-    "SolarController": {
-        "python": "simulator.solar_controller:SolarController",
+    "Generator": {
+        "python": "vessim.generator:GeneratorSim",
     },
     "CarbonApi": {
         "python": "vessim.carbon_api:CarbonApiSim",
+    },
+    "Monitor": {
+        "python": "vessim.monitor:MonitorSim",
     },
     "VirtualEnergySystem": {
         "python": "simulator.virtual_energy_system:VirtualEnergySystem",
@@ -48,7 +46,6 @@ def main(sim_start: str,
     """Execute the example scenario simulation."""
     world = mosaik.World(sim_config)
 
-
     gcp_node = Node("http://35.242.197.234")
     gcp_node.power_meter = HttpPowerMeter(
         interval=3,
@@ -65,14 +62,11 @@ def main(sim_start: str,
                                  carbon_api=CarbonApi(data=data))
     carbon_api_de = carbon_api_sim.CarbonApi.create(1, zone="DE")[0]
 
-    # Solar Sim from CSV dataset
-    solar_sim = world.start("CSV", sim_start=sim_start, datafile=solar_data_file)
-    solar = solar_sim.PV.create(1)[0]
-
-    # Solar Controller acts as medium between solar module and VES or consumer,
-    # as the producer only generates CSV data.
-    solar_controller = world.start("SolarController")
-    solar_agent = solar_controller.SolarAgent()
+    # Solar generator
+    data = pd.read_csv(solar_data_file, index_col="Date", parse_dates=True)["P"]
+    solar_sim = world.start("Generator", sim_start=sim_start,
+                            generator=Generator(data=data))
+    solar = solar_sim.Generator.create(1)[0]
 
     # VES Sim & Battery Sim
     battery = SimpleBattery(
@@ -90,15 +84,11 @@ def main(sim_start: str,
     collector = world.start("Monitor")
     monitor = collector.Monitor()
 
-    # Connect entities
-    # world.connect(computing_system, monitor, 'p_cons')
-
     ## Carbon -> VES
     world.connect(carbon_api_de, virtual_energy_system, ("carbon_intensity", "ci"))
 
-    ## Solar -> SolarAgent -> VES
-    world.connect(solar, solar_agent, ("P", "solar"))
-    world.connect(solar_agent, virtual_energy_system, "solar")
+    ## Solar -> VES
+    world.connect(solar, virtual_energy_system, ("p", "solar"))
 
     ## computing_system -> VES
     # world.connect(
