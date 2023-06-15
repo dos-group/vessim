@@ -11,7 +11,7 @@ class PowerMeter(ABC):
     """Abstract base class for power meters.
 
     Args:
-        name: Optional; The name of the power meter.
+        name: The name of the power meter.
     """
 
     def __init__(self, name: Optional[str] = None):
@@ -35,13 +35,9 @@ class HttpPowerMeter(PowerMeter):
 
     Args:
         interval: The interval in seconds to update the power demand.
-        server_address: The server address of the node API.
-        port: The port number for the node API. Defaults to 8000.
-        name: The name of the power meter. If None, a default name will be assigned. Defaults to None.
-
-    Attributes:
-        http_client: An instance of the HTTPClient pointed at the node API server.
-        power: The current power demand of the node, updated every 'interval' seconds.
+        server_address: The IP address of the node API.
+        port: The IP port of the node API.
+        name: The name of the power meter.
     """
 
     def __init__(
@@ -59,8 +55,7 @@ class HttpPowerMeter(PowerMeter):
         self.update_thread.start()
 
     def _update_power(self, interval: int) -> None:
-        """Updates the power demand every 'interval' seconds by making a GET
-        request to the node API."""
+        """Gets the power demand every `interval` seconds from the API server."""
         while True:
             self.power = float(self.http_client.get("/power"))
             time.sleep(interval)
@@ -70,8 +65,7 @@ class HttpPowerMeter(PowerMeter):
         return self.power
 
     def __del__(self) -> None:
-        """Makes sure the thread that updates the power demand terminated when
-        the instance is deleted."""
+        """Terminates the power demand update thread when the instance is deleted."""
         if self.update_thread.is_alive():
             self.update_thread.join()
 
@@ -119,12 +113,10 @@ class ComputingSystemModel(VessimModel):
     This model considers the power usage effectiveness (PUE) and power
     consumption of a list of power meters.
 
-    Attributes:
+    Args:
         power_meters: A list of PowerMeter objects
             representing power meters in the system.
         pue: The power usage effectiveness of the system.
-        p: The power consumption of the system, computed in the step method.
-            Is always <= 0.
     """
 
     def __init__(self, power_meters: List[PowerMeter], pue: float = 1):
