@@ -9,11 +9,11 @@ from datetime import timedelta
 import mosaik
 import pandas as pd
 
-from simulator.power_meter import MockPowerMeter, HttpPowerMeter, PowerMeter
+from vessim.computing_system import MockPowerMeter, HttpPowerMeter, PowerMeter
 from vessim.carbon_api import CarbonApi
 from vessim.core import Node
 from vessim.generator import Generator
-from vessim.storage import SimpleBattery, DefaultStoragePolicy, Storage, StoragePolicy
+from vessim.storage import SimpleBattery, DefaultStoragePolicy, StoragePolicy
 
 sim_config = {
     "Microgrid": {
@@ -32,7 +32,7 @@ sim_config = {
         "python": "vessim.monitor:MonitorSim",
     },
     "VirtualEnergySystem": {
-        "python": "simulator.virtual_energy_system:VirtualEnergySystem",
+        "python": "vessim.energy_system_interface:EnergySystemInterface",
     },
 }
 
