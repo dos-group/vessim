@@ -1,6 +1,6 @@
 import pytest
 
-from vessim.storage import SimpleBattery
+from vessim.core.storage import SimpleBattery
 
 
 class TestSimpleBattery:

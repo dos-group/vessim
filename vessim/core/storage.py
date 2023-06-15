@@ -80,7 +80,6 @@ class SimpleBattery(Storage):
         return self.charge_level / self.capacity
 
 
-
 class StoragePolicy(ABC):
 
     @abstractmethod
