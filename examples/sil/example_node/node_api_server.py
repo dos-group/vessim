@@ -3,9 +3,6 @@ from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException
 import uvicorn
 
-class PowerMode(BaseModel):
-    power_mode: str
-
 class FastApiServer(ABC):
     """An abstract base class that represents a FastAPI server.
 
@@ -23,27 +20,32 @@ class FastApiServer(ABC):
 
     def setup_routes(self) -> None:
         """Setup the routes for the FastAPI application. """
-        @self.app.put("/power_mode")
-        async def set_power_mode(power_mode: PowerMode) -> str:
-            return self.set_power_mode(power_mode.power_mode)
 
-        @self.app.get("/power_mode")
-        async def get_power_mode() -> str:
-            return self.power_mode
+        class PowerModeModel(BaseModel):
+            power_mode: str
 
-        @self.app.get("/power")
-        async def get_power() -> float:
-            return self.get_power()
+        @self.app.put("/power_mode", response_model=PowerModeModel)
+        async def set_power_mode(power_mode: PowerModeModel) -> PowerModeModel:
+            self.set_power_mode(power_mode.power_mode)
+            return power_mode
+
+        @self.app.get("/power_mode", response_model=PowerModeModel)
+        async def get_power_mode() -> PowerModeModel:
+            return PowerModeModel(power_mode=self.power_mode)
+
+        class PowerModel(BaseModel):
+            power: float
+
+        @self.app.get("/power", response_model=PowerModel)
+        async def get_power() -> PowerModel:
+            return PowerModel(power=self.get_power())
 
     @abstractmethod
-    def set_power_mode(self, power_mode: str) -> str:
+    def set_power_mode(self, power_mode: str) -> None:
         """Set the power mode for the server.
 
         Args:
             power_mode: The power mode to set.
-
-        Returns:
-            The new power mode.
         """
         power_modes = ["power-saving", "normal", "high performance"]
         if power_mode not in power_modes:

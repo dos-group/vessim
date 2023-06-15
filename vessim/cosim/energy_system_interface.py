@@ -3,6 +3,7 @@ from typing import Dict, List, Any, Optional
 
 from fastapi import FastAPI
 from fastapi import HTTPException
+from pydantic import BaseModel
 
 from vessim.core.storage import SimpleBattery, DefaultStoragePolicy
 from vessim.cosim._util import VessimSimulator, VessimModel
@@ -152,7 +153,7 @@ class _EnergySystemInterfaceModel(VessimModel):
         are stored in Redis key-value store.
 
         Args:
-            app (FastAPI): The FastAPI app to add the GET routes to.
+            app: The FastAPI app to add the GET routes to.
         """
         # store attributes and its initial values in Redis key-value store
         redis_init_content = {
@@ -165,17 +166,26 @@ class _EnergySystemInterfaceModel(VessimModel):
         }
         self.redis_docker.redis.mset(redis_init_content)
 
-        @app.get("/solar")
-        async def get_solar() -> float:
-            return self.p_gen
+        class SolarModel(BaseModel):
+            solar: float
 
-        @app.get("/ci")
-        async def get_ci() -> float:
-            return self.ci
+        @app.get("/solar", response_model=SolarModel)
+        async def get_solar() -> SolarModel:
+            return SolarModel(solar=self.p_gen)
 
-        @app.get("/battery-soc")
-        async def get_battery_soc() -> float:
-            return self.battery.soc()
+        class CiModel(BaseModel):
+            ci: float
+
+        @app.get("/ci", response_model=CiModel)
+        async def get_ci() -> CiModel:
+            return CiModel(ci=self.ci)
+
+        class BatterySocModel(BaseModel):
+            battery_soc: float
+
+        @app.get("/battery-soc", response_model=BatterySocModel)
+        async def get_battery_soc() -> BatterySocModel:
+            return BatterySocModel(battery_soc=self.battery.soc())
 
     def init_put_routes(self, app: FastAPI) -> None:
         """Initialize PUT routes for the FastAPI application.
@@ -187,36 +197,34 @@ class _EnergySystemInterfaceModel(VessimModel):
         datastore.
 
         Args:
-            app (FastAPI): FastAPI application instance to which PUT routes are added.
+            app: FastAPI application instance to which PUT routes are added.
         """
 
-        def validate_keys(data: Dict[str, Any], expected_keys: List[str]):
-            missing_keys = set(expected_keys) - set(data.keys())
-            if missing_keys:
-                raise HTTPException(
-                    status_code=422, detail=f"Missing keys: {', '.join(missing_keys)}"
-                )
+        class BatteryModel(BaseModel):
+            min_soc: float
+            grid_charge: float
 
-        @app.put("/ves/battery")
-        async def put_battery(data: Dict[str, float]):
-            validate_keys(data, ["min_soc", "grid_charge"])
-            self.redis_docker.redis.set("battery.min_soc", data["min_soc"])
-            self.redis_docker.redis.set("battery_grid_charge", data["grid_charge"])
-            return data
+        @app.put("/ves/battery", response_model=BatteryModel)
+        async def put_battery(battery: BatteryModel) -> BatteryModel:
+            self.redis_docker.redis.set("battery.min_soc", battery.min_soc)
+            self.redis_docker.redis.set("battery_grid_charge", battery.grid_charge)
+            return battery
 
-        @app.put("/cs/nodes/{item_id}")
-        async def put_nodes(data: Dict[str, str], item_id: int):
-            validate_keys(data, ["power_mode"])
+        class NodeModel(BaseModel):
+            power_mode: str
+
+        @app.put("/cs/nodes/{item_id}", response_model=NodeModel)
+        async def put_nodes(node: Node, item_id: int) -> Node:
             power_modes = ["power-saving", "normal", "high performance"]
-            value = data["power_mode"]
-            if value not in power_modes:
+            power_mode = node.power_mode
+            if power_mode not in power_modes:
                 raise HTTPException(
-                status_code=400,
-                detail=f"{value} is not a valid power mode. "
-                f"Available power modes: {power_modes}",
+                    status_code=400,
+                    detail=f"{power_mode} is not a valid power mode. "
+                           f"Available power modes: {power_modes}"
             )
-            self.redis_docker.redis.hset("node.power_mode", str(item_id), value)
-            return data
+            self.redis_docker.redis.hset("node.power_mode", str(item_id), power_mode)
+            return node
 
     def print_redis(self):
         """Debugging function that simply prints all entries of the redis db."""

@@ -70,9 +70,9 @@ class CarbonAwareControlUnit:
         Yields:
             A SimPy timeout event that delays the process by one unit of time.
         """
-        battery = RemoteBattery(soc=self.client.get('/battery-soc'))
-        solar = self.client.get('/solar')
-        ci = self.client.get('/ci')
+        battery = RemoteBattery(soc=self.client.get('/battery-soc')['battery_soc'])
+        solar = self.client.get('/solar')['solar']
+        ci = self.client.get('/ci')['ci']
         nodes_power_mode = {}
 
         # Set the minimum SOC of the battery based on the current time
