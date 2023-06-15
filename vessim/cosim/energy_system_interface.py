@@ -4,9 +4,9 @@ from typing import Dict, List, Any, Optional
 from fastapi import FastAPI
 from fastapi import HTTPException
 
-from lib.http_client import HTTPClient, HTTPClientError
 from vessim.core.storage import SimpleBattery, DefaultStoragePolicy
 from vessim.cosim._util import VessimSimulator, VessimModel
+from vessim.sil.http_client import HTTPClient, HTTPClientError
 from vessim.sil.node import Node
 from vessim.sil.redis_docker import RedisDocker
 
