@@ -21,7 +21,7 @@ class HTTPClient:
     def __init__(self, server_address: str) -> None:
         self.server_address = server_address
 
-    def get(self, route: str) -> Any:
+    def get(self, route: str) -> dict:
         """Sends a GET request to the server and retrieves data.
 
         Args:
@@ -31,21 +31,16 @@ class HTTPClient:
             HTTPClientError if the data could not be retrieved from route
 
         Returns:
-            The data retrieved from the server. Can be a dictionary, float,
-            int, string, or None if request fails.
+            A dictionary containing the response.
         """
         response = requests.get(self.server_address + route)
         if response.status_code == 200:
-            try:
-                data = response.json() # assuming the response data is in JSON format
-            except ValueError:
-                data = response.content.decode('utf-8') # fallback to string if not JSON
-            return data
-        else:
-            raise HTTPClientError(
-                response.status_code,
-                f'Failed to retrieve data from {route}'
-            )
+            return response.json() # assuming the response data is in JSON format
+
+        raise HTTPClientError(
+            response.status_code,
+            f'Failed to retrieve data from {route}'
+        )
 
     def put(self, route: str, data: Dict[str, Any]) -> None:
         """Sends a PUT request to the server to update data.
