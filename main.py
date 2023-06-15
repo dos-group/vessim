@@ -30,8 +30,8 @@ sim_config = {
     "Monitor": {
         "python": "vessim.cosim:MonitorSim",
     },
-    "VirtualEnergySystem": {
-        "python": "vessim.cosim:EnergySystemInterface",
+    "EnergySystemInterface": {
+        "python": "vessim.cosim:EnergySystemInterfaceSim",
     },
 }
 
@@ -104,16 +104,16 @@ def run_simulation(sim_start: str,
 
     # If real scenario, init and connect VES
     if nodes:
-        virtual_energy_system_sim = world.start("VirtualEnergySystem")
-        virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystem(
+        energy_system_interface_sim = world.start("EnergySystemInterface")
+        energy_system_interface = energy_system_interface_sim.EnergySystemInterface(
             nodes=nodes,
             battery=battery,
             policy=policy,
         )
-        world.connect(computing_system, virtual_energy_system, ("p", "p_cons"))
-        world.connect(solar, virtual_energy_system, ("p", "p_gen"))
-        world.connect(carbon_api_de, virtual_energy_system, ("carbon_intensity", "ci"))
-        world.connect(microgrid, virtual_energy_system, ("p_delta", "p_grid"))
+        world.connect(computing_system, energy_system_interface, ("p", "p_cons"))
+        world.connect(solar, energy_system_interface, ("p", "p_gen"))
+        world.connect(carbon_api_de, energy_system_interface, ("carbon_intensity", "ci"))
+        world.connect(microgrid, energy_system_interface, ("p_delta", "p_grid"))
 
     # Monitor
     def monitor_fn():

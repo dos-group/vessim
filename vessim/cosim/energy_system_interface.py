@@ -44,7 +44,7 @@ class EnergySystemInterfaceSim(VessimSimulator):
 
 
 class _EnergySystemInterfaceModel(VessimModel):
-    """A virtual energy system model.
+    """Software-in-the-Loop interface to the energy system simulation.
 
     TODO this class is still very specific to our paper use case and does not generalize
         well to other scenarios.
@@ -79,7 +79,6 @@ class _EnergySystemInterfaceModel(VessimModel):
         self.redis_docker.run(f_api, host=api_host)
 
     def step(self, time: int, inputs: dict) -> None:
-        """Step the virtual energy system model."""
         self.p_cons = inputs["p_cons"]
         self.p_gen = inputs["p_gen"]
         self.ci = inputs["ci"]
