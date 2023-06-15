@@ -167,7 +167,7 @@ class _EnergySystemInterfaceModel(VessimModel):
 
         @app.get("/solar")
         async def get_solar() -> float:
-            return self.solar
+            return self.p_gen
 
         @app.get("/ci")
         async def get_ci() -> float:

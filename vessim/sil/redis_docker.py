@@ -1,5 +1,5 @@
 import threading
-from asyncio import sleep
+from time import sleep
 
 import docker
 import redis
