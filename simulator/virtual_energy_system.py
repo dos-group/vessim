@@ -16,7 +16,7 @@ class VirtualEnergySystemSim(VessimSimulator):
         "models": {
             "VirtualEnergySystem": {
                 "public": True,
-                "params": ["battery", "db_host", "api_host"],
+                "params": ["battery", "policy", "db_host", "api_host"],
                 "attrs": ["battery", "p_cons", "p_gen", "p_grid", "ci"],
             },
         },
@@ -48,6 +48,7 @@ class VirtualEnergySystemModel(VessimModel):
 
     Args:
         battery: SimpleBatteryModel used by the system.
+        policy: The (dis)charging policy used to control the battery.
         nodes: List of physical or virtual computing nodes.
         db_host (optional): The host address for the database, defaults to '127.0.0.1'.
         api_host (optional): The host address for the API, defaults to '127.0.0.1'.
@@ -57,13 +58,13 @@ class VirtualEnergySystemModel(VessimModel):
         self,
         nodes: list[Node],
         battery: SimpleBattery,
+        policy: DefaultStoragePolicy,
         db_host: str = "127.0.0.1",
         api_host: str = "127.0.0.1",
     ):
-        # ves attributes
-        self.battery = battery
         self.nodes = nodes
-        self.battery_grid_charge = 0.0
+        self.battery = battery
+        self.policy = policy
         self.p_cons = 0
         self.p_gen = 0
         self.p_grid = 0
@@ -87,7 +88,7 @@ class VirtualEnergySystemModel(VessimModel):
 
         # get redis update
         self.battery.min_soc = self.redis_get("battery.min_soc")
-        self.battery_grid_charge = self.redis_get("battery_grid_charge")
+        self.policy.grid_power = self.redis_get("battery_grid_charge")
         # update power mode for the node remotely
         for node in self.nodes:
             updated_power_mode = self.redis_get("node.power_mode", str(node.id))
