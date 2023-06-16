@@ -1,4 +1,4 @@
-from ..lib.http_client import HTTPClient
+from vessim.sil.http_client import HTTPClient
 import simpy
 from typing import Dict
 
