@@ -45,7 +45,7 @@ def main():
         nodes = []
         power_meters = [MockPowerMeter(p=-50)]
     else:
-        ip = "http://35.242.197.234"
+        ip = "http://192.168.149.71"
         nodes = [Node(ip)]
         power_meters = [HttpPowerMeter(interval=3, server_address=ip)]
 
@@ -104,7 +104,7 @@ def run_simulation(sim_start: str,
 
     # If real scenario, init and connect VES
     if nodes:
-        energy_system_interface_sim = world.start("EnergySystemInterface")
+        energy_system_interface_sim = world.start("EnergySystemInterface", step_size=60)
         energy_system_interface = energy_system_interface_sim.EnergySystemInterface(
             nodes=nodes,
             battery=battery,
