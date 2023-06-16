@@ -37,7 +37,7 @@ $ python examples/scenario_1.py
 ```
 
 
-# Development
+## 🏗️ Development
 
 Install the requirements in a virtual environment:
 
