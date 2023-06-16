@@ -2,7 +2,8 @@ from vessim.core import VessimSimulator, VessimModel, Node
 from vessim.storage import SimpleBattery, Storage, StoragePolicy, DefaultStoragePolicy
 from simulator.redis_docker import RedisDocker
 from fastapi import FastAPI, HTTPException
-from typing import Dict, List, Any, Optional
+from pydantic import BaseModel
+from typing import Any, Optional
 from lib.http_client import HTTPClient, HTTPClientError
 from threading import Thread
 
@@ -15,7 +16,7 @@ class VirtualEnergySystemSim(VessimSimulator):
         "models": {
             "VirtualEnergySystem": {
                 "public": True,
-                "params": ["battery", "db_host", "api_host", "nodes"],
+                "params": ["battery", "policy", "db_host", "api_host", "nodes"],
                 "attrs": ["battery", "p_cons", "p_gen", "p_grid", "ci"],
             },
         },
@@ -47,6 +48,7 @@ class VirtualEnergySystemModel(VessimModel):
 
     Args:
         battery: SimpleBatteryModel used by the system.
+        policy: The (dis)charging policy used to control the battery.
         nodes: List of physical or virtual computing nodes.
         db_host (optional): The host address for the database, defaults to '127.0.0.1'.
         api_host (optional): The host address for the API, defaults to '127.0.0.1'.
@@ -56,13 +58,13 @@ class VirtualEnergySystemModel(VessimModel):
         self,
         nodes: list[Node],
         battery: SimpleBattery,
+        policy: DefaultStoragePolicy,
         db_host: str = "127.0.0.1",
         api_host: str = "127.0.0.1",
     ):
-        # ves attributes
-        self.battery = battery
         self.nodes = nodes
-        self.battery_grid_charge = 0.0
+        self.battery = battery
+        self.policy = policy
         self.p_cons = 0
         self.p_gen = 0
         self.p_grid = 0
@@ -148,7 +150,7 @@ class VirtualEnergySystemModel(VessimModel):
         are stored in Redis key-value store.
 
         Args:
-            app (FastAPI): The FastAPI app to add the GET routes to.
+            app: The FastAPI app to add the GET routes to.
         """
         # store attributes and its initial values in Redis key-value store
         redis_init_content = {
@@ -167,17 +169,26 @@ class VirtualEnergySystemModel(VessimModel):
         for node in self.nodes:
             self.redis_docker.redis.hset("node.power_mode", str(node.id), node.power_mode)
 
-        @app.get("/solar")
-        async def get_solar() -> float:
-            return self.solar
+        class SolarModel(BaseModel):
+            solar: float
 
-        @app.get("/ci")
-        async def get_ci() -> float:
-            return self.ci
+        @app.get("/solar", response_model=SolarModel)
+        async def get_solar() -> SolarModel:
+            return SolarModel(solar=self.solar)
 
-        @app.get("/battery-soc")
-        async def get_battery_soc() -> float:
-            return self.battery.soc()
+        class CiModel(BaseModel):
+            ci: float
+
+        @app.get("/ci", response_model=CiModel)
+        async def get_ci() -> CiModel:
+            return CiModel(ci=self.ci)
+
+        class BatterySocModel(BaseModel):
+            battery_soc: float
+
+        @app.get("/battery-soc", response_model=BatterySocModel)
+        async def get_battery_soc() -> BatterySocModel:
+            return BatterySocModel(battery_soc=self.battery.soc())
 
     def init_put_routes(self, app: FastAPI) -> None:
         """Initialize PUT routes for the FastAPI application.
@@ -189,36 +200,34 @@ class VirtualEnergySystemModel(VessimModel):
         datastore.
 
         Args:
-            app (FastAPI): FastAPI application instance to which PUT routes are added.
+            app: FastAPI application instance to which PUT routes are added.
         """
 
-        def validate_keys(data: Dict[str, Any], expected_keys: List[str]):
-            missing_keys = set(expected_keys) - set(data.keys())
-            if missing_keys:
-                raise HTTPException(
-                    status_code=422, detail=f"Missing keys: {', '.join(missing_keys)}"
-                )
+        class BatteryModel(BaseModel):
+            min_soc: float
+            grid_charge: float
 
-        @app.put("/ves/battery")
-        async def put_battery(data: Dict[str, float]):
-            validate_keys(data, ["min_soc", "grid_charge"])
-            self.redis_docker.redis.set("battery.min_soc", data["min_soc"])
-            self.redis_docker.redis.set("battery_grid_charge", data["grid_charge"])
-            return data
+        @app.put("/ves/battery", response_model=BatteryModel)
+        async def put_battery(battery: BatteryModel) -> BatteryModel:
+            self.redis_docker.redis.set("battery.min_soc", battery.min_soc)
+            self.redis_docker.redis.set("battery_grid_charge", battery.grid_charge)
+            return battery
 
-        @app.put("/cs/nodes/{item_id}")
-        async def put_nodes(data: Dict[str, str], item_id: int):
-            validate_keys(data, ["power_mode"])
+        class NodeModel(BaseModel):
+            power_mode: str
+
+        @app.put("/cs/nodes/{item_id}", response_model=NodeModel)
+        async def put_nodes(node: Node, item_id: int) -> Node:
             power_modes = ["power-saving", "normal", "high performance"]
-            value = data["power_mode"]
-            if value not in power_modes:
+            power_mode = node.power_mode
+            if power_mode not in power_modes:
                 raise HTTPException(
-                status_code=400,
-                detail=f"{value} is not a valid power mode. "
-                f"Available power modes: {power_modes}",
+                    status_code=400,
+                    detail=f"{power_mode} is not a valid power mode. "
+                           f"Available power modes: {power_modes}"
             )
-            self.redis_docker.redis.hset("node.power_mode", str(item_id), value)
-            return data
+            self.redis_docker.redis.hset("node.power_mode", str(item_id), power_mode)
+            return node
 
     def print_redis(self):
         """Debugging function that simply prints all entries of the redis db."""

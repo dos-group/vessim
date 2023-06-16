@@ -108,7 +108,8 @@ def run_simulation(sim_start: str,
         virtual_energy_system_sim = world.start("VirtualEnergySystem", step_size=60)
         virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystem(
             nodes=nodes,
-            battery=battery
+            battery=battery,
+            policy=policy,
         )
         world.connect(computing_system, virtual_energy_system, ("p", "p_cons"))
         world.connect(solar, virtual_energy_system, ("p", "p_gen"))
