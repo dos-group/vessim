@@ -1,16 +1,7 @@
 from datetime import datetime
 
-from vessim._util import Time, TraceSimulator, Clock
-from vessim.core import VessimSimulator, VessimModel
-
-
-class Generator(TraceSimulator):
-
-    def power_at(self, dt: Time):
-        try:
-            return self.data.loc[self.data.index.asof(dt)]
-        except KeyError:
-            raise ValueError(f"Cannot retrieve power at {dt}.")
+from vessim.core.simulator import Generator
+from vessim.cosim._util import Clock, VessimSimulator, VessimModel
 
 
 class GeneratorSim(VessimSimulator):
@@ -31,7 +22,7 @@ class GeneratorSim(VessimSimulator):
     }
 
     def __init__(self):
-        super().__init__(self.META, GeneratorModel)
+        super().__init__(self.META, _GeneratorModel)
 
     def init(self, sid, time_resolution, sim_start: datetime, generator: Generator,
              eid_prefix=None):
@@ -49,7 +40,7 @@ class GeneratorSim(VessimSimulator):
         return self.clock.to_simtime(next_dt)
 
 
-class GeneratorModel(VessimModel):
+class _GeneratorModel(VessimModel):
     def __init__(self, generator: Generator, clock: Clock):
         self.generator = generator
         self.clock = clock

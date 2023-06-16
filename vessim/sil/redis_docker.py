@@ -1,11 +1,11 @@
-import docker
+import threading
 from time import sleep
 
+import docker
 import redis
+import uvicorn
 from fastapi import FastAPI
 from redis import Redis
-import threading
-import uvicorn
 
 
 class RedisDocker:

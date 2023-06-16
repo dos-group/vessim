@@ -1,6 +1,7 @@
-from vessim.core import VessimSimulator, VessimModel
-from simulator.power_meter import PowerMeter
 from typing import List
+
+from vessim.cosim._util import VessimSimulator, VessimModel
+from vessim.sil.power_meter import PowerMeter
 
 
 class ComputingSystemSim(VessimSimulator):
@@ -19,7 +20,7 @@ class ComputingSystemSim(VessimSimulator):
 
     def __init__(self):
         self.step_size = None
-        super().__init__(self.META, ComputingSystemModel)
+        super().__init__(self.META, _ComputingSystemModel)
 
     def init(self, sid, time_resolution, step_size, eid_prefix=None):
         self.step_size = step_size
@@ -29,18 +30,16 @@ class ComputingSystemSim(VessimSimulator):
         return time + self.step_size
 
 
-class ComputingSystemModel(VessimModel):
+class _ComputingSystemModel(VessimModel):
     """Model of the computing system.
 
     This model considers the power usage effectiveness (PUE) and power
     consumption of a list of power meters.
 
-    Attributes:
+    Args:
         power_meters: A list of PowerMeter objects
             representing power meters in the system.
         pue: The power usage effectiveness of the system.
-        p: The power consumption of the system, computed in the step method.
-            Is always <= 0.
     """
 
     def __init__(self, power_meters: List[PowerMeter], pue: float = 1):

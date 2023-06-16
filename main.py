@@ -9,30 +9,29 @@ from datetime import timedelta
 import mosaik
 import pandas as pd
 
-from simulator.power_meter import MockPowerMeter, HttpPowerMeter, PowerMeter
-from vessim.carbon_api import CarbonApi
-from vessim.core import Node
-from vessim.generator import Generator
-from vessim.storage import SimpleBattery, DefaultStoragePolicy, Storage, StoragePolicy
+from vessim.core.simulator import Generator, CarbonApi
+from vessim.core.storage import SimpleBattery, DefaultStoragePolicy, StoragePolicy
+from vessim.sil.node import Node
+from vessim.sil.power_meter import MockPowerMeter, HttpPowerMeter, PowerMeter
 
 sim_config = {
     "Microgrid": {
-        "python": "vessim.microgrid:MicrogridSim"
+        "python": "vessim.cosim:MicrogridSim"
     },
     "ComputingSystem": {
-        "python": "vessim.computing_system:ComputingSystemSim",
+        "python": "vessim.cosim:ComputingSystemSim",
     },
     "Generator": {
-        "python": "vessim.generator:GeneratorSim",
+        "python": "vessim.cosim:GeneratorSim",
     },
     "CarbonApi": {
-        "python": "vessim.carbon_api:CarbonApiSim",
+        "python": "vessim.cosim:CarbonApiSim",
     },
     "Monitor": {
-        "python": "vessim.monitor:MonitorSim",
+        "python": "vessim.cosim:MonitorSim",
     },
-    "VirtualEnergySystem": {
-        "python": "simulator.virtual_energy_system:VirtualEnergySystemSim",
+    "EnergySystemInterface": {
+        "python": "vessim.cosim:EnergySystemInterfaceSim",
     },
 }
 
@@ -105,16 +104,16 @@ def run_simulation(sim_start: str,
 
     # If real scenario, init and connect VES
     if nodes:
-        virtual_energy_system_sim = world.start("VirtualEnergySystem", step_size=60)
-        virtual_energy_system = virtual_energy_system_sim.VirtualEnergySystem(
+        energy_system_interface_sim = world.start("EnergySystemInterface", step_size=60)
+        energy_system_interface = energy_system_interface_sim.EnergySystemInterface(
             nodes=nodes,
             battery=battery,
             policy=policy,
         )
-        world.connect(computing_system, virtual_energy_system, ("p", "p_cons"))
-        world.connect(solar, virtual_energy_system, ("p", "p_gen"))
-        world.connect(carbon_api_de, virtual_energy_system, ("carbon_intensity", "ci"))
-        world.connect(microgrid, virtual_energy_system, ("p_delta", "p_grid"))
+        world.connect(computing_system, energy_system_interface, ("p", "p_cons"))
+        world.connect(solar, energy_system_interface, ("p", "p_gen"))
+        world.connect(carbon_api_de, energy_system_interface, ("carbon_intensity", "ci"))
+        world.connect(microgrid, energy_system_interface, ("p_delta", "p_grid"))
 
     # Monitor
     def monitor_fn():

@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from vessim.carbon_api import CarbonApi
+from vessim.core.simulator import CarbonApi
 
 
 class TestCarbonApi:

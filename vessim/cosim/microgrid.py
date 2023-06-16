@@ -1,8 +1,7 @@
-from abc import ABC, abstractmethod
-from typing import Optional, Callable, Union
+from typing import Optional, Union
 
-from vessim.core import VessimSimulator, VessimModel
-from vessim.storage import Storage, StoragePolicy, DefaultStoragePolicy
+from vessim.core.storage import Storage, StoragePolicy, DefaultStoragePolicy
+from vessim.cosim._util import VessimSimulator, VessimModel
 
 
 class MicrogridSim(VessimSimulator):
@@ -20,13 +19,13 @@ class MicrogridSim(VessimSimulator):
 
     def __init__(self) -> None:
         self.step_size = None
-        super().__init__(self.META, MicrogridModel)
+        super().__init__(self.META, _MicrogridModel)
 
     def next_step(self, time):
         return None
 
 
-class MicrogridModel(VessimModel):
+class _MicrogridModel(VessimModel):  # TODO abstract away
     def __init__(self,
                  storage: Optional[Storage] = None,
                  policy: Optional[StoragePolicy] = None):

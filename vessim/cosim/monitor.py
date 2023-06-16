@@ -1,29 +1,15 @@
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, Callable, Any
 
+import mosaik_api
 import pandas as pd
-import csv
 from loguru import logger
 
-import mosaik_api
-
-from vessim._util import Clock
-
-META = {
-    "type": "event-based",
-    "models": {
-        "Monitor": {
-            "public": True,
-            "any_inputs": True,
-            "params": ["fn", "sim_start"],
-            "attrs": [],
-        },
-    },
-}
+from vessim.cosim._util import Clock
 
 
-class MonitorSim(mosaik_api.Simulator):
+class MonitorSim(mosaik_api.Simulator):  # TODO Make time based
     """Simple data collector for printing data at the end of simulation.
 
     Attributes:
@@ -31,8 +17,20 @@ class MonitorSim(mosaik_api.Simulator):
         data: Dictionary for holding the necessary simulation data
     """
 
+    META = {
+        "type": "event-based",
+        "models": {
+            "Monitor": {
+                "public": True,
+                "any_inputs": True,
+                "params": ["fn", "sim_start"],
+                "attrs": [],
+            },
+        },
+    }
+
     def __init__(self):
-        super().__init__(META)
+        super().__init__(self.META)
         self.eid = None
         self.data = defaultdict(dict)
         self.fn = None

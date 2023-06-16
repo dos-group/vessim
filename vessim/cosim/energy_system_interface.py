@@ -1,20 +1,24 @@
-from vessim.core import VessimSimulator, VessimModel, Node
-from vessim.storage import SimpleBattery, Storage, StoragePolicy, DefaultStoragePolicy
-from simulator.redis_docker import RedisDocker
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import Any, Optional
-from lib.http_client import HTTPClient, HTTPClientError
 from threading import Thread
+from typing import Dict, List, Any, Optional
+
+from fastapi import FastAPI
+from fastapi import HTTPException
+from pydantic import BaseModel
+
+from lib.http_client import HTTPClient, HTTPClientError
+from vessim.core.storage import SimpleBattery, DefaultStoragePolicy
+from vessim.cosim._util import VessimSimulator, VessimModel
+from vessim.sil.node import Node
+from vessim.sil.redis_docker import RedisDocker
 
 
-class VirtualEnergySystemSim(VessimSimulator):
+class EnergySystemInterfaceSim(VessimSimulator):
     """Virtual Energy System (VES) simulator that executes the VES model."""
 
     META = {
         "type": "time-based",
         "models": {
-            "VirtualEnergySystem": {
+            "EnergySystemInterface": {
                 "public": True,
                 "params": ["battery", "policy", "db_host", "api_host", "nodes"],
                 "attrs": ["battery", "p_cons", "p_gen", "p_grid", "ci"],
@@ -24,7 +28,7 @@ class VirtualEnergySystemSim(VessimSimulator):
 
     def __init__(self) -> None:
         self.step_size = None
-        super().__init__(self.META, VirtualEnergySystemModel)
+        super().__init__(self.META, _EnergySystemInterfaceModel)
 
     def init(self, sid, time_resolution, step_size, eid_prefix=None):
         self.step_size = step_size
@@ -40,8 +44,8 @@ class VirtualEnergySystemSim(VessimSimulator):
         return time + self.step_size
 
 
-class VirtualEnergySystemModel(VessimModel):
-    """A virtual energy system model.
+class _EnergySystemInterfaceModel(VessimModel):
+    """Software-in-the-Loop interface to the energy system simulation.
 
     TODO this class is still very specific to our paper use case and does not generalize
         well to other scenarios.
@@ -76,7 +80,6 @@ class VirtualEnergySystemModel(VessimModel):
         self.redis_docker.run(f_api, host=api_host)
 
     def step(self, time: int, inputs: dict) -> None:
-        """Step the virtual energy system model."""
         self.p_cons = inputs["p_cons"]
         self.p_gen = inputs["p_gen"]
         self.ci = inputs["ci"]
@@ -174,7 +177,7 @@ class VirtualEnergySystemModel(VessimModel):
 
         @app.get("/solar", response_model=SolarModel)
         async def get_solar() -> SolarModel:
-            return SolarModel(solar=self.solar)
+            return SolarModel(solar=self.p_gen)
 
         class CiModel(BaseModel):
             ci: float
