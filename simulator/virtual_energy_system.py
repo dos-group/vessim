@@ -88,7 +88,7 @@ class VirtualEnergySystemModel(VessimModel):
 
         # get redis update
         self.battery.min_soc = float(self.redis_get("battery.min_soc"))
-        self.battery_grid_charge = float(self.redis_get("battery_grid_charge"))
+        self.policy.grid_power = float(self.redis_get("battery_grid_charge"))
         # update power mode for the node remotely
         for node in self.nodes:
             updated_power_mode = self.redis_get("node.power_mode", str(node.id))
@@ -160,7 +160,7 @@ class VirtualEnergySystemModel(VessimModel):
             "ci": self.ci,
             "battery.soc": self.battery.soc(),
             "battery.min_soc": self.battery.min_soc,
-            "battery_grid_charge": self.battery_grid_charge
+            "battery_grid_charge": self.policy.grid_power
             # TODO implement forecasts:
             #'ci_forecast': self.ci_forecast,
             #'solar_forecast': self.solar_forecast
