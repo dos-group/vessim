@@ -56,7 +56,7 @@ class HttpPowerMeter(PowerMeter):
     def _update_power(self, interval: int) -> None:
         """Gets the power demand every `interval` seconds from the API server."""
         while True:
-            self.power = float(self.http_client.get("/power"))
+            self.power = -float(self.http_client.get("/power"))
             time.sleep(interval)
 
     def measure(self) -> float:
