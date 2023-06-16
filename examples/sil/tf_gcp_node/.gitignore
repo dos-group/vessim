@@ -1,0 +1,45 @@
+# Terraform files
+*.tfstate
+*.tfstate.backup
+*.tfplan
+*.terraform.*
+
+# Ignore any .terraform directories
+**/.terraform/*
+
+# Ignore override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc
+
+# Ignore sensitive files
+*.pem
+*.key
+*.pub
+/keys
+
+# Ignore crash log files
+crash.log
+
+# Ignore provider-specific files
+# Replace "PROVIDER_NAME" with the actual provider name, e.g., "aws", "azure", etc.
+# Uncomment the relevant line if you're using a specific provider.
+# */PROVIDER_NAME/*.tf
+# */PROVIDER_NAME/*.tf.json
+
+# Ignore .tfvars files that are not checked in
+# Uncomment the relevant line if you have sensitive .tfvars files
+# or you want to exclude all .tfvars files from version control.
+# *.tfvars
+# !example.tfvars
+
+# Ignore generated files
+*.tf.out
+
+# Ignore local .env files used for environment variables
+.env*
