@@ -1,7 +1,10 @@
-"""1st example scenario.
+"""Example scenario.
 
-As described in 'Software-in-the-loop simulation for developing and testing carbon-aware
-applications'.
+Runs a fully simulated example scenario over the course of two days.
+
+If run with `--sil`, the scenario is executed with full software-in-the-loop integration
+as described in 'Software-in-the-loop simulation for developing and testing carbon-aware
+applications'. Documentation for this is in progress.
 """
 import argparse
 from datetime import timedelta
@@ -38,16 +41,16 @@ sim_config = {
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-s', '--simulated', action='store_true')  # on/off flag
+    parser.add_argument('-s', '--sil', action='store_true')  # on/off flag
     args = parser.parse_args()
 
-    if args.simulated:
-        nodes = []
-        power_meters = [MockPowerMeter(p=-50)]
-    else:
-        ip = "http://35.242.197.234"
+    if args.sil:
+        ip = "http://192.168.149.71"
         nodes = [Node(ip)]
         power_meters = [HttpPowerMeter(interval=3, server_address=ip)]
+    else:
+        nodes = []
+        power_meters = [MockPowerMeter(p=-50)]
 
     battery = SimpleBattery(
         capacity=10 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
@@ -58,10 +61,10 @@ def main():
     policy = DefaultStoragePolicy()
 
     run_simulation(
-        sim_start="2014-01-01 00:00:00",
-        duration=3600 * 12,
+        sim_start="2020-06-11 00:00:00",
+        duration=3600 * 24 * 2,  # two days
         carbon_data_file="data/carbon_intensity.csv",
-        solar_data_file="data/pv_10kw.csv",
+        solar_data_file="data/weather_berlin_2021-06.csv",
         nodes=nodes,
         power_meters=power_meters,
         battery=battery,
@@ -84,14 +87,14 @@ def run_simulation(sim_start: str,
     computing_system = computing_system_sim.ComputingSystem(power_meters=power_meters)
 
     # Solar generator
-    data = pd.read_csv(solar_data_file, index_col="Date", parse_dates=True)["P"]
+    data = pd.read_csv(solar_data_file, index_col="time", parse_dates=True)["solar"]
+    data.index -= timedelta(days=365)
     solar_sim = world.start("Generator", sim_start=sim_start,
                             generator=Generator(data=data))
     solar = solar_sim.Generator.create(1)[0]
 
     # Carbon Intensity API
-    data = pd.read_csv(carbon_data_file, index_col="Date", parse_dates=True)
-    data.index -= timedelta(days=365 * 6)
+    data = pd.read_csv(carbon_data_file, index_col="time", parse_dates=True)
     carbon_api_sim = world.start("CarbonApi", sim_start=sim_start,
                                  carbon_api=CarbonApi(data=data))
     carbon_api_de = carbon_api_sim.CarbonApi.create(1, zone="DE")[0]
@@ -104,7 +107,7 @@ def run_simulation(sim_start: str,
 
     # If real scenario, init and connect VES
     if nodes:
-        energy_system_interface_sim = world.start("EnergySystemInterface")
+        energy_system_interface_sim = world.start("EnergySystemInterface", step_size=60)
         energy_system_interface = energy_system_interface_sim.EnergySystemInterface(
             nodes=nodes,
             battery=battery,
