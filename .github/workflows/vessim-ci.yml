@@ -1,4 +1,4 @@
-name: vessim CI
+name: CI
 
 # event that triggers workflow
 # here when a "push" is made
