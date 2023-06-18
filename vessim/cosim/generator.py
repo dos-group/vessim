@@ -24,8 +24,8 @@ class GeneratorSim(VessimSimulator):
     def __init__(self):
         super().__init__(self.META, _GeneratorModel)
 
-    def init(self, sid, time_resolution, sim_start: datetime, generator: Generator,
-             eid_prefix=None):
+    def init(self, sid, time_resolution, sim_start: datetime,  # type: ignore
+              generator: Generator, eid_prefix=None):
         super().init(sid, time_resolution, eid_prefix=eid_prefix)
         self.clock = Clock(sim_start)
         self.generator = generator

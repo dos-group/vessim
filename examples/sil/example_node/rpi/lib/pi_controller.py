@@ -1,5 +1,5 @@
-from cpufreq import cpuFreq
-from ina219 import INA219
+from cpufreq import cpuFreq # type: ignore
+from ina219 import INA219 # type: ignore
 import psutil
 
 
