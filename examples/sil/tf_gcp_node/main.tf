@@ -28,30 +28,17 @@ resource "google_compute_instance" "node" {
   metadata_startup_script = <<SCRIPT
     #!/bin/bash
 
-    server_dir=/home/${local.user}/api_server
-    mkdir -p $server_dir
-    chown -R ${local.user}:${local.user} $server_dir
-
-    until [ -d $server_dir/virtual_node ]; do
-      sleep 1
-    done
-
     apt-get update
-    apt-get install python3-pip sysbench -y
-    cd $server_dir/virtual_node
+    apt-get install python3-pip git sysbench -y
+    cd /opt
+    git clone --depth 1 https://github.com/dos-group/vessim.git
+    cp -r vessim/vessim/examples/sil/example_node vessim_node_api_server
+    rm -rf vessim
+    cd vessim_node_api_server/virtual_node
     pip3 install -r requirements.txt
     python3 v_node_api_server.py
-SCRIPT
 
-  provisioner "file" {
-    source      = "../example_node/"
-    destination = "api_server"
-    connection {
-      host = google_compute_address.external.address
-      user = local.user
-      private_key = local_file.ssh_private_key_pem.content
-    }
-  }
+SCRIPT
 }
 
 ### network
