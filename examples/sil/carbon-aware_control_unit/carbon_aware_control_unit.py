@@ -1,5 +1,5 @@
 from vessim.sil.http_client import HTTPClient
-import simpy
+import simpy # type: ignore
 from typing import Dict
 
 
@@ -99,7 +99,7 @@ class CarbonAwareControlUnit:
         yield self.env.timeout(1)
 
 
-    def send_battery(self, battery: Battery) -> None:
+    def send_battery(self, battery: RemoteBattery) -> None:
         """Sends battery data to the VES API.
 
         Args:

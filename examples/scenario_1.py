@@ -8,8 +8,9 @@ applications'. Documentation for this is in progress.
 """
 import argparse
 from datetime import timedelta
+from typing import Union
 
-import mosaik
+import mosaik # type: ignore
 import pandas as pd
 
 from vessim.core.simulator import Generator, CarbonApi
@@ -87,7 +88,10 @@ def run_simulation(sim_start: str,
     computing_system = computing_system_sim.ComputingSystem(power_meters=power_meters)
 
     # Solar generator
-    data = pd.read_csv(solar_data_file, index_col="time", parse_dates=True)["solar"]
+    data : Union[pd.DataFrame, pd.Series] = pd.read_csv(
+        solar_data_file,
+        index_col="time",
+        parse_dates=True)["solar"]
     data.index -= timedelta(days=365)
     solar_sim = world.start("Generator", sim_start=sim_start,
                             generator=Generator(data=data))

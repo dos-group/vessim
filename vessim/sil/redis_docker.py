@@ -1,7 +1,7 @@
 import threading
 from time import sleep
 
-import docker
+import docker # type: ignore
 import redis
 import uvicorn
 from fastapi import FastAPI
