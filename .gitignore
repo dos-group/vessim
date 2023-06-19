@@ -4,6 +4,7 @@
 .DS_Store
 .ipynb_checkpoints
 .ruff_cache
+.mypy_cache
 .pytest_cache
 __pycache__
 

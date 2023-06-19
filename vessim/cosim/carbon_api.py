@@ -23,14 +23,14 @@ class CarbonApiSim(VessimSimulator):
         self.sim_start = None
         self.carbon_api = None
 
-    def init(self, sid, time_resolution, sim_start: datetime, carbon_api: CarbonApi,
-             eid_prefix=None):
+    def init(self, sid, time_resolution, sim_start: datetime, # type: ignore
+            carbon_api: CarbonApi, eid_prefix=None):
         super().init(sid, time_resolution, eid_prefix=eid_prefix)
         self.clock = Clock(sim_start)
         self.carbon_api = carbon_api
         return self.meta
 
-    def create(self, num, model, zone: str):
+    def create(self, num, model, zone: str): # type: ignore
         return super().create(num, model, zone=zone, clock=self.clock,
                               carbon_api=self.carbon_api)
 
@@ -45,7 +45,7 @@ class _CarbonApiModel(VessimModel):
         self.api = carbon_api
         self.clock = clock
         self.zone = zone
-        self.carbon_intensity = None
+        self.carbon_intensity = 0.0
 
     def step(self, time: int, inputs: dict) -> None:
         dt = self.clock.to_datetime(time)

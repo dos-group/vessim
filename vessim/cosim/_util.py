@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Type, Dict, Any, Union
 
-import mosaik_api
+import mosaik_api # type: ignore
 import pandas as pd
 
 
@@ -45,7 +45,7 @@ class VessimSimulator(mosaik_api.Simulator, ABC):
                 must be overwritten and implemented individually.
         """
         super().__init__(meta)
-        self.eid_prefix = list(self.meta["models"])[0] + "_"  # type: ignore
+        self.eid_prefix = list(self.meta["models"])[0] + "_"
         self.model_class = model_class
         self.entities: Dict[int, VessimModel] = {}
         self.time = 0
@@ -88,13 +88,13 @@ class VessimSimulator(mosaik_api.Simulator, ABC):
     def get_data(self, outputs):
         """Return all requested data as attr from the `model_instance`."""
         data = {}
-        model_name = list(self.meta["models"])[0]  # type: ignore
+        model_name = list(self.meta["models"])[0]
         for eid, attrs in outputs.items():
             model = self.entities[eid]
             data["time"] = self.time
             data[eid] = {}
             for attr in attrs:
-                if attr not in self.meta["models"][model_name]["attrs"]:  # type: ignore
+                if attr not in self.meta["models"][model_name]["attrs"]:
                     raise ValueError(f"Unknown output attribute: {attr}")
                 if hasattr(model, attr):
                     data[eid][attr] = getattr(model, attr)

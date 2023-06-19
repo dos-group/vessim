@@ -33,6 +33,7 @@ pytest
 
 # typechecking
 mypy
+types-psutil
 pandas-stubs
 types-requests
 types-redis

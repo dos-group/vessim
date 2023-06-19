@@ -1,5 +1,5 @@
 from threading import Thread
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Union, Optional
 
 from fastapi import FastAPI
 from fastapi import HTTPException
@@ -38,7 +38,7 @@ class EnergySystemInterfaceSim(VessimSimulator):
         """Stops the uvicorn server after the simulation has finished."""
         super().finalize()
         for model_instance in self.entities.values():
-            model_instance.redis_docker.stop()
+            model_instance.redis_docker.stop() # type: ignore
 
     def next_step(self, time):
         return time + self.step_size
@@ -156,7 +156,7 @@ class _EnergySystemInterfaceModel(VessimModel):
             app: The FastAPI app to add the GET routes to.
         """
         # store attributes and its initial values in Redis key-value store
-        redis_init_content = {
+        redis_init_content: Dict[Union[str, bytes], Union[bytes, float, int, str]] = {
             "p_cons": self.p_cons,
             "solar": self.p_gen,
             "p_grid": self.p_grid,
