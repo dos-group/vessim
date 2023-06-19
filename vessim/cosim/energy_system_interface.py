@@ -220,7 +220,7 @@ class _EnergySystemInterfaceModel(VessimModel):
             power_mode: str
 
         @app.put("/cs/nodes/{item_id}", response_model=NodeModel)
-        async def put_nodes(node: Node, item_id: int) -> Node:
+        async def put_nodes(node: NodeModel, item_id: int) -> NodeModel:
             power_modes = ["power-saving", "normal", "high performance"]
             power_mode = node.power_mode
             if power_mode not in power_modes:
