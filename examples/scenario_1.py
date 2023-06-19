@@ -45,7 +45,7 @@ def main():
     args = parser.parse_args()
 
     if args.sil:
-        ip = "http://192.168.149.71"
+        ip = "http://192.168.149.71" # Raspberry Pi Consumer
         nodes = [Node(ip)]
         power_meters = [HttpPowerMeter(interval=3, server_address=ip)]
     else:
@@ -54,7 +54,7 @@ def main():
 
     battery = SimpleBattery(
         capacity=10 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
-        charge_level=10 * 5 * 3600 * .7,
+        charge_level=10 * 5 * 3600 * .6,
         min_soc=.6,
         c_rate=1,
     )
