@@ -46,9 +46,13 @@ def main():
     args = parser.parse_args()
 
     if args.sil:
-        ip = "http://192.168.149.71" # Raspberry Pi Consumer
-        nodes = [Node(ip)]
-        power_meters = [HttpPowerMeter(interval=3, server_address=ip)]
+        rpi_ip = "http://192.168.149.71"
+        gcp_ip = "http://35.198.148.144"
+        nodes = [Node(rpi_ip), Node(gcp_ip)]
+        power_meters = [
+            HttpPowerMeter(interval=3, server_address=rpi_ip),
+            HttpPowerMeter(interval=3, server_address=gcp_ip)
+        ]
     else:
         nodes = []
         power_meters = [MockPowerMeter(p=-50)]

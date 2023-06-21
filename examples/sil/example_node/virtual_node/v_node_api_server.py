@@ -45,7 +45,7 @@ class VirtualNodeApiServer(FastApiServer):
         Returns:
             The current power usage.
         """
-        return self.power_model(psutil.cpu_percent(1))
+        return self.power_model(psutil.cpu_percent(1)) / 1000
 
     def _restart_sysbench(self, run_forever: bool = False) -> None:
         """Kill the existing sysbench instance and start a new one.
