@@ -55,7 +55,7 @@ def main():
         ]
     else:
         nodes = []
-        power_meters = [MockPowerMeter(p=-50)]
+        power_meters = [MockPowerMeter(p=10)]
 
     battery = SimpleBattery(
         capacity=10 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
@@ -91,11 +91,11 @@ def run_simulation(sim_start: str,
     computing_system_sim = world.start('ComputingSystem', step_size=60)
     computing_system = computing_system_sim.ComputingSystem(power_meters=power_meters)
 
-    # Solar generator
+    # Solar generator (scaling solar data for scenario)
     data : Union[pd.DataFrame, pd.Series] = pd.read_csv(
         solar_data_file,
         index_col="time",
-        parse_dates=True)["solar"]
+        parse_dates=True)["solar"] * 0.4 * 0.5 * .17  # W/m^2 * m^2 = W
     data.index -= timedelta(days=365)
     data = data.astype(float)
     solar_sim = world.start("Generator", sim_start=sim_start,
