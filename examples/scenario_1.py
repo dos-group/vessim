@@ -8,7 +8,7 @@ applications'. Documentation for this is in progress.
 """
 import argparse
 from datetime import timedelta
-from typing import Union
+from typing import List, Union
 
 import mosaik # type: ignore
 import pandas as pd
@@ -77,8 +77,8 @@ def run_simulation(sim_start: str,
                    duration: int,
                    carbon_data_file: str,
                    solar_data_file: str,
-                   nodes: list[Node],
-                   power_meters: list[PowerMeter],
+                   nodes: List[Node],
+                   power_meters: List[PowerMeter],
                    battery: SimpleBattery,
                    policy: StoragePolicy):
     """Execute the example scenario simulation."""

@@ -60,7 +60,7 @@ class _EnergySystemInterfaceModel(VessimModel):
 
     def __init__(
         self,
-        nodes: list[Node],
+        nodes: List[Node],
         battery: SimpleBattery,
         policy: DefaultStoragePolicy,
         db_host: str = "127.0.0.1",

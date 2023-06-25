@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 from vessim.core.storage import Storage, StoragePolicy, DefaultStoragePolicy
 from vessim.cosim._util import VessimSimulator, VessimModel
@@ -35,7 +35,7 @@ class _MicrogridModel(VessimModel):  # TODO abstract away
         self._last_step_time = 0
 
     def step(self, time: int, inputs: dict) -> None:
-        p: Union[float, list[float]] = inputs["p"]
+        p: Union[float, List[float]] = inputs["p"]
         p_delta = p if type(p) == float else sum(inputs["p"])
         time_since_last_step = time - self._last_step_time
         if self.storage is None:
