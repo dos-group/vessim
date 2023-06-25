@@ -1,10 +1,6 @@
-import threading
 from time import sleep
-
 import docker
 import redis
-import uvicorn
-from fastapi import FastAPI
 from redis import Redis
 
 
@@ -27,12 +23,12 @@ class RedisDocker:
         self.host = host
         self.port = port
         try:
-            self.init_docker()
+            self._init_docker()
         except docker.errors.DockerException:
             raise RuntimeError("Please start Docker before execution.")
-        self.redis = self.connect_redis()
+        self.redis = self._connect_redis()
 
-    def init_docker(self) -> None:
+    def _init_docker(self) -> None:
         """Initializes Docker client and starts Docker container with Redis."""
         client = docker.from_env()
         self.redis_container = client.containers.run(
@@ -49,7 +45,7 @@ class RedisDocker:
                 break
             sleep(1)
 
-    def connect_redis(self) -> Redis:
+    def _connect_redis(self) -> Redis:
         """Connects to the Redis instance in the Docker container.
 
         Waits until a connection is established.
@@ -66,69 +62,7 @@ class RedisDocker:
         assert db is not None
         return db
 
-    def run(self, f_api: FastAPI, host: str = "127.0.0.1", port: int = 8000) -> None:
-        """Starts the given FastAPI application.
-
-        Runs FastAPI with a uvicorn server in a seperate thread
-        and waits until it finished startup.
-
-        Args:
-            f_api: FastAPI, the FastAPI application to run
-            host: The host address, defaults to '127.0.0.1'.
-            port: The port to run the FastAPI application, defaults to 8000.
-        """
-        self.server_thread = ServerThread(f_api, host, port)
-        self.server_thread.start()
-        self.server_thread.wait_for_startup_complete()
-
-    def stop(self):
-        """Stops the FastAPI uvicorn server thread."""
-        self.server_thread.stop()
-
     def __del__(self) -> None:
         """Stops the Docker container with Redis wheninstance is deleted."""
         if hasattr(self, "redis_container"):
             self.redis_container.stop()
-
-
-class ServerThread(threading.Thread):
-    """Thread that runs a given FastAPI application with a uvicorn server."""
-
-    def __init__(self, f_api: FastAPI, host: str, port: int) -> None:
-        """Initializes the Thread with the FastAPI.
-
-        Args:
-            f_api: FastAPI, the FastAPI application to run
-            host: The host address, defaults to '127.0.0.1'.
-            port: The port to run the FastAPI application, defaults to 8000.
-        """
-        super().__init__()
-        config = uvicorn.Config(app=f_api, host=host, port=port)
-        self.server = uvicorn.Server(config=config)
-        self.startup_complete = False
-
-        @f_api.on_event("startup")
-        async def startup_event():
-            self.startup_complete = True
-
-    def wait_for_startup_complete(self):
-        """Waiting for completion of startup process.
-
-        To ensure the server is operational for the simulation, the startup
-        needs to complete before any requests can be made. Waits for the
-        uvicorn server to finish startup.
-        """
-        while not self.startup_complete:
-            sleep(1)
-
-    def run(self):
-        """Called when the thread is started. Runs the uvicorn server."""
-        self.server.run()
-
-    def stop(self):
-        """Stops the uvicorn server.
-
-        Mosaik does not stop the server on its own after the simulation has
-        finished. Gracefully stops the uvicorn server.
-        """
-        self.server.should_exit = True

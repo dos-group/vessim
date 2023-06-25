@@ -65,3 +65,4 @@ class HTTPClient:
                 response.status_code,
                 f'Failed to update data at {route}'
             )
+
