@@ -1,4 +1,5 @@
 from threading import Thread
+import time
 
 from vessim.core.storage import SimpleBattery, DefaultStoragePolicy
 from vessim.cosim._util import VessimSimulator, VessimModel
@@ -56,9 +57,11 @@ class _EnergySystemInterfaceModel(VessimModel):
         nodes: list[Node],
         battery: SimpleBattery,
         policy: DefaultStoragePolicy,
-        api_server_address: str
+        api_server_address: str,
+        interval: int
     ):
         self.nodes = nodes
+        self.updated_nodes = []
         self.battery = battery
         self.policy = policy
         self.p_cons = 0
@@ -66,6 +69,22 @@ class _EnergySystemInterfaceModel(VessimModel):
         self.p_grid = 0
         self.ci = 0
         self.http_client = HTTPClient(api_server_address)
+        self.collector_thread = Thread(target=self._api_collector, args=(interval,))
+        self.collector_thread.daemon = True
+        self.collector_thread.start()
+
+    def _api_collector(self, interval: int):
+        while True:
+            collection = self.http_client.get("/sim/collect-set")
+            self.battery.min_soc = float(collection["battery_min_soc"])
+            self.policy.grid_power = float(collection["battery_grid_charge"])
+            nodes_power_mode = {int(k): v
+                                for k, v in collection['nodes_power_mode'].items()}
+            for node in self.nodes:
+                if node.id in nodes_power_mode[node.id]:
+                    node.power_mode = nodes_power_mode[node.id]
+                    self.updated_nodes.append(node)
+            time.sleep(interval)
 
     def step(self, time: int, inputs: dict) -> None:
         self.p_cons = inputs["p_cons"]
@@ -73,28 +92,38 @@ class _EnergySystemInterfaceModel(VessimModel):
         self.ci = inputs["ci"]
         self.p_grid = inputs["p_grid"]
 
-        # update redis
-        self.http_client.put("/solar", {"solar": self.p_gen})
-        self.http_client.put("/ci", {"ci": self.ci})
+        # update values to the api server
+        def update_api_server():
+            try:
+                self.http_client.put("/sim/update", {
+                    "solar": self.p_gen,
+                    "ci": self.ci,
+                    "battery_soc": self.battery.soc(),
+                    "battery_min_soc": self.battery.min_soc,
+                    "battery_grid_charge": self.policy.grid_power,
+                    "nodes_power_mode": {node.id: node.power_mode
+                                         for node in self.updated_nodes}
+                })
+            except HTTPClientError as e:
+                print(e)
+        # use thread to not slow down simulation
+        api_server_update_thread = Thread(target=update_api_server)
+        api_server_update_thread.start()
 
-        # get redis update
-        remote_battery = self.http_client.get("/battery")
-        self.battery.min_soc = self.redis_get("battery.min_soc"))
-        self.policy.grid_power = float(self.redis_get("battery_grid_charge"))
         # update power mode for the node remotely
-        for node in self.nodes:
-            updated_power_mode = self.redis_get("node.power_mode", str(node.id))
-            if node.power_mode == updated_power_mode:
-                continue
-            node.power_mode = updated_power_mode
+        for node in self.updated_nodes:
             http_client = HTTPClient(f"{node.address}:{node.port}")
 
-            def update_power_model():
+            def update_node_power_model():
                 try:
                     http_client.put("/power_mode", {"power_mode": node.power_mode})
                 except HTTPClientError as e:
                     print(e)
             # use thread to not slow down simulation
-            update_thread = Thread(target=update_power_model)
-            update_thread.start()
+            node_update_thread = Thread(target=update_node_power_model)
+            node_update_thread.start()
 
+    def __del__(self) -> None:
+        """Terminates the collector thread when the instance is deleted."""
+        if self.collector_thread.is_alive():
+            self.collector_thread.join()

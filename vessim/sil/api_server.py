@@ -90,51 +90,50 @@ class ApiServer(multiprocessing.Process):
     def _init_get_routes(self, app: FastAPI) -> None:
         """Initializes GET routes for a FastAPI.
 
-        With the given route attributes, the initial values of the attributes
-        are stored in Redis key-value store.
-
         Args:
             app: The FastAPI app to add the GET routes to.
         """
-        # store attributes and its initial values in Redis key-value store
-        #redis_init_content = {
-        #    "p_cons": 0.0,
-        #    "solar": 0.0,
-        #    "p_grid": 0.0,
-        #    "ci": 0.0,
-        #    "battery.soc": 0.0,
-        #    "battery.min_soc": 0.0,
-        #    "battery_grid_charge": 0.0
-        #    # TODO implement forecasts:
-        #    #'ci_forecast': self.ci_forecast,
-        #    #'solar_forecast': self.solar_forecast
-        #}
-        #self.redis_docker.redis.mset(redis_init_content)
-        #for node in self.nodes:
-        #    self.redis_docker.redis.hset("node.power_mode", str(node.id), node.power_mode)
+        # /api/
 
         class SolarModel(BaseModel):
             solar: float
 
-        @app.get("/solar", response_model=SolarModel)
+        @app.get("/api/solar", response_model=SolarModel)
         async def get_solar() -> SolarModel:
             return SolarModel(solar=float(self._redis_get("solar")))
 
         class CiModel(BaseModel):
             ci: float
 
-        @app.get("/ci", response_model=CiModel)
+        @app.get("/api/ci", response_model=CiModel)
         async def get_ci() -> CiModel:
             return CiModel(ci=float(self._redis_get("ci")))
 
         class BatterySocModel(BaseModel):
             battery_soc: float
 
-        @app.get("/battery-soc", response_model=BatterySocModel)
+        @app.get("/api/battery-soc", response_model=BatterySocModel)
         async def get_battery_soc() -> BatterySocModel:
             return BatterySocModel(
-                battery_soc=float(self._redis_get("battery.soc"))
+                battery_soc=float(self._redis_get("battery_soc"))
             )
+
+        # /sim/
+
+        class CollectSetModel(BaseModel):
+            battery_min_soc: float
+            battery_grid_charge: float
+            nodes_power_mode: dict[int, str]
+
+        @app.get("/sim/collect-set", response_model=CollectSetModel)
+        async def get_collect_set() -> CollectSetModel:
+            return CollectSetModel(
+                # good enough for now
+                battery_min_soc=self.battery_min_soc_log[-1],
+                battery_grid_charge=self.battery_grid_charge_log[-1],
+                nodes_power_mode = {list(entry.keys())[0]: list(entry.values())[0]
+                                    for entry in self.power_mode_log}
+)
 
     def _init_put_routes(self, app: FastAPI) -> None:
         """Initialize PUT routes for the FastAPI application.
@@ -149,20 +148,28 @@ class ApiServer(multiprocessing.Process):
             app: FastAPI application instance to which PUT routes are added.
         """
 
+        # /api/
+
+        self.battery_min_soc_log = []
+        self.battery_grid_charge_log = []
+        self.power_mode_log: list[dict[int, str]] = []
+
         class BatteryModel(BaseModel):
             min_soc: float
             grid_charge: float
 
-        @app.put("/ves/battery", response_model=BatteryModel)
+        @app.put("/api/battery", response_model=BatteryModel)
         async def put_battery(battery: BatteryModel) -> BatteryModel:
-            self.redis_docker.redis.set("battery.min_soc", battery.min_soc)
+            self.redis_docker.redis.set("battery_min_soc", battery.min_soc)
+            self.battery_min_soc_log.append(battery.min_soc)
             self.redis_docker.redis.set("battery_grid_charge", battery.grid_charge)
+            self.battery_grid_charge_log.append(battery.grid_charge)
             return battery
 
         class NodeModel(BaseModel):
             power_mode: str
 
-        @app.put("/cs/nodes/{item_id}", response_model=NodeModel)
+        @app.put("/api/nodes/{item_id}", response_model=NodeModel)
         async def put_nodes(node: NodeModel, item_id: int) -> NodeModel:
             power_modes = ["power-saving", "normal", "high performance"]
             power_mode = node.power_mode
@@ -172,12 +179,34 @@ class ApiServer(multiprocessing.Process):
                     detail=f"{power_mode} is not a valid power mode. "
                            f"Available power modes: {power_modes}"
             )
+            self.power_mode_log.append({item_id: power_mode})
             self.redis_docker.redis.hset(
-                "node.power_mode",
+                "node_power_mode",
                 str(item_id),
                 power_mode
             )
             return node
+
+        # /sim/
+
+        class UpdateModel(BaseModel):
+            solar: float
+            ci: float
+            battery_soc: float
+            battery_min_soc: float
+            battery_grid_charge: float
+            nodes_power_mode: dict[int, str]
+
+        @app.put("/sim/update", response_model=UpdateModel)
+        async def put_update(update: UpdateModel) -> UpdateModel:
+            self.redis_docker.redis.set("solar", update.solar)
+            self.redis_docker.redis.set("battery_soc", update.battery_soc)
+            self.redis_docker.redis.set("battery_min_soc", update.battery_min_soc)
+            self.redis_docker.redis.set("battery_grid_charge", update.battery_grid_charge)
+            for node_id, power_mode in update.nodes_power_mode.values():
+                self.redis_docker.redis.hset("nodes_power_mode", str(node_id), power_mode)
+            return update
+
 
     def _print_redis(self):
         """Debugging function that simply prints all entries of the redis db."""

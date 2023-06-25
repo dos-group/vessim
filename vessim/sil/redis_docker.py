@@ -7,19 +7,15 @@ from redis import Redis
 class RedisDocker:
     """Class for connection to a Docker container with Redis.
 
+    Args:
+        host: Host address, defaults to '127.0.0.1'.
+        port: Port for connection, defaults to 6379 as specified by Redis.
+
     Attributes:
         redis: The redis db that can be used to get and set key, value pairs.
     """
 
     def __init__(self, host: str = "127.0.0.1", port: int = 6379) -> None:
-        """Initialization of container with Redis and connection to it.
-
-        After instantiation, run() needs to be called with a FastAPI instance.
-
-        Args:
-            host: Host address, defaults to '127.0.0.1'.
-            port: Port for connection, defaults to 6379 as specified by Redis.
-        """
         self.host = host
         self.port = port
         try:
@@ -63,6 +59,6 @@ class RedisDocker:
         return db
 
     def __del__(self) -> None:
-        """Stops the Docker container with Redis wheninstance is deleted."""
+        """Stops the Docker container with Redis when instance is deleted."""
         if hasattr(self, "redis_container"):
             self.redis_container.stop()
