@@ -97,10 +97,10 @@ class _SilInterfaceModel(VessimModel):
         self.collector_thread.start()
 
     def _api_collector(self, interval: int):
-        """Collects in interval steps data from the API server
+        """Collects in interval steps data from the API server.
 
         TODO implement user defined collection method. Current static
-        collection method: most recent entry
+        collection method: most recent entry.
 
         Args:
             interval: Time between fetching data.
