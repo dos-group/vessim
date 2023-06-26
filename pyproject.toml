@@ -2,7 +2,7 @@
 name = "vessim"
 dynamic = ["version", "description"]
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 license = {file = "LICENSE"}
 keywords = ["simulation", "energy system", "testbed", "carbon-aware"]
 authors = [{name = "Philipp Wiesner", email = "wiesner@tu-berlin.de"}]
@@ -15,7 +15,6 @@ classifiers = [
   "Topic :: Software Development :: Testing",
   "Topic :: Education",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.7",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
@@ -61,7 +60,7 @@ name = "vessim"
 
 [tool.black]
 line-length = 90  # Set the maximum characters per line
-target-version = "py37"   # Set python versions that black should format the code for
+target-version = "py38"   # Set python versions that black should format the code for
 include = '\.py$'  # Format only python files
 
 [tool.ruff]
@@ -87,7 +86,7 @@ fixable = ["D", "E", "W"]
 unfixable = ["F"]
 
 line-length = 90  # Set the maximum characters per line (similar to black)
-target-version = "py37"  # Set python version for linting (similar to black)
+target-version = "py38"  # Set python version for linting (similar to black)
 include = ["*.py"]  # Only enable linting for python files (similar to black)
 
 # Exclude specific directories and all defaults
