@@ -2,7 +2,7 @@
 name = "vessim"
 dynamic = ["version", "description"]
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 license = {file = "LICENSE"}
 keywords = ["simulation", "energy system", "testbed", "carbon-aware"]
 authors = [{name = "Philipp Wiesner", email = "wiesner@tu-berlin.de"}]
@@ -15,20 +15,27 @@ classifiers = [
   "Topic :: Software Development :: Testing",
   "Topic :: Education",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3 :: Only",
 ]
 
-dependencies = [ # Optional
+dependencies = [
   "pandas",
   "mosaik",
   "mosaik-api",
+  "requests",
+  "fastapi",
+  "docker",
+  "redis",
+  "uvicorn",
 ]
 
-# [project.optional-dependencies] # Optional
-# dev = ["check-manifest"]
+#[project.optional-dependencies]
+#sil = [
+#]
 # test = ["coverage"]
 
 [project.urls]  # Optional
@@ -48,16 +55,23 @@ build-backend = "flit_core.buildapi"
 [tool.flit.sdist]
 exclude = ["data"]
 
+[tool.flit.module]
+name = "vessim"
 
 [tool.black]
 line-length = 90  # Set the maximum characters per line
-target-version = ['py311']  # Set python version that black should format the code for
+target-version = ['py38']   # Set python versions that black should format the code for
 include = '\.py$'  # Format only python files
 
-
 [tool.ruff]
-# Enable Ruff to check for docstring-related (D), pycodestyle-related (E, W), and Pyflakes-related (F) issues
-select = ["D", "E", "F", "W"]
+# Enable Ruff to check for issues (https://beta.ruff.rs/docs/rules)
+select = [
+  "E", "W",  # pycodestyle (error and warning)
+  "D",  # docstrings
+  "F",  # Pyflakes
+  "N",  # variable naming
+  #  "B",  # flake8-bugbear
+]
 
 # For now the following rules are disabled:
 #   D100: Missing docstring in public module
@@ -65,15 +79,14 @@ select = ["D", "E", "F", "W"]
 #   D102: Missing docstring in public method
 #   D103: Missing docstring in public function
 #   D107: Missing docstring in __init__
-#   F401: Imported but unused
-ignore = ["D100", "D101", "D102", "D103", "D107", "F401"]
+ignore = ["D100", "D101", "D102", "D103", "D107"]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["D", "E", "W"]
 unfixable = ["F"]
 
 line-length = 90  # Set the maximum characters per line (similar to black)
-target-version = "py311"  # Set python version for linting (similar to black)
+target-version = "py38"  # Set python version for linting (similar to black)
 include = ["*.py"]  # Only enable linting for python files (similar to black)
 
 # Exclude specific directories and all defaults
@@ -83,6 +96,6 @@ extend-exclude = ["example_node", "simulator/power_meter.py", "carbon-aware_cont
 [tool.ruff.pydocstyle]
 convention = "google"
 
-
+# Configure mypy to ignore missing imports
 [mypy]
 ignore_missing_imports = true

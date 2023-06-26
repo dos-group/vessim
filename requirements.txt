@@ -4,7 +4,7 @@ numpy
 
 # analysis
 jupyterlab
-matplotlib==3.6
+matplotlib # ==3.6 is not compatible with python 3.7.0 instead 3.5.3 is installed
 seaborn==0.12.2
 
 # database
