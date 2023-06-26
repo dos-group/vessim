@@ -60,7 +60,7 @@ class _EnergySystemInterfaceModel(VessimModel):
 
     def __init__(
         self,
-        nodes: list[Node],
+        nodes: List[Node],
         battery: SimpleBattery,
         policy: DefaultStoragePolicy,
         db_host: str = "127.0.0.1",
@@ -228,7 +228,7 @@ class _EnergySystemInterfaceModel(VessimModel):
                     status_code=400,
                     detail=f"{power_mode} is not a valid power mode. "
                            f"Available power modes: {power_modes}"
-            )
+                )
             self.redis_docker.redis.hset("node.power_mode", str(item_id), power_mode)
             return node
 

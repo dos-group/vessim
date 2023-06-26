@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Type, Dict, Any, Union
+from typing import List, Type, Dict, Any, Union
 
 import mosaik_api # type: ignore
 import pandas as pd
@@ -102,8 +102,8 @@ class VessimSimulator(mosaik_api.Simulator, ABC):
 
 
 def _convert_inputs(
-    attrs: dict[str, dict[str, Any]]
-) -> dict[str, Union[Any, list[Any]]]:
+    attrs: Dict[str, Dict[str, Any]]
+) -> Dict[str, Union[Any, List[Any]]]:
     """Converts Mosaik step inputs into a simpler format suitable for Vessim.
 
     If there is a single input, only the input is being returned.
