@@ -53,9 +53,6 @@ dependencies = [
 requires = ["flit_core >=3.2,<4"]
 build-backend = "flit_core.buildapi"
 
-[tool.flit.module]
-name = "vessim"
-
 [tool.flit.sdist]
 exclude = ["data"]
 
@@ -66,7 +63,6 @@ name = "vessim"
 line-length = 90  # Set the maximum characters per line
 target-version = "py37"   # Set python versions that black should format the code for
 include = '\.py$'  # Format only python files
-
 
 [tool.ruff]
 # Enable Ruff to check for issues (https://beta.ruff.rs/docs/rules)
