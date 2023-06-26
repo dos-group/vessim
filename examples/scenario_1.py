@@ -77,7 +77,7 @@ def run_simulation(sim_start: str,
                    duration: int,
                    carbon_data_file: str,
                    solar_data_file: str,
-                   nodes: list[Node],
+                   nodes: List[Node],
                    power_meters: List[PowerMeter],
                    battery: SimpleBattery,
                    policy: StoragePolicy):
