@@ -60,7 +60,7 @@ name = "vessim"
 
 [tool.black]
 line-length = 90  # Set the maximum characters per line
-target-version = "py38"   # Set python versions that black should format the code for
+target-version = ['py38']   # Set python versions that black should format the code for
 include = '\.py$'  # Format only python files
 
 [tool.ruff]
