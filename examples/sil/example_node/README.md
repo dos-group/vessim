@@ -43,7 +43,7 @@ git clone https://github.com/dos-group/vessim/
 
 5. Navigate to the example_node directory and install Python dependencies:
 ```bash
-cd vessim/example_node/rpi
+cd vessim/examples/sil/example_node/rpi
 sudo pip install -r requirements.txt
 ```
 
