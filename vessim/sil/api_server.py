@@ -1,6 +1,7 @@
 import multiprocessing
 from time import sleep
 from datetime import datetime
+from typing import Optional
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
@@ -57,13 +58,13 @@ class VessimApiServer(ApiServer):
     """
 
     def __init__(self, host: str = "127.0.0.1", port: int = 8000) -> None:
-        self.solar: float
-        self.ci: float
-        self.battery_soc: float
+        self.solar: Optional[float] = None
+        self.ci: Optional[float] = None
+        self.battery_soc: Optional[float] = None
 
-        self.battery_min_soc_log: dict[str, float]
-        self.battery_grid_charge_log: dict[str, float]
-        self.power_mode_log: dict[str, dict[int, str]]
+        self.battery_min_soc_log: dict[str, float] = {}
+        self.battery_grid_charge_log: dict[str, float] = {}
+        self.power_mode_log: dict[str, dict[int, str]] = {}
 
         app = self._init_fastapi()
         super().__init__(app, host, port)
@@ -88,21 +89,21 @@ class VessimApiServer(ApiServer):
         # /api/
 
         class SolarModel(BaseModel):
-            solar: float
+            solar: Optional[float]
 
         @app.get("/api/solar", response_model=SolarModel)
         async def get_solar() -> SolarModel:
             return SolarModel(solar=self.solar)
 
         class CiModel(BaseModel):
-            ci: float
+            ci: Optional[float]
 
         @app.get("/api/ci", response_model=CiModel)
         async def get_ci() -> CiModel:
             return CiModel(ci=self.ci)
 
         class BatterySocModel(BaseModel):
-            battery_soc: float
+            battery_soc: Optional[float]
 
         @app.get("/api/battery-soc", response_model=BatterySocModel)
         async def get_battery_soc() -> BatterySocModel:
@@ -111,18 +112,21 @@ class VessimApiServer(ApiServer):
         # /sim/
 
         class CollectSetModel(BaseModel):
-            battery_min_soc: dict[str, float]
-            battery_grid_charge: dict[str, float]
-            nodes_power_mode: dict[str, dict[int, str]]
+            battery_min_soc: Optional[dict[str, float]]
+            battery_grid_charge: Optional[dict[str, float]]
+            nodes_power_mode: Optional[dict[str, dict[int, str]]]
 
         @app.get("/sim/collect-set", response_model=CollectSetModel)
         async def get_collect_set() -> CollectSetModel:
-            # TODO empty dicts
-            return CollectSetModel(
+            model = CollectSetModel(
                 battery_min_soc=self.battery_min_soc_log,
                 battery_grid_charge=self.battery_grid_charge_log,
                 nodes_power_mode=self.power_mode_log
             )
+            self.battery_min_soc_log.clear()
+            self.battery_grid_charge_log.clear()
+            self.power_mode_log.clear()
+            return model
 
     def _init_put_routes(self, app: FastAPI) -> None:
         """Initialize PUT routes for the FastAPI application.

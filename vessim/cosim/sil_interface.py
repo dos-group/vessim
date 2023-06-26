@@ -81,13 +81,12 @@ class _SilInterfaceModel(VessimModel):
         self.api_server.start()
         self.api_server.wait_for_startup_complete()
 
-        # init server values + wait for put request confirmation
+        # init server values and wait for put request confirmation
         self.http_client = HTTPClient(f"http://{api_host}:{api_port}")
         self.http_client.put("/sim/update", {
             "solar": self.p_gen,
             "ci": self.ci,
             "battery_soc": self.battery.soc(),
-            # TODO initialize collect-set, how?
         })
 
         self.collector_thread = Thread(
@@ -107,18 +106,25 @@ class _SilInterfaceModel(VessimModel):
         """
         while True:
             collection = self.http_client.get("/sim/collect-set")
-            newest_key = max(collection["battery_min_soc"].keys())
-            self.battery.min_soc = float(collection["battery_min_soc"][newest_key])
-            newest_key = max(collection["battery_grid_charge"].keys())
-            self.policy.grid_power = float(collection["battery_grid_charge"][newest_key])
-            newest_key = max(collection["nodes_power_mode"].keys())
-            nodes_power_mode = {
-                int(k): v for k, v in collection['nodes_power_mode'][newest_key].items()
-            }
-            for node in self.nodes:
-                if node.id in nodes_power_mode[node.id]:
-                    node.power_mode = nodes_power_mode[node.id]
-                    self.updated_nodes.append(node)
+
+            if collection["battery_min_soc"]:
+                newest_key = max(collection["battery_min_soc"].keys())
+                self.battery.min_soc = float(collection["battery_min_soc"][newest_key])
+
+            if collection["battery_grid_charge"]:
+                newest_key = max(collection["battery_grid_charge"].keys())
+                self.policy.grid_power = float(collection["battery_grid_charge"][newest_key])
+
+            if collection["nodes_power_mode"]:
+                newest_key = max(collection["nodes_power_mode"].keys())
+                nodes_power_mode = {
+                    int(k): v for k, v in collection['nodes_power_mode'][newest_key].items()
+                }
+                for node in self.nodes:
+                    if node.id in nodes_power_mode[node.id]:
+                        node.power_mode = nodes_power_mode[node.id]
+                        self.updated_nodes.append(node)
+
             time.sleep(interval)
 
     def step(self, time: int, inputs: dict) -> None:
@@ -153,6 +159,7 @@ class _SilInterfaceModel(VessimModel):
             # use thread to not slow down simulation
             node_update_thread = Thread(target=update_node_power_model)
             node_update_thread.start()
+            self.updated_nodes.clear()
 
     def __del__(self) -> None:
         """Terminates the collector thread when the instance is deleted."""
