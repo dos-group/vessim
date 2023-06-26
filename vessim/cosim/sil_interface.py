@@ -82,18 +82,18 @@ class _SilInterfaceModel(VessimModel):
         self.api_server.wait_for_startup_complete()
 
         # init server values + wait for put request confirmation
-        self.http_client = HTTPClient(f"{api_host}:{api_port}")
+        self.http_client = HTTPClient(f"http://{api_host}:{api_port}")
         self.http_client.put("/sim/update", {
             "solar": self.p_gen,
             "ci": self.ci,
             "battery_soc": self.battery.soc(),
+            # TODO initialize collect-set, how?
         })
 
         self.collector_thread = Thread(
             target=self._api_collector,
             args=(collection_interval,)
         )
-        self.collector_thread.daemon = True
         self.collector_thread.start()
 
     def _api_collector(self, interval: int):

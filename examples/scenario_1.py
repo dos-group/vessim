@@ -46,11 +46,11 @@ def main():
     args = parser.parse_args()
 
     if args.sil:
-        rpi_ip = "http://192.168.149.71"
-        gcp_ip = "http://35.198.148.144"
-        nodes = [Node(rpi_ip), Node(gcp_ip)]
+        #rpi_ip = "http://192.168.149.71"
+        gcp_ip = "http://35.198.121.220"
+        #nodes = [Node(rpi_ip), Node(gcp_ip)]
+        nodes = [Node(gcp_ip)]
         power_meters = [
-            HttpPowerMeter(interval=3, server_address=rpi_ip),
             HttpPowerMeter(interval=3, server_address=gcp_ip)
         ]
     else:
@@ -142,7 +142,7 @@ def run_simulation(sim_start: str,
     world.connect(microgrid, monitor, ("p_delta", "p_grid"))
     world.connect(carbon_api_de, monitor, "carbon_intensity")
 
-    world.run(until=duration)
+    world.run(until=duration, rt_factor=1)
 
 
 if __name__ == "__main__":

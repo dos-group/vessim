@@ -34,7 +34,7 @@ class ApiServer(multiprocessing.Process):
         needs to complete before any requests can be made. Waits for the
         uvicorn server to finish startup.
         """
-        while not self.startup_complete:
+        while not self.startup_complete.value:
             sleep(1)
 
     def run(self):
@@ -117,6 +117,7 @@ class VessimApiServer(ApiServer):
 
         @app.get("/sim/collect-set", response_model=CollectSetModel)
         async def get_collect_set() -> CollectSetModel:
+            # TODO empty dicts
             return CollectSetModel(
                 battery_min_soc=self.battery_min_soc_log,
                 battery_grid_charge=self.battery_grid_charge_log,
