@@ -147,7 +147,6 @@ class ApiServer(multiprocessing.Process):
         Args:
             app: FastAPI application instance to which PUT routes are added.
         """
-
         # /api/
 
         self.battery_min_soc_log = []
