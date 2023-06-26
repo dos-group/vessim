@@ -1,4 +1,5 @@
 import sys
+from typing import Union
 sys.path.append("../")
 from linear_power_model import LinearPowerModel
 from node_api_server import FastApiServer
@@ -44,7 +45,7 @@ class VirtualNodeApiServer(FastApiServer):
         Returns:
             The current power usage.
         """
-        return self.power_model(psutil.cpu_percent(1))
+        return self.power_model(psutil.cpu_percent(1)) / 1000
 
     def _restart_sysbench(self, run_forever: bool = False) -> None:
         """Kill the existing sysbench instance and start a new one.
@@ -70,7 +71,7 @@ class VirtualNodeApiServer(FastApiServer):
             command.append("--time=31622400")
 
         # Start the new sysbench process
-        self.sysbench = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.sysbench = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) # type: ignore
 
     def _run_benchmark(self) -> None:
         """Run a sysbench benchmark.

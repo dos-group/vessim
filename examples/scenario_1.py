@@ -8,8 +8,9 @@ applications'. Documentation for this is in progress.
 """
 import argparse
 from datetime import timedelta
+from typing import Union
 
-import mosaik
+import mosaik # type: ignore
 import pandas as pd
 
 from vessim.core.simulator import Generator, CarbonApi
@@ -45,16 +46,20 @@ def main():
     args = parser.parse_args()
 
     if args.sil:
-        ip = "http://192.168.149.71"
-        nodes = [Node(ip)]
-        power_meters = [HttpPowerMeter(interval=3, server_address=ip)]
+        rpi_ip = "http://192.168.149.71"
+        gcp_ip = "http://35.198.148.144"
+        nodes = [Node(rpi_ip), Node(gcp_ip)]
+        power_meters = [
+            HttpPowerMeter(interval=3, server_address=rpi_ip),
+            HttpPowerMeter(interval=3, server_address=gcp_ip)
+        ]
     else:
         nodes = []
-        power_meters = [MockPowerMeter(p=-50)]
+        power_meters = [MockPowerMeter(p=10)]
 
     battery = SimpleBattery(
         capacity=10 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
-        charge_level=10 * 5 * 3600 * .7,
+        charge_level=10 * 5 * 3600 * .6,
         min_soc=.6,
         c_rate=1,
     )
@@ -86,9 +91,13 @@ def run_simulation(sim_start: str,
     computing_system_sim = world.start('ComputingSystem', step_size=60)
     computing_system = computing_system_sim.ComputingSystem(power_meters=power_meters)
 
-    # Solar generator
-    data = pd.read_csv(solar_data_file, index_col="time", parse_dates=True)["solar"]
+    # Solar generator (scaling solar data for scenario)
+    data : Union[pd.DataFrame, pd.Series] = pd.read_csv(
+        solar_data_file,
+        index_col="time",
+        parse_dates=True)["solar"] * 0.4 * 0.5 * .17  # W/m^2 * m^2 = W
     data.index -= timedelta(days=365)
+    data = data.astype(float)
     solar_sim = world.start("Generator", sim_start=sim_start,
                             generator=Generator(data=data))
     solar = solar_sim.Generator.create(1)[0]

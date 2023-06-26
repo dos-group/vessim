@@ -45,19 +45,19 @@ class SimpleBattery(Storage):
         self.c_rate = c_rate
 
     def update(self, power: float, duration: int) -> float:
-        max_charge_p_delta, p_delta = 0, 0
+        max_charge_p_delta, p_delta = 0.0, 0.0
 
         if self.c_rate is not None:
             max_rate = self.c_rate * self.capacity / 3600
             if power >= max_rate:
-                logger.info(f"Trying to charge storage '{__class__.__name__}' with "
+                logger.info(f"Trying to charge storage '{self.__class__.__name__}' with "
                             f"{power} W but only {max_rate} W are supported.")
                 max_charge_p_delta = power - max_rate
                 power = max_rate
 
             if power <= -max_rate:
-                logger.info(f"Trying to discharge storage '{__class__.__name__}' with "
-                            f"{power} W but only {max_rate} W are supported.")
+                logger.info(f"Trying to discharge storage '{self.__class__.__name__}' "
+                            f"with {power} W but only {max_rate} W are supported.")
                 max_charge_p_delta = power + max_rate
                 power = -self.c_rate
 

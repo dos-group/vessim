@@ -1,5 +1,5 @@
 from time import sleep
-import docker
+import docker # type: ignore
 import redis
 from redis import Redis
 

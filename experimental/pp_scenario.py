@@ -1,4 +1,4 @@
-import pandapower as pp
+import pandapower as pp # type: ignore
 
 # create empty net
 import pandas as pd

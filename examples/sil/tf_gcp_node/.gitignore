@@ -22,6 +22,7 @@ terraform.rc
 *.key
 *.pub
 /keys
+.ssh
 
 # Ignore crash log files
 crash.log

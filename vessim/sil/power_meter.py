@@ -48,7 +48,7 @@ class HttpPowerMeter(PowerMeter):
     ) -> None:
         super().__init__(name)
         self.http_client = HTTPClient(f"{server_address}:{port}")
-        self.power = 0
+        self.power = 0.0
         self.update_thread = threading.Thread(target=self._update_power, args=(interval,))
         self.update_thread.daemon = True
         self.update_thread.start()
@@ -56,7 +56,7 @@ class HttpPowerMeter(PowerMeter):
     def _update_power(self, interval: int) -> None:
         """Gets the power demand every `interval` seconds from the API server."""
         while True:
-            self.power = float(self.http_client.get("/power"))
+            self.power = float(self.http_client.get("/power")["power"])
             time.sleep(interval)
 
     def measure(self) -> float:
@@ -73,7 +73,7 @@ class MockPowerMeter(PowerMeter):
 
     def __init__(self, p: float, name: Optional[str] = None):
         super().__init__(name)
-        assert p <= 0
+        assert p >= 0
         self.p = p
 
     def measure(self) -> float:
