@@ -68,7 +68,7 @@ class _SilInterfaceModel(VessimModel):
         api_port: int = 8000
     ):
         self.nodes = nodes
-        self.updated_nodes = []
+        self.updated_nodes: list[Node] = []
         self.battery = battery
         self.policy = policy
         self.p_cons = 0
