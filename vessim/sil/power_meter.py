@@ -73,7 +73,7 @@ class MockPowerMeter(PowerMeter):
 
     def __init__(self, p: float, name: Optional[str] = None):
         super().__init__(name)
-        assert p <= 0
+        assert p >= 0
         self.p = p
 
     def measure(self) -> float:
