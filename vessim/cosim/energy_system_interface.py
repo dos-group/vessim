@@ -228,7 +228,7 @@ class _EnergySystemInterfaceModel(VessimModel):
                     status_code=400,
                     detail=f"{power_mode} is not a valid power mode. "
                            f"Available power modes: {power_modes}"
-            )
+                )
             self.redis_docker.redis.hset("node.power_mode", str(item_id), power_mode)
             return node
 
