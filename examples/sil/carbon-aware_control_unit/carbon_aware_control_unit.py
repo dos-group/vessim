@@ -1,6 +1,7 @@
-from vessim.sil.http_client import HTTPClient
+from vessim.sil.http_client import HTTPClient, HTTPClientError
 import simpy # type: ignore
 from typing import Dict
+from time import sleep
 
 
 class RemoteBattery:
@@ -50,9 +51,18 @@ class CarbonAwareControlUnit:
 
         self.client = HTTPClient(server_address)
 
+        while not self._is_server_ready():
+            time.sleep(1)
+
         self.env = simpy.Environment()
         self.env.process(self.scenario())
 
+    def _is_server_ready(self) -> bool:
+        try:
+            response = self.client.get('/ci')['ci']
+            return True
+        except HTTPClientError:
+            return False
 
     def run_scenario(self, until: int):
         self.env.run(until=until)

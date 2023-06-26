@@ -13,6 +13,7 @@ def argparser() -> argparse.ArgumentParser:
 
     parser.add_argument('--nodes',
                         metavar='JSON e.g. {"aws": 0, "raspi": 1}',
+                        type=str,
                         help='names and ids of nodes',
                         required=True)
 
