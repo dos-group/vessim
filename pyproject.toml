@@ -50,6 +50,8 @@ build-backend = "flit_core.buildapi"
 [tool.flit.sdist]
 exclude = ["data"]
 
+[tool.flit.module]
+name = "vessim"
 
 [tool.black]
 line-length = 90  # Set the maximum characters per line
