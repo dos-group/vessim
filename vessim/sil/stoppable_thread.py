@@ -10,7 +10,8 @@ class StoppableThread(threading.Thread):
 
     Attributes:
         target_function (Callable): The function to be run in the thread.
-        stop_signal (threading.Event): An event that can be set to signal the thread to stop.
+        stop_signal (threading.Event): An event that can be set to signal the
+            thread to stop.
     """
 
     def __init__(self, target_function: Callable[[], None], interval: float):

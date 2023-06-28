@@ -1,6 +1,4 @@
-import time
 from threading import Thread
-from functools import partial
 
 from vessim.core.storage import SimpleBattery, DefaultStoragePolicy
 from vessim.cosim._util import VessimSimulator, VessimModel
