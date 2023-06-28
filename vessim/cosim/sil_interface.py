@@ -1,11 +1,13 @@
-from threading import Thread
 import time
+from threading import Thread
+from functools import partial
 
 from vessim.core.storage import SimpleBattery, DefaultStoragePolicy
 from vessim.cosim._util import VessimSimulator, VessimModel
 from vessim.sil.http_client import HTTPClient, HTTPClientError
 from vessim.sil.node import Node
 from vessim.sil.api_server import VessimApiServer
+from vessim.sil.stoppable_thread import StoppableThread
 
 
 class SilInterfaceSim(VessimSimulator):
@@ -37,6 +39,15 @@ class SilInterfaceSim(VessimSimulator):
         self.step_size = step_size
         return super().init(sid, time_resolution, eid_prefix=eid_prefix)
 
+    def finalize(self) -> None:
+        """Stops the api server and the collector thread when the simulation finishes."""
+        super().finalize()
+        for model_instance in self.entities.values():
+            model_instance.collector_thread.stop()
+            model_instance.collector_thread.join()
+            model_instance.api_server.terminate()
+            model_instance.api_server.join()
+
     def next_step(self, time):
         return time + self.step_size
 
@@ -63,7 +74,7 @@ class _SilInterfaceModel(VessimModel):
         nodes: list[Node],
         battery: SimpleBattery,
         policy: DefaultStoragePolicy,
-        collection_interval: int,
+        collection_interval: float,
         api_host: str = "127.0.0.1",
         api_port: int = 8000
     ):
@@ -89,43 +100,34 @@ class _SilInterfaceModel(VessimModel):
             "battery_soc": self.battery.soc(),
         })
 
-        self.collector_thread = Thread(
-            target=self._api_collector,
-            args=(collection_interval,)
-        )
+        self.collector_thread = StoppableThread(self._api_collector, collection_interval)
         self.collector_thread.start()
 
-    def _api_collector(self, interval: int):
-        """Collects in interval steps data from the API server.
+    def _api_collector(self):
+        """Collects data from the API server.
 
         TODO implement user defined collection method. Current static
         collection method: most recent entry.
-
-        Args:
-            interval: Time between fetching data.
         """
-        while True:
-            collection = self.http_client.get("/sim/collect-set")
+        collection = self.http_client.get("/sim/collect-set")
 
-            if collection["battery_min_soc"]:
-                newest_key = max(collection["battery_min_soc"].keys())
-                self.battery.min_soc = float(collection["battery_min_soc"][newest_key])
+        if collection["battery_min_soc"]:
+            newest_key = max(collection["battery_min_soc"].keys())
+            self.battery.min_soc = float(collection["battery_min_soc"][newest_key])
 
-            if collection["battery_grid_charge"]:
-                newest_key = max(collection["battery_grid_charge"].keys())
-                self.policy.grid_power = float(collection["battery_grid_charge"][newest_key])
+        if collection["battery_grid_charge"]:
+            newest_key = max(collection["battery_grid_charge"].keys())
+            self.policy.grid_power = float(collection["battery_grid_charge"][newest_key])
 
-            if collection["nodes_power_mode"]:
-                newest_key = max(collection["nodes_power_mode"].keys())
-                nodes_power_mode = {
-                    int(k): v for k, v in collection['nodes_power_mode'][newest_key].items()
-                }
-                for node in self.nodes:
-                    if node.id in nodes_power_mode[node.id]:
-                        node.power_mode = nodes_power_mode[node.id]
-                        self.updated_nodes.append(node)
-
-            time.sleep(interval)
+        if collection["nodes_power_mode"]:
+            newest_key = max(collection["nodes_power_mode"].keys())
+            nodes_power_mode = {
+                int(k): v for k, v in collection['nodes_power_mode'][newest_key].items()
+            }
+            for node in self.nodes:
+                if node.id in nodes_power_mode[node.id]:
+                    node.power_mode = nodes_power_mode[node.id]
+                    self.updated_nodes.append(node)
 
     def step(self, time: int, inputs: dict) -> None:
         self.p_cons = inputs["p_cons"]
@@ -161,10 +163,3 @@ class _SilInterfaceModel(VessimModel):
             node_update_thread.start()
             self.updated_nodes.clear()
 
-    def __del__(self) -> None:
-        """Terminates the collector thread when the instance is deleted."""
-        if self.collector_thread.is_alive():
-            self.collector_thread.join()
-        # TODO does this work with Mosaik?
-        self.api_server.terminate()
-        self.api_server.join()

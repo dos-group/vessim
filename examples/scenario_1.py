@@ -47,11 +47,10 @@ def main():
 
     if args.sil:
         #rpi_ip = "http://192.168.149.71"
-        gcp_ip = "http://35.198.121.220"
-        #nodes = [Node(rpi_ip), Node(gcp_ip)]
-        nodes = [Node(gcp_ip)]
+        gcp_ip = "http://34.159.124.254"
+        nodes = [Node(gcp_ip)]#, Node(rpi_ip)]
         power_meters = [
-            HttpPowerMeter(interval=3, server_address=gcp_ip)
+            HttpPowerMeter(interval=1, server_address=gcp_ip)
         ]
     else:
         nodes = []
@@ -142,8 +141,7 @@ def run_simulation(sim_start: str,
     world.connect(microgrid, monitor, ("p_delta", "p_grid"))
     world.connect(carbon_api_de, monitor, "carbon_intensity")
 
-    world.run(until=duration, rt_factor=1)
-
+    world.run(until=duration)#, rt_factor=1/60)
 
 if __name__ == "__main__":
     main()

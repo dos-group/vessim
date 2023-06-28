@@ -1,9 +1,10 @@
-import threading
 import time
 from abc import ABC, abstractmethod
 from typing import Optional
+from functools import partial
 
 from vessim.sil.http_client import HTTPClient
+from vessim.sil.stoppable_thread import StoppableThread
 
 
 class PowerMeter(ABC):
@@ -41,7 +42,7 @@ class HttpPowerMeter(PowerMeter):
 
     def __init__(
         self,
-        interval: int,
+        interval: float,
         server_address: str,
         port: int = 8000,
         name: Optional[str] = None
@@ -49,24 +50,21 @@ class HttpPowerMeter(PowerMeter):
         super().__init__(name)
         self.http_client = HTTPClient(f"{server_address}:{port}")
         self.power = 0.0
-        self.update_thread = threading.Thread(target=self._update_power, args=(interval,))
-        self.update_thread.daemon = True
+        self.update_thread = StoppableThread(self._update_power, interval)
         self.update_thread.start()
 
-    def _update_power(self, interval: int) -> None:
+    def _update_power(self) -> None:
         """Gets the power demand every `interval` seconds from the API server."""
-        while True:
-            self.power = float(self.http_client.get("/power")["power"])
-            time.sleep(interval)
+        self.power = float(self.http_client.get("/power")["power"])
 
     def measure(self) -> float:
         """Returns the current power demand of the node."""
         return self.power
 
     def __del__(self) -> None:
-        """Terminates the power demand update thread when the instance is deleted."""
-        if self.update_thread.is_alive():
-            self.update_thread.join()
+        """Terminates the power update thread when the instance is deleted."""
+        self.update_thread.stop()
+        self.update_thread.join()
 
 
 class MockPowerMeter(PowerMeter):

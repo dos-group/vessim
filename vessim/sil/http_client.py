@@ -35,7 +35,9 @@ class HTTPClient:
         """
         response = requests.get(self.server_address + route)
         if response.status_code == 200:
-            return response.json() # assuming the response data is in JSON format
+            data = response.json() # assuming the response data is in JSON format
+            print(f'Data received at {route}: {data}')
+            return data
 
         raise HTTPClientError(
             response.status_code,
@@ -59,7 +61,7 @@ class HTTPClient:
             headers=headers
         )
         if response.status_code == 200:
-            print(f'Data successfully updated at {route}')
+            print(f'Data successfully updated at {route}: {data}')
         else:
             raise HTTPClientError(
                 response.status_code,
