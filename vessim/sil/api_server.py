@@ -1,7 +1,7 @@
 import multiprocessing
 from time import sleep
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
@@ -62,9 +62,9 @@ class VessimApiServer(ApiServer):
         self.ci: Optional[float] = None
         self.battery_soc: Optional[float] = None
 
-        self.battery_min_soc_log: dict[str, float] = {}
-        self.battery_grid_charge_log: dict[str, float] = {}
-        self.power_mode_log: dict[str, dict[int, str]] = {}
+        self.battery_min_soc_log: Dict[str, float] = {}
+        self.battery_grid_charge_log: Dict[str, float] = {}
+        self.power_mode_log: Dict[str, Dict[int, str]] = {}
 
         app = self._init_fastapi()
         super().__init__(app, host, port)
@@ -112,9 +112,9 @@ class VessimApiServer(ApiServer):
         # /sim/
 
         class CollectSetModel(BaseModel):
-            battery_min_soc: Optional[dict[str, float]]
-            battery_grid_charge: Optional[dict[str, float]]
-            nodes_power_mode: Optional[dict[str, dict[int, str]]]
+            battery_min_soc: Optional[Dict[str, float]]
+            battery_grid_charge: Optional[Dict[str, float]]
+            nodes_power_mode: Optional[Dict[str, Dict[int, str]]]
 
         @app.get("/sim/collect-set", response_model=CollectSetModel)
         async def get_collect_set() -> CollectSetModel:

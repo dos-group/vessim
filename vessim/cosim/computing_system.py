@@ -30,7 +30,7 @@ class ComputingSystemSim(VessimSimulator):
         """Stops http power meters' threads."""
         super().finalize()
         for model_instance in self.entities.values():
-            for power_meter in model_instance.power_meters:
+            for power_meter in model_instance.power_meters: # type: ignore
                 if isinstance(power_meter, HttpPowerMeter):
                     power_meter.update_thread.stop()
                     power_meter.update_thread.stop()

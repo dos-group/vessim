@@ -1,4 +1,5 @@
 from threading import Thread
+from typing import List
 
 from vessim.core.storage import SimpleBattery, DefaultStoragePolicy
 from vessim.cosim._util import VessimSimulator, VessimModel
@@ -41,10 +42,10 @@ class SilInterfaceSim(VessimSimulator):
         """Stops the api server and the collector thread when the simulation finishes."""
         super().finalize()
         for model_instance in self.entities.values():
-            model_instance.collector_thread.stop()
-            model_instance.collector_thread.join()
-            model_instance.api_server.terminate()
-            model_instance.api_server.join()
+            model_instance.collector_thread.stop() # type: ignore
+            model_instance.collector_thread.join() # type: ignore
+            model_instance.api_server.terminate() # type: ignore
+            model_instance.api_server.join() # type: ignore
 
     def next_step(self, time):
         return time + self.step_size
@@ -69,7 +70,7 @@ class _SilInterfaceModel(VessimModel):
 
     def __init__(
         self,
-        nodes: list[Node],
+        nodes: List[Node],
         battery: SimpleBattery,
         policy: DefaultStoragePolicy,
         collection_interval: float,
@@ -77,7 +78,7 @@ class _SilInterfaceModel(VessimModel):
         api_port: int = 8000
     ):
         self.nodes = nodes
-        self.updated_nodes: list[Node] = []
+        self.updated_nodes: List[Node] = []
         self.battery = battery
         self.policy = policy
         self.p_cons = 0
