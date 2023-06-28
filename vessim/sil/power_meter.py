@@ -1,7 +1,5 @@
-import time
 from abc import ABC, abstractmethod
 from typing import Optional
-from functools import partial
 
 from vessim.sil.http_client import HTTPClient
 from vessim.sil.stoppable_thread import StoppableThread
