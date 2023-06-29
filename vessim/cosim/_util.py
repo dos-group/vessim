@@ -135,4 +135,4 @@ class Clock:
         return self.sim_start + timedelta(seconds=simtime)
 
     def to_simtime(self, dt: datetime) -> int:
-        return (dt - self.sim_start).seconds
+        return int((dt - self.sim_start).total_seconds())

@@ -1,6 +1,7 @@
 # general
 pandas
 numpy
+loguru  # TODO shall we remove this?
 
 # analysis
 jupyterlab
