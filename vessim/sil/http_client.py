@@ -33,7 +33,12 @@ class HTTPClient:
         Returns:
             A dictionary containing the response.
         """
-        response = requests.get(self.server_address + route)
+        try:
+            response = requests.get(self.server_address + route)
+        except Exception as e:
+            raise HTTPClientError(
+                503, f'Failed connection to {self.server_address}'
+            ) from e
         if response.status_code == 200:
             return response.json() # assuming the response data is in JSON format
 

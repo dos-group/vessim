@@ -52,7 +52,7 @@ class CarbonAwareControlUnit:
         self.client = HTTPClient(server_address)
 
         while not self._is_server_ready():
-            time.sleep(1)
+            sleep(1)
 
         self.env = simpy.Environment()
         self.env.process(self.scenario())
@@ -66,7 +66,6 @@ class CarbonAwareControlUnit:
 
     def run_scenario(self, until: int):
         self.env.run(until=until)
-
 
     def scenario(self):
         """A Carbon-Aware Scenario.
@@ -93,13 +92,13 @@ class CarbonAwareControlUnit:
 
         # Adjust the power modes of the nodes based on the current carbon intensity and battery SOC
         if ci <= 200 or battery.soc > 0.8:
-            nodes_power_mode[self.nodes['aws']] = 'high performance'
+            nodes_power_mode[self.nodes['gcp']] = 'high performance'
             nodes_power_mode[self.nodes['raspi']] = 'high performance'
         elif ci >= 250 and battery.soc < battery.min_soc:
-            nodes_power_mode[self.nodes['aws']] = 'power-saving'
+            nodes_power_mode[self.nodes['gcp']] = 'power-saving'
             nodes_power_mode[self.nodes['raspi']] = 'power-saving'
         else:
-            nodes_power_mode[self.nodes['aws']] = 'normal'
+            nodes_power_mode[self.nodes['gcp']] = 'normal'
             nodes_power_mode[self.nodes['raspi']] = 'normal'
 
         # Delay the process by one unit of time
@@ -107,7 +106,6 @@ class CarbonAwareControlUnit:
         self.send_nodes_power_mode(nodes_power_mode)
 
         yield self.env.timeout(1)
-
 
     def send_battery(self, battery: RemoteBattery) -> None:
         """Sends battery data to the VES API.
