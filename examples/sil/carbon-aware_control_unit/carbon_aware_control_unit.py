@@ -125,4 +125,7 @@ class CarbonAwareControlUnit:
 
         """
         for node_id, power_mode in nodes_power_mode.items():
-            self.client.put(f'/ves/nodes/{node_id}', {'power_mode': power_mode})
+            try:
+                self.client.put(f'/ves/nodes/{node_id}', {'power_mode': power_mode})
+            except HTTPClientError:
+                print(f"Could not update power mode of node {node_id}")
