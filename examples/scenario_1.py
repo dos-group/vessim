@@ -110,10 +110,9 @@ def run_simulation(sim_start: str,
 
     # Connect consumers and producers to microgrid
     microgrid_sim = world.start("Microgrid")
-    microgrid = microgrid_sim.Microgrid.create(
-        1,
+    microgrid = microgrid_sim.Microgrid(
         microgrid=SimpleMicrogrid(storage=battery, policy=policy)
-    )[0]
+    )
     world.connect(computing_system, microgrid, "p")
     world.connect(solar, microgrid, "p")
 
