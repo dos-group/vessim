@@ -30,8 +30,8 @@ class CarbonApiSim(VessimSimulator):
         self.carbon_api = carbon_api
         return self.meta
 
-    def create(self, num, model, zone: str): # type: ignore
-        return super().create(num, model, zone=zone, clock=self.clock,
+    def create(self, num, model, *args, **kwargs):
+        return super().create(num, model, *args, **kwargs, clock=self.clock,
                               carbon_api=self.carbon_api)
 
     def next_step(self, time: int) -> int:
