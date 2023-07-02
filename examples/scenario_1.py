@@ -7,6 +7,9 @@ as described in 'Software-in-the-loop simulation for developing and testing carb
 applications'. Documentation for this is in progress.
 """
 import argparse
+import json
+import subprocess
+import sys
 from datetime import timedelta
 from typing import Union
 
@@ -43,12 +46,13 @@ sim_config = {
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--sil', action='store_true')  # on/off flag
+    parser.add_argument('--cacu', action='store_true')
     args = parser.parse_args()
 
     if args.sil:
         rpi_ip = "http://192.168.149.71"
         gcp_ip = "http://35.198.148.144"
-        nodes = [Node(rpi_ip), Node(gcp_ip)]
+        nodes = [Node(rpi_ip, name="raspi"), Node(gcp_ip, name="gcp")]
         power_meters = [
             HttpPowerMeter(interval=3, server_address=rpi_ip),
             HttpPowerMeter(interval=3, server_address=gcp_ip)
@@ -56,6 +60,13 @@ def main():
     else:
         nodes = []
         power_meters = [MockPowerMeter(p=10)]
+
+    if args.cacu:
+        json_nodes = json.dumps({node.name: node.id for node in nodes})
+        com = [sys.executable, "carbon-aware_control_unit/main.py", "--nodes", json_nodes]
+        cacu = subprocess.Popen(
+            com, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
 
     battery = SimpleBattery(
         capacity=10 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws

@@ -1,3 +1,5 @@
+from typing import Optional
+
 class Node:
     """Represents a physical or virtual computing node.
 
@@ -21,11 +23,16 @@ class Node:
     def __init__(
         self,
         address: str,
+        name: Optional[str],
         port: int = 8000,
         power_mode: str = "high performance"
     ) -> None:
-        Node.id += 1
         self.id = Node.id
+        Node.id += 1
         self.address = address
         self.port = port
         self.power_mode = power_mode
+        if name:
+            self.name = name
+        else:
+            self.name = f"Node{self.id}"
