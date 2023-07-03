@@ -24,8 +24,10 @@ class SilInterfaceSim(VessimSimulator):
                     "policy",
                     "collection_interval",
                     "api_host",
-                    "api_port",
-                ]
+                    "api_port"
+                ],
+                "any_inputs": True,
+                "attrs": []
             },
         },
     }

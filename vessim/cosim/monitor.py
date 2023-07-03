@@ -2,7 +2,6 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Dict, Callable, Any
 
-import mosaik_api  # type: ignore
 import pandas as pd
 from loguru import logger
 
@@ -29,10 +28,10 @@ class MonitorSim(VessimSimulator):
         self.clock = None
         super().__init__(self.META, _MonitorModel)
 
-    def init(self, sid, time_resolution, sim_start: datetime, step_size: int,
-             eid_prefix=None):
-        self.step_size = step_size
-        self.clock = Clock(sim_start)
+    def init(self, sid, time_resolution, sim_start: datetime,  # type: ignore
+             step_size: int, eid_prefix=None):
+        self.step_size = step_size  # type: ignore
+        self.clock = Clock(sim_start)  # type: ignore
         return super().init(sid, time_resolution, eid_prefix=eid_prefix)
 
     def create(self, num, model, *args, **kwargs):  # type: ignore
@@ -53,7 +52,7 @@ class _MonitorModel(VessimModel):
         self.out_path = out_path
         self.fn = fn
         self._clock = clock
-        self.data = defaultdict(dict)
+        self.data: Dict = defaultdict(dict)
 
     def step(self, time: int, inputs: Dict) -> None:
         inputs = simplify_inputs(inputs)
