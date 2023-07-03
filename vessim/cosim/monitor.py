@@ -2,7 +2,6 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Dict, Callable, Any
 
-import mosaik_api  # type: ignore
 import pandas as pd
 from loguru import logger
 

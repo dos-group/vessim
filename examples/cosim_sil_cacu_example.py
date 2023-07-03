@@ -9,6 +9,9 @@ This is example experimental and documentation is still in progress.
 """
 
 import mosaik  # type: ignore
+import json
+import sys
+import subprocess
 
 from examples._data import load_carbon_data, load_solar_data
 from examples.cosim_example import COSIM_CONFIG, SIM_START, STORAGE, DURATION
@@ -62,7 +65,7 @@ def run_simulation():
     # Software-in-the-loop integration
     sil_interface_sim = world.start("SilInterface", step_size=60)
     sil_interface = sil_interface_sim.SilInterface(
-        nodes=nodes, storage=STORAGE, collection_interval=1
+        nodes, storage=STORAGE, collection_interval=1
     )
     world.connect(computing_system, sil_interface, ("p", "p_cons"))
     world.connect(solar, sil_interface, ("p", "p_gen"))
@@ -79,7 +82,17 @@ def run_simulation():
     world.connect(microgrid, monitor, ("p_delta", "p_grid"))
     world.connect(carbon_api_de, monitor, "carbon_intensity")
 
+    # Start carbon-aware control unit
+    json_nodes = json.dumps({node.name: node.id for node in nodes})
+    com = [sys.executable, "sil/carbon-aware_control_unit/main.py", "--nodes", json_nodes]
+    cacu = subprocess.Popen(
+        com, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    )
+
     world.run(until=DURATION, rt_factor=1/60)
+
+    # Terminate carbon-aware control unit
+    cacu.terminate()
 
 
 if __name__ == "__main__":
