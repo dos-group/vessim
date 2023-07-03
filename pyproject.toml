@@ -28,8 +28,6 @@ dependencies = [
   "mosaik-api",
   "requests",
   "fastapi",
-  "docker",
-  "redis",
   "uvicorn",
 ]
 

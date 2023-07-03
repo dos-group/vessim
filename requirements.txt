@@ -8,8 +8,6 @@ matplotlib
 seaborn==0.12.2
 
 # database
-docker
-redis
 uvicorn
 fastapi
 
@@ -25,9 +23,6 @@ mosaik-pandapower
 # custom
 # boto3  # used in AwsPowerMeter
 
-# mqtt for physical power meter
-paho-mqtt
-
 # testing
 pytest
 
@@ -36,7 +31,6 @@ mypy
 types-psutil
 pandas-stubs
 types-requests
-types-redis
 
 # linting
 black

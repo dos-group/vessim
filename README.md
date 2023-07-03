@@ -47,9 +47,6 @@ python3 -m venv venv              # create venv
 pip3 install -r requirements.txt  # install dependencies
 ```
 
-Install & start docker `systemctl start docker`
-
-
 ## 📖 Publications
 
 If you use Vessim in your research, please cite our vision paper:
