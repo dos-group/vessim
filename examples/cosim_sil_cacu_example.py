@@ -65,7 +65,7 @@ def run_simulation():
     # Software-in-the-loop integration
     sil_interface_sim = world.start("SilInterface", step_size=60)
     sil_interface = sil_interface_sim.SilInterface(
-        nodes, storage=STORAGE, collection_interval=1
+        nodes=nodes, storage=STORAGE, collection_interval=1/60
     )
     world.connect(computing_system, sil_interface, ("p", "p_cons"))
     world.connect(solar, sil_interface, ("p", "p_gen"))
@@ -83,8 +83,9 @@ def run_simulation():
     world.connect(carbon_api_de, monitor, "carbon_intensity")
 
     # Start carbon-aware control unit
+    # TODO fix heartbeat, cacu makes requests after simulation has finished cause bad sync
     json_nodes = json.dumps({node.name: node.id for node in nodes})
-    com = [sys.executable, "sil/carbon-aware_control_unit/main.py", "--nodes", json_nodes]
+    com = [sys.executable, "examples/sil/carbon-aware_control_unit/main.py", "--nodes", json_nodes, "--until", str(DURATION)]
     cacu = subprocess.Popen(
         com, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
     )

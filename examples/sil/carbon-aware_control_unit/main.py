@@ -29,7 +29,7 @@ def argparser() -> argparse.ArgumentParser:
     parser.add_argument("--update_interval",
                         help="update interval of the getter methods. defaults \
                              to rt_factor",
-                        defaul=None)
+                        default=None)
 
     return parser
 
@@ -40,4 +40,4 @@ if __name__ == "__main__":
     nodes = json.loads(args.nodes)
 
     cacu = CarbonAwareControlUnit(args.server_address, nodes)
-    cacu.run_scenario(args.until, args.rt_factor, args.update_interval)
+    cacu.run_scenario(int(args.until), args.rt_factor, args.update_interval)
