@@ -1,6 +1,6 @@
-from typing import List, Optional, Union
+from typing import Dict
 
-from vessim.core.storage import Storage, StoragePolicy, DefaultStoragePolicy
+from vessim.core.microgrid import Microgrid
 from vessim.cosim._util import VessimSimulator, VessimModel
 
 
@@ -11,7 +11,7 @@ class MicrogridSim(VessimSimulator):
         "models": {
             "Microgrid": {
                 "public": True,
-                "params": ["storage", "policy"],
+                "params": ["microgrid"],
                 "attrs": ["p", "p_delta"],
             },
         },
@@ -25,21 +25,13 @@ class MicrogridSim(VessimSimulator):
         return None
 
 
-class _MicrogridModel(VessimModel):  # TODO abstract away
-    def __init__(self,
-                 storage: Optional[Storage] = None,
-                 policy: Optional[StoragePolicy] = None):
-        self.storage = storage
-        self.policy = policy if policy is not None else DefaultStoragePolicy()
+class _MicrogridModel(VessimModel):
+    def __init__(self, microgrid: Microgrid):
+        self.microgrid = microgrid
         self.p_delta = 0.0
         self._last_step_time = 0
 
-    def step(self, time: int, inputs: dict) -> None:
-        p: Union[float, List[float]] = inputs["p"]
-        p_delta = p if type(p) == float else sum(inputs["p"])
-        time_since_last_step = time - self._last_step_time
-        if self.storage is None:
-            self.p_delta = p_delta
-        else:
-            self.p_delta = self.policy.apply(self.storage, p_delta, time_since_last_step)
+    def step(self, time: int, inputs: Dict) -> None:
+        duration = time - self._last_step_time
+        self.p_delta = self.microgrid.power_flow(p=inputs["p"], duration=duration)
         self._last_step_time = time

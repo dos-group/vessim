@@ -1,5 +1,5 @@
 from threading import Thread
-from typing import List
+from typing import List, Dict, Any
 
 from vessim.core.storage import SimpleBattery, DefaultStoragePolicy
 from vessim.cosim._util import VessimSimulator, VessimModel
@@ -130,6 +130,7 @@ class _SilInterfaceModel(VessimModel):
                     self.updated_nodes.append(node)
 
     def step(self, time: int, inputs: dict) -> None:
+        inputs = _convert_inputs(inputs)
         self.p_cons = inputs["p_cons"]
         self.p_gen = inputs["p_gen"]
         self.ci = inputs["ci"]
@@ -163,3 +164,15 @@ class _SilInterfaceModel(VessimModel):
             node_update_thread.start()
             self.updated_nodes.clear()
 
+
+def _convert_inputs(attrs: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    """Removes Mosaik source entity from input dict.
+
+    Examples:
+        >>> _convert_inputs({'p': {'ComputingSystem-0.ComputingSystem_0': -50}})
+        {'p': -50}
+    """
+    result = {}
+    for key, val_dict in attrs.items():
+        result[key] = list(val_dict.values())[0]
+    return result

@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import List, Type, Dict, Any, Union
+from typing import Type, Dict, Union
 
-import mosaik_api # type: ignore
+import mosaik_api  # type: ignore
 import pandas as pd
 
 
@@ -76,9 +76,8 @@ class VessimSimulator(mosaik_api.Simulator, ABC):
     def step(self, time, inputs, max_advance):
         """Set all `inputs` attr values to the `entity` attrs, then step the `entity`."""
         self.time = time
-        input_mapping = {eid: _convert_inputs(attrs) for eid, attrs in inputs.items()}
         for eid, entity in self.entities.items():
-            entity.step(time, input_mapping.get(eid, {}))
+            entity.step(time, inputs.get(eid, {}))
         return self.next_step(time)
 
     @abstractmethod
@@ -101,32 +100,6 @@ class VessimSimulator(mosaik_api.Simulator, ABC):
         return data
 
 
-def _convert_inputs(
-    attrs: Dict[str, Dict[str, Any]]
-) -> Dict[str, Union[Any, List[Any]]]:
-    """Converts Mosaik step inputs into a simpler format suitable for Vessim.
-
-    If there is a single input, only the input is being returned.
-    If there are multiple inputs, they are returned as a list.
-
-    Examples:
-        >>> _convert_inputs({'p': {'ComputingSystem-0.ComputingSystem_0': -50})
-        -50
-
-        >>> _convert_inputs({'p': {'ComputingSystem-0.ComputingSystem_0': -50,
-        >>>                        'Generator-0.Generator_0': 12})
-        [-50, 12]
-    """
-    result = {}
-    for key, val_dict in attrs.items():
-        values = list(val_dict.values())
-        if len(values) == 1:
-            result[key] = values[0]
-        else:
-            result[key] = values
-    return result
-
-
 class Clock:
     def __init__(self, sim_start: Union[str, datetime]):
         self.sim_start = pd.to_datetime(sim_start)
@@ -135,4 +108,4 @@ class Clock:
         return self.sim_start + timedelta(seconds=simtime)
 
     def to_simtime(self, dt: datetime) -> int:
-        return (dt - self.sim_start).seconds
+        return int((dt - self.sim_start).total_seconds())
