@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import List, Type, Dict, Any, Union
+from typing import Type, Dict, Union
 
-import mosaik_api # type: ignore
+import mosaik_api  # type: ignore
 import pandas as pd
 
 
