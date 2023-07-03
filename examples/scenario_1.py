@@ -34,8 +34,8 @@ sim_config = {
     "Monitor": {
         "python": "vessim.cosim:MonitorSim",
     },
-    "EnergySystemInterface": {
-        "python": "vessim.cosim:EnergySystemInterfaceSim",
+    "SilInterface": {
+        "python": "vessim.cosim:SilInterfaceSim",
     },
 }
 
@@ -46,12 +46,11 @@ def main():
     args = parser.parse_args()
 
     if args.sil:
-        rpi_ip = "http://192.168.149.71"
-        gcp_ip = "http://35.198.148.144"
-        nodes = [Node(rpi_ip), Node(gcp_ip)]
+        #rpi_ip = "http://192.168.149.71"
+        gcp_ip = "http://34.159.124.254"
+        nodes = [Node(gcp_ip)]#, Node(rpi_ip)]
         power_meters = [
-            HttpPowerMeter(interval=3, server_address=rpi_ip),
-            HttpPowerMeter(interval=3, server_address=gcp_ip)
+            HttpPowerMeter(interval=1, server_address=gcp_ip)
         ]
     else:
         nodes = []
@@ -116,16 +115,17 @@ def run_simulation(sim_start: str,
 
     # If real scenario, init and connect VES
     if nodes:
-        energy_system_interface_sim = world.start("EnergySystemInterface", step_size=60)
-        energy_system_interface = energy_system_interface_sim.EnergySystemInterface(
+        sil_interface_sim = world.start("SilInterface", step_size=60)
+        sil_interface = sil_interface_sim.SilInterface(
             nodes=nodes,
             battery=battery,
             policy=policy,
+            collection_interval=1
         )
-        world.connect(computing_system, energy_system_interface, ("p", "p_cons"))
-        world.connect(solar, energy_system_interface, ("p", "p_gen"))
-        world.connect(carbon_api_de, energy_system_interface, ("carbon_intensity", "ci"))
-        world.connect(microgrid, energy_system_interface, ("p_delta", "p_grid"))
+        world.connect(computing_system, sil_interface, ("p", "p_cons"))
+        world.connect(solar, sil_interface, ("p", "p_gen"))
+        world.connect(carbon_api_de, sil_interface, ("carbon_intensity", "ci"))
+        world.connect(microgrid, sil_interface, ("p_delta", "p_grid"))
 
     # Monitor
     def monitor_fn():
@@ -141,8 +141,7 @@ def run_simulation(sim_start: str,
     world.connect(microgrid, monitor, ("p_delta", "p_grid"))
     world.connect(carbon_api_de, monitor, "carbon_intensity")
 
-    world.run(until=duration)
-
+    world.run(until=duration)#, rt_factor=1/60)
 
 if __name__ == "__main__":
     main()

@@ -26,6 +26,13 @@ class ComputingSystemSim(VessimSimulator):
         self.step_size = step_size
         return super().init(sid, time_resolution, eid_prefix=eid_prefix)
 
+    def finalize(self) -> None:
+        """Stops power meters' threads."""
+        super().finalize()
+        for model_instance in self.entities.values():
+            for power_meter in model_instance.power_meters: # type: ignore
+                power_meter.finalize()
+
     def next_step(self, time):
         return time + self.step_size
 
