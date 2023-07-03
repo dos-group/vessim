@@ -1,4 +1,5 @@
 from vessim.sil.http_client import HTTPClient
+from threading import Thread
 import simpy # type: ignore
 from typing import Dict
 
@@ -70,9 +71,9 @@ class CarbonAwareControlUnit:
         Yields:
             A SimPy timeout event that delays the process by one unit of time.
         """
-        battery = RemoteBattery(soc=self.client.get('/battery-soc')['battery_soc'])
-        solar = self.client.get('/solar')['solar']
-        ci = self.client.get('/ci')['ci']
+        battery = RemoteBattery(soc=self.client.get('/api/battery-soc')['battery_soc'])
+        solar = self.client.get('/api/solar')['solar']
+        ci = self.client.get('/api/ci')['ci']
         nodes_power_mode = {}
 
         # Set the minimum SOC of the battery based on the current time
@@ -92,10 +93,11 @@ class CarbonAwareControlUnit:
             nodes_power_mode[self.nodes['aws']] = 'normal'
             nodes_power_mode[self.nodes['raspi']] = 'normal'
 
-        # Delay the process by one unit of time
-        self.send_battery(battery)
-        self.send_nodes_power_mode(nodes_power_mode)
+        # Send and forget
+        Thread(target=self.send_battery, args=(battery,)).start()
+        Thread(target=self.send_nodes_power_mode, args=(nodes_power_mode,)).start()
 
+        # Delay the process by one unit of time
         yield self.env.timeout(1)
 
 
