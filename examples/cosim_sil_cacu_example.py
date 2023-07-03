@@ -20,7 +20,7 @@ from vessim.core.simulator import Generator, CarbonApi
 from vessim.sil.node import Node
 from vessim.sil.power_meter import HttpPowerMeter
 
-COSIM_SOL_CONFIG = {
+COSIM_SIL_CACU_CONFIG = {
     **COSIM_CONFIG,
     "SilInterface": {
         "python": "vessim.cosim:SilInterfaceSim",
@@ -31,7 +31,7 @@ RASPI_ADDRESS = "http://192.168.207.71"
 
 
 def run_simulation():
-    world = mosaik.World(COSIM_SOL_CONFIG)
+    world = mosaik.World(COSIM_SIL_CACU_CONFIG)
 
     # Initialize nodes
     nodes=[
