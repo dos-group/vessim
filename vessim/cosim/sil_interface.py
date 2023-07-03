@@ -25,7 +25,8 @@ class SilInterfaceSim(VessimSimulator):
                     "api_host",
                     "api_port"
                 ],
-                "attrs": ["battery", "p_cons", "p_gen", "p_grid", "ci"],
+                "any_inputs": True,
+                "attrs": []
             },
         },
     }
