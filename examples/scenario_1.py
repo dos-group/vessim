@@ -137,14 +137,15 @@ def run_simulation(sim_start: str,
             "battery_min_soc": battery.min_soc
         }
 
-    monitor_sim = world.start("Monitor")
-    monitor = monitor_sim.Monitor(fn=monitor_fn, sim_start=sim_start)
+    monitor_sim = world.start("Monitor", sim_start=sim_start, step_size=60)
+    monitor = monitor_sim.Monitor(out_path="data.csv", fn=monitor_fn)
     world.connect(solar, monitor, ("p", "p_solar"))
     world.connect(computing_system, monitor, ("p", "p_computing_system"))
     world.connect(microgrid, monitor, ("p_delta", "p_grid"))
     world.connect(carbon_api_de, monitor, "carbon_intensity")
 
     world.run(until=duration)#, rt_factor=1/60)
+
 
 if __name__ == "__main__":
     main()
