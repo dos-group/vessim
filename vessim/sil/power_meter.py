@@ -24,6 +24,10 @@ class PowerMeter(ABC):
         """
         pass
 
+    @abstractmethod
+    def finalize(self) -> None:
+        pass
+
 
 class HttpPowerMeter(PowerMeter):
     """Power meter for an external node that implements the vessim node API.
@@ -59,8 +63,8 @@ class HttpPowerMeter(PowerMeter):
         """Returns the current power demand of the node."""
         return self.power
 
-    def __del__(self) -> None:
-        """Terminates the power update thread when the instance is deleted."""
+    def finalize(self) -> None:
+        """Terminates the power update thread when the instance is finalized."""
         self.update_thread.stop()
         self.update_thread.join()
 
@@ -74,3 +78,7 @@ class MockPowerMeter(PowerMeter):
 
     def measure(self) -> float:
         return self.p
+
+    def finalize(self) -> None:
+        pass
+
