@@ -1,7 +1,7 @@
 from threading import Thread
-from typing import List
+from typing import List, Optional
 
-from vessim.core.storage import SimpleBattery, DefaultStoragePolicy
+from vessim.core.storage import Storage, DefaultStoragePolicy, StoragePolicy
 from vessim.cosim._util import VessimSimulator, VessimModel, simplify_inputs
 from vessim.sil.api_server import VessimApiServer
 from vessim.sil.http_client import HTTPClient, HTTPClientError
@@ -17,15 +17,15 @@ class SilInterfaceSim(VessimSimulator):
         "models": {
             "SilInterface": {
                 "public": True,
+                "any_inputs": True,
                 "params": [
                     "nodes",
-                    "battery",
+                    "storage",
                     "policy",
                     "collection_interval",
                     "api_host",
                     "api_port"
                 ],
-                "any_inputs": True,
                 "attrs": []
             },
         },
@@ -60,7 +60,7 @@ class _SilInterfaceModel(VessimModel):
 
     Args:
         nodes: List of vessim SiL nodes.
-        battery: SimpleBatteryModel used by the system.
+        storage: Storage used by the system.
         policy: The (dis)charging policy used to control the battery.
         nodes: List of physical or virtual computing nodes.
         collection_interval: Interval in which `/sim/collet-set` in fetched from
@@ -72,16 +72,16 @@ class _SilInterfaceModel(VessimModel):
     def __init__(
         self,
         nodes: List[Node],
-        battery: SimpleBattery,
-        policy: DefaultStoragePolicy,
+        storage: Storage,
         collection_interval: float,
+        policy: Optional[StoragePolicy] = None,
         api_host: str = "127.0.0.1",
         api_port: int = 8000
     ):
         self.nodes = nodes
         self.updated_nodes: List[Node] = []
-        self.battery = battery
-        self.policy = policy
+        self.storage = storage
+        self.policy = policy if policy is not None else DefaultStoragePolicy()
         self.p_cons = 0
         self.p_gen = 0
         self.p_grid = 0
@@ -97,7 +97,7 @@ class _SilInterfaceModel(VessimModel):
         self.http_client.put("/sim/update", {
             "solar": self.p_gen,
             "ci": self.ci,
-            "battery_soc": self.battery.soc(),
+            "battery_soc": self.storage.soc(),
         })
 
         self.collector_thread = StoppableThread(self._api_collector, collection_interval)
@@ -113,7 +113,7 @@ class _SilInterfaceModel(VessimModel):
 
         if collection["battery_min_soc"]:
             newest_key = max(collection["battery_min_soc"].keys())
-            self.battery.min_soc = float(collection["battery_min_soc"][newest_key])
+            self.storage.min_soc = float(collection["battery_min_soc"][newest_key])
 
         if collection["battery_grid_charge"]:
             newest_key = max(collection["battery_grid_charge"].keys())
@@ -142,7 +142,7 @@ class _SilInterfaceModel(VessimModel):
                 self.http_client.put("/sim/update", {
                     "solar": self.p_gen,
                     "ci": self.ci,
-                    "battery_soc": self.battery.soc(),
+                    "battery_soc": self.storage.soc(),
                 })
             except HTTPClientError as e:
                 print(e)
