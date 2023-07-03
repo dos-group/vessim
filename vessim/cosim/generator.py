@@ -20,8 +20,8 @@ class GeneratorSim(VessimSimulator):
     def __init__(self):
         super().__init__(self.META, _GeneratorModel)
 
-    def init(self, sid, time_resolution, sim_start: datetime,
-             eid_prefix=None):  # type: ignore
+    def init(self, sid, time_resolution, sim_start: datetime,  # type: ignore
+             eid_prefix=None):
         super().init(sid, time_resolution, eid_prefix=eid_prefix)
         self.clock = Clock(sim_start)
         return self.meta
@@ -31,7 +31,8 @@ class GeneratorSim(VessimSimulator):
 
     def next_step(self, time: int) -> int:
         dt = self.clock.to_datetime(time)
-        next_dt = min(e.generator.next_update(dt) for e in self.entities.values())
+        next_dt = min(e.generator.next_update(dt)   # type: ignore
+                      for e in self.entities.values())
         return self.clock.to_simtime(next_dt)
 
 
