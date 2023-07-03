@@ -1,10 +1,8 @@
 from abc import ABC
-from typing import Union
 from datetime import datetime
-from typing import List, Optional
+from typing import Union, List, Optional
 
 import pandas as pd
-
 
 Time = Union[int, float, str, datetime]
 
