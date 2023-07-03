@@ -120,12 +120,13 @@ class _SilInterfaceModel(VessimModel):
             self.policy.grid_power = float(collection["battery_grid_charge"][newest_key])
 
         if collection["nodes_power_mode"]:
+            print(collection["nodes_power_mode"])
             newest_key = max(collection["nodes_power_mode"].keys())
             nodes_power_mode = {
                 int(k): v for k, v in collection['nodes_power_mode'][newest_key].items()
             }
             for node in self.nodes:
-                if node.id in nodes_power_mode[node.id]:
+                if node.id in nodes_power_mode.keys():
                     node.power_mode = nodes_power_mode[node.id]
                     self.updated_nodes.append(node)
 

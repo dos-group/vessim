@@ -54,11 +54,11 @@ class CarbonAwareControlUnit:
         self.solar = 0.0
 
         while not self._is_server_ready():
-            sleep(1)
+            time.sleep(1)
 
     def _is_server_ready(self) -> bool:
         try:
-            response = self.client.get('/ci')['ci']
+            response = self.client.get('/api/ci')['ci']
             return True
         except HTTPClientError:
             return False
@@ -68,7 +68,6 @@ class CarbonAwareControlUnit:
             update_interval = rt_factor
         update_thread = StoppableThread(self._update_getter, update_interval)
         update_thread.start()
-
 
         for current_time in range(until):
             self.scenario_step(current_time)
@@ -122,7 +121,7 @@ class CarbonAwareControlUnit:
         Args:
             battery: An object containing the battery data to be sent.
         """
-        self.client.put("/ves/battery", {"min_soc": battery.min_soc, "grid_charge": battery.grid_charge})
+        self.client.put("/api/battery", {"min_soc": battery.min_soc, "grid_charge": battery.grid_charge})
 
     def send_nodes_power_mode(self, nodes_power_mode: Dict[int, str]) -> None:
         """Sends power mode data for nodes to the VES API.
@@ -132,8 +131,9 @@ class CarbonAwareControlUnit:
                 their respective power modes as values.
 
         """
+        # TODO send new(!) power modes as single put request
         for node_id, power_mode in nodes_power_mode.items():
             try:
-                self.client.put(f'/ves/nodes/{node_id}', {'power_mode': power_mode})
+                self.client.put(f"/api/nodes/{node_id}", {"power_mode": power_mode})
             except HTTPClientError:
                 print(f"Could not update power mode of node {node_id}")
