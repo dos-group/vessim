@@ -8,6 +8,7 @@ matplotlib
 seaborn==0.12.2
 
 # database
+docker
 uvicorn
 fastapi
 
