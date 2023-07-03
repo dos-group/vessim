@@ -1,7 +1,7 @@
 from typing import List
 
 from vessim.cosim._util import VessimSimulator, VessimModel
-from vessim.sil.power_meter import PowerMeter, HttpPowerMeter
+from vessim.sil.power_meter import PowerMeter
 
 
 class ComputingSystemSim(VessimSimulator):
