@@ -7,16 +7,12 @@ from vessim.cosim._util import Clock, VessimSimulator, VessimModel
 class GeneratorSim(VessimSimulator):
 
     META = {
-        'type': 'time-based',
-        'models': {
-            'Generator': {
-                'public': True,
-                'params': [
-                    'generator'
-                ],
-                'attrs': [
-                    'p',
-                ],
+        "type": "time-based",
+        "models": {
+            "Generator": {
+                "public": True,
+                "params": ["generator"],
+                "attrs": ["p"],
             },
         },
     }
@@ -24,19 +20,18 @@ class GeneratorSim(VessimSimulator):
     def __init__(self):
         super().__init__(self.META, _GeneratorModel)
 
-    def init(self, sid, time_resolution, sim_start: datetime,  # type: ignore
-              generator: Generator, eid_prefix=None):
+    def init(self, sid, time_resolution, sim_start: datetime,
+             eid_prefix=None):  # type: ignore
         super().init(sid, time_resolution, eid_prefix=eid_prefix)
         self.clock = Clock(sim_start)
-        self.generator = generator
         return self.meta
 
-    def create(self, num, model):
-        return super().create(num, model, generator=self.generator, clock=self.clock)
+    def create(self, num, model, *args, **kwargs):
+        return super().create(num, model, *args, **kwargs, clock=self.clock)
 
     def next_step(self, time: int) -> int:
         dt = self.clock.to_datetime(time)
-        next_dt = self.generator.next_update(dt)
+        next_dt = min(e.generator.next_update(dt) for e in self.entities.values())
         return self.clock.to_simtime(next_dt)
 
 

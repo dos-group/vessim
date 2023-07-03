@@ -1,7 +1,7 @@
 from typing import List
 
 from vessim.cosim._util import VessimSimulator, VessimModel
-from vessim.sil.power_meter import PowerMeter
+from vessim.sil.power_meter import PowerMeter, HttpPowerMeter
 
 
 class ComputingSystemSim(VessimSimulator):
@@ -25,6 +25,15 @@ class ComputingSystemSim(VessimSimulator):
     def init(self, sid, time_resolution, step_size, eid_prefix=None):
         self.step_size = step_size
         return super().init(sid, time_resolution, eid_prefix=eid_prefix)
+
+    def finalize(self) -> None:
+        """Stops http power meters' threads."""
+        super().finalize()
+        for model_instance in self.entities.values():
+            for power_meter in model_instance.power_meters: # type: ignore
+                if isinstance(power_meter, HttpPowerMeter):
+                    power_meter.update_thread.stop()
+                    power_meter.update_thread.join()
 
     def next_step(self, time):
         return time + self.step_size

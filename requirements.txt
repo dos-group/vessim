@@ -1,10 +1,11 @@
 # general
 pandas
 numpy
+loguru  # TODO shall we remove this?
 
 # analysis
 jupyterlab
-matplotlib==3.6
+matplotlib
 seaborn==0.12.2
 
 # database

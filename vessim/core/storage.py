@@ -21,6 +21,10 @@ class Storage(ABC):
             If 0, all power was successfully (dis)charged.
         """
 
+    @abstractmethod
+    def soc(self) -> float:
+        """Returns the current State of Charge (SoC)."""
+
 
 class SimpleBattery(Storage):
     """(Way too) simple battery.
@@ -76,7 +80,7 @@ class SimpleBattery(Storage):
 
         return p_delta + max_charge_p_delta
 
-    def soc(self):
+    def soc(self) -> float:
         return self.charge_level / self.capacity
 
 
