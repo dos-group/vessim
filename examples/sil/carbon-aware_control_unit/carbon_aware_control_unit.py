@@ -1,7 +1,8 @@
+import time
 from vessim.sil.http_client import HTTPClient
+from vessim.sil.stoppable_thread import StoppableThread
 from threading import Thread
-import simpy # type: ignore
-from typing import Dict
+from typing import Dict, Optional
 
 
 class RemoteBattery:
@@ -42,64 +43,68 @@ class CarbonAwareControlUnit:
         nodes: A dictionary representing the nodes that the Control
             Unit manages, with node IDs as keys and node objects as values.
         client: The HTTPClient object used to communicate with the server.
-        env: The SimPy environment used to simulate the Control Unit's behavior.
     """
 
     def __init__(self, server_address: str, nodes: dict) -> None:
-        self.power_modes = ['power-saving', 'normal', 'high performance']
+        self.power_modes = ["power-saving", "normal", "high performance"]
         self.nodes = nodes
-
         self.client = HTTPClient(server_address)
 
-        self.env = simpy.Environment()
-        self.env.process(self.scenario())
+        self.battery = RemoteBattery()
+        self.ci = 0.0
+        self.solar = 0.0
 
+    def run_scenario(self, until: int, rt_factor: float, update_interval: Optional[float]):
+        if update_interval is None:
+            update_interval = rt_factor
+        update_thread = StoppableThread(self._update_getter, update_interval)
+        update_thread.start()
 
-    def run_scenario(self, until: int):
-        self.env.run(until=until)
+        for current_time in range(until):
+            self.scenario_step(current_time)
+            time.sleep(rt_factor)
 
+        update_thread.stop()
+        update_thread.join()
 
-    def scenario(self):
+    def _update_getter(self) -> None:
+        self.battery.soc = self.client.get("/api/battery-soc")["battery_soc"]
+        self.solar = self.client.get("/api/solar")["solar"]
+        self.ci = self.client.get("/api/ci")["ci"]
+
+    def scenario_step(self, current_time) -> None:
         """A Carbon-Aware Scenario.
 
-        A SimPy process that runs the main control loop for the Carbon-Aware
-        Control Unit. This process updates the Control Unit's values, sets the
-        battery's minimum state of charge (SOC) based on the current time, and
-        adjusts the power modes of the nodes based on the current carbon
-        intensity and battery SOC.
+        Scenario step for the Carbon-Aware Control Unit. This process updates
+        the Control Unit's values, sets the battery's minimum state of charge
+        (SOC) based on the current time, and adjusts the power modes of the
+        nodes based on the current carbon intensity and battery SOC.
 
-        Yields:
-            A SimPy timeout event that delays the process by one unit of time.
+        Args:
+            current_time: Current simulation time.
         """
-        battery = RemoteBattery(soc=self.client.get('/api/battery-soc')['battery_soc'])
-        solar = self.client.get('/api/solar')['solar']
-        ci = self.client.get('/api/ci')['ci']
         nodes_power_mode = {}
 
         # Set the minimum SOC of the battery based on the current time
-        if self.env.now < 60*36:
-            battery.min_soc = 0.3
+        if current_time < 60*36:
+            self.battery.min_soc = 0.3
         else:
-            battery.min_soc = 0.6
+            self.battery.min_soc = 0.6
 
         # Adjust the power modes of the nodes based on the current carbon intensity and battery SOC
-        if ci <= 200 or battery.soc > 0.8:
-            nodes_power_mode[self.nodes['aws']] = 'high performance'
-            nodes_power_mode[self.nodes['raspi']] = 'high performance'
-        elif ci >= 250 and battery.soc < battery.min_soc:
-            nodes_power_mode[self.nodes['aws']] = 'power-saving'
-            nodes_power_mode[self.nodes['raspi']] = 'power-saving'
+        if self.ci <= 200 or self.battery.soc > 0.8:
+            nodes_power_mode[self.nodes["aws"]] = "high performance"
+            nodes_power_mode[self.nodes["raspi"]] = "high performance"
+        elif self.ci >= 250 and self.battery.soc < self.battery.min_soc:
+            nodes_power_mode[self.nodes["aws"]] = "power-saving"
+            nodes_power_mode[self.nodes["raspi"]] = "power-saving"
         else:
-            nodes_power_mode[self.nodes['aws']] = 'normal'
-            nodes_power_mode[self.nodes['raspi']] = 'normal'
+            nodes_power_mode[self.nodes["aws"]] = "normal"
+            nodes_power_mode[self.nodes["raspi"]] = "normal"
 
         # Send and forget
-        Thread(target=self.send_battery, args=(battery,)).start()
+        Thread(target=self.send_battery, args=(self.battery,)).start()
         Thread(target=self.send_nodes_power_mode, args=(nodes_power_mode,)).start()
-
-        # Delay the process by one unit of time
-        yield self.env.timeout(1)
-
 
     def send_battery(self, battery: RemoteBattery) -> None:
         """Sends battery data to the VES API.
@@ -107,8 +112,7 @@ class CarbonAwareControlUnit:
         Args:
             battery: An object containing the battery data to be sent.
         """
-        self.client.put('/ves/battery', {'min_soc': battery.min_soc, 'grid_charge': battery.grid_charge})
-
+        self.client.put("/ves/battery", {"min_soc": battery.min_soc, "grid_charge": battery.grid_charge})
 
     def send_nodes_power_mode(self, nodes_power_mode: Dict[int, str]) -> None:
         """Sends power mode data for nodes to the VES API.
@@ -119,4 +123,4 @@ class CarbonAwareControlUnit:
 
         """
         for node_id, power_mode in nodes_power_mode.items():
-            self.client.put(f'/ves/nodes/{node_id}', {'power_mode': power_mode})
+            self.client.put(f"/ves/nodes/{node_id}", {"power_mode": power_mode})
