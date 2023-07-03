@@ -98,15 +98,14 @@ def run_simulation(sim_start: str,
         parse_dates=True)["solar"] * 0.4 * 0.5 * .17  # W/m^2 * m^2 = W
     data.index -= timedelta(days=365)
     data = data.astype(float)
-    solar_sim = world.start("Generator", sim_start=sim_start,
-                            generator=Generator(data=data))
-    solar = solar_sim.Generator.create(1)[0]
+    solar_sim = world.start("Generator", sim_start=sim_start)
+    solar = solar_sim.Generator(generator=Generator(data=data))
 
     # Carbon Intensity API
     data = pd.read_csv(carbon_data_file, index_col="time", parse_dates=True)
     carbon_api_sim = world.start("CarbonApi", sim_start=sim_start,
                                  carbon_api=CarbonApi(data=data))
-    carbon_api_de = carbon_api_sim.CarbonApi.create(1, zone="DE")[0]
+    carbon_api_de = carbon_api_sim.CarbonApi(zone="DE")
 
     # Connect consumers and producers to microgrid
     microgrid_sim = world.start("Microgrid")
