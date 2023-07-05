@@ -36,7 +36,7 @@ def run_simulation():
     # Initialize nodes
     nodes=[
         Node(address=GCP_ADDRESS, name="gcp"),
-        Node(address=RASPI_ADDRESS, name="raspi")
+        #Node(address=RASPI_ADDRESS, name="raspi")
     ]
 
     # Initialize computing system
@@ -44,7 +44,7 @@ def run_simulation():
     computing_system = computing_system_sim.ComputingSystem(
         power_meters=[
             HttpPowerMeter(interval=1, server_address=GCP_ADDRESS),
-            HttpPowerMeter(interval=1, server_address=RASPI_ADDRESS)
+            #HttpPowerMeter(interval=1, server_address=RASPI_ADDRESS)
         ])
 
     # Initialize solar generator
@@ -83,17 +83,21 @@ def run_simulation():
     world.connect(carbon_api_de, monitor, "carbon_intensity")
 
     # Start carbon-aware control unit
-    # TODO fix heartbeat, cacu makes requests after simulation has finished cause bad sync
-    json_nodes = json.dumps({node.name: node.id for node in nodes})
-    com = [sys.executable, "examples/sil/carbon-aware_control_unit/main.py", "--nodes", json_nodes, "--until", str(DURATION)]
-    cacu = subprocess.Popen(
-        com, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-    )
+    #json_nodes = json.dumps({node.name: node.id for node in nodes})
+    #com = [
+    #    sys.executable,
+    #    "examples/sil/carbon-aware_control_unit/main.py",
+    #    "--nodes",
+    #    json_nodes
+    #]
+    #cacu = subprocess.Popen(
+    #    com, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    #)
 
     world.run(until=DURATION, rt_factor=1/60)
 
     # Terminate carbon-aware control unit
-    cacu.terminate()
+    #cacu.terminate()
 
 
 if __name__ == "__main__":

@@ -12,9 +12,9 @@ def argparser() -> argparse.ArgumentParser:
                         help="names and ids of nodes",
                         required=True)
 
-    parser.add_argument("--until",
-                        help="duration of the scenario",
-                        required=True)
+    #   parser.add_argument("--until",
+    #                       help="duration of the scenario",
+    #                       required=True)
 
     parser.add_argument("--server_address",
                         help="address of the API server",
@@ -40,4 +40,5 @@ if __name__ == "__main__":
     nodes = json.loads(args.nodes)
 
     cacu = CarbonAwareControlUnit(args.server_address, nodes)
-    cacu.run_scenario(int(args.until), args.rt_factor, args.update_interval)
+    #cacu.run_scenario(int(args.until), args.rt_factor, args.update_interval)
+    cacu.run_scenario(args.rt_factor, args.update_interval)

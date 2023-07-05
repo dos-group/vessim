@@ -29,7 +29,7 @@ COSIM_CONFIG = {
     }
 }
 SIM_START = "2020-06-11 00:00:00"
-DURATION = 3600 * 24 * 2  # two days
+DURATION = 10 * 60#3600 * 24 * 2  # two days
 STORAGE = SimpleBattery(capacity=10 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
                         charge_level=10 * 5 * 3600 * .6,
                         min_soc=.6,

@@ -1,7 +1,8 @@
 import time
+from copy import deepcopy
 from vessim.sil.http_client import HTTPClient, HTTPClientError
 from vessim.sil.stoppable_thread import StoppableThread
-from threading import Thread
+from threading import Thread, Lock
 from typing import Dict, Optional
 
 
@@ -49,37 +50,47 @@ class CarbonAwareControlUnit:
         self.power_modes = ["power-saving", "normal", "high performance"]
         self.nodes = nodes
         self.client = HTTPClient(server_address)
+        self.nodes_power_mode_old = {}
         self.battery = RemoteBattery()
+        self.battery_old = self.battery
         self.ci = 0.0
         self.solar = 0.0
+        self.lock = Lock()
 
-        while not self._is_server_ready():
-            time.sleep(1)
+        # Wait until vessim api server has started
+        while True:
+            try:
+                self.client.get('/api/ci')
+                break
+            except HTTPClientError:
+                time.sleep(1)
 
-    def _is_server_ready(self) -> bool:
-        try:
-            response = self.client.get('/api/ci')['ci']
-            return True
-        except HTTPClientError:
-            return False
-
-    def run_scenario(self, until: int, rt_factor: float, update_interval: Optional[float]):
+    def run_scenario(self, rt_factor: float, update_interval: Optional[float]):
         if update_interval is None:
             update_interval = rt_factor
         update_thread = StoppableThread(self._update_getter, update_interval)
         update_thread.start()
 
-        for current_time in range(until):
+        current_time = 0
+        while True:
+            self.lock.acquire()
             self.scenario_step(current_time)
+            self.lock.release()
+            current_time += rt_factor
             time.sleep(rt_factor)
 
-        update_thread.stop()
-        update_thread.join()
-
     def _update_getter(self) -> None:
-        self.battery.soc = self.client.get("/api/battery-soc")["battery_soc"]
-        self.solar = self.client.get("/api/solar")["solar"]
-        self.ci = self.client.get("/api/ci")["ci"]
+        self.lock.acquire()
+        value = self.client.get("/api/battery-soc")["battery_soc"]
+        if value:
+            self.battery.soc = value
+        value = self.client.get("/api/solar")["solar"]
+        if value:
+            self.solar = value
+        value = self.client.get("/api/ci")["ci"]
+        if value:
+            self.ci = value
+        self.lock.release()
 
     def scenario_step(self, current_time) -> None:
         """A Carbon-Aware Scenario.
@@ -95,25 +106,39 @@ class CarbonAwareControlUnit:
         nodes_power_mode = {}
 
         # Set the minimum SOC of the battery based on the current time
-        if current_time < 60*36:
+        if current_time < 60*5:
             self.battery.min_soc = 0.3
         else:
             self.battery.min_soc = 0.6
 
-        # Adjust the power modes of the nodes based on the current carbon intensity and battery SOC
+        # Adjust the power modes of the nodes based on the current carbon
+        # intensity and battery SOC
         if self.ci <= 200 or self.battery.soc > 0.8:
             nodes_power_mode[self.nodes["gcp"]] = "high performance"
-            nodes_power_mode[self.nodes["raspi"]] = "high performance"
+            #nodes_power_mode[self.nodes["raspi"]] = "high performance"
         elif self.ci >= 250 and self.battery.soc < self.battery.min_soc:
             nodes_power_mode[self.nodes["gcp"]] = "power-saving"
-            nodes_power_mode[self.nodes["raspi"]] = "power-saving"
+            #nodes_power_mode[self.nodes["raspi"]] = "power-saving"
         else:
             nodes_power_mode[self.nodes["gcp"]] = "normal"
-            nodes_power_mode[self.nodes["raspi"]] = "normal"
+            #nodes_power_mode[self.nodes["raspi"]] = "normal"
 
-        # Send and forget
-        Thread(target=self.send_battery, args=(self.battery,)).start()
-        Thread(target=self.send_nodes_power_mode, args=(nodes_power_mode,)).start()
+        # Send and forget if values changed
+        if (self.battery.min_soc != self.battery_old.min_soc or
+            self.battery.grid_charge != self.battery_old.grid_charge):
+            Thread(target=self.send_battery, args=(self.battery,)).start()
+            self.battery_old = deepcopy(self.battery)
+
+        for node in self.nodes:
+            if (
+                not self.nodes_power_mode_old or
+                node.id not in self.nodes_power_mode_old or
+                nodes_power_mode[node.id] != self.nodes_power_mode_old[node.id]
+            ):
+                Thread(
+                    target=self.send_node_power_mode,
+                    args=(node.id, nodes_power_mode[node.id])
+                ).start()
 
     def send_battery(self, battery: RemoteBattery) -> None:
         """Sends battery data to the VES API.
@@ -121,19 +146,23 @@ class CarbonAwareControlUnit:
         Args:
             battery: An object containing the battery data to be sent.
         """
-        self.client.put("/api/battery", {"min_soc": battery.min_soc, "grid_charge": battery.grid_charge})
+        try:
+            self.client.put("/api/battery", {
+                "min_soc": battery.min_soc,
+                "grid_charge": battery.grid_charge
+            })
+        except HTTPClientError:
+            print(f"Could not update battery.")
 
-    def send_nodes_power_mode(self, nodes_power_mode: Dict[int, str]) -> None:
-        """Sends power mode data for nodes to the VES API.
+    def send_node_power_mode(self, node_id: int, power_mode: str) -> None:
+        """Sends power mode data to the VES API.
 
         Args:
-            nodes_power_mode: A dictionary containing node IDs as keys and
-                their respective power modes as values.
+            node_id: The ID of the node.
+            power_mode: The power mode of the node to be set.
 
         """
-        # TODO send new(!) power modes as single put request
-        for node_id, power_mode in nodes_power_mode.items():
-            try:
-                self.client.put(f"/api/nodes/{node_id}", {"power_mode": power_mode})
-            except HTTPClientError:
-                print(f"Could not update power mode of node {node_id}")
+        try:
+            self.client.put(f"/api/nodes/{node_id}", {"power_mode": power_mode})
+        except HTTPClientError:
+            print(f"Could not update power mode of node {node_id}.")
