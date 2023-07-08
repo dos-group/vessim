@@ -29,7 +29,6 @@ dependencies = [
   "requests",
   "fastapi",
   "docker",
-  "redis",
   "uvicorn",
 ]
 
