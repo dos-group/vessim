@@ -26,16 +26,36 @@ dependencies = [
   "pandas",
   "mosaik",
   "mosaik-api",
+  "loguru",  # TODO shall we remove this?
+]
+
+[project.optional-dependencies]
+sil = [
   "requests",
   "fastapi",
   "docker",
   "uvicorn",
 ]
+dev = [
+  # testing
+  "pytest",
+  # typechecking
+  "mypy",
+  "types-psutil",
+  "pandas-stubs",
+  "types-requests",
+  # linting
+  "black",
+  "ruff",
+  # build
+  "flit",
+]
+analysis = [
+  "jupyterlab",
+  "matplotlib",
+  "seaborn==0.12.2",
+]
 
-#[project.optional-dependencies]
-#sil = [
-#]
-# test = ["coverage"]
 
 [project.urls]  # Optional
 "Homepage" = "https://github.com/dos-group/vessim"
