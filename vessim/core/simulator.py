@@ -13,6 +13,10 @@ class TraceSimulator(ABC):
         self.data = data
 
     def next_update(self, dt: Time):
+        """Returns the next time of when the trace will change.
+
+        This method is being called in the time-based simulation model for Mosaik.
+        """
         current_index = self.data.index.asof(dt)
         next_iloc = self.data.index.get_loc(current_index) + 1
         return self.data.index[next_iloc]
@@ -60,15 +64,6 @@ class CarbonApi(TraceSimulator):
             raise ValueError(f"Cannot retrieve carbon intensity at {dt} in zone "
                              f"'{zone}'.")
 
-    def next_update(self, dt: Time):
-        """Returns the next time of when the carbon intensity will change.
-
-        This method is being called in the time-based simulation model for Mosaik.
-        """
-        current_index = self.data.index.asof(dt)
-        next_iloc = self.data.index.get_loc(current_index) + 1
-        return self.data.iloc[next_iloc].name
-
 
 class Generator(TraceSimulator):
 
@@ -77,4 +72,3 @@ class Generator(TraceSimulator):
             return self.data.loc[self.data.index.asof(dt)]
         except KeyError:
             raise ValueError(f"Cannot retrieve power at {dt}.")
-
