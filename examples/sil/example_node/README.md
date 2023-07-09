@@ -60,15 +60,17 @@ sudo reboot
 ### Virtual Node Setup
 
 This section provides instructions on how to set up a virtual node and how 
-to create a Google Cloud Platform (GCP) compute instance using Terraform.
+to define the infrastructure configuration for your Google Cloud Platform (GCP) compute instance using the open-source infrastructure as code (IaC) tool [Terraform](https://www.terraform.io/).
 
 #### Prerequisites
 
 - A GCP account, project, and service account with appropriate permissions 
 are necessary.
 - A JSON key file for your service account is required.
-- Install [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
+- [Install Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
 - The firewall settings in your GCP project should allow SSH connections.
+- Install `sysbench` as it's used for generating CPU load.
+
 
 #### Setup
 
@@ -105,10 +107,9 @@ cd vessim/examples/sil/tf_gcp_node
 7. Run `terraform apply` to apply the changes required to reach the 
 desired state of the configuration.
 
-	You can SSH into the created GCP instance using the `tfssh script` in the 
-`ssh_scripts` directory. 
-	Additionally, you can use the `tfsend` and `tfreceive` scripts in the 
-`ssh_scripts` directory to send and receive files to/from the created instance.
+	To access the GCP instance, you can use SSH by running the `tfssh script` located in the `ssh_scripts` directory. 
+	Moreover, if you want to transfer files to or from the instance, you can use the `tfsend` and `tfreceive` scripts in the `ssh_scripts` directory.
+
 
 ### Outputs
 
@@ -122,7 +123,12 @@ instance.
 
 ## Usage
 
-Once installed and set up, you can start the API server. 
+Once installed and set up, you can start the API server: 
+
+```bash
+python node_api_server.py
+```
+
 It will start listening for incoming HTTP requests on the defined 
 host and port.
 
