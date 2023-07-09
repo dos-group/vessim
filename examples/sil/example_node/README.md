@@ -68,9 +68,6 @@ to define the infrastructure configuration for your Google Cloud Platform (GCP) 
 are necessary.
 - A JSON key file for your service account is required.
 - [Install Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
-- The firewall settings in your GCP project should allow SSH connections.
-- Install `sysbench` as it's used for generating CPU load.
-
 
 #### Setup
 
@@ -79,37 +76,30 @@ are necessary.
 git clone https://github.com/dos-group/vessim/
 ```
 
-2. Navigate to the `virtual_node` directory and install the Python 
-dependencies:
-```bash
-cd vessim/example_node/virtual_node
-sudo pip install -r requirements.txt
-```
-
-3. Navigate to the `tf_gcp_node` directory:
+2. Navigate to the `tf_gcp_node` directory:
 ```bash
 cd vessim/examples/sil/tf_gcp_node
 ```
 
-4. Create a `.tfvars` file to configure with your data. 
-	The variables defined in the `variables.tf` file:
-	- region: The region where the resources will be created.
-	- zone: The specific zone within the region where the resources 
-	will be created.
-	- credentials_file: Path to the credentials file in JSON format.
-	- project: Your GCP project name.
-	- machine_type: GCP machine type to be used for the instances.
+3. Create a `.tfvars` file to configure with your data. 
 	
-5. Run `terraform init` to initialize your Terraform workspace.
+4. Run `terraform init`
 
-6. Run `terraform plan` to create an execution plan.
+5. Run `terraform plan`
 
-7. Run `terraform apply` to apply the changes required to reach the 
-desired state of the configuration.
+6. Run `terraform apply`
 
 	To access the GCP instance, you can use SSH by running the `tfssh script` located in the `ssh_scripts` directory. 
 	Moreover, if you want to transfer files to or from the instance, you can use the `tfsend` and `tfreceive` scripts in the `ssh_scripts` directory.
 
+### Variables
+The variables defined in the `variables.tf` file:
+	- region: The region where the resources will be created.
+	- zone: The specific zone within the region where the resources  
+	will be created.
+	- credentials_file: Path to the credentials file in JSON format.
+	- project: Your GCP project name.
+	- machine_type: GCP machine type to be used for the instances.
 
 ### Outputs
 
@@ -123,13 +113,8 @@ instance.
 
 ## Usage
 
-Once installed and set up, you can start the API server: 
-
-```bash
-python node_api_server.py
-```
-
-It will start listening for incoming HTTP requests on the defined 
+Once installed and set up, the API server is started.
+It will listen for incoming HTTP requests on the defined 
 host and port.
 
 The server provides access to the following endpoints:
