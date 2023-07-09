@@ -105,6 +105,11 @@ cd vessim/examples/sil/tf_gcp_node
 7. Run `terraform apply` to apply the changes required to reach the 
 desired state of the configuration.
 
+	You can SSH into the created GCP instance using the `tfssh script` in the 
+`ssh_scripts` directory. 
+	Additionally, you can use the `tfsend` and `tfreceive` scripts in the 
+`ssh_scripts` directory to send and receive files to/from the created instance.
+
 ### Outputs
 
 The `outputs.tf` file defines the following outputs that will be shown 
@@ -120,11 +125,6 @@ instance.
 Once installed and set up, you can start the API server. 
 It will start listening for incoming HTTP requests on the defined 
 host and port.
-You can SSH into the created GCP instance using the `tfssh script` in the 
-`ssh_scripts` directory. 
-Additionally, you can use the `tfsend` and `tfreceive` scripts in the 
-`ssh_scripts` directory to send and receive files to/from the created 
-instance.
 
 The server provides access to the following endpoints:
 
