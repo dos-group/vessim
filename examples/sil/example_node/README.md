@@ -43,7 +43,7 @@ git clone https://github.com/dos-group/vessim/
 
 5. Navigate to the `rpi` directory and install the Python dependencies:
 ```bash
-cd vessim/example_node/rpi
+cd vessim/examples/sil/example_node/rpi
 sudo pip install -r requirements.txt
 ```
 
@@ -123,6 +123,3 @@ The server provides access to the following endpoints:
 power modes are `power-saving`, `normal`, and `high performance`.
 - `GET /power_mode`: Retrieve the current power mode of the server.
 - `GET /power`: Retrieve the current power usage of the node.
-- `PUT /pid`: Set the PID of a process for virtual nodes to limit its 
-CPU usage. For the Raspberry Pi node, this operation is not supported, 
-as DVFS is used instead of `cpulimit`.
