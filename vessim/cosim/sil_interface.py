@@ -163,6 +163,6 @@ class _SilInterfaceModel(VessimModel):
             # use thread to not slow down simulation
             node_update_thread = Thread(target=update_node_power_model)
             node_update_thread.start()
-            self.updated_nodes.clear()
+        self.updated_nodes.clear()
 
 

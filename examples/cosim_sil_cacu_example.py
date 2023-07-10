@@ -26,7 +26,7 @@ COSIM_SOL_CONFIG = {
         "python": "vessim.cosim:SilInterfaceSim",
     },
 }
-GCP_ADDRESS = "http://35.198.148.144"
+GCP_ADDRESS = "http://34.107.25.174"
 RASPI_ADDRESS = "http://192.168.207.71"
 
 
@@ -83,21 +83,21 @@ def run_simulation():
     world.connect(carbon_api_de, monitor, "carbon_intensity")
 
     # Start carbon-aware control unit
-    #json_nodes = json.dumps({node.name: node.id for node in nodes})
-    #com = [
-    #    sys.executable,
-    #    "examples/sil/carbon-aware_control_unit/main.py",
-    #    "--nodes",
-    #    json_nodes
-    #]
-    #cacu = subprocess.Popen(
-    #    com, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-    #)
+    json_nodes = json.dumps({node.name: node.id for node in nodes})
+    com = [
+        sys.executable,
+        "examples/sil/carbon-aware_control_unit/main.py",
+        "--nodes",
+        json_nodes
+    ]
+    cacu = subprocess.Popen(
+        com, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    )
 
     world.run(until=DURATION, rt_factor=1/60)
 
     # Terminate carbon-aware control unit
-    #cacu.terminate()
+    cacu.terminate()
 
 
 if __name__ == "__main__":

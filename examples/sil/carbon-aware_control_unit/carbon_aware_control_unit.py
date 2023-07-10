@@ -3,7 +3,7 @@ from copy import deepcopy
 from vessim.sil.http_client import HTTPClient, HTTPClientError
 from vessim.sil.stoppable_thread import StoppableThread
 from threading import Thread, Lock
-from typing import Dict, Optional
+from typing import Optional
 
 
 class RemoteBattery:
@@ -80,17 +80,21 @@ class CarbonAwareControlUnit:
             time.sleep(rt_factor)
 
     def _update_getter(self) -> None:
-        self.lock.acquire()
-        value = self.client.get("/api/battery-soc")["battery_soc"]
-        if value:
-            self.battery.soc = value
-        value = self.client.get("/api/solar")["solar"]
-        if value:
-            self.solar = value
-        value = self.client.get("/api/ci")["ci"]
-        if value:
-            self.ci = value
-        self.lock.release()
+        try:
+            self.lock.acquire()
+            value = self.client.get("/api/battery-soc")["battery_soc"]
+            if value:
+                self.battery.soc = value
+            value = self.client.get("/api/solar")["solar"]
+            if value:
+                self.solar = value
+            value = self.client.get("/api/ci")["ci"]
+            if value:
+                self.ci = value
+        except:
+            exit()
+        finally:
+            self.lock.release()
 
     def scenario_step(self, current_time) -> None:
         """A Carbon-Aware Scenario.
@@ -129,16 +133,17 @@ class CarbonAwareControlUnit:
             Thread(target=self.send_battery, args=(self.battery,)).start()
             self.battery_old = deepcopy(self.battery)
 
-        for node in self.nodes:
+        for node_id in self.nodes.values():
             if (
                 not self.nodes_power_mode_old or
-                node.id not in self.nodes_power_mode_old or
-                nodes_power_mode[node.id] != self.nodes_power_mode_old[node.id]
+                node_id not in self.nodes_power_mode_old or
+                self.nodes_power_mode_old[node_id] != nodes_power_mode[node_id]
             ):
                 Thread(
                     target=self.send_node_power_mode,
-                    args=(node.id, nodes_power_mode[node.id])
+                    args=(node_id, nodes_power_mode[node_id])
                 ).start()
+                self.nodes_power_mode_old[node_id] = nodes_power_mode[node_id]
 
     def send_battery(self, battery: RemoteBattery) -> None:
         """Sends battery data to the VES API.
