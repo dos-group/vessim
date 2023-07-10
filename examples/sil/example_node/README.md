@@ -94,12 +94,12 @@ cd vessim/examples/sil/tf_gcp_node
 
 ### Variables
 The variables defined in the `variables.tf` file:
-	- region: The region where the resources will be created.
-	- zone: The specific zone within the region where the resources  
-	will be created.
-	- credentials_file: Path to the credentials file in JSON format.
-	- project: Your GCP project name.
-	- machine_type: GCP machine type to be used for the instances.
+
+- region: The region where the resources will be created.
+- zone: The specific zone within the region where the resources will be created.
+- credentials_file: Path to the credentials file in JSON format.
+- project: Your GCP project name.
+- machine_type: GCP machine type to be used for the instances.
 
 ### Outputs
 
