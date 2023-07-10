@@ -3,9 +3,9 @@ from time import sleep
 from datetime import datetime
 from typing import Optional, Dict
 
-import uvicorn
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+import uvicorn  # type: ignore
+from fastapi import FastAPI, HTTPException  # type: ignore
+from pydantic import BaseModel  # type: ignore
 
 
 class ApiServer(multiprocessing.Process):
