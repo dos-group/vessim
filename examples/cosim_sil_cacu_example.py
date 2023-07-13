@@ -26,7 +26,7 @@ COSIM_SIL_CACU_CONFIG = {
         "python": "vessim.cosim:SilInterfaceSim",
     },
 }
-GCP_ADDRESS = "http://34.107.25.174"
+GCP_ADDRESS = "http://35.198.148.144"
 RASPI_ADDRESS = "http://192.168.207.71"
 
 
@@ -65,7 +65,7 @@ def run_simulation():
     # Software-in-the-loop integration
     sil_interface_sim = world.start("SilInterface", step_size=60)
     sil_interface = sil_interface_sim.SilInterface(
-        nodes=nodes, storage=STORAGE, collection_interval=1/60
+        nodes=nodes, storage=STORAGE, collection_interval=1/60, api_host="0.0.0.0"
     )
     world.connect(computing_system, sil_interface, ("p", "p_cons"))
     world.connect(solar, sil_interface, ("p", "p_gen"))
@@ -98,7 +98,6 @@ def run_simulation():
 
     # Terminate carbon-aware control unit
     cacu.terminate()
-
 
 if __name__ == "__main__":
     run_simulation()

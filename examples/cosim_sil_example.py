@@ -33,7 +33,7 @@ def run_simulation():
     # Initialize nodes
     nodes=[
         Node(address=GCP_ADDRESS, name="gcp"),
-        Node(address=RASPI_ADDRESS, name="raspi")
+        #Node(address=RASPI_ADDRESS, name="raspi")
     ]
 
     # Initialize computing system
@@ -41,7 +41,7 @@ def run_simulation():
     computing_system = computing_system_sim.ComputingSystem(
         power_meters=[
             HttpPowerMeter(interval=1, server_address=GCP_ADDRESS),
-            HttpPowerMeter(interval=1, server_address=RASPI_ADDRESS)
+            #HttpPowerMeter(interval=1, server_address=RASPI_ADDRESS)
         ])
 
     # Initialize solar generator
@@ -79,7 +79,7 @@ def run_simulation():
     world.connect(microgrid, monitor, ("p_delta", "p_grid"))
     world.connect(carbon_api_de, monitor, "carbon_intensity")
 
-    world.run(until=DURATION, rt_factor=1/60)
+    world.run(until=DURATION, rt_factor=1/128)
 
 
 if __name__ == "__main__":

@@ -50,9 +50,8 @@ class CarbonAwareControlUnit:
         self.power_modes = ["power-saving", "normal", "high performance"]
         self.nodes = nodes
         self.client = HTTPClient(server_address)
-        self.nodes_power_mode_old = {}
+        self.nodes_power_mode = {}
         self.battery = RemoteBattery()
-        self.battery_old = self.battery
         self.ci = 0.0
         self.solar = 0.0
         self.lock = Lock()
@@ -107,43 +106,42 @@ class CarbonAwareControlUnit:
         Args:
             current_time: Current simulation time.
         """
-        nodes_power_mode = {}
-
+        nodes_power_mode_new = {}
+        battery_new = RemoteBattery()
         # Set the minimum SOC of the battery based on the current time
         if current_time < 60*5:
-            self.battery.min_soc = 0.3
+            battery_new.min_soc = 0.3
         else:
-            self.battery.min_soc = 0.6
+            battery_new.min_soc = 0.6
 
         # Adjust the power modes of the nodes based on the current carbon
         # intensity and battery SOC
         if self.ci <= 200 or self.battery.soc > 0.8:
-            nodes_power_mode[self.nodes["gcp"]] = "high performance"
-            #nodes_power_mode[self.nodes["raspi"]] = "high performance"
+            nodes_power_mode_new[self.nodes["gcp"]] = "high performance"
+            #nodes_power_mode_new[self.nodes["raspi"]] = "high performance"
         elif self.ci >= 250 and self.battery.soc < self.battery.min_soc:
-            nodes_power_mode[self.nodes["gcp"]] = "power-saving"
-            #nodes_power_mode[self.nodes["raspi"]] = "power-saving"
+            nodes_power_mode_new[self.nodes["gcp"]] = "power-saving"
+            #nodes_power_mode_new[self.nodes["raspi"]] = "power-saving"
         else:
-            nodes_power_mode[self.nodes["gcp"]] = "normal"
-            #nodes_power_mode[self.nodes["raspi"]] = "normal"
+            nodes_power_mode_new[self.nodes["gcp"]] = "normal"
+            #nodes_power_mode_new[self.nodes["raspi"]] = "normal"
 
         # Send and forget if values changed
-        if (self.battery.min_soc != self.battery_old.min_soc or
-            self.battery.grid_charge != self.battery_old.grid_charge):
-            Thread(target=self.send_battery, args=(self.battery,)).start()
-            self.battery_old = deepcopy(self.battery)
+        if (self.battery.min_soc != battery_new.min_soc or
+            self.battery.grid_charge != battery_new.grid_charge):
+            Thread(target=self.send_battery, args=(battery_new,)).start()
+            self.battery = battery_new
 
         for node_id in self.nodes.values():
             if (
-                not self.nodes_power_mode_old or
-                node_id not in self.nodes_power_mode_old or
-                self.nodes_power_mode_old[node_id] != nodes_power_mode[node_id]
+                not node_id in self.nodes_power_mode or
+                self.nodes_power_mode[node_id] != nodes_power_mode_new[node_id]
             ):
                 Thread(
                     target=self.send_node_power_mode,
-                    args=(node_id, nodes_power_mode[node_id])
+                    args=(node_id, nodes_power_mode_new[node_id])
                 ).start()
-                self.nodes_power_mode_old[node_id] = nodes_power_mode[node_id]
+                self.nodes_power_mode[node_id] = nodes_power_mode_new[node_id]
 
     def send_battery(self, battery: RemoteBattery) -> None:
         """Sends battery data to the VES API.
