@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Type, Dict, Any, Union
+from loguru import logger
+import sys
 
 import mosaik_api  # type: ignore
 import pandas as pd
@@ -122,3 +124,29 @@ def simplify_inputs(attrs: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
     for key, val_dict in attrs.items():
         result[key] = list(val_dict.values())[0]
     return result
+
+def disable_mosaik_warnings():
+    """Disables Mosaik's Loguru warnings.
+
+    Mosaik currently deems specific attribute connections as incorrect and logs
+    them as warnings. Also the simulation is always behind by a few fractions
+    of a second (which is fine, code needs time to execute) which Mosaik also
+    logs as a Warning. These Warnings are flagged as bugs in Mosaik's current
+    developement and should be fixed within its next release. Until then, this
+    function should do.
+
+    """
+    # Define a function to filter out WARNING level logs
+    def filter_record(record):
+        print(record)
+        if (record["level"].name == "WARNING" and
+            record["name"].startswith("mosaik") and
+            record["function"] in ["_check_attributes_values", "rt_check"]
+        ):
+            return False
+        else:
+            return True
+
+    # Add the filter to the logger
+    logger.remove()
+    logger.add(sys.stdout, filter=filter_record)

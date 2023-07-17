@@ -10,8 +10,8 @@ This is example experimental and documentation is still in progress.
 
 import mosaik  # type: ignore
 import json
-import sys
 import subprocess
+from vessim.cosim._util import disable_mosaik_warnings
 
 from examples._data import load_carbon_data, load_solar_data
 from examples.cosim_example import COSIM_CONFIG, SIM_START, STORAGE, DURATION
@@ -29,6 +29,7 @@ COSIM_SIL_CACU_CONFIG = {
 GCP_ADDRESS = "http://35.198.148.144"
 RASPI_ADDRESS = "http://192.168.207.71"
 
+disable_mosaik_warnings()
 
 def run_simulation():
     world = mosaik.World(COSIM_SIL_CACU_CONFIG)

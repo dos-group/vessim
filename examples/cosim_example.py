@@ -10,6 +10,7 @@ from vessim.core.microgrid import SimpleMicrogrid
 from vessim.core.simulator import Generator, CarbonApi
 from vessim.core.storage import SimpleBattery
 from vessim.sil.power_meter import MockPowerMeter  # TODO PowerMeter should not be in sil
+from vessim.cosim._util import disable_mosaik_warnings
 
 COSIM_CONFIG = {
     "Microgrid": {
@@ -35,6 +36,7 @@ STORAGE = SimpleBattery(capacity=10 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
                         min_soc=.6,
                         c_rate=1)
 
+disable_mosaik_warnings()
 
 def run_simulation():
     world = mosaik.World(COSIM_CONFIG)
