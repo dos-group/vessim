@@ -106,12 +106,21 @@ class _SilInterfaceModel(VessimModel):
     def _api_collector(self):
         """Collects data from the API server.
 
+        The endpoint "/sim/collect-set" yields the 3 fields `battery_min_soc`,
+        `battery_grid_charge` and `nodes_power_mode`. Since multiple set
+        request of these values from different actors are possible, each of
+        these fields is a list of dictionaries with the timestamp (formated as
+        `datetime.now().isoformat()`) and the set value at that time.
+
         TODO implement user defined collection method. Current static
         collection method: most recent entry.
         """
         collection = self.http_client.get("/sim/collect-set")
 
+        # The value of the keys is None by default if no set request was made
+        # by an actor => Check if not None first.
         if collection["battery_min_soc"]:
+            # The newest entry is the one with the highest iso timestamp.
             newest_key = max(collection["battery_min_soc"].keys())
             self.storage.min_soc = float(collection["battery_min_soc"][newest_key])
 
@@ -120,14 +129,19 @@ class _SilInterfaceModel(VessimModel):
             self.policy.grid_power = float(collection["battery_grid_charge"][newest_key])
 
         if collection["nodes_power_mode"]:
-            print(collection["nodes_power_mode"])
             newest_key = max(collection["nodes_power_mode"].keys())
+            # Convert the node id from string to int.
             nodes_power_mode = {
                 int(k): v for k, v in collection['nodes_power_mode'][newest_key].items()
             }
+            # nodes_power_mode now looks e.g. like {0: "normal", 1: "high performance"}
+            # now loop through all nodes,
             for node in self.nodes:
-                if node.id in nodes_power_mode.keys():
+                if node.id in nodes_power_mode:
+                    # update the power_mode if it changed
                     node.power_mode = nodes_power_mode[node.id]
+                    # and save whatever node had its powermode updated to
+                    # remotely update only that nodes' power mode in step().
                     self.updated_nodes.append(node)
 
     def step(self, time: int, inputs: dict) -> None:
@@ -164,5 +178,4 @@ class _SilInterfaceModel(VessimModel):
             node_update_thread = Thread(target=update_node_power_model)
             node_update_thread.start()
         self.updated_nodes.clear()
-
 
