@@ -22,16 +22,15 @@ class RemoteBattery:
 
 
 class CarbonAwareControlUnit:
-    """The CACU uses the VESSIM API for real-time carbon-aware scenarios.
+    """The CACU uses the energy system for real-time carbon-aware scenarios.
 
-    The Carbon Aware control unit uses an API server to communicate with the
-    VES simulation and retrieve real-time data about energy demand, solar power
-    production, and grid carbon intensity via GET requests. Under predefined
-    scenarios, the control unit sends SET requests to adjust the VES simulation
-    and computing system behavior. The Carbon Aware control unit's objective is
-    to optimize the use of renewable energy sources and minimize carbon
-    emissions by taking real-time decisions and actions based on these
-    scenarios.
+    The Carbon Aware control unit uses an API server to communicate with vessim
+    and retrieve real-time data about energy demand, solar power production,
+    and grid carbon intensity via GET requests. Under predefined scenarios, the
+    control unit sends SET requests to adjust vessim and computing system
+    behavior. The Carbon Aware control unit's objective is to optimize the use
+    of renewable energy sources and minimize carbon emissions by taking
+    real-time decisions and actions based on these scenarios.
 
     Args:
         server_address: The address of the server to connect to.
@@ -119,12 +118,15 @@ class CarbonAwareControlUnit:
             nodes_power_mode_new[self.nodes["gcp"]] = "normal"
             #nodes_power_mode_new[self.nodes["raspi"]] = "normal"
 
-        # Send and forget if values changed
-        if (self.battery.min_soc != battery_new.min_soc or
-            self.battery.grid_charge != battery_new.grid_charge):
+        # Send and forget battery values if changed
+        if (
+            self.battery.min_soc != battery_new.min_soc or
+            self.battery.grid_charge != battery_new.grid_charge
+        ):
             Thread(target=self.send_battery, args=(battery_new,)).start()
             self.battery = battery_new
 
+        # If node's power mode changed, send set request
         for node_id in self.nodes.values():
             if (
                 not node_id in self.nodes_power_mode or
@@ -137,7 +139,7 @@ class CarbonAwareControlUnit:
                 self.nodes_power_mode[node_id] = nodes_power_mode_new[node_id]
 
     def send_battery(self, battery: RemoteBattery) -> None:
-        """Sends battery data to the VES API.
+        """Sends battery data to the energy system API.
 
         Args:
             battery: An object containing the battery data to be sent.
@@ -151,7 +153,7 @@ class CarbonAwareControlUnit:
             print(f"Could not update battery.")
 
     def send_node_power_mode(self, node_id: int, power_mode: str) -> None:
-        """Sends power mode data to the VES API.
+        """Sends power mode data to the energy system API.
 
         Args:
             node_id: The ID of the node.
