@@ -1,8 +1,7 @@
 import time
-from copy import deepcopy
 from vessim.sil.http_client import HTTPClient, HTTPClientError
 from vessim.sil.stoppable_thread import StoppableThread
-from threading import Thread, Lock
+from threading import Thread
 from typing import Optional
 
 
@@ -54,7 +53,6 @@ class CarbonAwareControlUnit:
         self.battery = RemoteBattery()
         self.ci = 0.0
         self.solar = 0.0
-        self.lock = Lock()
 
         # Wait until vessim api server has started
         while True:
@@ -72,15 +70,12 @@ class CarbonAwareControlUnit:
 
         current_time = 0
         while True:
-            self.lock.acquire()
             self.scenario_step(current_time)
-            self.lock.release()
             current_time += rt_factor
             time.sleep(rt_factor)
 
     def _update_getter(self) -> None:
         try:
-            self.lock.acquire()
             value = self.client.get("/api/battery-soc")["battery_soc"]
             if value:
                 self.battery.soc = value
@@ -92,8 +87,6 @@ class CarbonAwareControlUnit:
                 self.ci = value
         except:
             exit()
-        finally:
-            self.lock.release()
 
     def scenario_step(self, current_time) -> None:
         """A Carbon-Aware Scenario.
