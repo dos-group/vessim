@@ -125,8 +125,9 @@ def simplify_inputs(attrs: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
         result[key] = list(val_dict.values())[0]
     return result
 
+
 def disable_mosaik_warnings():
-    """Disables Mosaik's Loguru warnings.
+    """Disables Mosaik's incorrect Loguru warnings.
 
     Mosaik currently deems specific attribute connections as incorrect and logs
     them as warnings. Also the simulation is always behind by a few fractions

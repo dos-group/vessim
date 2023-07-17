@@ -11,8 +11,9 @@ This is example experimental and documentation is still in progress.
 import mosaik  # type: ignore
 import json
 import subprocess
-from vessim.cosim._util import disable_mosaik_warnings
+import sys
 
+from vessim.cosim._util import disable_mosaik_warnings
 from examples._data import load_carbon_data, load_solar_data
 from examples.cosim_example import COSIM_CONFIG, SIM_START, STORAGE, DURATION
 from vessim.core.microgrid import SimpleMicrogrid
