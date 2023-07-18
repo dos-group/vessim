@@ -33,15 +33,9 @@ class HTTPClient:
         Returns:
             A dictionary containing the response.
         """
-        try:
-            response = requests.get(self.server_address + route)
-        except Exception as e:
-            raise HTTPClientError(
-                503, f'Failed connection to {self.server_address}'
-            ) from e
+        response = requests.get(self.server_address + route)
         if response.status_code == 200:
             data = response.json() # assuming the response data is in JSON format
-            print(f'Data received at {route}: {data}')
             return data
 
         raise HTTPClientError(
@@ -65,9 +59,7 @@ class HTTPClient:
             data=json.dumps(data),
             headers=headers
         )
-        if response.status_code == 200:
-            print(f'Data successfully updated at {route}: {data}')
-        else:
+        if response.status_code != 200:
             raise HTTPClientError(
                 response.status_code,
                 f'Failed to update data at {route}'
