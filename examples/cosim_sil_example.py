@@ -16,6 +16,7 @@ from vessim.core.microgrid import SimpleMicrogrid
 from vessim.core.simulator import Generator, CarbonApi
 from vessim.sil.node import Node
 from vessim.sil.power_meter import HttpPowerMeter
+from vessim.cosim._util import disable_mosaik_warnings
 
 COSIM_SOL_CONFIG = {
     **COSIM_CONFIG,
@@ -24,6 +25,8 @@ COSIM_SOL_CONFIG = {
     },
 }
 SERVER_ADDRESS = "http://34.159.124.254"
+
+disable_mosaik_warnings(behind_threshold=0.01)
 
 
 def run_simulation():
