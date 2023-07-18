@@ -17,13 +17,16 @@ from vessim.core.simulator import Generator, CarbonApi
 from vessim.sil.node import Node
 from vessim.sil.power_meter import HttpPowerMeter
 
+
 COSIM_SIL_CONFIG = {
     **COSIM_CONFIG,
     "SilInterface": {
         "python": "vessim.cosim:SilInterfaceSim",
     },
 }
-GCP_ADDRESS = "http://35.198.148.144"
+RT_FACTOR = 1/60 # 1 wall-clock second ^= 60 sim seconds
+
+GCP_ADDRESS = "http://34.159.84.164"
 RASPI_ADDRESS = "http://192.168.207.71"
 
 
@@ -79,7 +82,7 @@ def run_simulation():
     world.connect(microgrid, monitor, ("p_delta", "p_grid"))
     world.connect(carbon_api_de, monitor, "carbon_intensity")
 
-    world.run(until=DURATION, rt_factor=1/128)
+    world.run(until=DURATION, rt_factor=RT_FACTOR)
 
 
 if __name__ == "__main__":
