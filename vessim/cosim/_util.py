@@ -142,18 +142,14 @@ def disable_mosaik_warnings(behind_threshold: float):
     # Define a function to filter out WARNING level logs
     def filter_record(record):
         #print(record)
-        if (
-            record["level"].name == "WARNING" and
-            record["name"].startswith("mosaik") and
-            (
-                record["function"] == "_check_attributes_values" or
-                record["function"] =="rt_check" and
-                float(record["message"].split(' - ')[1].split('s')[0]) < behind_threshold
-            )
-        ):
-            return False
-        else:
-            return True
+        is_warning = record["level"].name == "WARNING"
+        is_mosaik_log = record["name"].startswith("mosaik")
+        is_below_threshold = (
+            record["function"] == "_check_attributes_values" or
+            record["function"] =="rt_check" and
+            float(record["message"].split(' - ')[1].split('s')[0]) < behind_threshold
+        )
+        return not (is_warning and is_mosaik_log and is_below_threshold)
 
     # Add the filter to the logger
     logger.remove()
