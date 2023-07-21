@@ -41,9 +41,9 @@ class ApiServer(multiprocessing.Process):
     def run(self):
         """Called with `multiprocessing.Process.start()`. Runs the uvicorn server."""
         config = uvicorn.Config(
-            app=self.app, 
-            host=self.host, 
-            port=self.port, 
+            app=self.app,
+            host=self.host,
+            port=self.port,
             access_log=False
         )
         server = uvicorn.Server(config=config)
