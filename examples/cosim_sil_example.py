@@ -16,6 +16,7 @@ from vessim.core.microgrid import SimpleMicrogrid
 from vessim.core.simulator import Generator, CarbonApi
 from vessim.sil.node import Node
 from vessim.sil.power_meter import HttpPowerMeter
+from vessim.cosim._util import disable_mosaik_warnings
 
 
 COSIM_SIL_CONFIG = {
@@ -28,6 +29,8 @@ RT_FACTOR = 1/60 # 1 wall-clock second ^= 60 sim seconds
 
 GCP_ADDRESS = "http://34.159.84.164"
 RASPI_ADDRESS = "http://192.168.207.71"
+
+disable_mosaik_warnings(behind_threshold=0.01)
 
 
 def run_simulation():
