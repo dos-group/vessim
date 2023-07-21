@@ -130,12 +130,9 @@ class _SilInterfaceModel(VessimModel):
 
         if collection["nodes_power_mode"]:
             newest_key = max(collection["nodes_power_mode"].keys())
-            # Convert the node id from string to int.
-            nodes_power_mode = {
-                int(k): v for k, v in collection['nodes_power_mode'][newest_key].items()
-            }
-            # nodes_power_mode now looks e.g. like {0: "normal", 1: "high performance"}
-            # now loop through all nodes,
+            nodes_power_mode = collection['nodes_power_mode'][newest_key].items()
+            # nodes_power_mode looks e.g. like {"gcp": "normal", "aws": "high performance"}
+            # Loop through all nodes,
             for node in self.nodes:
                 if node.id in nodes_power_mode:
                     # update the power_mode if it changed
