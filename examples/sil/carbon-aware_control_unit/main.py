@@ -1,5 +1,4 @@
 import argparse
-import json
 from carbon_aware_control_unit import CarbonAwareControlUnit
 
 
@@ -7,14 +6,11 @@ def argparser() -> argparse.ArgumentParser:
     # TODO add description=""
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--nodes",
-                        metavar='JSON e.g. {"0": "aws", "1": "raspi"}',
-                        help="ids and names of nodes",
+    parser.add_argument("--node_ids",
+                        help="ids of nodes",
+                        nargs="+",
+                        action="append",
                         required=True)
-
-    #   parser.add_argument("--until",
-    #                       help="duration of the scenario",
-    #                       required=True)
 
     parser.add_argument("--server_address",
                         help="address of the API server",
@@ -37,8 +33,5 @@ def argparser() -> argparse.ArgumentParser:
 if __name__ == "__main__":
     parser = argparser()
     args = parser.parse_args()
-    nodes = {int(k): v for k, v in json.loads(args.nodes).items()}
-
-    cacu = CarbonAwareControlUnit(args.server_address, nodes)
-    #cacu.run_scenario(int(args.until), args.rt_factor, args.update_interval)
+    cacu = CarbonAwareControlUnit(args.server_address, args.node_ids)
     cacu.run_scenario(args.rt_factor, args.update_interval)

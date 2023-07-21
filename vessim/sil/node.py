@@ -1,5 +1,3 @@
-from typing import Optional
-
 class Node:
     """Represents a physical or virtual computing node.
 
@@ -11,28 +9,24 @@ class Node:
         power_mode: The power mode of the node. Default is "high performance".
 
     Attributes:
-        id: A unique ID assigned to each node. The ID is auto-incremented for
-            each new node.
+        id: A unique ID assigned to each node.
         address: The network address of the node.
+        port: The application port of the node api.
         power_mode: The power mode of the node. Default is "high performance".
     """
 
-    # keep track of ids
-    id = 0
+    existing_ids = set()
 
     def __init__(
         self,
+        id: str,
         address: str,
-        name: Optional[str],
         port: int = 8000,
         power_mode: str = "high performance"
     ) -> None:
-        self.id = Node.id
-        Node.id += 1
+        if id in self.existing_ids:
+            raise ValueError(f"Node ID \"{id}\" already exists.")
+        self.id = id
         self.address = address
         self.port = port
         self.power_mode = power_mode
-        if name:
-            self.name = name
-        else:
-            self.name = f"Node{self.id}"

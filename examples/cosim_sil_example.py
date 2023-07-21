@@ -35,7 +35,7 @@ def run_simulation():
 
     # Initialize nodes
     nodes=[
-        Node(address=GCP_ADDRESS, name="gcp"),
+        Node(address=GCP_ADDRESS, id="gcp"),
         #Node(address=RASPI_ADDRESS, name="raspi")
     ]
 

@@ -64,7 +64,7 @@ class VessimApiServer(ApiServer):
 
         self.battery_min_soc_log: Dict[str, float] = {}
         self.battery_grid_charge_log: Dict[str, float] = {}
-        self.power_mode_log: Dict[str, Dict[int, str]] = {}
+        self.power_mode_log: Dict[str, Dict[str, str]] = {}
 
         app = self._init_fastapi()
         super().__init__(app, host, port)
@@ -114,7 +114,7 @@ class VessimApiServer(ApiServer):
         class CollectSetModel(BaseModel):
             battery_min_soc: Optional[Dict[str, float]]
             battery_grid_charge: Optional[Dict[str, float]]
-            nodes_power_mode: Optional[Dict[str, Dict[int, str]]]
+            nodes_power_mode: Optional[Dict[str, Dict[str, str]]]
 
         @app.get("/sim/collect-set", response_model=CollectSetModel)
         async def get_collect_set() -> CollectSetModel:
@@ -151,7 +151,7 @@ class VessimApiServer(ApiServer):
             power_mode: str
 
         @app.put("/api/nodes/{item_id}", response_model=NodeModel)
-        async def put_nodes(node: NodeModel, item_id: int) -> NodeModel:
+        async def put_nodes(node: NodeModel, item_id: str) -> NodeModel:
             power_modes = ["power-saving", "normal", "high performance"]
             power_mode = node.power_mode
             if power_mode not in power_modes:

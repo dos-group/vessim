@@ -1,5 +1,4 @@
 import time
-import sys
 from vessim.sil.http_client import HTTPClient
 from vessim.sil.stoppable_thread import StoppableThread
 from threading import Thread
@@ -35,8 +34,7 @@ class CarbonAwareControlUnit:
 
     Args:
         server_address: The address of the server to connect to.
-        nodes: A dictionary representing the nodes that the Control Unit
-            manages, with node IDs as keys and node names as values.
+        node_ids: A list of node_ids that the Control Unit manages.
 
     Attributes:
         power_modes: The list of available power modes for the nodes.
@@ -45,9 +43,9 @@ class CarbonAwareControlUnit:
         client: The HTTPClient object used to communicate with the server.
     """
 
-    def __init__(self, server_address: str, nodes: dict) -> None:
+    def __init__(self, server_address: str, node_ids: list[str]) -> None:
         self.power_modes = ["power-saving", "normal", "high performance"]
-        self.nodes = nodes
+        self.node_ids = node_ids
         self.client = HTTPClient(server_address)
         self.nodes_power_mode = {}
         self.battery = RemoteBattery()
@@ -106,7 +104,7 @@ class CarbonAwareControlUnit:
 
         # Adjust the power modes of the nodes based on the current carbon
         # intensity and battery SOC
-        for node_id in self.nodes:
+        for node_id in self.node_ids:
             if self.ci <= 200 or self.battery.soc > 0.8:
                 nodes_power_mode_new[node_id] = "high performance"
             elif self.ci >= 250 and self.battery.soc < self.battery.min_soc:
@@ -123,7 +121,7 @@ class CarbonAwareControlUnit:
             self.battery = battery_new
 
         # If node's power mode changed, send set request
-        for node_id in self.nodes:
+        for node_id in self.node_ids:
             if (
                 not node_id in self.nodes_power_mode or
                 self.nodes_power_mode[node_id] != nodes_power_mode_new[node_id]
