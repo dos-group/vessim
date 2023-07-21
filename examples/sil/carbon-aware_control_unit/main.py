@@ -33,5 +33,5 @@ def argparser() -> argparse.ArgumentParser:
 if __name__ == "__main__":
     parser = argparser()
     args = parser.parse_args()
-    cacu = CarbonAwareControlUnit(args.server_address, args.node_ids)
+    cacu = CarbonAwareControlUnit(args.server_address, args.node_ids[0])
     cacu.run_scenario(args.rt_factor, args.update_interval)
