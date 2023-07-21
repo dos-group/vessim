@@ -89,8 +89,11 @@ class VessimApiServer(ApiServer):
 
         @app.get("/api/solar", response_model=SolarModel)
         async def get_solar() -> SolarModel:
+            solar = self.redis_docker.redis.get("solar")
+            if solar is not None:
+                solar = float(solar)
             return SolarModel(
-                solar=float(self.redis_docker.redis.get("solar"))
+                solar=solar
             )
 
         class CiModel(BaseModel):
@@ -98,8 +101,11 @@ class VessimApiServer(ApiServer):
 
         @app.get("/api/ci", response_model=CiModel)
         async def get_ci() -> CiModel:
+            ci = self.redis_docker.redis.get("ci")
+            if ci is not None:
+                ci = float(ci)
             return CiModel(
-                ci=float(self.redis_docker.redis.get("ci"))
+                ci=ci
             )
 
         class BatterySocModel(BaseModel):
@@ -107,8 +113,11 @@ class VessimApiServer(ApiServer):
 
         @app.get("/api/battery-soc", response_model=BatterySocModel)
         async def get_battery_soc() -> BatterySocModel:
+            battery_soc = self.redis_docker.redis.get("battery_soc")
+            if battery_soc is not None:
+                battery_soc = float(battery_soc)
             return BatterySocModel(
-                battery_soc=float(self.redis_docker.redis.get("battery_soc"))
+                battery_soc=battery_soc
             )
 
         # /sim/
