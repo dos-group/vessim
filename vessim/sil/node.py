@@ -1,3 +1,5 @@
+from typing import Set
+
 class Node:
     """Represents a physical or virtual computing node.
 
@@ -15,7 +17,7 @@ class Node:
         power_mode: The power mode of the node. Default is "high performance".
     """
 
-    existing_ids = set()
+    existing_ids: Set[str] = set()
 
     def __init__(
         self,
@@ -26,6 +28,7 @@ class Node:
     ) -> None:
         if id in self.existing_ids:
             raise ValueError(f"Node ID \"{id}\" already exists.")
+        self.existing_ids.add(id)
         self.id = id
         self.address = address
         self.port = port
