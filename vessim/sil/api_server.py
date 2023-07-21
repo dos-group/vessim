@@ -1,5 +1,6 @@
 import multiprocessing
 from time import sleep
+from abc import abstractmethod
 from datetime import datetime
 from typing import Optional, Dict
 
@@ -17,16 +18,11 @@ class ApiServer(multiprocessing.Process):
         port: The port to run the FastAPI application, defaults to 8000.
     """
 
-    def __init__(self, app: FastAPI, host: str = "127.0.0.1", port: int = 8000) -> None:
+    def __init__(self, host: str = "127.0.0.1", port: int = 8000) -> None:
         super().__init__()
         self.host = host
         self.port = port
-        self.app = app
         self.startup_complete = multiprocessing.Value('b', False)
-
-        @self.app.on_event("startup")
-        async def startup_event():
-            self.startup_complete.value = True
 
     def wait_for_startup_complete(self):
         """Waiting for completion of startup process.
@@ -38,9 +34,19 @@ class ApiServer(multiprocessing.Process):
         while not self.startup_complete.value:
             sleep(1)
 
+    @abstractmethod
+    def init_fastapi(self) -> FastAPI:
+        pass
+
     def run(self):
         """Called with `multiprocessing.Process.start()`. Runs the uvicorn server."""
-        config = uvicorn.Config(app=self.app, host=self.host, port=self.port)
+        app = self.init_fastapi()
+
+        @app.on_event("startup")
+        async def startup_event():
+            self.startup_complete.value = True
+
+        config = uvicorn.Config(app=app, host=self.host, port=self.port)
         server = uvicorn.Server(config=config)
         server.run()
 
@@ -58,6 +64,7 @@ class VessimApiServer(ApiServer):
     """
 
     def __init__(self, host: str = "127.0.0.1", port: int = 8000) -> None:
+        super().__init__(host, port)
         self.solar: Optional[float] = None
         self.ci: Optional[float] = None
         self.battery_soc: Optional[float] = None
@@ -66,10 +73,9 @@ class VessimApiServer(ApiServer):
         self.battery_grid_charge_log: Dict[str, float] = {}
         self.power_mode_log: Dict[str, Dict[str, str]] = {}
 
-        app = self._init_fastapi()
-        super().__init__(app, host, port)
+        app = self.init_fastapi()
 
-    def _init_fastapi(self) -> FastAPI:
+    def init_fastapi(self) -> FastAPI:
         """Initializes the FastAPI application.
 
         Returns:
