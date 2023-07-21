@@ -30,15 +30,29 @@ jobs:
       run: |
         echo "JUPYTER_PLATFORM_DIRS=${JUPYTER_PLATFORM_DIRS}" >> $GITHUB_ENV   
 
-    # installs dependencies from requirements.txt
+    # installs dependencies from pyproject.toml
     - name: Install dependencies
-      run: pip install ".[dev]"
+      run: poetry install --with dev    
     
-    # run type checker on Python files
+    - name: Build the project as a package
+      run: poetry build
+
+    - name: Create a directory called "test"
+      run: mkdir test
+
+    - name: Install the package in the "test" directory
+      run: |
+        cd test
+        pip install ../*.whl
+
+        #- name: Run example scenario
+        #run: python examples/cosim_example.py
+
+    # run type checker
     - name: Run type checker
       run: mypy vessim
 
-    # run ruff on Python files
+    # run ruff
     - name: Run linter
       run: ruff .
         
