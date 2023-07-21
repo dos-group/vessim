@@ -17,22 +17,35 @@ from vessim.core.simulator import Generator, CarbonApi
 from vessim.sil.node import Node
 from vessim.sil.power_meter import HttpPowerMeter
 
-COSIM_SOL_CONFIG = {
+
+COSIM_SIL_CONFIG = {
     **COSIM_CONFIG,
     "SilInterface": {
         "python": "vessim.cosim:SilInterfaceSim",
     },
 }
-SERVER_ADDRESS = "http://34.159.124.254"
+RT_FACTOR = 1/60 # 1 wall-clock second ^= 60 sim seconds
+
+GCP_ADDRESS = "http://34.159.84.164"
+RASPI_ADDRESS = "http://192.168.207.71"
 
 
 def run_simulation():
-    world = mosaik.World(COSIM_SOL_CONFIG)
+    world = mosaik.World(COSIM_SIL_CONFIG)
+
+    # Initialize nodes
+    nodes=[
+        Node(address=GCP_ADDRESS, id="gcp"),
+        #Node(address=RASPI_ADDRESS, name="raspi")
+    ]
 
     # Initialize computing system
     computing_system_sim = world.start('ComputingSystem', step_size=60)
     computing_system = computing_system_sim.ComputingSystem(
-        power_meters=[HttpPowerMeter(interval=1, server_address=SERVER_ADDRESS)])
+        power_meters=[
+            HttpPowerMeter(interval=1, server_address=GCP_ADDRESS),
+            #HttpPowerMeter(interval=1, server_address=RASPI_ADDRESS)
+        ])
 
     # Initialize solar generator
     solar_sim = world.start("Generator", sim_start=SIM_START)
@@ -52,9 +65,7 @@ def run_simulation():
     # Software-in-the-loop integration
     sil_interface_sim = world.start("SilInterface", step_size=60)
     sil_interface = sil_interface_sim.SilInterface(
-        nodes=[Node(address=SERVER_ADDRESS)],
-        storage=STORAGE,
-        collection_interval=1
+        nodes=nodes, storage=STORAGE, collection_interval=1
     )
     world.connect(computing_system, sil_interface, ("p", "p_cons"))
     world.connect(solar, sil_interface, ("p", "p_gen"))
@@ -71,7 +82,7 @@ def run_simulation():
     world.connect(microgrid, monitor, ("p_delta", "p_grid"))
     world.connect(carbon_api_de, monitor, "carbon_intensity")
 
-    world.run(until=DURATION, rt_factor=1/60)
+    world.run(until=DURATION, rt_factor=RT_FACTOR)
 
 
 if __name__ == "__main__":
