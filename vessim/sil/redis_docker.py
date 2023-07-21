@@ -1,6 +1,7 @@
 from time import sleep
 import docker
 import redis
+import atexit
 
 
 class RedisDocker:
@@ -22,6 +23,8 @@ class RedisDocker:
         except docker.errors.DockerException:
             raise RuntimeError("Please start Docker before execution.")
         self.redis = self._connect_redis()
+         # Register cleanup function
+        atexit.register(self.__del__)
 
     def _init_docker(self) -> None:
         """Initializes Docker client and starts Docker container with Redis."""
@@ -59,5 +62,5 @@ class RedisDocker:
 
     def __del__(self) -> None:
         """Stops the Docker container with Redis when instance is deleted."""
-        if hasattr(self, "redis_container"):
+        if self.redis_container:
             self.redis_container.stop()
