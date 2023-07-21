@@ -159,13 +159,11 @@ class VessimApiServer(ApiServer):
         @app.put("/api/battery", response_model=BatteryModel)
         async def put_battery(battery: BatteryModel) -> BatteryModel:
             timestamp = datetime.now().isoformat()
-            #self.battery_min_soc_log[timestamp] = battery.min_soc
             self.redis_docker.redis.hset(
                 "battery_min_soc_log",
                 str(timestamp),
                 battery.min_soc
             )
-            #self.battery_grid_charge_log[timestamp] = battery.grid_charge
             self.redis_docker.redis.hset(
                 "battery_grid_charge_log",
                 str(timestamp),
@@ -187,7 +185,6 @@ class VessimApiServer(ApiServer):
                            f"Available power modes: {power_modes}"
             )
             timestamp = datetime.now().isoformat()
-            #self.power_mode_log[timestamp] = {item_id: power_mode}
             self.redis_docker.redis.hset(
                 "power_mode_log",
                 str(timestamp),
@@ -204,11 +201,8 @@ class VessimApiServer(ApiServer):
 
         @app.put("/sim/update", response_model=UpdateModel)
         async def put_update(update: UpdateModel) -> UpdateModel:
-            #self.solar = update.solar
             self.redis_docker.redis.set("solar", update.solar)
-            #self.ci = update.ci
             self.redis_docker.redis.set("ci", update.ci)
-            #self.battery_soc = update.battery_soc
             self.redis_docker.redis.set("battery_soc", update.battery_soc)
             return update
 
