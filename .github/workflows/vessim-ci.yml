@@ -30,6 +30,9 @@ jobs:
       run: |
         echo "JUPYTER_PLATFORM_DIRS=${JUPYTER_PLATFORM_DIRS}" >> $GITHUB_ENV   
 
+    - name: Install Poetry
+        uses: snok/install-poetry@v1
+    
     # installs dependencies from pyproject.toml
     - name: Install dependencies
       run: poetry install --with dev    
