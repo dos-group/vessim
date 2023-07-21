@@ -128,18 +128,9 @@ class VessimApiServer(ApiServer):
                 nodes_power_mode=
                     self._deserialize_redis_hash("power_mode_log")
             )
-            self.redis_docker.redis.hdel(
-                "battery_min_soc_log",
-                *self.redis_docker.redis.hkeys("battery_min_soc_log")
-            )
-            self.redis_docker.redis.hdel(
-                "battery_grid_charge_log",
-                *self.redis_docker.redis.hkeys("battery_grid_charge_log")
-            )
-            self.redis_docker.redis.hdel(
-                "power_mode_log",
-                *self.redis_docker.redis.hkeys("power_mode_log")
-            )
+            self._delete_all_keys_in_hash("battery_min_soc_log")
+            self._delete_all_keys_in_hash("battery_grid_charge_log")
+            self._delete_all_keys_in_hash("power_mode_log")
             return model
 
     def _deserialize_redis_hash(self, hash_name):
@@ -147,6 +138,11 @@ class VessimApiServer(ApiServer):
             key.decode(): json.loads(value.decode())
             for key, value in self.redis_docker.redis.hgetall(hash_name).items()
         }
+
+    def _delete_all_keys_in_hash(self, hash_name: str) -> None:
+        keys = self.redis_docker.redis.hkeys(hash_name)
+        for key in keys:
+            self.redis_docker.redis.hdel(hash_name, key)
 
     def _init_put_routes(self, app: FastAPI) -> None:
         """Initialize PUT routes for the FastAPI application.
