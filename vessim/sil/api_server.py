@@ -45,8 +45,13 @@ class ApiServer(multiprocessing.Process):
         @app.on_event("startup")
         async def startup_event():
             self.startup_complete.value = True
-
-        config = uvicorn.Config(app=app, host=self.host, port=self.port)
+          
+        config = uvicorn.Config(
+            app=self.app,
+            host=self.host,
+            port=self.port,
+            access_log=False
+        )
         server = uvicorn.Server(config=config)
         server.run()
 
