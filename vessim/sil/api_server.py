@@ -73,8 +73,6 @@ class VessimApiServer(ApiServer):
         self.battery_grid_charge_log: Dict[str, float] = {}
         self.power_mode_log: Dict[str, Dict[str, str]] = {}
 
-        app = self.init_fastapi()
-
     def init_fastapi(self) -> FastAPI:
         """Initializes the FastAPI application.
 
