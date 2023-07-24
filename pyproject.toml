@@ -1,11 +1,14 @@
-[project]
+[tool.poetry]
 name = "vessim"
-dynamic = ["version", "description"]
-readme = "README.md"
-requires-python = ">=3.8"
-license = {file = "LICENSE"}
+version = "0.1.0"
+description = "co-simulation testbed for carbon-aware applications and systems"
 keywords = ["simulation", "energy system", "testbed", "carbon-aware"]
-authors = [{name = "Philipp Wiesner", email = "wiesner@tu-berlin.de"}]
+authors = ["Philipp Wiesner <wiesner@tu-berlin.de>"]
+readme = "README.md"
+license = "MIT"
+homepage = "https://github.com/dos-group/vessim"
+repository = "https://github.com/dos-group/vessim"
+documentation = "https://github.com/dos-group/vessim"
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Science/Research",
@@ -22,61 +25,45 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
 ]
 
-dependencies = [
-  "pandas",
-  "mosaik",
-  "mosaik-api",
-  "loguru",  # TODO shall we remove this?
-]
-
-[project.optional-dependencies]
-sil = [
-  "requests",
-  "fastapi",
-  "docker",
-  "redis",
-  "uvicorn",
-]
-dev = [
-  # testing
-  "pytest",
-  # typechecking
-  "mypy",
-  "types-psutil",
-  "pandas-stubs",
-  "types-requests",
-  # linting
-  "black",
-  "ruff",
-  # build
-  "flit",
-]
-analysis = [
-  "jupyterlab",
-  "matplotlib",
-  "seaborn==0.12.2",
-]
-
-
-[project.urls]  # Optional
-"Homepage" = "https://github.com/dos-group/vessim"
-"Source" = "https://github.com/dos-group/vessim"
+[tool.poetry.urls]
 "Bug Reports" = "https://github.com/dos-group/vessim/issues"
 
-# The following would provide a command line executable called `sample`
-# which executes the function `main` from this package when invoked.
-# [project.scripts]  # Optional
-# sample = "sample:main"
+[tool.poetry.dependencies]
+python = "^3.8"
+pandas = "*"
+mosaik = "*"
+mosaik-api = "*"
+loguru = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+mypy = "*"
+types-psutil = "*"
+pandas-stubs = "*"
+types-requests = "*"
+black = "*"
+ruff = "*"
+
+[tool.poetry.group.sil]
+optional = true
+
+[tool.poetry.group.sil.dependencies]
+requests = "*"
+fastapi = "*"
+docker = "*"
+uvicorn = "*"
+
+[tool.poetry.group.analysis]
+optional = true
+
+[tool.poetry.group.analysis.dependencies]
+jupyterlab = "*"
+matplotlib = "*"
+seaborn = "0.12.2"
 
 [build-system]
-requires = ["flit_core >=3.2,<4"]
-build-backend = "flit_core.buildapi"
-
-[tool.flit.sdist]
-exclude = ["data"]
-
-[tool.flit.module]
-name = "vessim"
+requires = ["poetry-core>=1.1.0"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 90  # Set the maximum characters per line
@@ -110,7 +97,7 @@ target-version = "py38"  # Set python version for linting (similar to black)
 include = ["*.py"]  # Only enable linting for python files (similar to black)
 
 # Exclude specific directories and all defaults
-extend-exclude = ["examples/sil"]
+extend-exclude = ["example_node", "simulator/power_meter.py", "carbon-aware_control_unit"]
 
 # Configure Ruff to enforce Google-style docstrings when checking documentation
 [tool.ruff.pydocstyle]
