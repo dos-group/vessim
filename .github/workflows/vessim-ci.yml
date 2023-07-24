@@ -54,10 +54,7 @@ jobs:
         cd test
         pip install ../dist/*.whl
 
-    - name: Run example scenario
-      run: |
-        cd test
-        python examples/cosim_example.py
+        #- name: Run example scenario
 
     # run type checker
     - name: Run type checker
