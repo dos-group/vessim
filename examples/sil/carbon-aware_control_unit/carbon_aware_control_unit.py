@@ -2,7 +2,7 @@ import time
 from vessim.sil.http_client import HTTPClient
 from vessim.sil.stoppable_thread import StoppableThread
 from threading import Thread
-from typing import Dict, Optional
+from typing import Optional
 
 
 class RemoteBattery:
@@ -22,21 +22,19 @@ class RemoteBattery:
 
 
 class CarbonAwareControlUnit:
-    """The CACU uses the VESSIM API for real-time carbon-aware scenarios.
+    """The CACU uses the energy system for real-time carbon-aware scenarios.
 
-    The Carbon Aware control unit uses an API server to communicate with the
-    VES simulation and retrieve real-time data about energy demand, solar power
-    production, and grid carbon intensity via GET requests. Under predefined
-    scenarios, the control unit sends SET requests to adjust the VES simulation
-    and computing system behavior. The Carbon Aware control unit's objective is
-    to optimize the use of renewable energy sources and minimize carbon
-    emissions by taking real-time decisions and actions based on these
-    scenarios.
+    The Carbon Aware control unit uses an API server to communicate with vessim
+    and retrieve real-time data about energy demand, solar power production,
+    and grid carbon intensity via GET requests. Under predefined scenarios, the
+    control unit sends SET requests to adjust vessim and computing system
+    behavior. The Carbon Aware control unit's objective is to optimize the use
+    of renewable energy sources and minimize carbon emissions by taking
+    real-time decisions and actions based on these scenarios.
 
     Args:
         server_address: The address of the server to connect to.
-        nodes: A dictionary representing the nodes that the Control Unit
-            manages, with node IDs as keys and node objects as values.
+        node_ids: A list of node_ids that the Control Unit manages.
 
     Attributes:
         power_modes: The list of available power modes for the nodes.
@@ -45,32 +43,45 @@ class CarbonAwareControlUnit:
         client: The HTTPClient object used to communicate with the server.
     """
 
-    def __init__(self, server_address: str, nodes: dict) -> None:
+    def __init__(self, server_address: str, node_ids: list[str]) -> None:
         self.power_modes = ["power-saving", "normal", "high performance"]
-        self.nodes = nodes
+        self.node_ids = node_ids
         self.client = HTTPClient(server_address)
-
+        self.nodes_power_mode = {}
         self.battery = RemoteBattery()
         self.ci = 0.0
         self.solar = 0.0
 
-    def run_scenario(self, until: int, rt_factor: float, update_interval: Optional[float]):
+        # Wait until vessim api server has started
+        while True:
+            try:
+                self.client.get("/api/ci")
+                break
+            except:
+                time.sleep(1)
+
+    def run_scenario(self, rt_factor: float, update_interval: Optional[float]):
         if update_interval is None:
             update_interval = rt_factor
         update_thread = StoppableThread(self._update_getter, update_interval)
         update_thread.start()
 
-        for current_time in range(until):
+        current_time = 0
+        while True:
             self.scenario_step(current_time)
+            current_time += rt_factor
             time.sleep(rt_factor)
 
-        update_thread.stop()
-        update_thread.join()
-
     def _update_getter(self) -> None:
-        self.battery.soc = self.client.get("/api/battery-soc")["battery_soc"]
-        self.solar = self.client.get("/api/solar")["solar"]
-        self.ci = self.client.get("/api/ci")["ci"]
+        value = self.client.get("/api/battery-soc")["battery_soc"]
+        if value:
+            self.battery.soc = value
+        value = self.client.get("/api/solar")["solar"]
+        if value:
+            self.solar = value
+        value = self.client.get("/api/ci")["ci"]
+        if value:
+            self.ci = value
 
     def scenario_step(self, current_time) -> None:
         """A Carbon-Aware Scenario.
@@ -83,44 +94,61 @@ class CarbonAwareControlUnit:
         Args:
             current_time: Current simulation time.
         """
-        nodes_power_mode = {}
-
+        nodes_power_mode_new = {}
+        battery_new = RemoteBattery()
         # Set the minimum SOC of the battery based on the current time
-        if current_time < 60*36:
-            self.battery.min_soc = 0.3
+        if current_time < 60*5:
+            battery_new.min_soc = 0.3
         else:
-            self.battery.min_soc = 0.6
+            battery_new.min_soc = 0.6
 
-        # Adjust the power modes of the nodes based on the current carbon intensity and battery SOC
-        if self.ci <= 200 or self.battery.soc > 0.8:
-            nodes_power_mode[self.nodes["aws"]] = "high performance"
-            nodes_power_mode[self.nodes["raspi"]] = "high performance"
-        elif self.ci >= 250 and self.battery.soc < self.battery.min_soc:
-            nodes_power_mode[self.nodes["aws"]] = "power-saving"
-            nodes_power_mode[self.nodes["raspi"]] = "power-saving"
-        else:
-            nodes_power_mode[self.nodes["aws"]] = "normal"
-            nodes_power_mode[self.nodes["raspi"]] = "normal"
+        # Adjust the power modes of the nodes based on the current carbon
+        # intensity and battery SOC
+        for node_id in self.node_ids:
+            if self.ci <= 200 or self.battery.soc > 0.8:
+                nodes_power_mode_new[node_id] = "high performance"
+            elif self.ci >= 250 and self.battery.soc < self.battery.min_soc:
+                nodes_power_mode_new[node_id] = "normal"
+            else:
+                nodes_power_mode_new[node_id] = "power-saving"
 
-        # Send and forget
-        Thread(target=self.send_battery, args=(self.battery,)).start()
-        Thread(target=self.send_nodes_power_mode, args=(nodes_power_mode,)).start()
+        # Send battery values if changed
+        if (
+            self.battery.min_soc != battery_new.min_soc or
+            self.battery.grid_charge != battery_new.grid_charge
+        ):
+            Thread(target=self.send_battery, args=(battery_new,)).start()
+            self.battery = battery_new
+
+        # If node's power mode changed, send set request
+        for node_id in self.node_ids:
+            if (
+                not node_id in self.nodes_power_mode or
+                self.nodes_power_mode[node_id] != nodes_power_mode_new[node_id]
+            ):
+                Thread(
+                    target=self.send_node_power_mode,
+                    args=(node_id, nodes_power_mode_new[node_id])
+                ).start()
+                self.nodes_power_mode[node_id] = nodes_power_mode_new[node_id]
 
     def send_battery(self, battery: RemoteBattery) -> None:
-        """Sends battery data to the VES API.
+        """Sends battery data to the energy system API.
 
         Args:
             battery: An object containing the battery data to be sent.
         """
-        self.client.put("/ves/battery", {"min_soc": battery.min_soc, "grid_charge": battery.grid_charge})
+        self.client.put("/api/battery", {
+            "min_soc": battery.min_soc,
+            "grid_charge": battery.grid_charge
+        })
 
-    def send_nodes_power_mode(self, nodes_power_mode: Dict[int, str]) -> None:
-        """Sends power mode data for nodes to the VES API.
+    def send_node_power_mode(self, node_id: int, power_mode: str) -> None:
+        """Sends power mode data to the energy system API.
 
         Args:
-            nodes_power_mode: A dictionary containing node IDs as keys and
-                their respective power modes as values.
+            node_id: The ID of the node.
+            power_mode: The power mode of the node to be set.
 
         """
-        for node_id, power_mode in nodes_power_mode.items():
-            self.client.put(f"/ves/nodes/{node_id}", {"power_mode": power_mode})
+        self.client.put(f"/api/nodes/{node_id}", {"power_mode": power_mode})
