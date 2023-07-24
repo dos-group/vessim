@@ -35,12 +35,12 @@ class ApiServer(multiprocessing.Process):
             sleep(1)
 
     @abstractmethod
-    def init_fastapi(self) -> FastAPI:
+    def _init_fastapi(self) -> FastAPI:
         pass
 
     def run(self):
         """Called with `multiprocessing.Process.start()`. Runs the uvicorn server."""
-        app = self.init_fastapi()
+        app = self._init_fastapi()
 
         @app.on_event("startup")
         async def startup_event():
@@ -73,7 +73,7 @@ class VessimApiServer(ApiServer):
         self.battery_grid_charge_log: Dict[str, float] = {}
         self.power_mode_log: Dict[str, Dict[str, str]] = {}
 
-    def init_fastapi(self) -> FastAPI:
+    def _init_fastapi(self) -> FastAPI:
         """Initializes the FastAPI application.
 
         Returns:
