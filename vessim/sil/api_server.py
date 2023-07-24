@@ -1,4 +1,5 @@
 import multiprocessing
+import json
 from time import sleep
 from datetime import datetime
 from typing import Optional, Dict
@@ -6,6 +7,8 @@ from typing import Optional, Dict
 import uvicorn  # type: ignore
 from fastapi import FastAPI, HTTPException  # type: ignore
 from pydantic import BaseModel  # type: ignore
+
+from vessim.sil.redis_docker import RedisDocker
 
 
 class ApiServer(multiprocessing.Process):
@@ -63,14 +66,7 @@ class VessimApiServer(ApiServer):
     """
 
     def __init__(self, host: str = "127.0.0.1", port: int = 8000) -> None:
-        self.solar: Optional[float] = None
-        self.ci: Optional[float] = None
-        self.battery_soc: Optional[float] = None
-
-        self.battery_min_soc_log: Dict[str, float] = {}
-        self.battery_grid_charge_log: Dict[str, float] = {}
-        self.power_mode_log: Dict[str, Dict[str, str]] = {}
-
+        self.redis_docker = RedisDocker()
         app = self._init_fastapi()
         super().__init__(app, host, port)
 
@@ -98,21 +94,36 @@ class VessimApiServer(ApiServer):
 
         @app.get("/api/solar", response_model=SolarModel)
         async def get_solar() -> SolarModel:
-            return SolarModel(solar=self.solar)
+            solar = self.redis_docker.redis.get("solar")
+            if solar is not None:
+                solar = float(solar)
+            return SolarModel(
+                solar=solar
+            )
 
         class CiModel(BaseModel):
             ci: Optional[float]
 
         @app.get("/api/ci", response_model=CiModel)
         async def get_ci() -> CiModel:
-            return CiModel(ci=self.ci)
+            ci = self.redis_docker.redis.get("ci")
+            if ci is not None:
+                ci = float(ci)
+            return CiModel(
+                ci=ci
+            )
 
         class BatterySocModel(BaseModel):
             battery_soc: Optional[float]
 
         @app.get("/api/battery-soc", response_model=BatterySocModel)
         async def get_battery_soc() -> BatterySocModel:
-            return BatterySocModel(battery_soc=self.battery_soc)
+            battery_soc = self.redis_docker.redis.get("battery_soc")
+            if battery_soc is not None:
+                battery_soc = float(battery_soc)
+            return BatterySocModel(
+                battery_soc=battery_soc
+            )
 
         # /sim/
 
@@ -124,14 +135,28 @@ class VessimApiServer(ApiServer):
         @app.get("/sim/collect-set", response_model=CollectSetModel)
         async def get_collect_set() -> CollectSetModel:
             model = CollectSetModel(
-                battery_min_soc=self.battery_min_soc_log,
-                battery_grid_charge=self.battery_grid_charge_log,
-                nodes_power_mode=self.power_mode_log
+                battery_min_soc=
+                    self._deserialize_redis_hash("battery_min_soc_log"),
+                battery_grid_charge=
+                    self._deserialize_redis_hash("battery_grid_charge_log"),
+                nodes_power_mode=
+                    self._deserialize_redis_hash("power_mode_log")
             )
-            self.battery_min_soc_log.clear()
-            self.battery_grid_charge_log.clear()
-            self.power_mode_log.clear()
+            self._delete_all_keys_in_hash("battery_min_soc_log")
+            self._delete_all_keys_in_hash("battery_grid_charge_log")
+            self._delete_all_keys_in_hash("power_mode_log")
             return model
+
+    def _deserialize_redis_hash(self, hash_name):
+        return {
+            key.decode(): json.loads(value.decode())
+            for key, value in self.redis_docker.redis.hgetall(hash_name).items()
+        }
+
+    def _delete_all_keys_in_hash(self, hash_name: str) -> None:
+        keys = self.redis_docker.redis.hkeys(hash_name)
+        for key in keys:
+            self.redis_docker.redis.hdel(hash_name, key)
 
     def _init_put_routes(self, app: FastAPI) -> None:
         """Initialize PUT routes for the FastAPI application.
@@ -148,8 +173,16 @@ class VessimApiServer(ApiServer):
         @app.put("/api/battery", response_model=BatteryModel)
         async def put_battery(battery: BatteryModel) -> BatteryModel:
             timestamp = datetime.now().isoformat()
-            self.battery_min_soc_log[timestamp] = battery.min_soc
-            self.battery_grid_charge_log[timestamp] = battery.grid_charge
+            self.redis_docker.redis.hset(
+                "battery_min_soc_log",
+                str(timestamp),
+                battery.min_soc
+            )
+            self.redis_docker.redis.hset(
+                "battery_grid_charge_log",
+                str(timestamp),
+                battery.grid_charge
+            )
             return battery
 
         class NodeModel(BaseModel):
@@ -166,7 +199,11 @@ class VessimApiServer(ApiServer):
                            f"Available power modes: {power_modes}"
             )
             timestamp = datetime.now().isoformat()
-            self.power_mode_log[timestamp] = {item_id: power_mode}
+            self.redis_docker.redis.hset(
+                "power_mode_log",
+                str(timestamp),
+                json.dumps({item_id: power_mode})
+            )
             return node
 
         # /sim/
@@ -178,8 +215,8 @@ class VessimApiServer(ApiServer):
 
         @app.put("/sim/update", response_model=UpdateModel)
         async def put_update(update: UpdateModel) -> UpdateModel:
-            self.solar = update.solar
-            self.ci = update.ci
-            self.battery_soc = update.battery_soc
+            self.redis_docker.redis.set("solar", update.solar)
+            self.redis_docker.redis.set("ci", update.ci)
+            self.redis_docker.redis.set("battery_soc", update.battery_soc)
             return update
 
