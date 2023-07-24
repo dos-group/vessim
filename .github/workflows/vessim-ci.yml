@@ -38,9 +38,9 @@ jobs:
       with:
         virtualenvs-create: false
     
-    # installs dependencies from pyproject.toml
+    # installs non-optional dependencies from pyproject.toml
     - name: Install dependencies
-      run: poetry install --with dev
+      run: poetry install
 
     # build package out of project, install it and run example scenario 
     - name: Build the project as a package
@@ -54,8 +54,10 @@ jobs:
         cd test
         pip install ../dist/*.whl
 
-    #- name: Run example scenario
-    #run: python examples/cosim_example.py
+    - name: Run example scenario
+      run: |
+        cd test
+        python examples/cosim_example.py
 
     # run type checker
     - name: Run type checker
