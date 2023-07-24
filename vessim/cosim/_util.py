@@ -1,6 +1,8 @@
+import sys
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Type, Dict, Any, Union
+from loguru import logger
 
 import mosaik_api  # type: ignore
 import pandas as pd
@@ -122,3 +124,34 @@ def simplify_inputs(attrs: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
     for key, val_dict in attrs.items():
         result[key] = list(val_dict.values())[0]
     return result
+
+
+def disable_mosaik_warnings(behind_threshold: float):
+    """Disables Mosaik's incorrect Loguru warnings.
+
+    Mosaik currently deems specific attribute connections as incorrect and logs
+    them as warnings. Also the simulation is always behind by a few fractions
+    of a second (which is fine, code needs time to execute) which Mosaik also
+    logs as a Warning. These Warnings are flagged as bugs in Mosaik's current
+    developement and should be fixed within its next release. Until then, this
+    function should do.
+
+    Args:
+        behind_threshold: Time the simulation is allowed to be behind schedule.
+    """
+    # Define a function to filter out WARNING level logs
+    def filter_record(record):
+        #print(record)
+        is_warning = record["level"].name == "WARNING"
+        is_mosaik_log = record["name"].startswith("mosaik")
+        is_attribute = record["function"] == "_check_attributes_values"
+        is_below_threshold = (
+            record["function"] == "rt_check" and
+            float(record["message"].split(' - ')[1].split('s')[0]) < behind_threshold
+        )
+        return not (is_warning and is_mosaik_log and (is_below_threshold or is_attribute))
+
+    # Add the filter to the logger
+    logger.remove()
+    logger.add(sys.stdout, filter=filter_record)
+
