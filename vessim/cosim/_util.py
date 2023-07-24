@@ -2,10 +2,10 @@ import sys
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Type, Dict, Any, Union
-from loguru import logger
 
 import mosaik_api  # type: ignore
 import pandas as pd
+from loguru import logger
 
 
 class VessimModel:

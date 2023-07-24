@@ -1,32 +1,8 @@
-from abc import ABC, abstractmethod
 from typing import Optional
 
+from vessim.core.consumer import PowerMeter
 from vessim.sil.http_client import HTTPClient
 from vessim.sil.stoppable_thread import StoppableThread
-
-
-class PowerMeter(ABC):
-    """Abstract base class for power meters.
-
-    Args:
-        name: The name of the power meter.
-    """
-
-    def __init__(self, name: Optional[str] = None):
-        self.name = name
-
-    @abstractmethod
-    def measure(self) -> float:
-        """Abstract method to measure and return the current node power demand.
-
-        Returns:
-            float: The current power demand of the node.
-        """
-        pass
-
-    @abstractmethod
-    def finalize(self) -> None:
-        pass
 
 
 class HttpPowerMeter(PowerMeter):
@@ -67,18 +43,3 @@ class HttpPowerMeter(PowerMeter):
         """Terminates the power update thread when the instance is finalized."""
         self.update_thread.stop()
         self.update_thread.join()
-
-
-class MockPowerMeter(PowerMeter):
-
-    def __init__(self, p: float, name: Optional[str] = None):
-        super().__init__(name)
-        assert p >= 0
-        self.p = p
-
-    def measure(self) -> float:
-        return self.p
-
-    def finalize(self) -> None:
-        pass
-
