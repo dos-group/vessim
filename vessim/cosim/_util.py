@@ -2,10 +2,10 @@ import sys
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Type, Dict, Any, Union
-from loguru import logger
 
 import mosaik_api  # type: ignore
 import pandas as pd
+from loguru import logger
 
 
 class VessimModel:
@@ -141,7 +141,6 @@ def disable_mosaik_warnings(behind_threshold: float):
     """
     # Define a function to filter out WARNING level logs
     def filter_record(record):
-        #print(record)
         is_warning = record["level"].name == "WARNING"
         is_mosaik_log = record["name"].startswith("mosaik")
         is_attribute = record["function"] == "_check_attributes_values"
@@ -154,4 +153,3 @@ def disable_mosaik_warnings(behind_threshold: float):
     # Add the filter to the logger
     logger.remove()
     logger.add(sys.stdout, filter=filter_record)
-
