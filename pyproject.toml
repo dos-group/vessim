@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "vessim"
-version = "0.1.0"
-description = "co-simulation testbed for carbon-aware applications and systems"
-keywords = ["simulation", "energy system", "testbed", "carbon-aware"]
+version = "0.2.0"
+description = "A simulator for carbon-aware applications and systems."
+keywords = ["simulation", "energy system", "testbed", "carbon-aware computing", "software-in-the-loop"]
 authors = ["Philipp Wiesner <wiesner@tu-berlin.de>"]
 readme = "README.md"
 license = "MIT"
@@ -30,10 +30,24 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.8"
+# Mandatory dependencies
 pandas = "*"
 mosaik = "*"
 mosaik-api = "*"
 loguru = "*"
+# Optional dependencies (software-in-the-loop)
+requests = {version = "*", optional = true}
+fastapi = {version = "*", optional = true}
+docker = {version = "*", optional = true}
+uvicorn = {version = "*", optional = true}
+# Optional dependencies (analysis)
+jupyterlab = {version = "*", optional = true}
+matplotlib = {version = "*", optional = true}
+seaborn = {version = "0.12.2", optional = true}
+
+[tool.poetry.extras]
+sil = ["requests", "fastapi", "docker", "uvicorn"]
+analysis = ["jupyterlab", "matplotlib", "seaborn"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
@@ -43,23 +57,6 @@ pandas-stubs = "*"
 types-requests = "*"
 black = "*"
 ruff = "*"
-
-[tool.poetry.group.sil]
-optional = true
-
-[tool.poetry.group.sil.dependencies]
-requests = "*"
-fastapi = "*"
-docker = "*"
-uvicorn = "*"
-
-[tool.poetry.group.analysis]
-optional = true
-
-[tool.poetry.group.analysis.dependencies]
-jupyterlab = "*"
-matplotlib = "*"
-seaborn = "0.12.2"
 
 [build-system]
 requires = ["poetry-core>=1.1.0"]
