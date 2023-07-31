@@ -15,7 +15,7 @@ class ApiServer(multiprocessing.Process):
     """Process that runs a given FastAPI application with a uvicorn server.
 
     Args:
-        api_type: .
+        api_type: The type of the class containing the app to be executed.
         host: The host address, defaults to '127.0.0.1'.
         port: The port to run the FastAPI application, defaults to 8000.
     """
