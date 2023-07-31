@@ -6,17 +6,17 @@ Runs a fully simulated example scenario over the course of two days.
 import mosaik  # type: ignore
 
 from examples._data import load_carbon_data, load_solar_data
+from vessim.core.consumer import ComputingSystem, MockPowerMeter
 from vessim.core.microgrid import SimpleMicrogrid
 from vessim.core.simulator import Generator, CarbonApi
 from vessim.core.storage import SimpleBattery
-from vessim.sil.power_meter import MockPowerMeter  # TODO PowerMeter should not be in sil
 
 COSIM_CONFIG = {
     "Microgrid": {
         "python": "vessim.cosim:MicrogridSim"
     },
-    "ComputingSystem": {
-        "python": "vessim.cosim:ComputingSystemSim",
+    "Consumer": {
+        "python": "vessim.cosim:ConsumerSim",
     },
     "Generator": {
         "python": "vessim.cosim:GeneratorSim",
@@ -40,9 +40,10 @@ def run_simulation():
     world = mosaik.World(COSIM_CONFIG)
 
     # Initialize computing system
-    computing_system_sim = world.start('ComputingSystem', step_size=60)
-    computing_system = computing_system_sim.ComputingSystem(
-        power_meters=[MockPowerMeter(p=10)])
+    consumer_sim = world.start('Consumer', step_size=60)
+    computing_system = consumer_sim.Consumer(
+        consumer=ComputingSystem(power_meters=[MockPowerMeter(p=10)])
+    )
 
     # Initialize solar generator
     solar_sim = world.start("Generator", sim_start=SIM_START)

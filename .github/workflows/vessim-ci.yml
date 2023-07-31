@@ -1,9 +1,11 @@
 name: CI
 
 # event that triggers workflow
-# here when a "push" is made
+# runs on every pull request
 on: 
-  push:
+  pull_request:
+    branches:
+      - main
 
 jobs:
   linting-and-testing:
@@ -29,16 +31,36 @@ jobs:
         JUPYTER_PLATFORM_DIRS: 1
       run: |
         echo "JUPYTER_PLATFORM_DIRS=${JUPYTER_PLATFORM_DIRS}" >> $GITHUB_ENV   
-
-    # installs dependencies from requirements.txt
-    - name: Install dependencies
-      run: pip install ".[dev]"
     
-    # run type checker on Python files
+    # installs poetry without automatic creation of a virtual environment
+    - name: Install poetry
+      uses: snok/install-poetry@v1
+      with:
+        virtualenvs-create: false
+    
+    # installs non-optional dependencies from pyproject.toml
+    - name: Install dependencies
+      run: poetry install
+
+    # build package out of project, install it and run example scenario 
+    - name: Build the project as a package
+      run: poetry build
+
+    - name: Create a directory called "test"
+      run: mkdir test
+
+    - name: Install the package in the "test" directory
+      run: |
+        cd test
+        pip install ../dist/*.whl
+
+        #- name: Run example scenario
+
+    # run type checker
     - name: Run type checker
       run: mypy vessim
 
-    # run ruff on Python files
+    # run ruff
     - name: Run linter
       run: ruff .
         
