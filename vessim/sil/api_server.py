@@ -1,9 +1,8 @@
 import multiprocessing
 import json
 from time import sleep
-from abc import abstractmethod
 from datetime import datetime
-from typing import Optional, Dict
+from typing import Optional, Dict, Type
 
 import uvicorn  # type: ignore
 from fastapi import FastAPI, HTTPException  # type: ignore
@@ -16,13 +15,14 @@ class ApiServer(multiprocessing.Process):
     """Process that runs a given FastAPI application with a uvicorn server.
 
     Args:
-        app: FastAPI, the FastAPI application to run
+        api_type: .
         host: The host address, defaults to '127.0.0.1'.
         port: The port to run the FastAPI application, defaults to 8000.
     """
 
-    def __init__(self, host: str = "127.0.0.1", port: int = 8000) -> None:
+    def __init__(self, api_type: Type, host: str = "127.0.0.1", port: int = 8000) -> None:
         super().__init__()
+        self.api_type = api_type
         self.host = host
         self.port = port
         self.startup_complete = multiprocessing.Value('b', False)
@@ -37,20 +37,16 @@ class ApiServer(multiprocessing.Process):
         while not self.startup_complete.value:
             sleep(1)
 
-    @abstractmethod
-    def _init_fastapi(self) -> FastAPI:
-        pass
-
     def run(self):
         """Called with `multiprocessing.Process.start()`. Runs the uvicorn server."""
-        app = self._init_fastapi()
+        api = self.api_type()
 
-        @app.on_event("startup")
+        @api.app.on_event("startup")
         async def startup_event():
             self.startup_complete.value = True
 
         config = uvicorn.Config(
-            app=self.app,
+            app=api.app,
             host=self.host,
             port=self.port,
             access_log=False
@@ -59,29 +55,23 @@ class ApiServer(multiprocessing.Process):
         server.run()
 
 
-class VessimApiServer(ApiServer):
-    """Specialized ApiServer class for the Vessim API.
+class VessimApi:
+    """Specialized Vessim API to be executed in a different process.
 
-    Inherits from ApiServer class and extends it by adding specific attributes
-    related to Vessim API and methods to initialize FastAPI application with
-    specific routes.
+    Initializes a FastAPI instance with specific routes related to the Vessim API.
+    This app is very specific for the use case of the vessim vision paper:
+    https://arxiv.org/pdf/2306.09774.pdf
 
-    Args:
-        host: The host address.
-        port: The port to run the FastAPI application.
+    Attributes:
+        app: The FastApi instance to be runned.
     """
 
-    def __init__(self, host: str = "127.0.0.1", port: int = 8000) -> None:
+    def __init__(self) -> None:
         self.redis_docker = RedisDocker()
-        app = self._init_fastapi()
-        super().__init__(app, host, port)
+        self.app = self._init_fastapi()
 
     def _init_fastapi(self) -> FastAPI:
-        """Initializes the FastAPI application.
-
-        Returns:
-            FastAPI: The initialized FastAPI application.
-        """
+        """Initializes the FastAPI application."""
         app = FastAPI()
         self._init_get_routes(app)
         self._init_put_routes(app)
