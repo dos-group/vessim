@@ -120,7 +120,7 @@ class ComputingSystem(Consumer):
         pue: The power usage effectiveness of the system.
     """
 
-    def __init__(self, power_meters: List[PowerMeter], pue: float = 1):
+    def __init__(self, power_meters: list[PowerMeter], pue: float = 1):
         self.power_meters = power_meters
         self.pue = pue
 

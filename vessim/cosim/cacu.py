@@ -9,7 +9,7 @@ class CacuSim(VessimSimulator):
     META = {
         "type": "time-based",
         "models": {
-            "Consumer": {
+            "Cacu": {
                 "public": True,
                 "any_inputs": True,
                 "params": ["mock_power_meters", "storage"],
