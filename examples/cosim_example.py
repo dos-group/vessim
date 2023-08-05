@@ -51,7 +51,7 @@ def run_simulation():
     )
 
     # Initialize carbon-aware control unit
-    cacu_sim = world.start("Cacu")
+    cacu_sim = world.start("Cacu", step_size=60)
     cacu = cacu_sim.Cacu(mock_power_meters=mock_power_meters, storage=STORAGE)
 
     # Initialize solar generator

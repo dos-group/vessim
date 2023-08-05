@@ -1,4 +1,4 @@
-from vessim.cosim._util import VessimSimulator, VessimModel
+from vessim.cosim._util import VessimSimulator, VessimModel, simplify_inputs
 from vessim.core.consumer import MockPowerMeter
 from vessim.core.storage import Storage
 
@@ -49,6 +49,7 @@ class _CacuModel(VessimModel):
 
     def step(self, time: int, inputs: dict) -> None:
         """Performs a time step in the model."""
+        inputs = simplify_inputs(inputs)
         if time < 60 * 5:
             self.storage.min_soc = .3
         else:
