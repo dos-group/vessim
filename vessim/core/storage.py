@@ -5,7 +5,6 @@ from loguru import logger
 
 
 class Storage(ABC):
-
     @abstractmethod
     def update(self, power: float, duration: int) -> float:
         """Feed or draw energy for specified duration.
@@ -36,11 +35,13 @@ class SimpleBattery(Storage):
         c_rate: C-rate (https://www.batterydesign.net/electrical/c-rate/)
     """
 
-    def __init__(self,
-                 capacity: float,
-                 charge_level: float = 0,
-                 min_soc: float = 0,
-                 c_rate: Optional[float] = None):
+    def __init__(
+        self,
+        capacity: float,
+        charge_level: float = 0,
+        min_soc: float = 0,
+        c_rate: Optional[float] = None,
+    ):
         self.capacity = capacity
         assert 0 <= charge_level <= self.capacity
         self.charge_level = charge_level
@@ -54,14 +55,18 @@ class SimpleBattery(Storage):
         if self.c_rate is not None:
             max_rate = self.c_rate * self.capacity / 3600
             if power >= max_rate:
-                logger.info(f"Trying to charge storage '{self.__class__.__name__}' with "
-                            f"{power} W but only {max_rate} W are supported.")
+                logger.info(
+                    f"Trying to charge storage '{self.__class__.__name__}' with "
+                    f"{power} W but only {max_rate} W are supported."
+                )
                 max_charge_p_delta = power - max_rate
                 power = max_rate
 
             if power <= -max_rate:
-                logger.info(f"Trying to discharge storage '{self.__class__.__name__}' "
-                            f"with {power} W but only {max_rate} W are supported.")
+                logger.info(
+                    f"Trying to discharge storage '{self.__class__.__name__}' "
+                    f"with {power} W but only {max_rate} W are supported."
+                )
                 max_charge_p_delta = power + max_rate
                 power = -self.c_rate
 
@@ -85,29 +90,29 @@ class SimpleBattery(Storage):
 
 
 class StoragePolicy(ABC):
-
     @abstractmethod
     def apply(self, storage: Storage, p_delta: float, time_since_last_step: int) -> float:
         """(Dis)charge the storage according to the policy."""
 
 
 class DefaultStoragePolicy(StoragePolicy):
+    """Storage policy which tries to (dis)charge as much of the delta as possible.
+
+    Args:
+        grid_power: If not 0, the battery is in "charge mode" and will draw the
+            provided power from the grid. In this case, the delta simply returned
+            together with the demand for charging.
+    """
 
     def __init__(self, grid_power: float = 0):
-        """Storage policy which tries to (dis)charge as much of the delta as possible.
-
-        Args:
-            grid_power: If not 0, the battery is in "charge mode" and will draw the
-                provided power from the grid. In this case, the delta simply returned
-                together with the demand for charging.
-        """
         self.grid_power = grid_power
 
     def apply(self, storage: Storage, p_delta: float, time_since_last_step: int) -> float:
         if self.grid_power == 0:
             return storage.update(power=p_delta, duration=time_since_last_step)
         else:
-            excess_energy = storage.update(power=self.grid_power,
-                                           duration=time_since_last_step)
-            real_charge_power = self.grid_power - excess_energy / time_since_last_step
+            excess_energy = storage.update(
+                power=self.grid_power, duration=time_since_last_step
+            )
+            real_charge_power = self.grid_power - excess_energy
             return p_delta - real_charge_power
