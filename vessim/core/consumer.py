@@ -93,7 +93,7 @@ class MockPowerMeter(PowerMeter):
         if power_mode not in self.power_modes:
             raise ValueError(
                 f"{power_mode} is not a valid power mode. "
-                "Available power modes: {power_modes}"
+                "Available power modes: {self.power_modes}"
             )
         self.power_mode = power_mode
 
