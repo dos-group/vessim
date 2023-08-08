@@ -5,7 +5,6 @@ from vessim.core.storage import Storage, StoragePolicy, DefaultStoragePolicy
 
 
 class Microgrid(ABC):
-
     @abstractmethod
     def power_flow(self, p: Dict[str, float], duration: int) -> float:
         """Calculates the microgrids power flow.
@@ -20,10 +19,9 @@ class Microgrid(ABC):
 
 
 class SimpleMicrogrid(Microgrid):
-
-    def __init__(self,
-                 storage: Optional[Storage] = None,
-                 policy: Optional[StoragePolicy] = None):
+    def __init__(
+        self, storage: Optional[Storage] = None, policy: Optional[StoragePolicy] = None
+    ):
         """Simply aggregates all supplied and demanded power.
 
         Args:

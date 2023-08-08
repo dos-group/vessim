@@ -50,6 +50,9 @@ class SimpleBattery(Storage):
         self.c_rate = c_rate
 
     def update(self, power: float, duration: int) -> float:
+        if duration <= 0.0:
+            raise ValueError("Duration needs to be a positive value")
+
         max_charge_p_delta, p_delta = 0.0, 0.0
 
         if self.c_rate is not None:
