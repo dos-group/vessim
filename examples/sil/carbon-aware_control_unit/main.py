@@ -1,5 +1,5 @@
 import argparse
-from carbon_aware_control_unit import CarbonAwareControlUnit
+from cacu import CarbonAwareControlUnit
 
 
 def argparser() -> argparse.ArgumentParser:

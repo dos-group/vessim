@@ -26,6 +26,9 @@ COSIM_CONFIG = {
     },
     "Monitor": {
         "python": "vessim.cosim:MonitorSim",
+    },
+    "Cacu": {
+        "python": "vessim.cosim:CacuSim",
     }
 }
 SIM_START = "2020-06-11 00:00:00"
@@ -39,11 +42,17 @@ STORAGE = SimpleBattery(capacity=10 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
 def run_simulation():
     world = mosaik.World(COSIM_CONFIG)
 
+    mock_power_meters = [MockPowerMeter(p=10)]
+
     # Initialize computing system
-    consumer_sim = world.start('Consumer', step_size=60)
+    consumer_sim = world.start("Consumer", step_size=60)
     computing_system = consumer_sim.Consumer(
-        consumer=ComputingSystem(power_meters=[MockPowerMeter(p=10)])
+        consumer=ComputingSystem(power_meters=mock_power_meters)
     )
+
+    # Initialize carbon-aware control unit
+    cacu_sim = world.start("Cacu", step_size=60)
+    cacu = cacu_sim.Cacu(mock_power_meters=mock_power_meters, storage=STORAGE)
 
     # Initialize solar generator
     solar_sim = world.start("Generator", sim_start=SIM_START)
@@ -53,6 +62,9 @@ def run_simulation():
     carbon_api_sim = world.start("CarbonApi", sim_start=SIM_START,
                                  carbon_api=CarbonApi(data=load_carbon_data()))
     carbon_api_de = carbon_api_sim.CarbonApi(zone="DE")
+
+    # Connect ci to cacu
+    world.connect(carbon_api_de, cacu, ("carbon_intensity", "ci"))
 
     # Connect consumers and producers to microgrid
     microgrid_sim = world.start("Microgrid")
