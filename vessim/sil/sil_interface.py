@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from vessim.core.storage import Storage, DefaultStoragePolicy, StoragePolicy
 from vessim.cosim._util import VessimSimulator, VessimModel, simplify_inputs
-from vessim.sil.api_server import VessimApiServer
+from vessim.sil.api_server import ApiServer, VessimApi
 from vessim.sil.http_client import HTTPClient, HTTPClientError
 from vessim.sil.node import Node
 from vessim.sil.stoppable_thread import StoppableThread
@@ -88,7 +88,7 @@ class _SilInterfaceModel(VessimModel):
         self.ci = 0
 
         # start server process
-        self.api_server = VessimApiServer(api_host, api_port)
+        self.api_server = ApiServer(VessimApi, api_host, api_port)
         self.api_server.start()
         self.api_server.wait_for_startup_complete()
 
