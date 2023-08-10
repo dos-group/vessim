@@ -16,7 +16,7 @@ class TestCarbonApi:
         data = pd.DataFrame({"a": [1, 2, 3], "b": [0, 3, 0]}, index=index)
         return CarbonApi(data)
 
-    def test_initialize_with_unsupported_unit(self):
+    def test_initialize_fails_if_unit_unsupported(self):
         with pytest.raises(ValueError):
             CarbonApi(pd.DataFrame(), unit="unsupported_unit")
 

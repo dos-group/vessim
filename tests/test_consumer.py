@@ -12,11 +12,11 @@ class TestMockPowerMeter:
             "power-saving": .4
         })
 
-    def test_invalid_p_value(self):
+    def test_initialize_fails_with_invalid_p_value(self):
         with pytest.raises(ValueError):
             MockPowerMeter(p=-1.0)
 
-    def test_invalid_power_config(self):
+    def test_initialize_fails_with_invalid_power_config(self):
         with pytest.raises(ValueError):
             MockPowerMeter(p=10, power_config={
                 "high performance": 1,
@@ -29,11 +29,11 @@ class TestMockPowerMeter:
                 "power-saving": 0.5
             })
 
-    def test_set_invalid_power_mode(self, power_meter):
+    def test_set_power_mode_fails_with_invalid_power_mode(self, power_meter):
         with pytest.raises(ValueError):
             power_meter.set_power_mode("invalid_mode")
 
-    def test_power_modes(self, power_meter):
+    def test_measure(self, power_meter):
         assert power_meter.measure() == 20.0
         power_meter.set_power_mode("normal")
         assert power_meter.measure() == 16.0

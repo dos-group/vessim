@@ -28,7 +28,7 @@ class TestSimpleMicrogrid:
     def test_power_flow(self, microgrid, power_values):
         assert microgrid.power_flow(power_values, 10) == -5
 
-    def test_power_flow_storage(self, microgrid_battery, power_values):
+    def test_power_flow_with_storage(self, microgrid_battery, power_values):
         p_delta = microgrid_battery.power_flow(power_values, 10)
         assert p_delta == 0
         assert microgrid_battery.storage.charge_level == 30

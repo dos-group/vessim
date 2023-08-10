@@ -17,10 +17,6 @@ class TestSimpleBattery:
     def test_soc(self, battery):
         assert battery.soc() == 0.8
 
-    def test_update_negative_duration(self, battery):
-        with pytest.raises(ValueError):
-            battery.update(10, -5)
-
     @pytest.mark.parametrize("power, duration, exp_delta, exp_charge_level", [
         # No charge
         (0, 1000, 0, 80),
@@ -65,6 +61,10 @@ class TestSimpleBattery:
         assert delta == exp_delta
         assert battery_c.charge_level == exp_charge_level
 
+    def test_update_fails_if_duration_not_positive(self, battery):
+        with pytest.raises(ValueError):
+            battery.update(10, -5)
+
 
 class TestDefaultStoragePolicy:
 
@@ -95,7 +95,6 @@ class TestDefaultStoragePolicy:
     def test_apply_no_charge_mode(
         self, battery, policy, power, duration, exp_delta,exp_charge_level
     ):
-        # Test when the battery is not in charge mode
         delta = policy.apply(
             storage=battery, p_delta=power, time_since_last_step=duration
         )
@@ -122,7 +121,6 @@ class TestDefaultStoragePolicy:
     def test_apply_charge(
         self, battery, policy_charge, power, duration, exp_delta, exp_charge_level
     ):
-        # Test when the battery is in charge mode
         delta = policy_charge.apply(
             storage=battery, p_delta=power, time_since_last_step=duration
         )
@@ -149,7 +147,6 @@ class TestDefaultStoragePolicy:
     def test_apply_discharge(
         self, battery, policy_discharge, power, duration, exp_delta, exp_charge_level
     ):
-        # Test when the battery is in charge mode
         delta = policy_discharge.apply(
             storage=battery, p_delta=power, time_since_last_step=duration
         )
