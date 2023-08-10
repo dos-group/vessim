@@ -17,6 +17,10 @@ class TestSimpleBattery:
     def test_soc(self, battery):
         assert battery.soc() == 0.8
 
+    def test_update_negative_duration(self, battery):
+        with pytest.raises(ValueError):
+            battery.update(10, -5)
+
     @pytest.mark.parametrize("power, duration, exp_delta, exp_charge_level", [
         # No charge
         (0, 1000, 0, 80),

@@ -19,11 +19,10 @@ class PowerMeter(ABC):
         Returns:
             float: The current power demand of the node.
         """
-        pass
 
     @abstractmethod
     def finalize(self) -> None:
-        pass
+        """Perform necessary finalization tasks of specific power meter."""
 
 
 class MockPowerMeter(PowerMeter):
@@ -33,22 +32,26 @@ class MockPowerMeter(PowerMeter):
     modes. The power meter supports different power modes that are: 'high
     performance', 'normal', and 'power-saving'.
 
+    Args:
+        name: The name of the power meter.
+        p: Base factor for the measured power value. It is scaled by the consumption
+            factors in the different power modes specified in the power config.
+        power_config: A dictionary mapping power modes to their respective
+            consumption factors, defaults to
+            {"high performance": 1, "normal": .7, "power-saving": .5}.
+
     Raises:
         ValueError: If p is less than 0.
         ValueError: If the power modes in `power_config` are not 'power-saving',
             'normal', and 'high performance'.
 
     Attributes:
-        p: A factor to modify the measured power value.
-        power_mode: The current power mode, default is 'high performance'.
-        power_config: A dictionary mapping power modes to their respective
-            consumption factors, defaults to
-            {"high performance": 1, "normal": .7, "power-saving": .5}.
-
+        power_mode: The current power mode, initialized as 'high performance'.
     """
 
     def __init__(
-        self, p: float,
+        self,
+        p: float,
         name: Optional[str] = None,
         power_config: dict[str, float] = {
             "high performance": 1,
@@ -93,19 +96,25 @@ class MockPowerMeter(PowerMeter):
         if power_mode not in self.power_modes:
             raise ValueError(
                 f"{power_mode} is not a valid power mode. "
-                "Available power modes: {self.power_modes}"
+                f"Available power modes: {self.power_modes}"
             )
         self.power_mode = power_mode
 
 
 class Consumer(ABC):
+    """Abstract base class representing a consumer of power."""
 
     @abstractmethod
     def consumption(self) -> float:
-        pass
+        """Calculates and returns the power consumption of the consumer."""
 
+    @abstractmethod
     def finalize(self) -> None:
-        pass
+        """Perform any finalization tasks for the consumer.
+
+        This method should be overridden by subclasses to implement necessary
+        finalization steps.
+        """
 
 
 class ComputingSystem(Consumer):
