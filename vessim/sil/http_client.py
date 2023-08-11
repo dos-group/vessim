@@ -11,8 +11,9 @@ class HttpClient:
             e.g. http://localhost
     """
 
-    def __init__(self, server_address: str) -> None:
+    def __init__(self, server_address: str, timeout: float = 5) -> None:
         self.server_address = server_address
+        self.timeout = timeout
 
     def get(self, route: str) -> dict:
         """Sends a GET request to the server and retrieves data.
@@ -26,7 +27,7 @@ class HttpClient:
         Returns:
             A dictionary containing the response.
         """
-        response = requests.get(self.server_address + route)
+        response = requests.get(self.server_address + route, timeout=self.timeout)
         if response.status_code != 200:
             response.raise_for_status()
         data = response.json() # assuming the response data is in JSON format
@@ -46,7 +47,8 @@ class HttpClient:
         response = requests.put(
             self.server_address + route,
             data=json.dumps(data),
-            headers=headers
+            headers=headers,
+            timeout=self.timeout
         )
         if response.status_code != 200:
             response.raise_for_status()
