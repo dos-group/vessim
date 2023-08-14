@@ -1,6 +1,6 @@
 from vessim.cosim._util import VessimSimulator, VessimModel, simplify_inputs
 from vessim.core.consumer import MockPowerMeter
-from vessim.core.storage import Storage
+from vessim.core.storage import Storage, StoragePolicy
 
 
 class CacuSim(VessimSimulator):
@@ -12,7 +12,7 @@ class CacuSim(VessimSimulator):
             "Cacu": {
                 "public": True,
                 "any_inputs": True,
-                "params": ["mock_power_meters", "storage"],
+                "params": ["mock_power_meters", "storage", "policy"],
                 "attrs": [],
             },
         },
@@ -43,23 +43,34 @@ class _CacuModel(VessimModel):
         storage: A storage object used in the model.
     """
 
-    def __init__(self, mock_power_meters: list[MockPowerMeter], storage: Storage):
+    def __init__(
+        self,
+        mock_power_meters: list[MockPowerMeter],
+        storage: Storage,
+        policy: StoragePolicy
+    ):
         self.mock_power_meters = mock_power_meters
         self.storage = storage
+        self.policy = policy
 
     def step(self, time: int, inputs: dict) -> None:
         """Performs a time step in the model."""
         inputs = simplify_inputs(inputs)
-        if time < 60 * 5:
+        if time < 3600 * 48 * 0.73:
             self.storage.min_soc = .3
         else:
             self.storage.min_soc = .6
 
+        if inputs["ci"] <= 200 and self.storage.soc() < .6:
+            self.policy.grid_power = 20
+        else:
+            self.policy.grid_power = 0
+
         for power_meter in self.mock_power_meters:
             if inputs["ci"] <= 200 or self.storage.soc() > .8:
                 power_meter.set_power_mode("high performance")
-            elif inputs["ci"] >= 250 and self.storage.soc() < self.storage.min_soc:
-                power_meter.set_power_mode("normal")
-            else:
+            elif inputs["ci"] >= 250 and self.storage.soc() < .6:
                 power_meter.set_power_mode("power-saving")
+            else:
+                power_meter.set_power_mode("normal")
 
