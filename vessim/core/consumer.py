@@ -36,6 +36,7 @@ class MockPowerMeter(PowerMeter):
         name: The name of the power meter.
         p: Base factor for the measured power value. It is scaled by the consumption
             factors in the different power modes specified in the power config.
+        power_mode: The current power mode, defaults to 'high performance'.
         power_config: A dictionary mapping power modes to their respective
             consumption factors, defaults to
             {"high performance": 1, "normal": .7, "power-saving": .5}.
@@ -44,15 +45,13 @@ class MockPowerMeter(PowerMeter):
         ValueError: If p is less than 0.
         ValueError: If the power modes in `power_config` are not 'power-saving',
             'normal', and 'high performance'.
-
-    Attributes:
-        power_mode: The current power mode, initialized as 'high performance'.
     """
 
     def __init__(
         self,
         p: float,
         name: Optional[str] = None,
+        power_mode: str = "high performance",
         power_config: dict[str, float] = {
             "high performance": 1,
             "normal": .7,
@@ -64,7 +63,9 @@ class MockPowerMeter(PowerMeter):
             raise ValueError("p must not be less than 0")
         self.p = p
         self.power_modes = {"power-saving", "normal", "high performance"}
-        self.power_mode = "high performance"
+        self.power_mode = power_mode
+        if power_mode not in self.power_modes:
+            raise ValueError(f"power_mode must be one of {self.power_modes}")
         if set(power_config.keys()) != self.power_modes:
             raise ValueError(f"power_config keys must be exactly {self.power_modes}")
         self.power_config = power_config

@@ -16,6 +16,10 @@ class TestMockPowerMeter:
         with pytest.raises(ValueError):
             MockPowerMeter(p=-1.0)
 
+    def test_initialize_fails_with_invalid_power_mode(self):
+        with pytest.raises(ValueError):
+            MockPowerMeter(p=10, power_mode="invalid_mode")
+
     def test_initialize_fails_with_invalid_power_config(self):
         with pytest.raises(ValueError):
             MockPowerMeter(p=10, power_config={
