@@ -56,7 +56,7 @@ class _CacuModel(VessimModel):
     def step(self, time: int, inputs: dict) -> None:
         """Performs a time step in the model."""
         inputs = simplify_inputs(inputs)
-        if time < 3600 * 48 * 0.73:
+        if time < 3600 * 36:
             self.storage.min_soc = .3
         else:
             self.storage.min_soc = .6
