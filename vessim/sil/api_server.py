@@ -1,5 +1,8 @@
 import multiprocessing
+import os
+import signal
 import json
+from abc import abstractmethod
 from time import sleep
 from datetime import datetime
 from typing import Optional, Dict, Type
@@ -55,7 +58,27 @@ class ApiServer(multiprocessing.Process):
         server.run()
 
 
-class VessimApi:
+class SilApi:
+    """Base class for the API running on the ApiServer in different process.
+
+    Attributes:
+        app: The FastApi instance to be runned.
+    """
+    def __init__(self) -> None:
+        self.app = FastAPI()
+        # Endpoint for shutdown of process and cleanup
+        @self.app.post("/shutdown")
+        async def shutdown_server():
+            self.finalize()
+            os.kill(os.getpid(), signal.SIGINT)
+            return {"message": "Shutting down server"}
+
+    @abstractmethod
+    def finalize(self) -> None:
+        """Complete necessary cleanup tasks."""
+
+
+class VessimApi(SilApi):
     """Specialized Vessim API to be executed in a different process.
 
     Initializes a FastAPI instance with specific routes related to the Vessim API.
@@ -67,15 +90,13 @@ class VessimApi:
     """
 
     def __init__(self) -> None:
+        super().__init__()
         self.redis_docker = RedisDocker()
-        self.app = self._init_fastapi()
+        self._init_get_routes(self.app)
+        self._init_put_routes(self.app)
 
-    def _init_fastapi(self) -> FastAPI:
-        """Initializes the FastAPI application."""
-        app = FastAPI()
-        self._init_get_routes(app)
-        self._init_put_routes(app)
-        return app
+    def finalize(self) -> None:
+        self.redis_docker.__del__()
 
     def _init_get_routes(self, app: FastAPI) -> None:
         """Initializes GET routes for a FastAPI.
