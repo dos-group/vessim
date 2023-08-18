@@ -28,7 +28,7 @@ COSIM_SIL_CONFIG = {
 }
 RT_FACTOR = 1/60  # 1 wall-clock second ^= 60 sim seconds
 
-GCP_ADDRESS = "http://34.159.232.190"
+GCP_ADDRESS = "http://35.198.148.144"
 RASPI_ADDRESS = "http://192.168.207.71"
 
 disable_mosaik_warnings(behind_threshold=0.01)

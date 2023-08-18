@@ -1,14 +1,12 @@
 import multiprocessing
-import os
-import signal
 import json
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from time import sleep
 from datetime import datetime
 from typing import Optional, Dict, Type
 
 import uvicorn  # type: ignore
-from fastapi import FastAPI, HTTPException  # type: ignore
+from fastapi import FastAPI, HTTPException# type: ignore
 from pydantic import BaseModel  # type: ignore
 
 from vessim.sil.redis_docker import RedisDocker
@@ -58,20 +56,22 @@ class ApiServer(multiprocessing.Process):
         server.run()
 
 
-class SilApi:
+class SilApi(ABC):
     """Base class for the API running on the ApiServer in different process.
+
+    Initializes a FastApi instance with an endpoint `/shutdown` for executing
+    necessary cleanup tasks of the child process running the API.
 
     Attributes:
         app: The FastApi instance to be runned.
     """
+
     def __init__(self) -> None:
         self.app = FastAPI()
-        # Endpoint for shutdown of process and cleanup
-        @self.app.post("/shutdown")
+
+        @self.app.put("/shutdown")
         async def shutdown_server():
             self.finalize()
-            os.kill(os.getpid(), signal.SIGINT)
-            return {"message": "Shutting down server"}
 
     @abstractmethod
     def finalize(self) -> None:
