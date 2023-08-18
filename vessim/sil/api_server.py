@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Optional, Dict, Type
 
 import uvicorn  # type: ignore
-from fastapi import FastAPI, HTTPException# type: ignore
+from fastapi import FastAPI, HTTPException  # type: ignore
 from pydantic import BaseModel  # type: ignore
 
 from vessim.sil.redis_docker import RedisDocker
@@ -50,7 +50,7 @@ class ApiServer(multiprocessing.Process):
         self.api_type = api_type
         self.host = host
         self.port = port
-        self.startup_complete = multiprocessing.Value('b', False)
+        self.startup_complete = multiprocessing.Value("b", False)
 
     def wait_for_startup_complete(self):
         """Waiting for completion of startup process.
@@ -71,10 +71,7 @@ class ApiServer(multiprocessing.Process):
             self.startup_complete.value = True
 
         config = uvicorn.Config(
-            app=api.app,
-            host=self.host,
-            port=self.port,
-            access_log=False
+            app=api.app, host=self.host, port=self.port, access_log=False
         )
         server = uvicorn.Server(config=config)
         server.run()
@@ -117,9 +114,7 @@ class VessimApi(SilApi):
             solar = self.redis_docker.redis.get("solar")
             if solar is not None:
                 solar = float(solar)
-            return SolarModel(
-                solar=solar
-            )
+            return SolarModel(solar=solar)
 
         class CiModel(BaseModel):
             ci: Optional[float]
@@ -129,9 +124,7 @@ class VessimApi(SilApi):
             ci = self.redis_docker.redis.get("ci")
             if ci is not None:
                 ci = float(ci)
-            return CiModel(
-                ci=ci
-            )
+            return CiModel(ci=ci)
 
         class BatterySocModel(BaseModel):
             battery_soc: Optional[float]
@@ -141,9 +134,7 @@ class VessimApi(SilApi):
             battery_soc = self.redis_docker.redis.get("battery_soc")
             if battery_soc is not None:
                 battery_soc = float(battery_soc)
-            return BatterySocModel(
-                battery_soc=battery_soc
-            )
+            return BatterySocModel(battery_soc=battery_soc)
 
         # /sim/
 
@@ -155,12 +146,11 @@ class VessimApi(SilApi):
         @app.get("/sim/collect-set", response_model=CollectSetModel)
         async def get_collect_set() -> CollectSetModel:
             model = CollectSetModel(
-                battery_min_soc=
-                    self._deserialize_redis_hash("battery_min_soc_log"),
-                battery_grid_charge=
-                    self._deserialize_redis_hash("battery_grid_charge_log"),
-                nodes_power_mode=
-                    self._deserialize_redis_hash("power_mode_log")
+                battery_min_soc=self._deserialize_redis_hash("battery_min_soc_log"),
+                battery_grid_charge=self._deserialize_redis_hash(
+                    "battery_grid_charge_log"
+                ),
+                nodes_power_mode=self._deserialize_redis_hash("power_mode_log"),
             )
             self._delete_all_keys_in_hash("battery_min_soc_log")
             self._delete_all_keys_in_hash("battery_grid_charge_log")
@@ -194,14 +184,10 @@ class VessimApi(SilApi):
         async def put_battery(battery: BatteryModel) -> BatteryModel:
             timestamp = datetime.now().isoformat()
             self.redis_docker.redis.hset(
-                "battery_min_soc_log",
-                str(timestamp),
-                battery.min_soc
+                "battery_min_soc_log", str(timestamp), battery.min_soc
             )
             self.redis_docker.redis.hset(
-                "battery_grid_charge_log",
-                str(timestamp),
-                battery.grid_charge
+                "battery_grid_charge_log", str(timestamp), battery.grid_charge
             )
             return battery
 
@@ -216,13 +202,11 @@ class VessimApi(SilApi):
                 raise HTTPException(
                     status_code=400,
                     detail=f"{power_mode} is not a valid power mode. "
-                           f"Available power modes: {power_modes}"
-            )
+                    f"Available power modes: {power_modes}",
+                )
             timestamp = datetime.now().isoformat()
             self.redis_docker.redis.hset(
-                "power_mode_log",
-                str(timestamp),
-                json.dumps({item_id: power_mode})
+                "power_mode_log", str(timestamp), json.dumps({item_id: power_mode})
             )
             return node
 

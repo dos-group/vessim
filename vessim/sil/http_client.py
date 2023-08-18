@@ -30,7 +30,7 @@ class HttpClient:
         response = requests.get(self.server_address + route, timeout=self.timeout)
         if response.status_code != 200:
             response.raise_for_status()
-        data = response.json() # assuming the response data is in JSON format
+        data = response.json()  # assuming the response data is in JSON format
         return data
 
     def put(self, route: str, data: Dict[str, Any] = {}) -> None:
@@ -48,7 +48,7 @@ class HttpClient:
             self.server_address + route,
             data=json.dumps(data),
             headers=headers,
-            timeout=self.timeout
+            timeout=self.timeout,
         )
         if response.status_code != 200:
             response.raise_for_status()
