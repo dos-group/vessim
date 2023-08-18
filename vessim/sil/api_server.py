@@ -34,6 +34,52 @@ class SilApi(ABC):
         """Complete necessary cleanup tasks."""
 
 
+class ApiServer(multiprocessing.Process):
+    """Process that runs a given FastAPI application with a uvicorn server.
+
+    Args:
+        api_type: The type of the class containing the app to be executed.
+        host: The host address, defaults to '127.0.0.1'.
+        port: The port to run the FastAPI application, defaults to 8000.
+    """
+
+    def __init__(
+        self, api_type: Type[SilApi], host: str = "127.0.0.1", port: int = 8000
+    ) -> None:
+        super().__init__()
+        self.api_type = api_type
+        self.host = host
+        self.port = port
+        self.startup_complete = multiprocessing.Value('b', False)
+
+    def wait_for_startup_complete(self):
+        """Waiting for completion of startup process.
+
+        To ensure the server is operational for the simulation, the startup
+        needs to complete before any requests can be made. Waits for the
+        uvicorn server to finish startup.
+        """
+        while not self.startup_complete.value:
+            sleep(1)
+
+    def run(self):
+        """Called with `multiprocessing.Process.start()`. Runs the uvicorn server."""
+        api = self.api_type()
+
+        @api.app.on_event("startup")
+        async def startup_event():
+            self.startup_complete.value = True
+
+        config = uvicorn.Config(
+            app=api.app,
+            host=self.host,
+            port=self.port,
+            access_log=False
+        )
+        server = uvicorn.Server(config=config)
+        server.run()
+
+
 class VessimApi(SilApi):
     """Specialized Vessim API to be executed in a different process.
 
@@ -193,49 +239,3 @@ class VessimApi(SilApi):
             self.redis_docker.redis.set("ci", update.ci)
             self.redis_docker.redis.set("battery_soc", update.battery_soc)
             return update
-
-
-class ApiServer(multiprocessing.Process):
-    """Process that runs a given FastAPI application with a uvicorn server.
-
-    Args:
-        api_type: The type of the class containing the app to be executed.
-        host: The host address, defaults to '127.0.0.1'.
-        port: The port to run the FastAPI application, defaults to 8000.
-    """
-
-    def __init__(
-        self, api_type: Type[SilApi], host: str = "127.0.0.1", port: int = 8000
-    ) -> None:
-        super().__init__()
-        self.api_type = api_type
-        self.host = host
-        self.port = port
-        self.startup_complete = multiprocessing.Value('b', False)
-
-    def wait_for_startup_complete(self):
-        """Waiting for completion of startup process.
-
-        To ensure the server is operational for the simulation, the startup
-        needs to complete before any requests can be made. Waits for the
-        uvicorn server to finish startup.
-        """
-        while not self.startup_complete.value:
-            sleep(1)
-
-    def run(self):
-        """Called with `multiprocessing.Process.start()`. Runs the uvicorn server."""
-        api = self.api_type()
-
-        @api.app.on_event("startup")
-        async def startup_event():
-            self.startup_complete.value = True
-
-        config = uvicorn.Config(
-            app=api.app,
-            host=self.host,
-            port=self.port,
-            access_log=False
-        )
-        server = uvicorn.Server(config=config)
-        server.run()
