@@ -102,12 +102,18 @@ class CarbonAwareControlUnit:
         else:
             battery_new.min_soc = 0.6
 
+        # Sets battery to charge mode based on carbon intensity and SOC
+        if self.ci <= 200 and self.battery.soc < 0.6:
+            battery_new.grid_charge = 20
+        else:
+            battery_new.grid_charge = 0
+
         # Adjust the power modes of the nodes based on the current carbon
         # intensity and battery SOC
         for node_id in self.node_ids:
             if self.ci <= 200 or self.battery.soc > 0.8:
                 nodes_power_mode_new[node_id] = "high performance"
-            elif self.ci >= 250 and self.battery.soc < self.battery.min_soc:
+            elif self.ci >= 250 and self.battery.soc < 0.6:
                 nodes_power_mode_new[node_id] = "normal"
             else:
                 nodes_power_mode_new[node_id] = "power-saving"
