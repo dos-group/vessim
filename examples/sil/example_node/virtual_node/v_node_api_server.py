@@ -22,7 +22,7 @@ class VirtualNodeApiServer(FastApiServer):
 
     def __init__(self, host: str = "0.0.0.0", port: int = 8000):
         super().__init__(host, port)
-        self.power_model = LinearPowerModel(p_static=1, p_max=5)
+        self.power_model = LinearPowerModel(p_static=4.8, p_max=8.8)
         self.power_config = None
         self.sysbench = None
         self._run_benchmark()
@@ -45,7 +45,7 @@ class VirtualNodeApiServer(FastApiServer):
         Returns:
             The current power usage.
         """
-        return self.power_model(psutil.cpu_percent(1)) / 1000
+        return self.power_model(psutil.cpu_percent(1) / 100)
 
     def _restart_sysbench(self, run_forever: bool = False) -> None:
         """Kill the existing sysbench instance and start a new one.
