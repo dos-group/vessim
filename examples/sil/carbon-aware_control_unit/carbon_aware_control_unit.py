@@ -1,6 +1,6 @@
 import time
-from vessim.sil.http_client import HTTPClient
-from vessim.sil.stoppable_thread import StoppableThread
+from vessim.sil.http_client import HttpClient
+from vessim.sil.loop_thread import LoopThread
 from threading import Thread
 from typing import Optional
 
@@ -40,13 +40,13 @@ class CarbonAwareControlUnit:
         power_modes: The list of available power modes for the nodes.
         nodes: A dictionary representing the nodes that the Control
             Unit manages, with node IDs as keys and node objects as values.
-        client: The HTTPClient object used to communicate with the server.
+        client: The HttpClient object used to communicate with the server.
     """
 
     def __init__(self, server_address: str, node_ids: list[str]) -> None:
         self.power_modes = ["power-saving", "normal", "high performance"]
         self.node_ids = node_ids
-        self.client = HTTPClient(server_address)
+        self.client = HttpClient(server_address)
         self.nodes_power_mode = {}
         self.battery = RemoteBattery()
         self.ci = 0.0
@@ -63,11 +63,12 @@ class CarbonAwareControlUnit:
     def run_scenario(self, rt_factor: float, update_interval: Optional[float]):
         if update_interval is None:
             update_interval = rt_factor
-        update_thread = StoppableThread(self._update_getter, update_interval)
+        update_thread = LoopThread(self._update_getter, update_interval)
         update_thread.start()
 
         current_time = 0
         while True:
+            update_thread.propagate_exception()
             self.scenario_step(current_time)
             current_time += rt_factor
             time.sleep(rt_factor)
