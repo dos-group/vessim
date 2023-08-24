@@ -67,7 +67,15 @@ class CarbonApi(TraceSimulator):
 
 class Generator(TraceSimulator):
 
-    def power_at(self, dt: Time):
+    def power_at(self, dt: Time) -> float:
+        """Returns the power generated at a given time.
+
+        If the queried timestamp is not available in the `data` dataframe, the last valid
+        datapoint is being returned.
+
+        Raises:
+            ValueError: If no datapoint is found for the given timestamp.
+        """
         try:
             return self.data.loc[self.data.index.asof(dt)]
         except KeyError:
