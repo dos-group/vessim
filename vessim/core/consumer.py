@@ -53,21 +53,23 @@ class MockPowerMeter(PowerMeter):
         self,
         p: float,
         name: Optional[str] = None,
-        power_config: dict[str, float] = {
-            "high performance": 1,
-            "normal": .7,
-            "power-saving": .5
-        }
+        power_config: Optional[dict[str, float]] = None
     ):
         super().__init__(name)
         if p < 0:
             raise ValueError("p must not be less than 0")
         self.p = p
-        self.power_modes = {"power-saving", "normal", "high performance"}
         self.power_mode = "high performance"
-        if set(power_config.keys()) != self.power_modes:
-            raise ValueError(f"power_config keys must be exactly {self.power_modes}")
-        self.power_config = power_config
+        self.power_config = default_power_config = {
+            "high performance": 1,
+            "normal": .7,
+            "power-saving": .5
+        }
+        self.power_modes = set(default_power_config.keys())
+        if power_config:
+            if set(power_config.keys()) != self.power_modes:
+                raise ValueError(f"power_config keys must be exactly {self.power_modes}")
+            self.power_config = power_config
 
     def measure(self) -> float:
         """Measures the current power.
