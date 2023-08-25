@@ -3,7 +3,9 @@ name: CI
 # event that triggers workflow
 # runs on every pull request
 on: 
-  push:
+  pull_request:
+    branches:
+      - main
 
 jobs:
   linting-and-testing:
