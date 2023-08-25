@@ -26,7 +26,7 @@ class PowerMeter(ABC):
 
 
 class MockPowerMeter(PowerMeter):
-    """A mock power meter class.
+    """Simulated, fixed power readings based on a factor and three power modes.
 
     This class is used to simulate the behavior of a power meter with various
     modes. The power meter supports different power modes that are: 'high
