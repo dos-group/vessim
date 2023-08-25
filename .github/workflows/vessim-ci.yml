@@ -3,9 +3,7 @@ name: CI
 # event that triggers workflow
 # runs on every pull request
 on: 
-  pull_request:
-    branches:
-      - main
+  push:
 
 jobs:
   linting-and-testing:
@@ -38,23 +36,17 @@ jobs:
       with:
         virtualenvs-create: false
     
-    # installs non-optional dependencies from pyproject.toml
-    - name: Install dependencies
-      run: poetry install
-
-    # build package out of project, install it and run example scenario 
+    # build package out of local poject, install it and run example scenario 
     - name: Build the project as a package
       run: poetry build
 
-    - name: Create a directory called "test"
-      run: mkdir test
-
-    - name: Install the package in the "test" directory
+    - name: Install the package with linting dependencies
       run: |
-        cd test
-        pip install ../dist/*.whl
+        pip install dist/*.whl
+        pip install pytest mypy types-psutil pandas-stubs types-requests black ruff
 
-        #- name: Run example scenario
+    - name: Run example scenario
+      run: python -m examples.cosim_example
 
     # run type checker
     - name: Run type checker

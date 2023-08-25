@@ -25,6 +25,8 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
 ]
 
+include = ["examples/**/*", "tests/*"]
+
 [tool.poetry.urls]
 "Bug Reports" = "https://github.com/dos-group/vessim/issues"
 
@@ -35,6 +37,7 @@ pandas = "*"
 mosaik = "*"
 mosaik-api = "*"
 loguru = "*"
+importlib_resources = "*"  
 # Optional dependencies (software-in-the-loop)
 requests = {version = "*", optional = true}
 fastapi = {version = "*", optional = true}
