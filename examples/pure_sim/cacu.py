@@ -59,9 +59,9 @@ class _CacuModel(VessimModel):
 
         for power_meter in self.mock_power_meters:
             if inputs["ci"] <= 200 or self.battery.soc() > .8:
-                power_meter.set_power_mode("high performance")
+                power_meter.factor = 1.
             elif inputs["ci"] >= 250 and self.battery.soc() < self.battery.min_soc:
-                power_meter.set_power_mode("normal")
+                power_meter.factor = .7
             else:
-                power_meter.set_power_mode("power-saving")
+                power_meter.factor = .5
 
