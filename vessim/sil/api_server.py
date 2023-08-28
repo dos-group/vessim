@@ -74,7 +74,10 @@ class ApiServer(multiprocessing.Process):
             app=api.app, host=self.host, port=self.port, access_log=False
         )
         server = uvicorn.Server(config=config)
-        server.run()
+        try:
+            server.run()
+        finally:
+            api.finalize()
 
 
 class VessimApi(SilApi):
