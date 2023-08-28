@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 
 class PowerMeter(ABC):
@@ -53,7 +53,7 @@ class MockPowerMeter(PowerMeter):
         self,
         p: float,
         name: Optional[str] = None,
-        power_config: Optional[dict[str, float]] = None
+        power_config: Optional[Dict[str, float]] = None
     ):
         super().__init__(name)
         if p < 0:

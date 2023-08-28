@@ -2,6 +2,8 @@ from vessim.cosim._util import VessimSimulator, VessimModel, simplify_inputs
 from vessim.core.consumer import MockPowerMeter
 from vessim.core.storage import SimpleBattery
 
+from typing import List
+
 
 class CacuSim(VessimSimulator):
     """Carbon-Aware Control Unit simulator that executes its model."""
@@ -43,7 +45,7 @@ class _CacuModel(VessimModel):
         battery: A storage object used in the model.
     """
 
-    def __init__(self, mock_power_meters: list[MockPowerMeter], battery: SimpleBattery):
+    def __init__(self, mock_power_meters: List[MockPowerMeter], battery: SimpleBattery):
         self.mock_power_meters = mock_power_meters
         self.battery = battery
 
@@ -58,7 +60,7 @@ class _CacuModel(VessimModel):
         for power_meter in self.mock_power_meters:
             if inputs["ci"] <= 200 or self.battery.soc() > .8:
                 power_meter.set_power_mode("high performance")
-            elif inputs["ci"] >= 250 and self.storage.soc() < self.storage.min_soc:
+            elif inputs["ci"] >= 250 and self.battery.soc() < self.battery.min_soc:
                 power_meter.set_power_mode("normal")
             else:
                 power_meter.set_power_mode("power-saving")
