@@ -26,81 +26,32 @@ class PowerMeter(ABC):
 
 
 class MockPowerMeter(PowerMeter):
-    """A mock power meter class.
-
-    This class is used to simulate the behavior of a power meter with various
-    modes. The power meter supports different power modes that are: 'high
-    performance', 'normal', and 'power-saving'.
+    """Simulates the behavior of a power meter with fixed power readings.
 
     Args:
         name: The name of the power meter.
         p: Base factor for the measured power value. It is scaled by the consumption
             factors in the different power modes specified in the power config.
-        power_mode: The current power mode, defaults to 'high performance'.
-        power_config: A dictionary mapping power modes to their respective
-            consumption factors, defaults to
-            {"high performance": 1, "normal": .7, "power-saving": .5}.
+
+    Attributes:
+        factor: Scaling factor, multiplied with the base factor. Defaults to 1.
 
     Raises:
         ValueError: If p is less than 0.
-        ValueError: If the power modes in `power_config` are not 'power-saving',
-            'normal', and 'high performance'.
     """
 
-    def __init__(
-        self,
-        p: float,
-        name: str,
-        power_mode: str = "high performance",
-        power_config: Dict[str, float] = {
-            "high performance": 1,
-            "normal": .7,
-            "power-saving": .5
-        }
-    ):
+    def __init__(self, p: float, name: str):
         super().__init__(name)
         if p < 0:
             raise ValueError("p must not be less than 0")
         self.p = p
-        self.power_modes = {"power-saving", "normal", "high performance"}
-        self.power_mode = power_mode
-        if power_mode not in self.power_modes:
-            raise ValueError(f"power_mode must be one of {self.power_modes}")
-        if set(power_config.keys()) != self.power_modes:
-            raise ValueError(f"power_config keys must be exactly {self.power_modes}")
-        self.power_config = power_config
+        self.factor = 1.0
 
     def measure(self) -> float:
-        """Measures the current power.
-
-        The measurement is the product of the power factor 'p' and the power
-        configuration for the current mode.
-
-        Returns:
-            float: The measured power.
-        """
-        return self.p * self.power_config[self.power_mode]
+        return self.p * self.factor
 
     def finalize(self) -> None:
         pass
-
-    def set_power_mode(self, power_mode: str) -> None:
-        """Sets the power mode of the meter.
-
-        Args:
-            power_mode (str): The power mode to set.
-
-        Raises:
-            ValueError: If the power mode is not one of 'power-saving',
-                'normal', or 'high performance'.
-        """
-        if power_mode not in self.power_modes:
-            raise ValueError(
-                f"{power_mode} is not a valid power mode. "
-                f"Available power modes: {self.power_modes}"
-            )
-        self.power_mode = power_mode
-
 
 class Consumer(ABC):
     """Abstract base class representing a consumer of power."""

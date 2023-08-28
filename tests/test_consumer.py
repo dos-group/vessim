@@ -20,18 +20,20 @@ class TestMockPowerMeter:
         with pytest.raises(ValueError):
             MockPowerMeter(p=10, power_mode="invalid_mode")
 
-    def test_initialize_fails_with_invalid_power_config(self):
+    @pytest.mark.parametrize("power_config", [
+        {
+            "high performance": 1,
+            "normal": .7
+        },
+        {
+            "invalid_mode": 1,
+            "normal": .7,
+            "power-saving": 0.5
+        }
+    ])
+    def test_initialize_fails_with_invalid_power_config(self, power_config):
         with pytest.raises(ValueError):
-            MockPowerMeter(p=10, power_config={
-                "high performance": 1,
-                "normal": .7
-            })
-        with pytest.raises(ValueError):
-            MockPowerMeter(p=10, power_config={
-                "invalid_mode": 1,
-                "normal": .7,
-                "power-saving": 0.5
-            })
+            MockPowerMeter(p=10, power_config=power_config)
 
     def test_set_power_mode_fails_with_invalid_power_mode(self, power_meter):
         with pytest.raises(ValueError):
@@ -43,6 +45,7 @@ class TestMockPowerMeter:
         assert power_meter.measure() == 16.0
         power_meter.set_power_mode("power-saving")
         assert power_meter.measure() == 8.0
+
 
 class TestComputingSystem:
 
