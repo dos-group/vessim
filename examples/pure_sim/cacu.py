@@ -1,8 +1,8 @@
 from vessim.cosim._util import VessimSimulator, VessimModel, simplify_inputs
 from vessim.core.consumer import MockPowerMeter
-from vessim.core.storage import SimpleBattery
+from vessim.core.storage import SimpleBattery, DefaultStoragePolicy
 
-from typing import List
+from typing import List, Dict
 
 
 class CacuSim(VessimSimulator):
@@ -14,7 +14,7 @@ class CacuSim(VessimSimulator):
             "Cacu": {
                 "public": True,
                 "any_inputs": True,
-                "params": ["mock_power_meters", "battery"],
+                "params": ["mock_power_meters", "battery", "policy"],
                 "attrs": [],
             },
         },
@@ -45,23 +45,33 @@ class _CacuModel(VessimModel):
         battery: A storage object used in the model.
     """
 
-    def __init__(self, mock_power_meters: List[MockPowerMeter], battery: SimpleBattery):
+    def __init__(
+        self,
+        mock_power_meters: List[MockPowerMeter],
+        storage: SimpleBattery,
+        policy: DefaultStoragePolicy
+    ):
         self.mock_power_meters = mock_power_meters
-        self.battery = battery
+        self.storage = storage
+        self.policy = policy
 
-    def step(self, time: int, inputs: dict) -> None:
+    def step(self, time: int, inputs: Dict) -> None:
         """Performs a time step in the model."""
         inputs = simplify_inputs(inputs)
-        if time < 60 * 5:
-            self.battery.min_soc = .3
+        if time > 3600 * 30 and self.storage.soc() >= .6:
+            self.storage.min_soc = .6
         else:
-            self.battery.min_soc = .6
+            self.storage.min_soc = .3
+
+        if inputs["ci"] <= 200 and self.storage.soc() < .6:
+            self.policy.grid_power = 20
+        else:
+            self.policy.grid_power = 0
 
         for power_meter in self.mock_power_meters:
-            if inputs["ci"] <= 200 or self.battery.soc() > .8:
-                power_meter.factor = 1.
-            elif inputs["ci"] >= 250 and self.battery.soc() < self.battery.min_soc:
-                power_meter.factor = .7
-            else:
+            if inputs["ci"] <= 200 or self.storage.soc() > .8:
+                power_meter.factor = 1
+            elif inputs["ci"] >= 250 and self.storage.soc() < .6:
                 power_meter.factor = .5
-
+            else:
+                power_meter.factor = .7

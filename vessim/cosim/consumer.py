@@ -11,7 +11,7 @@ class ConsumerSim(VessimSimulator):
             "Consumer": {
                 "public": True,
                 "params": ["consumer"],
-                "attrs": ["p"],
+                "attrs": ["p", "info"],
             },
         },
     }
@@ -47,3 +47,4 @@ class _ComputingSystemModel(VessimModel):
         sum of the node power of all power meters.
         """
         self.p = -self.consumer.consumption()
+        self.info = self.consumer.info()

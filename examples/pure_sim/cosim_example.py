@@ -9,7 +9,7 @@ from examples._data import load_carbon_data, load_solar_data
 from vessim.core.consumer import ComputingSystem, MockPowerMeter
 from vessim.core.microgrid import SimpleMicrogrid
 from vessim.core.simulator import Generator, CarbonApi
-from vessim.core.storage import SimpleBattery
+from vessim.core.storage import SimpleBattery, DefaultStoragePolicy
 
 COSIM_CONFIG = {
     "Microgrid": {
@@ -33,16 +33,23 @@ COSIM_CONFIG = {
 }
 SIM_START = "2020-06-11 00:00:00"
 DURATION = 3600 * 24 * 2  # two days
-STORAGE = SimpleBattery(capacity=10 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
-                        charge_level=10 * 5 * 3600 * .6,
-                        min_soc=.6,
-                        c_rate=1)
+STORAGE = SimpleBattery(capacity=32 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
+                        charge_level=32 * 5 * 3600 * .6,
+                        min_soc=.6)
+STORAGE_POLICY = DefaultStoragePolicy()
 
 
 def run_simulation():
     world = mosaik.World(COSIM_CONFIG)
 
-    mock_power_meters = [MockPowerMeter(p=10)]
+    mock_power_meters = [
+        MockPowerMeter(p=3, name="physical_node", power_config={
+            "high performance": 1, "normal": 11/15, "power-saving": 0.6
+        }),
+        MockPowerMeter(p=8.8, name="virtual_node", power_config={
+            "high performance": 1, "normal": 19/22, "power-saving": 17/22
+        })
+    ]
 
     # Initialize computing system
     consumer_sim = world.start("Consumer", step_size=60)
@@ -52,7 +59,9 @@ def run_simulation():
 
     # Initialize carbon-aware control unit
     cacu_sim = world.start("Cacu", step_size=60)
-    cacu = cacu_sim.Cacu(mock_power_meters=mock_power_meters, storage=STORAGE)
+    cacu = cacu_sim.Cacu(
+        mock_power_meters=mock_power_meters, storage=STORAGE, policy=STORAGE_POLICY
+    )
 
     # Initialize solar generator
     solar_sim = world.start("Generator", sim_start=SIM_START)
@@ -68,7 +77,9 @@ def run_simulation():
 
     # Connect consumers and producers to microgrid
     microgrid_sim = world.start("Microgrid")
-    microgrid = microgrid_sim.Microgrid(microgrid=SimpleMicrogrid(storage=STORAGE))
+    microgrid = microgrid_sim.Microgrid(
+        microgrid=SimpleMicrogrid(storage=STORAGE, policy=STORAGE_POLICY)
+    )
     world.connect(computing_system, microgrid, "p")
     world.connect(solar, microgrid, "p")
 
@@ -79,6 +90,7 @@ def run_simulation():
                                                   battery_min_soc=STORAGE.min_soc))
     world.connect(solar, monitor, ("p", "p_solar"))
     world.connect(computing_system, monitor, ("p", "p_computing_system"))
+    world.connect(computing_system, monitor, ("info", "computing_system_info"))
     world.connect(microgrid, monitor, ("p_delta", "p_grid"))
     world.connect(carbon_api_de, monitor, "carbon_intensity")
 

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, List
+from typing import Dict, List
 
 
 class PowerMeter(ABC):
@@ -9,7 +9,7 @@ class PowerMeter(ABC):
         name: The name of the power meter.
     """
 
-    def __init__(self, name: Optional[str] = None):
+    def __init__(self, name: str):
         self.name = name
 
     @abstractmethod
@@ -30,17 +30,17 @@ class MockPowerMeter(PowerMeter):
 
     Args:
         name: The name of the power meter.
-        p: Base factor for the measured power value. It is scaled by the
-            consumption factor.
+        p: Base factor for the measured power value. It is scaled by the consumption
+            factors in the different power modes specified in the power config.
 
-    Attr:
+    Attributes:
         factor: Scaling factor, multiplied with the base factor. Defaults to 1.
 
     Raises:
         ValueError: If p is less than 0.
     """
 
-    def __init__(self, p: float, name: Optional[str] = None):
+    def __init__(self, p: float, name: str):
         super().__init__(name)
         if p < 0:
             raise ValueError("p must not be less than 0")
@@ -59,6 +59,9 @@ class Consumer(ABC):
     @abstractmethod
     def consumption(self) -> float:
         """Calculates and returns the power consumption of the consumer."""
+
+    def info(self) -> Dict:
+        return {}
 
     @abstractmethod
     def finalize(self) -> None:
@@ -87,6 +90,9 @@ class ComputingSystem(Consumer):
 
     def consumption(self) -> float:
         return self.pue * sum(pm.measure() for pm in self.power_meters)
+
+    def info(self) -> Dict:
+        return {pm.name: pm.measure() for pm in self.power_meters}
 
     def finalize(self) -> None:
         for power_meter in self.power_meters:
