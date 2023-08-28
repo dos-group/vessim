@@ -40,7 +40,7 @@ class _CacuModel(VessimModel):
 
     Attributes:
         mock_power_meters: A list of mock power meters used in the model.
-        storage: A storage object used in the model.
+        battery: A storage object used in the model.
     """
 
     def __init__(self, mock_power_meters: list[MockPowerMeter], battery: SimpleBattery):
@@ -56,7 +56,7 @@ class _CacuModel(VessimModel):
             self.battery.min_soc = .6
 
         for power_meter in self.mock_power_meters:
-            if inputs["ci"] <= 200 or self.storage.soc() > .8:
+            if inputs["ci"] <= 200 or self.battery.soc() > .8:
                 power_meter.set_power_mode("high performance")
             elif inputs["ci"] >= 250 and self.storage.soc() < self.storage.min_soc:
                 power_meter.set_power_mode("normal")
