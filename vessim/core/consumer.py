@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Dict, List
 
 
 class PowerMeter(ABC):
@@ -9,7 +9,7 @@ class PowerMeter(ABC):
         name: The name of the power meter.
     """
 
-    def __init__(self, name: Optional[str] = None):
+    def __init__(self, name: str):
         self.name = name
 
     @abstractmethod
@@ -50,9 +50,9 @@ class MockPowerMeter(PowerMeter):
     def __init__(
         self,
         p: float,
-        name: Optional[str] = None,
+        name: str,
         power_mode: str = "high performance",
-        power_config: dict[str, float] = {
+        power_config: Dict[str, float] = {
             "high performance": 1,
             "normal": .7,
             "power-saving": .5
@@ -109,6 +109,9 @@ class Consumer(ABC):
     def consumption(self) -> float:
         """Calculates and returns the power consumption of the consumer."""
 
+    def info(self) -> Dict:
+        return {}
+
     @abstractmethod
     def finalize(self) -> None:
         """Perform any finalization tasks for the consumer.
@@ -130,12 +133,15 @@ class ComputingSystem(Consumer):
         pue: The power usage effectiveness of the system.
     """
 
-    def __init__(self, power_meters: list[PowerMeter], pue: float = 1):
+    def __init__(self, power_meters: List[PowerMeter], pue: float = 1):
         self.power_meters = power_meters
         self.pue = pue
 
     def consumption(self) -> float:
         return self.pue * sum(pm.measure() for pm in self.power_meters)
+
+    def info(self) -> Dict:
+        return {pm.name: pm.measure() for pm in self.power_meters}
 
     def finalize(self) -> None:
         for power_meter in self.power_meters:

@@ -1,3 +1,4 @@
+from flatdict import FlatDict
 from collections import defaultdict
 from datetime import datetime
 from typing import Dict, Callable, Any
@@ -58,13 +59,13 @@ class _MonitorModel(VessimModel):
         inputs = simplify_inputs(inputs)
         dt = self._clock.to_datetime(time)
         logger.info(f"# --- {str(dt):>5} ---")
-        for attr, value in inputs.items():
+
+        if self.fn is not None:
+            inputs.update(self.fn())
+
+        for attr, value in FlatDict(inputs).items():
             logger.info(f"{attr}: {value}")
             self.data[attr][dt] = value
-        if self.fn is not None:
-            for attr, value in self.fn().items():
-                logger.info(f"{attr}: {value}")
-                self.data[attr][dt] = value
 
     def finalize(self):
         """Collected data is printed to file at simulation end."""
