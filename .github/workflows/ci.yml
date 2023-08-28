@@ -40,11 +40,14 @@ jobs:
     - name: Install poetry dynamic version plugin, extract version from git tag
       run: pip install poetry-version-plugin
 
+    - name: Show installed plugins
+      run: poetry self show plugins
+
     - name: Build package out of local poject
       run: poetry build
 
     - name: Install package 
-      run: pip install dist/*.tar.gz
+      run: pip install dist/*.tar.gz pytest
 
     - name: Run example scenario 
       run: python examples/cosim_example.py
