@@ -1,4 +1,4 @@
-name: testing
+name: linting-and-type-checking
 
 # event that triggers workflow
 # runs on every commit
@@ -6,7 +6,7 @@ on:
   push:
 
 jobs:
-  linting-and-testing:
+  linting-and-type-checking:
     # specifies the os that the job will run on 
     runs-on: ubuntu-latest
     strategy:
