@@ -30,26 +30,25 @@ class HttpClient:
         response = requests.get(self.server_address + route, timeout=self.timeout)
         if response.status_code != 200:
             response.raise_for_status()
-        data = response.json() # assuming the response data is in JSON format
+        data = response.json()  # assuming the response data is in JSON format
         return data
 
-    def put(self, route: str, data: Dict[str, Any]) -> None:
+    def put(self, route: str, data: Dict[str, Any] = {}) -> None:
         """Sends a PUT request to the server to update data.
-
-        Raises:
-            HTTPError if response code is != 200.
 
         Args:
             route: The path of the endpoint to send the request to.
             data: The data to be updated, in dictionary format.
+
+        Raises:
+            HTTPError if response code is != 200.
         """
         headers = {"Content-type": "application/json"}
         response = requests.put(
             self.server_address + route,
             data=json.dumps(data),
             headers=headers,
-            timeout=self.timeout
+            timeout=self.timeout,
         )
         if response.status_code != 200:
             response.raise_for_status()
-

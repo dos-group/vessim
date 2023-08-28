@@ -1,5 +1,6 @@
 import multiprocessing
 import json
+from abc import ABC, abstractmethod
 from time import sleep
 from datetime import datetime
 from typing import Optional, Dict, Type
@@ -11,6 +12,28 @@ from pydantic import BaseModel  # type: ignore
 from vessim.sil.redis_docker import RedisDocker
 
 
+class SilApi(ABC):
+    """Base class for the API running on the ApiServer in different process.
+
+    Initializes a FastApi instance with an endpoint `/shutdown` for executing
+    necessary cleanup tasks of the child process running the API.
+
+    Attributes:
+        app: The FastApi instance to be runned.
+    """
+
+    def __init__(self) -> None:
+        self.app = FastAPI()
+
+        @self.app.put("/shutdown")
+        async def shutdown_server():
+            self.finalize()
+
+    @abstractmethod
+    def finalize(self) -> None:
+        """Complete necessary cleanup tasks."""
+
+
 class ApiServer(multiprocessing.Process):
     """Process that runs a given FastAPI application with a uvicorn server.
 
@@ -20,12 +43,14 @@ class ApiServer(multiprocessing.Process):
         port: The port to run the FastAPI application, defaults to 8000.
     """
 
-    def __init__(self, api_type: Type, host: str = "127.0.0.1", port: int = 8000) -> None:
+    def __init__(
+        self, api_type: Type[SilApi], host: str = "127.0.0.1", port: int = 8000
+    ) -> None:
         super().__init__()
         self.api_type = api_type
         self.host = host
         self.port = port
-        self.startup_complete = multiprocessing.Value('b', False)
+        self.startup_complete = multiprocessing.Value("b", False)
 
     def wait_for_startup_complete(self):
         """Waiting for completion of startup process.
@@ -46,16 +71,16 @@ class ApiServer(multiprocessing.Process):
             self.startup_complete.value = True
 
         config = uvicorn.Config(
-            app=api.app,
-            host=self.host,
-            port=self.port,
-            access_log=False
+            app=api.app, host=self.host, port=self.port, access_log=False
         )
         server = uvicorn.Server(config=config)
-        server.run()
+        try:
+            server.run()
+        finally:
+            api.finalize()
 
 
-class VessimApi:
+class VessimApi(SilApi):
     """Specialized Vessim API to be executed in a different process.
 
     Initializes a FastAPI instance with specific routes related to the Vessim API.
@@ -67,15 +92,14 @@ class VessimApi:
     """
 
     def __init__(self) -> None:
+        super().__init__()
         self.redis_docker = RedisDocker()
-        self.app = self._init_fastapi()
+        self._init_get_routes(self.app)
+        self._init_put_routes(self.app)
 
-    def _init_fastapi(self) -> FastAPI:
-        """Initializes the FastAPI application."""
-        app = FastAPI()
-        self._init_get_routes(app)
-        self._init_put_routes(app)
-        return app
+    def finalize(self) -> None:
+        """Terminate Docker container for cleanup."""
+        self.redis_docker.__del__()
 
     def _init_get_routes(self, app: FastAPI) -> None:
         """Initializes GET routes for a FastAPI.
@@ -93,9 +117,7 @@ class VessimApi:
             solar = self.redis_docker.redis.get("solar")
             if solar is not None:
                 solar = float(solar)
-            return SolarModel(
-                solar=solar
-            )
+            return SolarModel(solar=solar)
 
         class CiModel(BaseModel):
             ci: Optional[float]
@@ -105,9 +127,7 @@ class VessimApi:
             ci = self.redis_docker.redis.get("ci")
             if ci is not None:
                 ci = float(ci)
-            return CiModel(
-                ci=ci
-            )
+            return CiModel(ci=ci)
 
         class BatterySocModel(BaseModel):
             battery_soc: Optional[float]
@@ -117,9 +137,7 @@ class VessimApi:
             battery_soc = self.redis_docker.redis.get("battery_soc")
             if battery_soc is not None:
                 battery_soc = float(battery_soc)
-            return BatterySocModel(
-                battery_soc=battery_soc
-            )
+            return BatterySocModel(battery_soc=battery_soc)
 
         # /sim/
 
@@ -131,12 +149,11 @@ class VessimApi:
         @app.get("/sim/collect-set", response_model=CollectSetModel)
         async def get_collect_set() -> CollectSetModel:
             model = CollectSetModel(
-                battery_min_soc=
-                    self._deserialize_redis_hash("battery_min_soc_log"),
-                battery_grid_charge=
-                    self._deserialize_redis_hash("battery_grid_charge_log"),
-                nodes_power_mode=
-                    self._deserialize_redis_hash("power_mode_log")
+                battery_min_soc=self._deserialize_redis_hash("battery_min_soc_log"),
+                battery_grid_charge=self._deserialize_redis_hash(
+                    "battery_grid_charge_log"
+                ),
+                nodes_power_mode=self._deserialize_redis_hash("power_mode_log"),
             )
             self._delete_all_keys_in_hash("battery_min_soc_log")
             self._delete_all_keys_in_hash("battery_grid_charge_log")
@@ -170,14 +187,10 @@ class VessimApi:
         async def put_battery(battery: BatteryModel) -> BatteryModel:
             timestamp = datetime.now().isoformat()
             self.redis_docker.redis.hset(
-                "battery_min_soc_log",
-                str(timestamp),
-                battery.min_soc
+                "battery_min_soc_log", str(timestamp), battery.min_soc
             )
             self.redis_docker.redis.hset(
-                "battery_grid_charge_log",
-                str(timestamp),
-                battery.grid_charge
+                "battery_grid_charge_log", str(timestamp), battery.grid_charge
             )
             return battery
 
@@ -192,13 +205,11 @@ class VessimApi:
                 raise HTTPException(
                     status_code=400,
                     detail=f"{power_mode} is not a valid power mode. "
-                           f"Available power modes: {power_modes}"
-            )
+                    f"Available power modes: {power_modes}",
+                )
             timestamp = datetime.now().isoformat()
             self.redis_docker.redis.hset(
-                "power_mode_log",
-                str(timestamp),
-                json.dumps({item_id: power_mode})
+                "power_mode_log", str(timestamp), json.dumps({item_id: power_mode})
             )
             return node
 
@@ -215,4 +226,3 @@ class VessimApi:
             self.redis_docker.redis.set("ci", update.ci)
             self.redis_docker.redis.set("battery_soc", update.battery_soc)
             return update
-
