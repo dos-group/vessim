@@ -55,7 +55,7 @@ def plot_evaluation(data: pd.DataFrame, title: str = "Evaluation"):
         ax=axs[2], linestyle="--", linewidth=.8, color="black", label="min_soc"
     )
     handles, lables = axs[2].get_legend_handles_labels()
-    axs[2].legend(handles[1], lables[1], frameon=False)
+    axs[2].legend(handles[1:], lables[1:], frameon=False)
 
     # Plot grid power and carbon emission
     p_grid[p_grid < 0] = 0
