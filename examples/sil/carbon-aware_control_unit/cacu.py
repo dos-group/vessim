@@ -60,18 +60,23 @@ class CarbonAwareControlUnit:
             except:
                 time.sleep(1)
 
-    def run_scenario(self, rt_factor: float, update_interval: Optional[float]):
+    def run_scenario(
+        self, 
+        rt_factor: float, 
+        step_size: int, 
+        update_interval: Optional[float]
+    ):
         if update_interval is None:
-            update_interval = rt_factor
+            update_interval = rt_factor * step_size
         update_thread = LoopThread(self._update_getter, update_interval)
         update_thread.start()
 
-        current_time = 0
+        sim_time = 0
         while True:
             update_thread.propagate_exception()
-            self.scenario_step(current_time)
-            current_time += rt_factor
-            time.sleep(rt_factor)
+            self.scenario_step(sim_time)
+            sim_time += step_size
+            time.sleep(rt_factor * step_size)
 
     def _update_getter(self) -> None:
         value = self.client.get("/api/battery-soc")["battery_soc"]
@@ -84,7 +89,7 @@ class CarbonAwareControlUnit:
         if value:
             self.ci = value
 
-    def scenario_step(self, current_time) -> None:
+    def scenario_step(self, sim_time: int) -> None:
         """A Carbon-Aware Scenario.
 
         Scenario step for the Carbon-Aware Control Unit. This process updates
@@ -93,12 +98,12 @@ class CarbonAwareControlUnit:
         nodes based on the current carbon intensity and battery SOC.
 
         Args:
-            current_time: Current simulation time.
+            sim_time: Current simulation time.
         """
         nodes_power_mode_new = {}
         battery_new = RemoteBattery()
         # Set the minimum SOC of the battery based on the current time
-        if current_time < 60*5:
+        if sim_time < 3600*36:
             battery_new.min_soc = 0.3
         else:
             battery_new.min_soc = 0.6
