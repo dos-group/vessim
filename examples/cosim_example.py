@@ -43,10 +43,10 @@ def run_simulation():
     world = mosaik.World(COSIM_CONFIG)
 
     mock_power_meters = [
-        MockPowerMeter(p=3, power_config={
+        MockPowerMeter(p=3, name="physical_node", power_config={
             "high performance": 1, "normal": 11/15, "power-saving": 0.6
         }),
-        MockPowerMeter(p=8.8, power_config={
+        MockPowerMeter(p=8.8, name="virtual_node", power_config={
             "high performance": 1, "normal": 19/22, "power-saving": 17/22
         })
     ]
@@ -90,6 +90,7 @@ def run_simulation():
                                                   battery_min_soc=STORAGE.min_soc))
     world.connect(solar, monitor, ("p", "p_solar"))
     world.connect(computing_system, monitor, ("p", "p_computing_system"))
+    world.connect(computing_system, monitor, ("info", "computing_system_info"))
     world.connect(microgrid, monitor, ("p_delta", "p_grid"))
     world.connect(carbon_api_de, monitor, "carbon_intensity")
 
