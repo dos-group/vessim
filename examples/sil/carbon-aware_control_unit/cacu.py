@@ -1,8 +1,10 @@
 import time
-from vessim.sil.http_client import HttpClient
-from vessim.sil.loop_thread import LoopThread
 from threading import Thread
 from typing import Optional
+
+from vessim.sil.http_client import HttpClient
+from vessim.sil.loop_thread import LoopThread
+from examples.pure_sim.cosim_example import cacu_scenario
 
 
 class RemoteBattery:
@@ -61,9 +63,9 @@ class CarbonAwareControlUnit:
                 time.sleep(1)
 
     def run_scenario(
-        self, 
-        rt_factor: float, 
-        step_size: int, 
+        self,
+        rt_factor: float,
+        step_size: int,
         update_interval: Optional[float]
     ):
         if update_interval is None:
@@ -102,21 +104,18 @@ class CarbonAwareControlUnit:
         """
         nodes_power_mode_new = {}
         battery_new = RemoteBattery()
-        # Set the minimum SOC of the battery based on the current time
-        if sim_time < 3600*36:
-            battery_new.min_soc = 0.3
-        else:
-            battery_new.min_soc = 0.6
 
-        # Adjust the power modes of the nodes based on the current carbon
-        # intensity and battery SOC
+        # Apply scenario logic
+        scenario_data = cacu_scenario(
+            sim_time,
+            self.battery.soc,
+            self.ci,
+            self.node_ids
+        )
+        battery_new.min_soc = scenario_data["battery_min_soc"]
+        battery_new.grid_charge = scenario_data["battery_grid_charge"]
         for node_id in self.node_ids:
-            if self.ci <= 200 or self.battery.soc > 0.8:
-                nodes_power_mode_new[node_id] = "high performance"
-            elif self.ci >= 250 and self.battery.soc < self.battery.min_soc:
-                nodes_power_mode_new[node_id] = "normal"
-            else:
-                nodes_power_mode_new[node_id] = "power-saving"
+            nodes_power_mode_new[node_id] = scenario_data["nodes_power_mode"][node_id]
 
         # Send battery values if changed
         if (

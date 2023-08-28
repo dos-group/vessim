@@ -3,7 +3,6 @@ from cacu import CarbonAwareControlUnit
 
 
 def argparser() -> argparse.ArgumentParser:
-    # TODO add description=""
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
