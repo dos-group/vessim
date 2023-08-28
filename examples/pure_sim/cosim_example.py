@@ -4,6 +4,7 @@ Runs a fully simulated example scenario over the course of two days.
 """
 
 import mosaik  # type: ignore
+from typing import List
 
 from examples._data import load_carbon_data, load_solar_data
 from vessim.core.consumer import ComputingSystem, MockPowerMeter
@@ -39,16 +40,54 @@ STORAGE = SimpleBattery(capacity=32 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
 STORAGE_POLICY = DefaultStoragePolicy()
 
 
+def cacu_scenario(
+    time: int,
+    battery_min_soc: float,
+    battery_soc: float,
+    ci: float,
+    node_ids: List[str]
+) -> dict:
+    """Calculate the power mode settings for nodes based on a scenario.
+
+    This function simulates the decision logic of a Carbon-Aware Control Unit
+    (CACU) by considering battery state-of-charge (SOC), time, and carbon
+    intensity (CI).
+
+    Args:
+        time: Time in minutes since some reference point or start.
+        battery_min_soc: The provided minimum state of charge for the battery.
+        battery_soc: Current state of charge of the battery.
+        ci: Current carbon intensity.
+        node_ids: A list of node IDs for which the power mode needs to be
+            determined.
+
+    Returns:
+        A dictionary containing:
+            - battery_min_soc: Updated minimum state of charge value based on
+              the given time.
+            - nodes_power_mode: A dictionary with node IDs as keys and their
+              respective power modes ('high performance', 'normal', or
+              'power-saving') as values.
+    """
+    data = {}
+    data["battery_min_soc"] = .3 if time < 60 * 5 else .6
+    data["nodes_power_mode"] = {}
+    for node_id in node_ids:
+        if ci <= 200 or battery_soc > .8:
+            data["nodes_power_mode"][node_id] = "high performance"
+        elif ci >= 250 and battery_soc < battery_min_soc:
+            data["nodes_power_mode"][node_id] = "normal"
+        else:
+            data["nodes_power_mode"][node_id] = "power-saving"
+    return data
+
+
 def run_simulation():
     world = mosaik.World(COSIM_CONFIG)
 
     mock_power_meters = [
-        MockPowerMeter(p=3, name="physical_node", power_config={
-            "high performance": 1, "normal": 11/15, "power-saving": 0.6
-        }),
-        MockPowerMeter(p=8.8, name="virtual_node", power_config={
-            "high performance": 1, "normal": 19/22, "power-saving": 17/22
-        })
+        MockPowerMeter(p=3),
+        MockPowerMeter(p=8.8)
     ]
 
     # Initialize computing system

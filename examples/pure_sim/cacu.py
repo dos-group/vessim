@@ -1,6 +1,7 @@
 from vessim.cosim._util import VessimSimulator, VessimModel, simplify_inputs
 from vessim.core.consumer import MockPowerMeter
 from vessim.core.storage import SimpleBattery, DefaultStoragePolicy
+#from examples.pure_sim.cosim_example import cacu_scenario
 
 from typing import List, Dict
 
