@@ -46,3 +46,5 @@ jobs:
     - name: Run example scenario 
       run: python examples/cosim_example.py
 
+    - name: Run tests
+      run: python -m pytest
