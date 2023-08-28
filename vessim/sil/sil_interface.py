@@ -46,8 +46,8 @@ class SilInterfaceSim(VessimSimulator):
             model_instance.collector_thread.stop() # type: ignore
             model_instance.collector_thread.join() # type: ignore
             model_instance.http_client.put("/shutdown") # type: ignore
-            model_instance.api_server.terminate()
-            model_instance.api_server.join()
+            model_instance.api_server.terminate() # type: ignore
+            model_instance.api_server.join() # type: ignore
 
     def next_step(self, time):
         return time + self.step_size
