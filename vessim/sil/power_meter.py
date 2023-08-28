@@ -1,8 +1,8 @@
 from typing import Optional
 
 from vessim.core.consumer import PowerMeter
-from vessim.sil.http_client import HTTPClient
-from vessim.sil.stoppable_thread import StoppableThread
+from vessim.sil.http_client import HttpClient
+from vessim.sil.loop_thread import LoopThread
 
 
 class HttpPowerMeter(PowerMeter):
@@ -26,9 +26,9 @@ class HttpPowerMeter(PowerMeter):
         name: Optional[str] = None
     ) -> None:
         super().__init__(name)
-        self.http_client = HTTPClient(f"{server_address}:{port}")
+        self.http_client = HttpClient(f"{server_address}:{port}")
         self.power = 0.0
-        self.update_thread = StoppableThread(self._update_power, interval)
+        self.update_thread = LoopThread(self._update_power, interval)
         self.update_thread.start()
 
     def _update_power(self) -> None:
@@ -37,6 +37,7 @@ class HttpPowerMeter(PowerMeter):
 
     def measure(self) -> float:
         """Returns the current power demand of the node."""
+        self.update_thread.propagate_exception()
         return self.power
 
     def finalize(self) -> None:
