@@ -23,13 +23,6 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}   
     
-    # get rid of DeprecationWarning related to Jupyter paths when running pytest
-    - name: Set JUPYTER_PLATFORM_DIRS environment variable
-      env:
-        JUPYTER_PLATFORM_DIRS: 1
-      run: |
-        echo "JUPYTER_PLATFORM_DIRS=${JUPYTER_PLATFORM_DIRS}" >> $GITHUB_ENV   
-    
     # installs poetry without automatic creation of a virtual environment
     - name: Install poetry
       uses: snok/install-poetry@v1
@@ -42,5 +35,5 @@ jobs:
     - name: Run type checker
       run: mypy vessim
 
-    - name: Run linter ruff
+    - name: Run linter
       run: ruff .
