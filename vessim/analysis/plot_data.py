@@ -6,11 +6,19 @@ GREEN = "#79AE7C"
 DARK_GRAY = "#333"
 LIGHT_GRAY = "#ddd"
 
-def plot_evaluation(data: pd.Dataframe, title: str):
+def plot_evaluation(data: pd.DataFrame, title: str = "Evaluation"):
+    """Simple function for plotting of the simulation data.
+
+    Args:
+        data: The dataframe containing the simulation data.
+        title: The title of the plot. Defaults to `Evaluation`
+    """
+    data.index = pd.to_datetime(data.index)
+
+    # Setup graph
     fig, axs = plt.subplots(ncols=1, nrows=5, sharex="col",sharey="row", figsize=(10,5.5))
     fig.tight_layout(pad=0)
     fig.align_ylabels()
-
     axs[0].set_title(title)
 
     # Unpack data
@@ -28,10 +36,14 @@ def plot_evaluation(data: pd.Dataframe, title: str):
     axs[0].legend(loc="best", frameon=False)
 
     # Plot Production/Consumption delta
-    x = p_prod - p_computing_system
-    x.plot(ax=axs[1], alpha=0)
-    axs[1].fill_between(x.index, 0, x.values, where=x.values>0, color=GREEN)
-    axs[1].fill_between(x.index, 0, x.values, where=x.values<0, color=RED)
+    power_delta = p_prod - p_computing_system
+    power_delta.plot(ax=axs[1], alpha=0)
+    axs[1].fill_between(
+        power_delta.index, 0, power_delta.values, where=power_delta.values>0, color=GREEN
+    )
+    axs[1].fill_between(
+        power_delta.index, 0, power_delta.values, where=power_delta.values<0, color=RED
+    )
     axs[1].set_ylabel("power\ndelta (W)")
 
     # Plot Battery State of Charge
@@ -40,9 +52,10 @@ def plot_evaluation(data: pd.Dataframe, title: str):
     axs[2].set_ylim(0, 100)
     axs[2].set_ylabel("battery state\nof charge (%)")
     battery_min_soc.plot(
-        ax=axs[2], linestyle="--", linewidth=.8, color="black", label="max discharge"
+        ax=axs[2], linestyle="--", linewidth=.8, color="black", label="min_soc"
     )
-    axs[2].legend(loc="best", frameon=False)
+    handles, lables = axs[2].get_legend_handles_labels()
+    axs[2].legend(handles[1], lables[1], frameon=False)
 
     # Plot grid power and carbon emission
     p_grid[p_grid < 0] = 0
