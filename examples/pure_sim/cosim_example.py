@@ -82,6 +82,48 @@ def cacu_scenario(
     return data
 
 
+def cacu_scenario(
+    time: int,
+    battery_min_soc: float,
+    battery_soc: float,
+    ci: float,
+    node_ids: List[str]
+) -> dict:
+    """Calculate the power mode settings for nodes based on a scenario.
+
+    This function simulates the decision logic of a Carbon-Aware Control Unit
+    (CACU) by considering battery state-of-charge (SOC), time, and carbon
+    intensity (CI).
+
+    Args:
+        time: Time in minutes since some reference point or start.
+        battery_min_soc: The provided minimum state of charge for the battery.
+        battery_soc: Current state of charge of the battery.
+        ci: Current carbon intensity.
+        node_ids: A list of node IDs for which the power mode needs to be
+            determined.
+
+    Returns:
+        A dictionary containing:
+            - battery_min_soc: Updated minimum state of charge value based on
+              the given time.
+            - nodes_power_mode: A dictionary with node IDs as keys and their
+              respective power modes ('high performance', 'normal', or
+              'power-saving') as values.
+    """
+    data = {}
+    data["battery_min_soc"] = .3 if time < 60 * 5 else .6
+    data["nodes_power_mode"] = {}
+    for node_id in node_ids:
+        if ci <= 200 or battery_soc > .8:
+            data["nodes_power_mode"][node_id] = "high performance"
+        elif ci >= 250 and battery_soc < battery_min_soc:
+            data["nodes_power_mode"][node_id] = "normal"
+        else:
+            data["nodes_power_mode"][node_id] = "power-saving"
+    return data
+
+
 def run_simulation():
     world = mosaik.World(COSIM_CONFIG)
 
