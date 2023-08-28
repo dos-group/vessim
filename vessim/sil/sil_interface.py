@@ -1,12 +1,12 @@
 from threading import Thread
 from typing import List, Optional
 
-from vessim.core.storage import Storage, DefaultStoragePolicy, StoragePolicy
+from vessim.core.storage import SimpleBattery, DefaultStoragePolicy, StoragePolicy
 from vessim.cosim._util import VessimSimulator, VessimModel, simplify_inputs
-from vessim.sil.api_server import VessimApiServer
-from vessim.sil.http_client import HTTPClient, HTTPClientError
+from vessim.sil.api_server import ApiServer, VessimApi
+from vessim.sil.http_client import HttpClient
 from vessim.sil.node import Node
-from vessim.sil.stoppable_thread import StoppableThread
+from vessim.sil.loop_thread import LoopThread
 
 
 class SilInterfaceSim(VessimSimulator):
@@ -20,7 +20,7 @@ class SilInterfaceSim(VessimSimulator):
                 "any_inputs": True,
                 "params": [
                     "nodes",
-                    "storage",
+                    "battery",
                     "policy",
                     "collection_interval",
                     "api_host",
@@ -60,7 +60,7 @@ class _SilInterfaceModel(VessimModel):
 
     Args:
         nodes: List of vessim SiL nodes.
-        storage: Storage used by the system.
+        battery: SimpleBattery battery used by the system.
         policy: The (dis)charging policy used to control the battery.
         nodes: List of physical or virtual computing nodes.
         collection_interval: Interval in which `/sim/collet-set` in fetched from
@@ -72,7 +72,7 @@ class _SilInterfaceModel(VessimModel):
     def __init__(
         self,
         nodes: List[Node],
-        storage: Storage,
+        battery: SimpleBattery,
         collection_interval: float,
         policy: Optional[StoragePolicy] = None,
         api_host: str = "127.0.0.1",
@@ -80,7 +80,7 @@ class _SilInterfaceModel(VessimModel):
     ):
         self.nodes = nodes
         self.updated_nodes: List[Node] = []
-        self.storage = storage
+        self.battery = battery
         self.policy = policy if policy is not None else DefaultStoragePolicy()
         self.p_cons = 0
         self.p_gen = 0
@@ -88,19 +88,19 @@ class _SilInterfaceModel(VessimModel):
         self.ci = 0
 
         # start server process
-        self.api_server = VessimApiServer(api_host, api_port)
+        self.api_server = ApiServer(VessimApi, api_host, api_port)
         self.api_server.start()
         self.api_server.wait_for_startup_complete()
 
         # init server values and wait for put request confirmation
-        self.http_client = HTTPClient(f"http://{api_host}:{api_port}")
+        self.http_client = HttpClient(f"http://{api_host}:{api_port}")
         self.http_client.put("/sim/update", {
             "solar": self.p_gen,
             "ci": self.ci,
-            "battery_soc": self.storage.soc(),
+            "battery_soc": self.battery.soc(),
         })
 
-        self.collector_thread = StoppableThread(self._api_collector, collection_interval)
+        self.collector_thread = LoopThread(self._api_collector, collection_interval)
         self.collector_thread.start()
 
     def _api_collector(self):
@@ -122,7 +122,7 @@ class _SilInterfaceModel(VessimModel):
         if collection["battery_min_soc"]:
             # The newest entry is the one with the highest iso timestamp.
             newest_key = max(collection["battery_min_soc"].keys())
-            self.storage.min_soc = float(collection["battery_min_soc"][newest_key])
+            self.battery.min_soc = float(collection["battery_min_soc"][newest_key])
 
         if collection["battery_grid_charge"]:
             newest_key = max(collection["battery_grid_charge"].keys())
@@ -142,6 +142,7 @@ class _SilInterfaceModel(VessimModel):
                     self.updated_nodes.append(node)
 
     def step(self, time: int, inputs: dict) -> None:
+        self.collector_thread.propagate_exception()
         inputs = simplify_inputs(inputs)
         self.p_cons = inputs["p_cons"]
         self.p_gen = inputs["p_gen"]
@@ -150,27 +151,21 @@ class _SilInterfaceModel(VessimModel):
 
         # update values to the api server
         def update_api_server():
-            try:
-                self.http_client.put("/sim/update", {
-                    "solar": self.p_gen,
-                    "ci": self.ci,
-                    "battery_soc": self.storage.soc(),
-                })
-            except HTTPClientError as e:
-                print(e)
+            self.http_client.put("/sim/update", {
+                "solar": self.p_gen,
+                "ci": self.ci,
+                "battery_soc": self.battery.soc(),
+            })
         # use thread to not slow down simulation
         api_server_update_thread = Thread(target=update_api_server)
         api_server_update_thread.start()
 
         # update power mode for the node remotely
         for node in self.updated_nodes:
-            http_client = HTTPClient(f"{node.address}:{node.port}")
+            http_client = HttpClient(f"{node.address}:{node.port}")
 
             def update_node_power_model():
-                try:
-                    http_client.put("/power_mode", {"power_mode": node.power_mode})
-                except HTTPClientError as e:
-                    print(e)
+                http_client.put("/power_mode", {"power_mode": node.power_mode})
             # use thread to not slow down simulation
             node_update_thread = Thread(target=update_node_power_model)
             node_update_thread.start()
