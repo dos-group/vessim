@@ -1,0 +1,49 @@
+name: testing
+
+# event that triggers workflow
+# runs on every commit
+on: 
+  push:
+
+jobs:
+  linting-and-testing:
+    # specifies the os that the job will run on 
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8, 3.11]
+    steps:
+    # downloads the repository code to the runner's file system for workflow access
+    - uses: actions/checkout@v2
+    - uses: chartboost/ruff-action@v1
+       
+    # sets up python environment with specified versions 
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}   
+    
+    # get rid of DeprecationWarning related to Jupyter paths when running pytest
+    - name: Set JUPYTER_PLATFORM_DIRS environment variable
+      env:
+        JUPYTER_PLATFORM_DIRS: 1
+      run: |
+        echo "JUPYTER_PLATFORM_DIRS=${JUPYTER_PLATFORM_DIRS}" >> $GITHUB_ENV   
+    
+    # installs poetry without automatic creation of a virtual environment
+    - name: Install poetry
+      uses: snok/install-poetry@v1
+      with:
+        virtualenvs-create: false
+     
+    - name: Install dependencies
+      run: poetry install
+
+    - name: Run type checker
+      run: mypy vessim
+
+    - name: Run linter ruff
+      run: ruff .
+        
+    - name: Run tests
+      run: python -m pytest

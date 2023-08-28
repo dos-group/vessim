@@ -8,7 +8,7 @@ on:
       - main
 
 jobs:
-  linting-and-testing:
+  integration-tests:
     # specifies the os that the job will run on 
     runs-on: ubuntu-latest
     strategy:
@@ -17,7 +17,6 @@ jobs:
     steps:
     # downloads the repository code to the runner's file system for workflow access
     - uses: actions/checkout@v2
-    - uses: chartboost/ruff-action@v1
        
     # sets up python environment with specified versions 
     - name: Set up Python ${{ matrix.python-version }}
@@ -37,27 +36,13 @@ jobs:
       uses: snok/install-poetry@v1
       with:
         virtualenvs-create: false
-    
-    # build package out of local poject, install it and run example scenario 
-    - name: Build the project as a package
+
+    - name: Build package out of local poject
       run: poetry build
 
-    - name: Install the package with linting dependencies
-      run: |
-        pip install dist/*.whl
-        pip install pytest mypy types-psutil pandas-stubs types-requests black ruff
+    - name: Install package 
+      run: pip install dist/*.tar.gz
 
-    - name: Run example scenario
-      run: python -m examples.cosim_example
+    - name: Run example scenario 
+      run: python examples/cosim_example.py
 
-    # run type checker
-    - name: Run type checker
-      run: mypy vessim
-
-    # run ruff
-    - name: Run linter
-      run: ruff .
-        
-    # run tests
-    - name: Run tests
-      run: python -m pytest
