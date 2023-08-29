@@ -1,4 +1,4 @@
-name: linting-and-type-checking
+name: linting-and-testing
 
 # event that triggers workflow
 # runs on every commit
@@ -6,7 +6,7 @@ on:
   push:
 
 jobs:
-  linting-and-type-checking:
+  linting-and-testing:
     # specifies the os that the job will run on 
     runs-on: ubuntu-latest
     strategy:
@@ -22,6 +22,13 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}   
+
+    # get rid of DeprecationWarning related to Jupyter paths when running pytest
+    - name: Set JUPYTER_PLATFORM_DIRS environment variable
+      env:
+        JUPYTER_PLATFORM_DIRS: 1
+      run: |
+        echo "JUPYTER_PLATFORM_DIRS=${JUPYTER_PLATFORM_DIRS}" >> $GITHUB_ENV  
     
     # installs poetry without automatic creation of a virtual environment
     - name: Install poetry
@@ -37,3 +44,6 @@ jobs:
 
     - name: Run linter
       run: ruff .
+
+    - name: Run tests
+      run: python -m pytest

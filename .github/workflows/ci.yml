@@ -22,14 +22,7 @@ jobs:
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
-        python-version: ${{ matrix.python-version }}   
-    
-    # get rid of DeprecationWarning related to Jupyter paths when running pytest
-    - name: Set JUPYTER_PLATFORM_DIRS environment variable
-      env:
-        JUPYTER_PLATFORM_DIRS: 1
-      run: |
-        echo "JUPYTER_PLATFORM_DIRS=${JUPYTER_PLATFORM_DIRS}" >> $GITHUB_ENV   
+        python-version: ${{ matrix.python-version }}    
     
     # installs poetry without automatic creation of a virtual environment
     - name: Install poetry
@@ -44,10 +37,18 @@ jobs:
       run: poetry build
 
     - name: Install package 
-      run: pip install dist/*.tar.gz pytest
+      run: pip install dist/*.tar.gz
 
-    - name: Run example scenario 
-      run: python examples/cosim_example.py
+    - name: Run example scenario
+      run: |
+        mkdir $GITHUB_WORKSPACE/testing_results
+        python $GITHUB_WORKSPACE/vessim/examples/cosim_example.py > $GITHUB_WORKSPACE/testing_results/data.csv
 
-    - name: Run tests
-      run: python -m pytest
+    - name: Compare resulting data with the data from inside the repository
+      run: |
+        if diff $GITHUB_WORKSPACE/testing_results/data.csv $GITHUB_WORKSPACE/data.csv; then
+          echo "Files are identical"
+        else
+          echo "Differences found between the resulting data and the data from the repository."
+          exit 1
+        fi
