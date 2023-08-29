@@ -42,7 +42,7 @@ jobs:
     - name: Run example scenario
       run: |
         mkdir $GITHUB_WORKSPACE/testing_results
-        python $GITHUB_WORKSPACE/vessim/examples/cosim_example.py > $GITHUB_WORKSPACE/testing_results/data.csv
+        python $GITHUB_WORKSPACE/examples/cosim_example.py > $GITHUB_WORKSPACE/testing_results/data.csv
 
     - name: Compare resulting data with the data from inside the repository
       run: |
