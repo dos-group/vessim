@@ -1,4 +1,3 @@
-from flatdict import FlatDict
 from collections import defaultdict
 from datetime import datetime
 from typing import Dict, Callable, Any
@@ -63,7 +62,7 @@ class _MonitorModel(VessimModel):
         if self.fn is not None:
             inputs.update(self.fn())
 
-        for attr, value in FlatDict(inputs).items():
+        for attr, value in inputs.items():
             logger.info(f"{attr}: {value}")
             self.data[attr][dt] = value
 

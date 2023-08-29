@@ -82,7 +82,7 @@ def run_simulation():
 
     # Connect all simulation entities and the battery to the monitor
     monitor_sim = world.start("Monitor", sim_start=SIM_START, step_size=60)
-    monitor = monitor_sim.Monitor(out_path="_data.csv",
+    monitor = monitor_sim.Monitor(out_path="data.csv",
                                   fn=lambda: dict(battery_soc=STORAGE.soc(),
                                                   battery_min_soc=STORAGE.min_soc))
     world.connect(solar, monitor, ("p", "p_solar"))
