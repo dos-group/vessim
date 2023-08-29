@@ -1,3 +1,5 @@
+"""Utility functions for _data analysis and plotting."""
+
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -6,11 +8,12 @@ GREEN = "#79AE7C"
 DARK_GRAY = "#333"
 LIGHT_GRAY = "#ddd"
 
+
 def plot_evaluation(data: pd.DataFrame, title: str = "Evaluation"):
-    """Simple function for plotting of the simulation data.
+    """Simple function for plotting of the simulation _data.
 
     Args:
-        data: The dataframe containing the simulation data.
+        data: The dataframe containing the simulation _data.
         title: The title of the plot. Defaults to `Evaluation`
     """
     data.index = pd.to_datetime(data.index)
@@ -21,7 +24,7 @@ def plot_evaluation(data: pd.DataFrame, title: str = "Evaluation"):
     fig.align_ylabels()
     axs[0].set_title(title)
 
-    # Unpack data
+    # Unpack _data
     p_prod = data["p_solar"]
     p_computing_system = - data["p_computing_system"]
     p_grid = -data["p_grid"]
