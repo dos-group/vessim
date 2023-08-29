@@ -29,7 +29,7 @@ COSIM_CONFIG = {
         "python": "vessim.cosim:MonitorSim",
     },
     "Cacu": {
-        "python": "vessim.cosim:CacuSim",
+        "python": "examples.cosim_example.cacu:CacuSim",
     }
 }
 SIM_START = "2020-06-11 00:00:00"
@@ -38,48 +38,6 @@ STORAGE = SimpleBattery(capacity=32 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
                         charge_level=32 * 5 * 3600 * .6,
                         min_soc=.6)
 STORAGE_POLICY = DefaultStoragePolicy()
-
-
-def cacu_scenario(
-    time: int,
-    battery_soc: float,
-    ci: float,
-    node_ids: List[str]
-) -> dict:
-    """Calculate the power mode settings for nodes based on a scenario.
-
-    This function simulates the decision logic of a Carbon-Aware Control Unit
-    (CACU) by considering battery state-of-charge (SOC), time, and carbon
-    intensity (CI).
-
-    Args:
-        time: Time in minutes since some reference point or start.
-        battery_soc: Current state of charge of the battery.
-        ci: Current carbon intensity.
-        node_ids: A list of node IDs for which the power mode needs to be
-            determined.
-
-    Returns:
-        A dictionary containing:
-            - battery_min_soc: Updated minimum state of charge value based on
-              the given time.
-            - grid_power: Power to be drawn from the grid.
-            - nodes_power_mode: A dictionary with node IDs as keys and their
-              respective power modes ('high performance', 'normal', or
-              'power-saving') as values.
-    """
-    data = {}
-    data["battery_min_soc"] = .3 if time < 3600 * 30 and battery_soc else .6
-    data["grid_power"] = 20 if ci <= 200 and battery_soc < .6 else 0
-    data["nodes_power_mode"] = {}
-    for node_id in node_ids:
-        if ci <= 200 or battery_soc > .8:
-            data["nodes_power_mode"][node_id] = "high performance"
-        elif ci >= 250 and battery_soc < .6:
-            data["nodes_power_mode"][node_id] = "power-saving"
-        else:
-            data["nodes_power_mode"][node_id] = "normal"
-    return data
 
 
 def run_simulation():
@@ -99,7 +57,7 @@ def run_simulation():
     # Initialize carbon-aware control unit
     cacu_sim = world.start("Cacu", step_size=60)
     cacu = cacu_sim.Cacu(
-        mock_power_meters=mock_power_meters, storage=STORAGE, policy=STORAGE_POLICY
+        mock_power_meters=mock_power_meters, battery=STORAGE, policy=STORAGE_POLICY
     )
 
     # Initialize solar generator
@@ -124,7 +82,7 @@ def run_simulation():
 
     # Connect all simulation entities and the battery to the monitor
     monitor_sim = world.start("Monitor", sim_start=SIM_START, step_size=60)
-    monitor = monitor_sim.Monitor(out_path="data.csv",
+    monitor = monitor_sim.Monitor(out_path="_data.csv",
                                   fn=lambda: dict(battery_soc=STORAGE.soc(),
                                                   battery_min_soc=STORAGE.min_soc))
     world.connect(solar, monitor, ("p", "p_solar"))

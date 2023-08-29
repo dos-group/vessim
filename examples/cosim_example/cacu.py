@@ -1,7 +1,6 @@
 from vessim.cosim._util import VessimSimulator, VessimModel, simplify_inputs
 from vessim.core.consumer import MockPowerMeter
 from vessim.core.storage import SimpleBattery, DefaultStoragePolicy
-from examples.pure_sim.cosim_example import cacu_scenario
 
 from typing import List, Dict
 
@@ -79,3 +78,44 @@ class _CacuModel(VessimModel):
             if mpm.name in scenario_data["nodes_power_mode"].keys():
                 mpm.factor = power_modes[scenario_data["nodes_power_mode"][mpm.name]]
 
+
+def cacu_scenario(
+    time: int,
+    battery_soc: float,
+    ci: float,
+    node_ids: List[str]
+) -> dict:
+    """Calculate the power mode settings for nodes based on a scenario.
+
+    This function simulates the decision logic of a Carbon-Aware Control Unit
+    (CACU) by considering battery state-of-charge (SOC), time, and carbon
+    intensity (CI).
+
+    Args:
+        time: Time in minutes since some reference point or start.
+        battery_soc: Current state of charge of the battery.
+        ci: Current carbon intensity.
+        node_ids: A list of node IDs for which the power mode needs to be
+            determined.
+
+    Returns:
+        A dictionary containing:
+            - battery_min_soc: Updated minimum state of charge value based on
+              the given time.
+            - grid_power: Power to be drawn from the grid.
+            - nodes_power_mode: A dictionary with node IDs as keys and their
+              respective power modes ('high performance', 'normal', or
+              'power-saving') as values.
+    """
+    data = {}
+    data["battery_min_soc"] = .3 if time < 3600 * 30 and battery_soc else .6
+    data["grid_power"] = 20 if ci <= 200 and battery_soc < .6 else 0
+    data["nodes_power_mode"] = {}
+    for node_id in node_ids:
+        if ci <= 200 or battery_soc > .8:
+            data["nodes_power_mode"][node_id] = "high performance"
+        elif ci >= 250 and battery_soc < .6:
+            data["nodes_power_mode"][node_id] = "power-saving"
+        else:
+            data["nodes_power_mode"][node_id] = "normal"
+    return data

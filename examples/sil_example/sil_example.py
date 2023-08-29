@@ -23,7 +23,7 @@ from vessim.cosim._util import disable_mosaik_warnings
 COSIM_SIL_CONFIG = {
     **COSIM_CONFIG,
     "SilInterface": {
-        "python": "vessim.sil.sil_interface:SilInterfaceSim",
+        "python": "vessim.sil_example.sil_interface:SilInterfaceSim",
     },
 }
 RT_FACTOR = 1/60  # 1 wall-clock second ^= 60 sim seconds
