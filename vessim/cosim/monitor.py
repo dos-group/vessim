@@ -57,13 +57,14 @@ class _MonitorModel(VessimModel):
     def step(self, time: int, inputs: Dict) -> None:
         inputs = simplify_inputs(inputs)
         dt = self._clock.to_datetime(time)
-        logger.info(f"# --- {str(dt):>5} ---")
+        # TODO Reimplement logging on DEBUG level
+        # logger.info(f"# --- {str(dt):>5} ---")
 
         if self.fn is not None:
             inputs.update(self.fn())
 
         for attr, value in inputs.items():
-            logger.info(f"{attr}: {value}")
+            # logger.info(f"{attr}: {value}")
             self.data[attr][dt] = value
 
     def finalize(self):
