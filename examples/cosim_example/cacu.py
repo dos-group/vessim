@@ -123,7 +123,7 @@ def cacu_scenario(
               'power-saving') as values.
     """
     data = {}
-    data["battery_min_soc"] = .3 if time < 3600 * 30 and battery_soc < .6 else .6
+    data["battery_min_soc"] = .6 if time > 3600 * 30 and battery_soc >= .6 else .3
     data["grid_power"] = 20 if ci <= 200 and battery_soc < .6 else 0
     data["nodes_power_mode"] = {}
     for node_id in node_ids:
