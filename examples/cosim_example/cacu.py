@@ -68,15 +68,31 @@ class _CacuModel(VessimModel):
         )
         self.policy.grid_power = scenario_data["grid_power"]
         self.battery.min_soc = scenario_data["battery_min_soc"]
+        #power_modes = {
+        #    "high performance": 1.,
+        #    "normal": .7,
+        #    "power-saving": .5
+        #}
+        ## update factor of mpms based on scenario logic
+        #for mpm in self.mock_power_meters:
+        #    if mpm.name in scenario_data["nodes_power_mode"].keys():
+        #        mpm.factor = power_modes[scenario_data["nodes_power_mode"][mpm.name]]
         power_modes = {
-            "high performance": 1.,
-            "normal": .7,
-            "power-saving": .5
+            "mpm0": {
+                "high performance": 2.964,
+                "normal": 2.194,
+                "power-saving": 1.781
+            },
+            "mpm1": {
+                "high performance": 8.8,
+                "normal": 7.6,
+                "power-saving": 6.8
+            }
         }
-        # update factor of mpms based on scenario logic
+        assert set(["mpm0", "mpm1"]).issubset({mpm.name for mpm in self.mock_power_meters})
         for mpm in self.mock_power_meters:
-            if mpm.name in scenario_data["nodes_power_mode"].keys():
-                mpm.factor = power_modes[scenario_data["nodes_power_mode"][mpm.name]]
+            if mpm.name in power_modes:
+                mpm.p = power_modes[mpm.name][scenario_data["nodes_power_mode"][mpm.name]]
 
 
 def cacu_scenario(
