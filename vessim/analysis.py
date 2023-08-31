@@ -1,6 +1,6 @@
 """Utility functions for _data analysis and plotting."""
 
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # type: ignore
 import pandas as pd
 
 RED = "#D65D62"
@@ -41,17 +41,16 @@ def plot_evaluation(data: pd.DataFrame, title: str = "Evaluation"):
     # Plot Production/Consumption delta
     power_delta = p_prod - p_computing_system
     power_delta.plot(ax=axs[1], alpha=0)
-    axs[1].fill_between(
-        power_delta.index, 0, power_delta.values, where=power_delta.values>0, color=GREEN
-    )
-    axs[1].fill_between(
-        power_delta.index, 0, power_delta.values, where=power_delta.values<0, color=RED
-    )
+    axs[1].fill_between(power_delta.index, 0, power_delta.values,
+                        where=power_delta.values > 0, color=GREEN)  # type: ignore
+    axs[1].fill_between(power_delta.index, 0, power_delta.values,
+                        where=power_delta.values < 0, color=RED)  # type: ignore
     axs[1].set_ylabel("power\ndelta (W)")
 
     # Plot Battery State of Charge
     battery_soc.plot(ax=axs[2], alpha=0)
-    axs[2].fill_between(battery_soc.index, 0, battery_soc.values * 100, color=GREEN)
+    axs[2].fill_between(battery_soc.index, 0, battery_soc.values * 100,  # type: ignore
+                        color=GREEN)
     axs[2].set_ylim(0, 100)
     axs[2].set_ylabel("battery state\nof charge (%)")
     battery_min_soc.plot(

@@ -6,11 +6,11 @@ class TestMockPowerMeter:
 
     @pytest.fixture
     def power_meter(self) -> MockPowerMeter:
-        return MockPowerMeter(p=20, name="test")
+        return MockPowerMeter(name="test", p=20)
 
     def test_initialize_fails_with_invalid_p_value(self):
         with pytest.raises(ValueError):
-            MockPowerMeter(p=-1.0, name="test")
+            MockPowerMeter(name="test", p=-1.0)
 
     def test_measure(self, power_meter):
         assert power_meter.measure() == 20.0
@@ -26,7 +26,7 @@ class TestComputingSystem:
     def computing_system(self) -> ComputingSystem:
         return ComputingSystem(
             power_meters=[
-                MockPowerMeter(p=5, name="test1"), MockPowerMeter(p=7, name="test2")
+                MockPowerMeter(name="test1", p=5), MockPowerMeter(name="test2", p=7)
             ],
             pue=1.5
         )

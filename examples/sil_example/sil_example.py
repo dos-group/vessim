@@ -47,8 +47,8 @@ def run_simulation():
     consumer_sim = world.start("Consumer", step_size=60)
     computing_system = consumer_sim.Consumer(
         consumer=ComputingSystem(power_meters=[
-            HttpPowerMeter(interval=1, server_address=GCP_ADDRESS),
-            # HttpPowerMeter(interval=1, server_address=RASPI_ADDRESS)
+            HttpPowerMeter(name="mpm0", interval=1, server_address=GCP_ADDRESS),
+            # HttpPowerMeter(name="mpm1", interval=1, server_address=RASPI_ADDRESS)
         ])
     )
 

@@ -43,8 +43,8 @@ def run_simulation(carbon_aware: bool, result_csv: str):
     world = mosaik.World(COSIM_CONFIG)
 
     mock_power_meters = [
-        MockPowerMeter(p=2.194, name="mpm0"),
-        MockPowerMeter(p=7.6, name="mpm1")
+        MockPowerMeter(name="mpm0", p=2.194),
+        MockPowerMeter(name="mpm1", p=7.6)
     ]
 
     # Initialize computing system

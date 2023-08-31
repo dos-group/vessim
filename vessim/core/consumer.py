@@ -40,7 +40,7 @@ class MockPowerMeter(PowerMeter):
         ValueError: If p is less than 0.
     """
 
-    def __init__(self, p: float, name: str):
+    def __init__(self, name: str, p: float):
         super().__init__(name)
         if p < 0:
             raise ValueError("p must not be less than 0")
