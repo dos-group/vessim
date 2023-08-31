@@ -89,7 +89,9 @@ class _CacuModel(VessimModel):
                 "power-saving": 6.8
             }
         }
-        assert set(["mpm0", "mpm1"]).issubset({mpm.name for mpm in self.mock_power_meters})
+        assert set(["mpm0", "mpm1"]).issubset(
+            {mpm.name for mpm in self.mock_power_meters}
+        )
         for mpm in self.mock_power_meters:
             mpm.p = power_modes[mpm.name][scenario_data["nodes_power_mode"][mpm.name]]
 
@@ -123,7 +125,13 @@ def cacu_scenario(
               'power-saving') as values.
     """
     data = {}
-    data["battery_min_soc"] = .6 if time > 3600 * 30 and battery_soc >= .6 else .3
+
+    time_of_day = time % (3600 * 24)
+    if 11 * 3600 <= time_of_day < 24 * 3600 and battery_soc >= 0.6:
+        data["battery_min_soc"] = .6
+    else:
+        data["battery_min_soc"] = .3
+
     data["grid_power"] = 20 if ci <= 200 and battery_soc < .6 else 0
     data["nodes_power_mode"] = {}
     for node_id in node_ids:
