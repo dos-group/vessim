@@ -1,7 +1,7 @@
 """Utility functions for _data analysis and plotting."""
 
-import pandas as pd
 import matplotlib.pyplot as plt
+import pandas as pd
 
 RED = "#D65D62"
 GREEN = "#79AE7C"

@@ -3,7 +3,6 @@ from datetime import datetime
 from typing import Dict, Callable, Any
 
 import pandas as pd
-from loguru import logger
 
 from vessim.cosim._util import Clock, VessimSimulator, VessimModel, simplify_inputs
 

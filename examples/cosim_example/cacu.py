@@ -1,8 +1,8 @@
-from vessim.cosim._util import VessimSimulator, VessimModel, simplify_inputs
+from typing import List, Dict
+
 from vessim.core.consumer import MockPowerMeter
 from vessim.core.storage import SimpleBattery, DefaultStoragePolicy
-
-from typing import List, Dict
+from vessim.cosim._util import VessimSimulator, VessimModel, simplify_inputs
 
 
 class CacuSim(VessimSimulator):
