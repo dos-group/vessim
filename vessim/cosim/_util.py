@@ -120,9 +120,16 @@ def simplify_inputs(attrs: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
         >>> simplify_inputs({'p': {'ComputingSystem-0.ComputingSystem_0': -50}})
         {'p': -50}
     """
+    # TODO We should make this function a bit more elegant once we better evaluated
+    #   our requirements for Vessim simulations.
     result = {}
     for key, val_dict in attrs.items():
         result[key] = list(val_dict.values())[0]
+        # flattening dicts
+        if isinstance(result[key], dict):
+            for kk in result[key].keys():
+                result[f"{key}.{kk}"] = result[key][kk]
+            del result[key]
     return result
 
 

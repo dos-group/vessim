@@ -1,5 +1,3 @@
-from typing import Optional
-
 from vessim.core.consumer import PowerMeter
 from vessim.sil.http_client import HttpClient
 from vessim.sil.loop_thread import LoopThread
@@ -20,10 +18,10 @@ class HttpPowerMeter(PowerMeter):
 
     def __init__(
         self,
+        name: str,
         interval: float,
         server_address: str,
-        port: int = 8000,
-        name: Optional[str] = None
+        port: int = 8000
     ) -> None:
         super().__init__(name)
         self.http_client = HttpClient(f"{server_address}:{port}")

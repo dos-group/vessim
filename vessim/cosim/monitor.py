@@ -3,7 +3,6 @@ from datetime import datetime
 from typing import Dict, Callable, Any
 
 import pandas as pd
-from loguru import logger
 
 from vessim.cosim._util import Clock, VessimSimulator, VessimModel, simplify_inputs
 
@@ -57,14 +56,15 @@ class _MonitorModel(VessimModel):
     def step(self, time: int, inputs: Dict) -> None:
         inputs = simplify_inputs(inputs)
         dt = self._clock.to_datetime(time)
-        logger.info(f"# --- {str(dt):>5} ---")
-        for attr, value in inputs.items():
-            logger.info(f"{attr}: {value}")
-            self.data[attr][dt] = value
+        # TODO Reimplement logging on DEBUG level
+        # logger.info(f"# --- {str(dt):>5} ---")
+
         if self.fn is not None:
-            for attr, value in self.fn().items():
-                logger.info(f"{attr}: {value}")
-                self.data[attr][dt] = value
+            inputs.update(self.fn())
+
+        for attr, value in inputs.items():
+            # logger.info(f"{attr}: {value}")
+            self.data[attr][dt] = value
 
     def finalize(self):
         """Collected data is printed to file at simulation end."""

@@ -33,5 +33,6 @@ class _MicrogridModel(VessimModel):
 
     def step(self, time: int, inputs: Dict) -> None:
         duration = time - self._last_step_time
-        self.p_delta = self.microgrid.power_flow(p=inputs["p"], duration=duration)
+        if duration > 0:
+            self.p_delta = self.microgrid.power_flow(p=inputs["p"], duration=duration)
         self._last_step_time = time

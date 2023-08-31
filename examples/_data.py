@@ -1,9 +1,11 @@
 from datetime import timedelta
 
 import pandas as pd
+import os
 
-SOLAR_DATA_FILE = "examples/data/weather_berlin_2021-06.csv"
-CARBON_DATA_FILE = "examples/data/carbon_intensity.csv"
+BASE_DIR = os.path.dirname(__file__)
+SOLAR_DATA_FILE = f"{BASE_DIR}/_data/weather_berlin_2021-06.csv"
+CARBON_DATA_FILE = f"{BASE_DIR}/_data/carbon_intensity.csv"
 
 
 def load_solar_data(sqm: float) -> pd.Series:
