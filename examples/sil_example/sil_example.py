@@ -10,8 +10,8 @@ This is example experimental and documentation is still in progress.
 
 import mosaik  # type: ignore
 
-from _data import load_carbon_data, load_solar_data
-from cosim_example import COSIM_CONFIG, SIM_START, STORAGE, DURATION
+from examples._data import load_carbon_data, load_solar_data
+from examples.pure_sim.cosim_example import COSIM_CONFIG, SIM_START, STORAGE, DURATION
 from vessim.core.consumer import ComputingSystem
 from vessim.core.microgrid import SimpleMicrogrid
 from vessim.core.simulator import Generator, CarbonApi
@@ -23,12 +23,12 @@ from vessim.cosim._util import disable_mosaik_warnings
 COSIM_SIL_CONFIG = {
     **COSIM_CONFIG,
     "SilInterface": {
-        "python": "vessim.sil.sil_interface:SilInterfaceSim",
+        "python": "vessim.sil_example.sil_interface:SilInterfaceSim",
     },
 }
 RT_FACTOR = 1/60  # 1 wall-clock second ^= 60 sim seconds
 
-GCP_ADDRESS = "http://34.159.232.190"
+GCP_ADDRESS = "http://35.198.148.144"
 RASPI_ADDRESS = "http://192.168.207.71"
 
 disable_mosaik_warnings(behind_threshold=0.01)
@@ -47,8 +47,8 @@ def run_simulation():
     consumer_sim = world.start("Consumer", step_size=60)
     computing_system = consumer_sim.Consumer(
         consumer=ComputingSystem(power_meters=[
-            HttpPowerMeter(interval=1, server_address=GCP_ADDRESS),
-            # HttpPowerMeter(interval=1, server_address=RASPI_ADDRESS)
+            HttpPowerMeter(name="mpm0", interval=1, server_address=GCP_ADDRESS),
+            # HttpPowerMeter(name="mpm1", interval=1, server_address=RASPI_ADDRESS)
         ])
     )
 

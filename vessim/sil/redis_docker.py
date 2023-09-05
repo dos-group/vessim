@@ -1,7 +1,6 @@
 from time import sleep
 import docker # type: ignore
 import redis # type: ignore
-import atexit
 
 
 class RedisDocker:
@@ -23,8 +22,6 @@ class RedisDocker:
         except docker.errors.DockerException:
             raise RuntimeError("Please start Docker before execution.")
         self.redis = self._connect_redis()
-         # Register cleanup function
-        atexit.register(self.__del__)
 
     def _init_docker(self) -> None:
         """Initializes Docker client and starts Docker container with Redis."""

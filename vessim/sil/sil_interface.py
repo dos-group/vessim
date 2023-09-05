@@ -1,7 +1,7 @@
 from threading import Thread
 from typing import List, Optional
 
-from vessim.core.storage import Storage, DefaultStoragePolicy, StoragePolicy
+from vessim.core.storage import SimpleBattery, DefaultStoragePolicy, StoragePolicy
 from vessim.cosim._util import VessimSimulator, VessimModel, simplify_inputs
 from vessim.sil.api_server import ApiServer, VessimApi
 from vessim.sil.http_client import HttpClient
@@ -20,7 +20,7 @@ class SilInterfaceSim(VessimSimulator):
                 "any_inputs": True,
                 "params": [
                     "nodes",
-                    "storage",
+                    "battery",
                     "policy",
                     "collection_interval",
                     "api_host",
@@ -45,6 +45,7 @@ class SilInterfaceSim(VessimSimulator):
         for model_instance in self.entities.values():
             model_instance.collector_thread.stop() # type: ignore
             model_instance.collector_thread.join() # type: ignore
+            model_instance.http_client.put("/shutdown") # type: ignore
             model_instance.api_server.terminate() # type: ignore
             model_instance.api_server.join() # type: ignore
 
@@ -60,7 +61,7 @@ class _SilInterfaceModel(VessimModel):
 
     Args:
         nodes: List of vessim SiL nodes.
-        storage: Storage used by the system.
+        battery: SimpleBattery battery used by the system.
         policy: The (dis)charging policy used to control the battery.
         nodes: List of physical or virtual computing nodes.
         collection_interval: Interval in which `/sim/collet-set` in fetched from
@@ -72,7 +73,7 @@ class _SilInterfaceModel(VessimModel):
     def __init__(
         self,
         nodes: List[Node],
-        storage: Storage,
+        battery: SimpleBattery,
         collection_interval: float,
         policy: Optional[StoragePolicy] = None,
         api_host: str = "127.0.0.1",
@@ -80,7 +81,7 @@ class _SilInterfaceModel(VessimModel):
     ):
         self.nodes = nodes
         self.updated_nodes: List[Node] = []
-        self.storage = storage
+        self.battery = battery
         self.policy = policy if policy is not None else DefaultStoragePolicy()
         self.p_cons = 0
         self.p_gen = 0
@@ -97,7 +98,7 @@ class _SilInterfaceModel(VessimModel):
         self.http_client.put("/sim/update", {
             "solar": self.p_gen,
             "ci": self.ci,
-            "battery_soc": self.storage.soc(),
+            "battery_soc": self.battery.soc(),
         })
 
         self.collector_thread = LoopThread(self._api_collector, collection_interval)
@@ -122,7 +123,7 @@ class _SilInterfaceModel(VessimModel):
         if collection["battery_min_soc"]:
             # The newest entry is the one with the highest iso timestamp.
             newest_key = max(collection["battery_min_soc"].keys())
-            self.storage.min_soc = float(collection["battery_min_soc"][newest_key])
+            self.battery.min_soc = float(collection["battery_min_soc"][newest_key])
 
         if collection["battery_grid_charge"]:
             newest_key = max(collection["battery_grid_charge"].keys())
@@ -154,7 +155,7 @@ class _SilInterfaceModel(VessimModel):
             self.http_client.put("/sim/update", {
                 "solar": self.p_gen,
                 "ci": self.ci,
-                "battery_soc": self.storage.soc(),
+                "battery_soc": self.battery.soc(),
             })
         # use thread to not slow down simulation
         api_server_update_thread = Thread(target=update_api_server)

@@ -43,7 +43,7 @@ git clone https://github.com/dos-group/vessim/
 
 5. Navigate to the `rpi` directory and install the Python dependencies:
 ```bash
-cd vessim/examples/sil/example_node/rpi
+cd vessim/examples/sil_example/example_node/rpi
 sudo pip install -r requirements.txt
 ```
 
@@ -78,7 +78,7 @@ git clone https://github.com/dos-group/vessim/
 
 2. Navigate to the `tf_gcp_node` directory:
 ```bash
-cd vessim/examples/sil/tf_gcp_node
+cd vessim/examples/sil_example/tf_gcp_node
 ```
 
 3. Create a `.tfvars` file to configure with your data. 
