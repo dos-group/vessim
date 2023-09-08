@@ -5,7 +5,7 @@ Runs a fully simulated example scenario over the course of two days.
 
 import mosaik  # type: ignore
 
-from _data import load_carbon_data, load_solar_data
+from examples._data import load_carbon_data, load_solar_data
 from vessim.core.consumer import ComputingSystem, MockPowerMeter
 from vessim.core.microgrid import SimpleMicrogrid
 from vessim.core.simulator import Generator, CarbonApi
@@ -28,7 +28,7 @@ COSIM_CONFIG = {
         "python": "vessim.cosim:MonitorSim",
     },
     "Cacu": {
-        "python": "cosim_example.cacu:CacuSim",
+        "python": "examples.cosim_example.cacu:CacuSim",
     }
 }
 SIM_START = "2020-06-11 00:00:00"
