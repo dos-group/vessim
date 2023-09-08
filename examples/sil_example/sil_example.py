@@ -11,7 +11,12 @@ This is example experimental and documentation is still in progress.
 import mosaik  # type: ignore
 
 from examples._data import load_carbon_data, load_solar_data
-from examples.cosim_example.cosim_example import COSIM_CONFIG, SIM_START, STORAGE, DURATION
+from examples.cosim_example.cosim_example import (
+    COSIM_CONFIG,
+    SIM_START,
+    STORAGE,
+    DURATION
+)
 from vessim.core.consumer import ComputingSystem
 from vessim.core.microgrid import SimpleMicrogrid
 from vessim.core.simulator import Generator, CarbonApi
