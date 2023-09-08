@@ -4,7 +4,7 @@ from typing import Optional
 
 from vessim.sil.http_client import HttpClient
 from vessim.sil.loop_thread import LoopThread
-from examples.pure_sim.cosim_example import cacu_scenario
+from examples.cosim_example.cosim_example import cacu_scenario
 
 
 class RemoteBattery:
