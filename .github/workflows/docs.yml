@@ -31,14 +31,14 @@ jobs:
     - name: Install dependencies
       run: |
         poetry install --extras "sil analysis"
-        ls -al
+        mkdir docs
         poetry export -f requirements.txt --output docs/requirements.txt
 
     - name: Generate Documentation
       run: |
         pdoc --html --force -o docs/ vessim
         
-    - name: Deploy to GitHub Pages
+    - name: Update branch
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
