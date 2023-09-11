@@ -1,0 +1,21 @@
+# .readthedocs.yaml
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
+version: 2
+
+formats: all
+
+python:
+  version: 3.11
+  install:
+    - requirements: docs/requirements.txt
+
+build:
+  image: latest
+
+sphinx:
+  configuration: none
+
+html:
+  dir: docs
