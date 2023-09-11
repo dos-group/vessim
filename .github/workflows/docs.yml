@@ -36,6 +36,7 @@ jobs:
 
     - name: Generate Documentation
       run: |
+        pip install pdoc3
         pdoc --html --force -o docs/ vessim
         
     - name: Update branch
