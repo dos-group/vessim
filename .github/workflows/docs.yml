@@ -32,7 +32,6 @@ jobs:
       run: |
         poetry install --extras "sil analysis"
         mkdir site
-        poetry export -f requirements.txt --output site/requirements.txt
 
     - name: Generate Documentation
       run: |
