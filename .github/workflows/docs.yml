@@ -31,13 +31,13 @@ jobs:
     - name: Install dependencies
       run: |
         poetry install --extras "sil analysis"
-        mkdir docs
-        poetry export -f requirements.txt --output docs/requirements.txt
+        mkdir site
+        poetry export -f requirements.txt --output site/requirements.txt
 
     - name: Generate Documentation
       run: |
         pip install pdoc3
-        pdoc --html --force -o docs/ vessim
+        pdoc --html --force -o site/ vessim
         
     - name: Update branch
       run: |

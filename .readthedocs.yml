@@ -9,13 +9,11 @@ formats: all
 python:
   version: 3.8
   install:
-    - requirements: docs/requirements.txt
+    - requirements: site/requirements.txt
 
 build:
   image: latest
 
-sphinx:
-  configuration: none
-
-html:
-  dir: docs
+mkdocs:
+  configuration: null
+  fail_on_warning: false
