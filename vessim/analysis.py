@@ -105,5 +105,5 @@ def plot_accumulated_emissions(
     emissions /= 60000
     emissions.cumsum().plot(ax=ax, color="#555", linewidth=.8)
     ax.fill_between(emissions.index, emissions.cumsum().values, color=carbon_color)
-    ax.set_ylabel("accumulated\nemissions (gCO2)")
+    ax.set_ylabel("accumulated\nemissions\n(gCO2)")
     return emissions.sum()
