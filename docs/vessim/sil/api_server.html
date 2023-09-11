@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>vessim.sil.api_server API documentation</title>
+<meta name="description" content="" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>vessim.sil.api_server</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">import multiprocessing
+import json
+from abc import ABC, abstractmethod
+from time import sleep
+from datetime import datetime
+from typing import Optional, Dict, Type
+
+import uvicorn  # type: ignore
+from fastapi import FastAPI, HTTPException  # type: ignore
+from pydantic import BaseModel  # type: ignore
+
+from vessim.sil.redis_docker import RedisDocker
+
+
+class SilApi(ABC):
+    &#34;&#34;&#34;Base class for the API running on the ApiServer in different process.
+
+    Initializes a FastApi instance with an endpoint `/shutdown` for executing
+    necessary cleanup tasks of the child process running the API.
+
+    Attributes:
+        app: The FastApi instance to be runned.
+    &#34;&#34;&#34;
+
+    def __init__(self) -&gt; None:
+        self.app = FastAPI()
+
+        @self.app.put(&#34;/shutdown&#34;)
+        async def shutdown_server():
+            self.finalize()
+
+    @abstractmethod
+    def finalize(self) -&gt; None:
+        &#34;&#34;&#34;Complete necessary cleanup tasks.&#34;&#34;&#34;
+
+
+class ApiServer(multiprocessing.Process):
+    &#34;&#34;&#34;Process that runs a given FastAPI application with a uvicorn server.
+
+    Args:
+        api_type: The type of the class containing the app to be executed.
+        host: The host address, defaults to &#39;127.0.0.1&#39;.
+        port: The port to run the FastAPI application, defaults to 8000.
+    &#34;&#34;&#34;
+
+    def __init__(
+        self, api_type: Type[SilApi], host: str = &#34;127.0.0.1&#34;, port: int = 8000
+    ) -&gt; None:
+        super().__init__()
+        self.api_type = api_type
+        self.host = host
+        self.port = port
+        self.startup_complete = multiprocessing.Value(&#34;b&#34;, False)
+
+    def wait_for_startup_complete(self):
+        &#34;&#34;&#34;Waiting for completion of startup process.
+
+        To ensure the server is operational for the simulation, the startup
+        needs to complete before any requests can be made. Waits for the
+        uvicorn server to finish startup.
+        &#34;&#34;&#34;
+        while not self.startup_complete.value:
+            sleep(1)
+
+    def run(self):
+        &#34;&#34;&#34;Called with `multiprocessing.Process.start()`. Runs the uvicorn server.&#34;&#34;&#34;
+        api = self.api_type()
+
+        @api.app.on_event(&#34;startup&#34;)
+        async def startup_event():
+            self.startup_complete.value = True
+
+        config = uvicorn.Config(
+            app=api.app, host=self.host, port=self.port, access_log=False
+        )
+        server = uvicorn.Server(config=config)
+        try:
+            server.run()
+        finally:
+            api.finalize()
+
+
+class VessimApi(SilApi):
+    &#34;&#34;&#34;Specialized Vessim API to be executed in a different process.
+
+    Initializes a FastAPI instance with specific routes related to the Vessim API.
+    This app is very specific for the use case of the vessim vision paper:
+    https://arxiv.org/pdf/2306.09774.pdf
+
+    Attributes:
+        app: The FastApi instance to be runned.
+    &#34;&#34;&#34;
+
+    def __init__(self) -&gt; None:
+        super().__init__()
+        self.redis_docker = RedisDocker()
+        self._init_get_routes(self.app)
+        self._init_put_routes(self.app)
+
+    def finalize(self) -&gt; None:
+        &#34;&#34;&#34;Terminate Docker container for cleanup.&#34;&#34;&#34;
+        self.redis_docker.__del__()
+
+    def _init_get_routes(self, app: FastAPI) -&gt; None:
+        &#34;&#34;&#34;Initializes GET routes for a FastAPI.
+
+        Args:
+            app: The FastAPI app to add the GET routes to.
+        &#34;&#34;&#34;
+        # /api/
+
+        class SolarModel(BaseModel):
+            solar: Optional[float]
+
+        @app.get(&#34;/api/solar&#34;, response_model=SolarModel)
+        async def get_solar() -&gt; SolarModel:
+            solar = self.redis_docker.redis.get(&#34;solar&#34;)
+            if solar is not None:
+                solar = float(solar)
+            return SolarModel(solar=solar)
+
+        class CiModel(BaseModel):
+            ci: Optional[float]
+
+        @app.get(&#34;/api/ci&#34;, response_model=CiModel)
+        async def get_ci() -&gt; CiModel:
+            ci = self.redis_docker.redis.get(&#34;ci&#34;)
+            if ci is not None:
+                ci = float(ci)
+            return CiModel(ci=ci)
+
+        class BatterySocModel(BaseModel):
+            battery_soc: Optional[float]
+
+        @app.get(&#34;/api/battery-soc&#34;, response_model=BatterySocModel)
+        async def get_battery_soc() -&gt; BatterySocModel:
+            battery_soc = self.redis_docker.redis.get(&#34;battery_soc&#34;)
+            if battery_soc is not None:
+                battery_soc = float(battery_soc)
+            return BatterySocModel(battery_soc=battery_soc)
+
+        # /sim/
+
+        class CollectSetModel(BaseModel):
+            battery_min_soc: Optional[Dict[str, float]]
+            battery_grid_charge: Optional[Dict[str, float]]
+            nodes_power_mode: Optional[Dict[str, Dict[str, str]]]
+
+        @app.get(&#34;/sim/collect-set&#34;, response_model=CollectSetModel)
+        async def get_collect_set() -&gt; CollectSetModel:
+            model = CollectSetModel(
+                battery_min_soc=self._deserialize_redis_hash(&#34;battery_min_soc_log&#34;),
+                battery_grid_charge=self._deserialize_redis_hash(
+                    &#34;battery_grid_charge_log&#34;
+                ),
+                nodes_power_mode=self._deserialize_redis_hash(&#34;power_mode_log&#34;),
+            )
+            self._delete_all_keys_in_hash(&#34;battery_min_soc_log&#34;)
+            self._delete_all_keys_in_hash(&#34;battery_grid_charge_log&#34;)
+            self._delete_all_keys_in_hash(&#34;power_mode_log&#34;)
+            return model
+
+    def _deserialize_redis_hash(self, hash_name):
+        return {
+            key.decode(): json.loads(value.decode())
+            for key, value in self.redis_docker.redis.hgetall(hash_name).items()
+        }
+
+    def _delete_all_keys_in_hash(self, hash_name: str) -&gt; None:
+        keys = self.redis_docker.redis.hkeys(hash_name)
+        for key in keys:
+            self.redis_docker.redis.hdel(hash_name, key)
+
+    def _init_put_routes(self, app: FastAPI) -&gt; None:
+        &#34;&#34;&#34;Initialize PUT routes for the FastAPI application.
+
+        Args:
+            app: FastAPI application instance to which PUT routes are added.
+        &#34;&#34;&#34;
+        # /api/
+
+        class BatteryModel(BaseModel):
+            min_soc: float
+            grid_charge: float
+
+        @app.put(&#34;/api/battery&#34;, response_model=BatteryModel)
+        async def put_battery(battery: BatteryModel) -&gt; BatteryModel:
+            timestamp = datetime.now().isoformat()
+            self.redis_docker.redis.hset(
+                &#34;battery_min_soc_log&#34;, str(timestamp), battery.min_soc
+            )
+            self.redis_docker.redis.hset(
+                &#34;battery_grid_charge_log&#34;, str(timestamp), battery.grid_charge
+            )
+            return battery
+
+        class NodeModel(BaseModel):
+            power_mode: str
+
+        @app.put(&#34;/api/nodes/{item_id}&#34;, response_model=NodeModel)
+        async def put_nodes(node: NodeModel, item_id: str) -&gt; NodeModel:
+            power_modes = [&#34;power-saving&#34;, &#34;normal&#34;, &#34;high performance&#34;]
+            power_mode = node.power_mode
+            if power_mode not in power_modes:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f&#34;{power_mode} is not a valid power mode. &#34;
+                    f&#34;Available power modes: {power_modes}&#34;,
+                )
+            timestamp = datetime.now().isoformat()
+            self.redis_docker.redis.hset(
+                &#34;power_mode_log&#34;, str(timestamp), json.dumps({item_id: power_mode})
+            )
+            return node
+
+        # /sim/
+
+        class UpdateModel(BaseModel):
+            solar: float
+            ci: float
+            battery_soc: float
+
+        @app.put(&#34;/sim/update&#34;, response_model=UpdateModel)
+        async def put_update(update: UpdateModel) -&gt; UpdateModel:
+            self.redis_docker.redis.set(&#34;solar&#34;, update.solar)
+            self.redis_docker.redis.set(&#34;ci&#34;, update.ci)
+            self.redis_docker.redis.set(&#34;battery_soc&#34;, update.battery_soc)
+            return update</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="vessim.sil.api_server.ApiServer"><code class="flex name class">
+<span>class <span class="ident">ApiServer</span></span>
+<span>(</span><span>api_type: Type[<a title="vessim.sil.api_server.SilApi" href="#vessim.sil.api_server.SilApi">SilApi</a>], host: str = '127.0.0.1', port: int = 8000)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Process that runs a given FastAPI application with a uvicorn server.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>api_type</code></strong></dt>
+<dd>The type of the class containing the app to be executed.</dd>
+<dt><strong><code>host</code></strong></dt>
+<dd>The host address, defaults to '127.0.0.1'.</dd>
+<dt><strong><code>port</code></strong></dt>
+<dd>The port to run the FastAPI application, defaults to 8000.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class ApiServer(multiprocessing.Process):
+    &#34;&#34;&#34;Process that runs a given FastAPI application with a uvicorn server.
+
+    Args:
+        api_type: The type of the class containing the app to be executed.
+        host: The host address, defaults to &#39;127.0.0.1&#39;.
+        port: The port to run the FastAPI application, defaults to 8000.
+    &#34;&#34;&#34;
+
+    def __init__(
+        self, api_type: Type[SilApi], host: str = &#34;127.0.0.1&#34;, port: int = 8000
+    ) -&gt; None:
+        super().__init__()
+        self.api_type = api_type
+        self.host = host
+        self.port = port
+        self.startup_complete = multiprocessing.Value(&#34;b&#34;, False)
+
+    def wait_for_startup_complete(self):
+        &#34;&#34;&#34;Waiting for completion of startup process.
+
+        To ensure the server is operational for the simulation, the startup
+        needs to complete before any requests can be made. Waits for the
+        uvicorn server to finish startup.
+        &#34;&#34;&#34;
+        while not self.startup_complete.value:
+            sleep(1)
+
+    def run(self):
+        &#34;&#34;&#34;Called with `multiprocessing.Process.start()`. Runs the uvicorn server.&#34;&#34;&#34;
+        api = self.api_type()
+
+        @api.app.on_event(&#34;startup&#34;)
+        async def startup_event():
+            self.startup_complete.value = True
+
+        config = uvicorn.Config(
+            app=api.app, host=self.host, port=self.port, access_log=False
+        )
+        server = uvicorn.Server(config=config)
+        try:
+            server.run()
+        finally:
+            api.finalize()</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>multiprocessing.context.Process</li>
+<li>multiprocessing.process.BaseProcess</li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="vessim.sil.api_server.ApiServer.run"><code class="name flex">
+<span>def <span class="ident">run</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Called with <code>multiprocessing.Process.start()</code>. Runs the uvicorn server.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def run(self):
+    &#34;&#34;&#34;Called with `multiprocessing.Process.start()`. Runs the uvicorn server.&#34;&#34;&#34;
+    api = self.api_type()
+
+    @api.app.on_event(&#34;startup&#34;)
+    async def startup_event():
+        self.startup_complete.value = True
+
+    config = uvicorn.Config(
+        app=api.app, host=self.host, port=self.port, access_log=False
+    )
+    server = uvicorn.Server(config=config)
+    try:
+        server.run()
+    finally:
+        api.finalize()</code></pre>
+</details>
+</dd>
+<dt id="vessim.sil.api_server.ApiServer.wait_for_startup_complete"><code class="name flex">
+<span>def <span class="ident">wait_for_startup_complete</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Waiting for completion of startup process.</p>
+<p>To ensure the server is operational for the simulation, the startup
+needs to complete before any requests can be made. Waits for the
+uvicorn server to finish startup.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def wait_for_startup_complete(self):
+    &#34;&#34;&#34;Waiting for completion of startup process.
+
+    To ensure the server is operational for the simulation, the startup
+    needs to complete before any requests can be made. Waits for the
+    uvicorn server to finish startup.
+    &#34;&#34;&#34;
+    while not self.startup_complete.value:
+        sleep(1)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="vessim.sil.api_server.SilApi"><code class="flex name class">
+<span>class <span class="ident">SilApi</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Base class for the API running on the ApiServer in different process.</p>
+<p>Initializes a FastApi instance with an endpoint <code>/shutdown</code> for executing
+necessary cleanup tasks of the child process running the API.</p>
+<h2 id="attributes">Attributes</h2>
+<dl>
+<dt><strong><code>app</code></strong></dt>
+<dd>The FastApi instance to be runned.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class SilApi(ABC):
+    &#34;&#34;&#34;Base class for the API running on the ApiServer in different process.
+
+    Initializes a FastApi instance with an endpoint `/shutdown` for executing
+    necessary cleanup tasks of the child process running the API.
+
+    Attributes:
+        app: The FastApi instance to be runned.
+    &#34;&#34;&#34;
+
+    def __init__(self) -&gt; None:
+        self.app = FastAPI()
+
+        @self.app.put(&#34;/shutdown&#34;)
+        async def shutdown_server():
+            self.finalize()
+
+    @abstractmethod
+    def finalize(self) -&gt; None:
+        &#34;&#34;&#34;Complete necessary cleanup tasks.&#34;&#34;&#34;</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>abc.ABC</li>
+</ul>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="vessim.sil.api_server.VessimApi" href="#vessim.sil.api_server.VessimApi">VessimApi</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="vessim.sil.api_server.SilApi.finalize"><code class="name flex">
+<span>def <span class="ident">finalize</span></span>(<span>self) ‑> None</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Complete necessary cleanup tasks.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@abstractmethod
+def finalize(self) -&gt; None:
+    &#34;&#34;&#34;Complete necessary cleanup tasks.&#34;&#34;&#34;</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="vessim.sil.api_server.VessimApi"><code class="flex name class">
+<span>class <span class="ident">VessimApi</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Specialized Vessim API to be executed in a different process.</p>
+<p>Initializes a FastAPI instance with specific routes related to the Vessim API.
+This app is very specific for the use case of the vessim vision paper:
+<a href="https://arxiv.org/pdf/2306.09774.pdf">https://arxiv.org/pdf/2306.09774.pdf</a></p>
+<h2 id="attributes">Attributes</h2>
+<dl>
+<dt><strong><code>app</code></strong></dt>
+<dd>The FastApi instance to be runned.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class VessimApi(SilApi):
+    &#34;&#34;&#34;Specialized Vessim API to be executed in a different process.
+
+    Initializes a FastAPI instance with specific routes related to the Vessim API.
+    This app is very specific for the use case of the vessim vision paper:
+    https://arxiv.org/pdf/2306.09774.pdf
+
+    Attributes:
+        app: The FastApi instance to be runned.
+    &#34;&#34;&#34;
+
+    def __init__(self) -&gt; None:
+        super().__init__()
+        self.redis_docker = RedisDocker()
+        self._init_get_routes(self.app)
+        self._init_put_routes(self.app)
+
+    def finalize(self) -&gt; None:
+        &#34;&#34;&#34;Terminate Docker container for cleanup.&#34;&#34;&#34;
+        self.redis_docker.__del__()
+
+    def _init_get_routes(self, app: FastAPI) -&gt; None:
+        &#34;&#34;&#34;Initializes GET routes for a FastAPI.
+
+        Args:
+            app: The FastAPI app to add the GET routes to.
+        &#34;&#34;&#34;
+        # /api/
+
+        class SolarModel(BaseModel):
+            solar: Optional[float]
+
+        @app.get(&#34;/api/solar&#34;, response_model=SolarModel)
+        async def get_solar() -&gt; SolarModel:
+            solar = self.redis_docker.redis.get(&#34;solar&#34;)
+            if solar is not None:
+                solar = float(solar)
+            return SolarModel(solar=solar)
+
+        class CiModel(BaseModel):
+            ci: Optional[float]
+
+        @app.get(&#34;/api/ci&#34;, response_model=CiModel)
+        async def get_ci() -&gt; CiModel:
+            ci = self.redis_docker.redis.get(&#34;ci&#34;)
+            if ci is not None:
+                ci = float(ci)
+            return CiModel(ci=ci)
+
+        class BatterySocModel(BaseModel):
+            battery_soc: Optional[float]
+
+        @app.get(&#34;/api/battery-soc&#34;, response_model=BatterySocModel)
+        async def get_battery_soc() -&gt; BatterySocModel:
+            battery_soc = self.redis_docker.redis.get(&#34;battery_soc&#34;)
+            if battery_soc is not None:
+                battery_soc = float(battery_soc)
+            return BatterySocModel(battery_soc=battery_soc)
+
+        # /sim/
+
+        class CollectSetModel(BaseModel):
+            battery_min_soc: Optional[Dict[str, float]]
+            battery_grid_charge: Optional[Dict[str, float]]
+            nodes_power_mode: Optional[Dict[str, Dict[str, str]]]
+
+        @app.get(&#34;/sim/collect-set&#34;, response_model=CollectSetModel)
+        async def get_collect_set() -&gt; CollectSetModel:
+            model = CollectSetModel(
+                battery_min_soc=self._deserialize_redis_hash(&#34;battery_min_soc_log&#34;),
+                battery_grid_charge=self._deserialize_redis_hash(
+                    &#34;battery_grid_charge_log&#34;
+                ),
+                nodes_power_mode=self._deserialize_redis_hash(&#34;power_mode_log&#34;),
+            )
+            self._delete_all_keys_in_hash(&#34;battery_min_soc_log&#34;)
+            self._delete_all_keys_in_hash(&#34;battery_grid_charge_log&#34;)
+            self._delete_all_keys_in_hash(&#34;power_mode_log&#34;)
+            return model
+
+    def _deserialize_redis_hash(self, hash_name):
+        return {
+            key.decode(): json.loads(value.decode())
+            for key, value in self.redis_docker.redis.hgetall(hash_name).items()
+        }
+
+    def _delete_all_keys_in_hash(self, hash_name: str) -&gt; None:
+        keys = self.redis_docker.redis.hkeys(hash_name)
+        for key in keys:
+            self.redis_docker.redis.hdel(hash_name, key)
+
+    def _init_put_routes(self, app: FastAPI) -&gt; None:
+        &#34;&#34;&#34;Initialize PUT routes for the FastAPI application.
+
+        Args:
+            app: FastAPI application instance to which PUT routes are added.
+        &#34;&#34;&#34;
+        # /api/
+
+        class BatteryModel(BaseModel):
+            min_soc: float
+            grid_charge: float
+
+        @app.put(&#34;/api/battery&#34;, response_model=BatteryModel)
+        async def put_battery(battery: BatteryModel) -&gt; BatteryModel:
+            timestamp = datetime.now().isoformat()
+            self.redis_docker.redis.hset(
+                &#34;battery_min_soc_log&#34;, str(timestamp), battery.min_soc
+            )
+            self.redis_docker.redis.hset(
+                &#34;battery_grid_charge_log&#34;, str(timestamp), battery.grid_charge
+            )
+            return battery
+
+        class NodeModel(BaseModel):
+            power_mode: str
+
+        @app.put(&#34;/api/nodes/{item_id}&#34;, response_model=NodeModel)
+        async def put_nodes(node: NodeModel, item_id: str) -&gt; NodeModel:
+            power_modes = [&#34;power-saving&#34;, &#34;normal&#34;, &#34;high performance&#34;]
+            power_mode = node.power_mode
+            if power_mode not in power_modes:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f&#34;{power_mode} is not a valid power mode. &#34;
+                    f&#34;Available power modes: {power_modes}&#34;,
+                )
+            timestamp = datetime.now().isoformat()
+            self.redis_docker.redis.hset(
+                &#34;power_mode_log&#34;, str(timestamp), json.dumps({item_id: power_mode})
+            )
+            return node
+
+        # /sim/
+
+        class UpdateModel(BaseModel):
+            solar: float
+            ci: float
+            battery_soc: float
+
+        @app.put(&#34;/sim/update&#34;, response_model=UpdateModel)
+        async def put_update(update: UpdateModel) -&gt; UpdateModel:
+            self.redis_docker.redis.set(&#34;solar&#34;, update.solar)
+            self.redis_docker.redis.set(&#34;ci&#34;, update.ci)
+            self.redis_docker.redis.set(&#34;battery_soc&#34;, update.battery_soc)
+            return update</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="vessim.sil.api_server.SilApi" href="#vessim.sil.api_server.SilApi">SilApi</a></li>
+<li>abc.ABC</li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="vessim.sil.api_server.VessimApi.finalize"><code class="name flex">
+<span>def <span class="ident">finalize</span></span>(<span>self) ‑> None</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Terminate Docker container for cleanup.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def finalize(self) -&gt; None:
+    &#34;&#34;&#34;Terminate Docker container for cleanup.&#34;&#34;&#34;
+    self.redis_docker.__del__()</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="vessim.sil" href="index.html">vessim.sil</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="vessim.sil.api_server.ApiServer" href="#vessim.sil.api_server.ApiServer">ApiServer</a></code></h4>
+<ul class="">
+<li><code><a title="vessim.sil.api_server.ApiServer.run" href="#vessim.sil.api_server.ApiServer.run">run</a></code></li>
+<li><code><a title="vessim.sil.api_server.ApiServer.wait_for_startup_complete" href="#vessim.sil.api_server.ApiServer.wait_for_startup_complete">wait_for_startup_complete</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="vessim.sil.api_server.SilApi" href="#vessim.sil.api_server.SilApi">SilApi</a></code></h4>
+<ul class="">
+<li><code><a title="vessim.sil.api_server.SilApi.finalize" href="#vessim.sil.api_server.SilApi.finalize">finalize</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="vessim.sil.api_server.VessimApi" href="#vessim.sil.api_server.VessimApi">VessimApi</a></code></h4>
+<ul class="">
+<li><code><a title="vessim.sil.api_server.VessimApi.finalize" href="#vessim.sil.api_server.VessimApi.finalize">finalize</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>
