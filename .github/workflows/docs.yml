@@ -21,13 +21,6 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}   
-
-    # get rid of DeprecationWarning related to Jupyter paths when running pytest
-    - name: Set JUPYTER_PLATFORM_DIRS environment variable
-      env:
-        JUPYTER_PLATFORM_DIRS: 1
-      run: |
-        echo "JUPYTER_PLATFORM_DIRS=${JUPYTER_PLATFORM_DIRS}" >> $GITHUB_ENV  
     
     # installs poetry without automatic creation of a virtual environment
     - name: Install poetry
@@ -36,10 +29,10 @@ jobs:
         virtualenvs-create: false
     
     - name: Install dependencies
-      run: poetry install --extras "sil analysis"
-
-    - name: Install dependencies
-      run: poetry export -f requirements.txt --output docs/requirements.txt
+      run: |
+        poetry install --extras "sil analysis"
+        ls -al
+        poetry export -f requirements.txt --output docs/requirements.txt
 
     - name: Generate Documentation
       run: |
