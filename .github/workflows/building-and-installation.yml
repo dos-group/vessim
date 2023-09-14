@@ -1,4 +1,4 @@
-name: CI
+name: building-and-installation
 
 # event that triggers workflow
 # runs on every pull request
@@ -39,14 +39,12 @@ jobs:
     - name: Install package 
       run: pip install dist/*.tar.gz
 
-    - name: Run example scenario
+    - name: Run example scenario and compare result
       run: |
-        mkdir $GITHUB_WORKSPACE/testing_results
-        python $GITHUB_WORKSPACE/examples/cosim_example/cosim_example.py > $GITHUB_WORKSPACE/testing_results/data.csv
-
-    - name: Compare resulting data with the data from inside the repository
-      run: |
-        if diff $GITHUB_WORKSPACE/testing_results/data.csv $GITHUB_WORKSPACE/data.csv; then
+        cd $GITHUB_WORKSPACE/examples
+        export PYTHONPATH="${PYTHONPATH}:$GITHUB_WORKSPACE/examples/cosim_example"
+        python cosim_example/cosim_example.py --out result.csv
+        if diff result.csv $_data/base_result.csv; then
           echo "Files are identical"
         else
           echo "Differences found between the resulting data and the data from the repository."
