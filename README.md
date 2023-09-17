@@ -35,7 +35,7 @@ $ pip install vessim
 To execute our exemplary co-simulation scenario, run:
 
 ```
-$ python examples/cosim_example.py
+$ python examples/cosim_example/cosim_example.py
 ```
 
 
@@ -52,7 +52,7 @@ pip install vessim[sil]
 and running:
 
 ```
-$ python examples/cosim_sil_example.py
+$ python examples/cosim_sil_example/cosim_sil_example.py
 ```
 
 

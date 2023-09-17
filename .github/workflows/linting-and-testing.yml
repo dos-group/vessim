@@ -1,11 +1,9 @@
-name: CI
+name: linting-and-testing
 
 # event that triggers workflow
-# runs on every pull request
+# runs on every commit
 on: 
-  pull_request:
-    branches:
-      - main
+  push:
 
 jobs:
   linting-and-testing:
@@ -24,46 +22,28 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}   
-    
+
     # get rid of DeprecationWarning related to Jupyter paths when running pytest
     - name: Set JUPYTER_PLATFORM_DIRS environment variable
       env:
         JUPYTER_PLATFORM_DIRS: 1
       run: |
-        echo "JUPYTER_PLATFORM_DIRS=${JUPYTER_PLATFORM_DIRS}" >> $GITHUB_ENV   
+        echo "JUPYTER_PLATFORM_DIRS=${JUPYTER_PLATFORM_DIRS}" >> $GITHUB_ENV  
     
     # installs poetry without automatic creation of a virtual environment
     - name: Install poetry
       uses: snok/install-poetry@v1
       with:
         virtualenvs-create: false
-    
-    # installs non-optional dependencies from pyproject.toml
+     
     - name: Install dependencies
       run: poetry install
 
-    # build package out of project, install it and run example scenario 
-    - name: Build the project as a package
-      run: poetry build
-
-    - name: Create a directory called "test"
-      run: mkdir test
-
-    - name: Install the package in the "test" directory
-      run: |
-        cd test
-        pip install ../dist/*.whl
-
-        #- name: Run example scenario
-
-    # run type checker
     - name: Run type checker
       run: mypy vessim
 
-    # run ruff
     - name: Run linter
       run: ruff .
-        
-    # run tests
+
     - name: Run tests
       run: python -m pytest
