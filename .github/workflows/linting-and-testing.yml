@@ -1,4 +1,4 @@
-name: linting-and-testing
+name: Tests
 
 # event that triggers workflow
 # runs on every commit

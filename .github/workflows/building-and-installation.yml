@@ -1,4 +1,4 @@
-name: building-and-installation
+name: Build
 
 # event that triggers workflow
 # runs on every pull request
