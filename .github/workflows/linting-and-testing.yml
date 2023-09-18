@@ -15,7 +15,6 @@ jobs:
     steps:
     # downloads the repository code to the runner's file system for workflow access
     - uses: actions/checkout@v2
-    - uses: chartboost/ruff-action@v1
        
     # sets up python environment with specified versions 
     - name: Set up Python ${{ matrix.python-version }}
@@ -37,7 +36,7 @@ jobs:
         virtualenvs-create: false
      
     - name: Install dependencies
-      run: poetry install
+      run: poetry install --extras "dev"
 
     - name: Run type checker
       run: mypy vessim
