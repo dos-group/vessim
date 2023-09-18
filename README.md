@@ -3,6 +3,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/vessim.svg?color=52c72b)](https://pypi.org/project/vessim/)
 ![Tests](https://github.com/dos-group/vessim/actions/workflows/linting-and-testing.yml/badge.svg)
 ![Build](https://github.com/dos-group/vessim/actions/workflows/building-and-installation.yml/badge.svg)
+[![Documentation Status](https://readthedocs.org/projects/vessim/badge/?version=latest)](https://vessim.readthedocs.io/en/latest/?badge=latest)
 [![License](https://img.shields.io/pypi/l/vessim.svg)](https://pypi.org/project/vessim/)
 [![Supported versions](https://img.shields.io/pypi/pyversions/vessim.svg)](https://pypi.org/project/vessim/)
 
