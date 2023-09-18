@@ -75,7 +75,7 @@ def run_simulation():
     # Software-in-the-loop integration
     sil_interface_sim = world.start("SilInterface", step_size=60)
     sil_interface = sil_interface_sim.SilInterface(
-        nodes=nodes, storage=STORAGE, collection_interval=1
+        nodes=nodes, battery=STORAGE, collection_interval=1
     )
     world.connect(computing_system, sil_interface, ("p", "p_cons"))
     world.connect(solar, sil_interface, ("p", "p_gen"))
