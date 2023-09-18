@@ -1,0 +1,51 @@
+name: Build
+
+# event that triggers workflow
+# runs on every pull request
+on: 
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  integration-tests:
+    # specifies the os that the job will run on 
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8, 3.11]
+    steps:
+    # downloads the repository code to the runner's file system for workflow access
+    - uses: actions/checkout@v2
+       
+    # sets up python environment with specified versions 
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}    
+    
+    # installs poetry without automatic creation of a virtual environment
+    - name: Install poetry
+      uses: snok/install-poetry@v1
+      with:
+        virtualenvs-create: false
+
+    - name: Install poetry dynamic version plugin, extracts version number from git tag
+      run: poetry self add poetry-plugin-export
+
+    - name: Build package out of local poject
+      run: poetry build
+
+    - name: Install package 
+      run: pip install dist/*.tar.gz
+
+    - name: Run example scenario and compare result
+      run: |
+        export PYTHONPATH="${PYTHONPATH}:$GITHUB_WORKSPACE/examples"
+        python examples/cosim_example/cosim_example.py --out result.csv
+        if diff result.csv examples/data/base_result.csv; then
+          echo "Files are identical"
+        else
+          echo "Differences found between the resulting data and the data from the repository."
+          exit 1
+        fi

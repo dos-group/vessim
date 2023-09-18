@@ -2,6 +2,7 @@
 
 Runs a fully simulated example scenario over the course of two days.
 """
+import argparse
 
 import mosaik  # type: ignore
 
@@ -94,4 +95,10 @@ def run_simulation(carbon_aware: bool, result_csv: str):
 
 
 if __name__ == "__main__":
-    run_simulation(carbon_aware=True, result_csv="data.csv")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--carbon_aware", action="store_true",
+                        help="Run the experiment in a carbon-aware manner")
+    parser.add_argument("--out", type=str, default="result.csv",
+                        help="Path to output CSV file")
+    args = parser.parse_args()
+    run_simulation(carbon_aware=args.carbon_aware, result_csv=args.out)

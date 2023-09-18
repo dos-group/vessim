@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "vessim"
-version = "0.2.0"
+version = "0.2.1"
 description = "A simulator for carbon-aware applications and systems."
 keywords = ["simulation", "energy system", "testbed", "carbon-aware computing", "software-in-the-loop"]
 authors = ["Philipp Wiesner <wiesner@tu-berlin.de>"]
@@ -39,6 +39,7 @@ loguru = "*"
 requests = {version = "*", optional = true}
 fastapi = {version = "*", optional = true}
 docker = {version = "*", optional = true}
+redis = {version = "*", optional = true}
 uvicorn = {version = "*", optional = true}
 # Optional dependencies (analysis)
 jupyterlab = {version = "*", optional = true}
@@ -46,7 +47,7 @@ matplotlib = {version = "*", optional = true}
 seaborn = {version = "0.12.2", optional = true}
 
 [tool.poetry.extras]
-sil = ["requests", "fastapi", "docker", "uvicorn"]
+sil = ["requests", "fastapi", "docker", "redis", "uvicorn"]
 analysis = ["jupyterlab", "matplotlib", "seaborn"]
 
 [tool.poetry.group.dev.dependencies]

@@ -1,0 +1,18 @@
+# .readthedocs.yaml
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
+version: 2
+
+build:
+  os: "ubuntu-22.04"
+  tools: 
+    python: "3.8"
+  commands:
+    - pip install poetry
+    - poetry config virtualenvs.create false
+    - poetry install --extras "sil analysis"
+    - pip install pdoc3
+    - pdoc --html --force -o docs/ vessim
+    - mkdir --parents $READTHEDOCS_OUTPUT/html/
+    - cp --recursive docs/vessim/* $READTHEDOCS_OUTPUT/html/

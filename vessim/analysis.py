@@ -1,4 +1,4 @@
-"""Utility functions for _data analysis and plotting."""
+"""Utility functions for data analysis and plotting."""
 
 import matplotlib.pyplot as plt  # type: ignore
 import pandas as pd
@@ -8,7 +8,7 @@ def plot_basic_evaluation(data: pd.DataFrame, title: str = "Evaluation"):
     """Simple function for plotting of the simulation _data.
 
     Args:
-        data: The dataframe containing the simulation _data.
+        data: The dataframe containing the simulation data.
         title: The title of the plot. Defaults to `Evaluation`
     """
     data.index = pd.to_datetime(data.index)
@@ -27,6 +27,7 @@ def plot_basic_evaluation(data: pd.DataFrame, title: str = "Evaluation"):
     plot_battery_soc(axs[2], data["battery_soc"], data["battery_min_soc"])
 
     plot_grid_power_usage(axs[3], data["p_grid"])
+
     ax3_twin = axs[3].twinx()
     plot_carbon_intensity(ax3_twin, data["carbon_intensity"])
     h1, l1 = axs[3].get_legend_handles_labels()
