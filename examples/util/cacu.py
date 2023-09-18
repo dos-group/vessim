@@ -4,7 +4,7 @@ from typing import Optional
 
 from vessim.sil.http_client import HttpClient
 from vessim.sil.loop_thread import LoopThread
-from examples.cosim_example.cacu import cacu_scenario
+from simulated_cacu import cacu_scenario
 
 
 class RemoteBattery:
@@ -17,7 +17,8 @@ class RemoteBattery:
             public grid in W.
     """
 
-    def __init__(self, soc: float = 0.0, min_soc: float = 0.0, grid_charge: float = 0.0) -> None:
+    def __init__(self, soc: float = 0.0, min_soc: float = 0.0,
+                 grid_charge: float = 0.0) -> None:
         self.soc = soc
         self.min_soc = min_soc
         self.grid_charge = grid_charge
@@ -128,7 +129,7 @@ class CarbonAwareControlUnit:
         # If node's power mode changed, send set request
         for node_id in self.node_ids:
             if (
-                not node_id in self.nodes_power_mode or
+                node_id not in self.nodes_power_mode or
                 self.nodes_power_mode[node_id] != nodes_power_mode_new[node_id]
             ):
                 Thread(

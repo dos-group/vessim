@@ -48,19 +48,19 @@ uvicorn = {version = "*", optional = true}
 jupyterlab = {version = "*", optional = true}
 matplotlib = {version = "*", optional = true}
 seaborn = {version = "0.12.2", optional = true}
+# Optional dependencies (development)
+pytest = {version = "*", optional = true}
+mypy = {version = "*", optional = true}
+types-psutil = {version = "*", optional = true}
+pandas-stubs = {version = "*", optional = true}
+types-requests = {version = "*", optional = true}
+black = {version = "*", optional = true}
+ruff = {version = "*", optional = true}
 
 [tool.poetry.extras]
 sil = ["requests", "fastapi", "docker", "redis", "uvicorn"]
 analysis = ["jupyterlab", "matplotlib", "seaborn"]
-
-[tool.poetry.group.dev.dependencies]
-pytest = "*"
-mypy = "*"
-types-psutil = "*"
-pandas-stubs = "*"
-types-requests = "*"
-black = "*"
-ruff = "*"
+dev = ["pytest", "mypy", "types-psutil", "pandas-stubs", "types-requests", "black", "ruff"]
 
 [build-system]
 requires = ["poetry-core>=1.1.0"]
@@ -87,7 +87,7 @@ select = [
 #   D102: Missing docstring in public method
 #   D103: Missing docstring in public function
 #   D107: Missing docstring in __init__
-ignore = ["D100", "D101", "D102", "D103", "D107"]
+ignore = ["D100", "D101", "D102", "D103", "D107", "E722"]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["D", "E", "W"]
