@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "vessim"
-version = "0.2.1"
+version = "0" # Poetry requires a version configuration to be present. The poetry-version-plugin extracts the correct version from the git-tag.
 description = "A simulator for carbon-aware applications and systems."
 keywords = ["simulation", "energy system", "testbed", "carbon-aware computing", "software-in-the-loop"]
 authors = ["Philipp Wiesner <wiesner@tu-berlin.de>"]
@@ -24,6 +24,9 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3 :: Only",
 ]
+
+[tool.poetry-version-plugin]
+source = "git-tag"
 
 [tool.poetry.urls]
 "Bug Reports" = "https://github.com/dos-group/vessim/issues"
