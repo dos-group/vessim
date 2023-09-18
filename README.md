@@ -53,7 +53,7 @@ pip install vessim[sil]
 and running:
 
 ```
-$ python examples/cosim_sil_example.py
+$ python examples/sil_example.py
 ```
 
 
