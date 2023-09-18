@@ -6,7 +6,7 @@ import argparse
 
 import mosaik  # type: ignore
 
-from examples._data import load_carbon_data, load_solar_data
+from _data import load_carbon_data, load_solar_data
 from vessim.core.consumer import ComputingSystem, MockPowerMeter
 from vessim.core.microgrid import SimpleMicrogrid
 from vessim.core.simulator import Generator, CarbonApi
@@ -29,7 +29,7 @@ COSIM_CONFIG = {
         "python": "vessim.cosim:MonitorSim",
     },
     "Cacu": {
-        "python": "examples.cosim_example.cacu:CacuSim",
+        "python": "cosim_example.cacu:CacuSim",
     }
 }
 SIM_START = "2020-06-11 00:00:00"

@@ -41,8 +41,7 @@ jobs:
 
     - name: Run example scenario and compare result
       run: |
-        export PYTHONPATH="${PYTHONPATH}:$GITHUB_WORKSPACE/examples"
-        python examples/cosim_example/cosim_example.py --out result.csv
+        python examples/cosim_example.py --out result.csv
         if diff result.csv examples/data/base_result.csv; then
           echo "Files are identical"
         else
