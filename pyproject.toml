@@ -25,6 +25,9 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
 ]
 
+[tool.poetry-version-plugin]
+source = "git-tag"
+
 [tool.poetry.urls]
 "Bug Reports" = "https://github.com/dos-group/vessim/issues"
 
