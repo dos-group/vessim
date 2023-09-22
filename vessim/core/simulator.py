@@ -103,8 +103,10 @@ class CarbonApi(TraceSimulator):
     """Service for querying the carbon intensity at different times and locations.
 
     Args:
-        data: DataFrame with carbon intensity values. Each index represents a
-            timestamp and each column a location.
+        actual: Time-series data for actual carbon intensity in specific zones.
+            Details on format can be found in the TraceSimulator class.
+        forecast: Time-series data for forecasted carbon intensity in specific zones.
+            Details on format can be found in the TraceSimulator class.
         unit: Unit of the carbon intensity data: gCO2/kWh (`g_per_kWh`) or lb/MWh
             (`lb_per_MWh`). Note that Vessim internally assumes gCO2/kWh, so choosing
             lb/MWh will simply convert this data to gCO2/kWh.
