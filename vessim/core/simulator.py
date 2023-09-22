@@ -36,8 +36,11 @@ class TraceSimulator(ABC):
     def __init__(
         self,
         actual: Union[pd.Series, pd.DataFrame],
-        forecast: Optional[pd.DataFrame]
+        forecast: Optional[pd.DataFrame] = None
     ):
+        if isinstance(actual, pd.Series):
+                actual = actual.to_frame()
+
         self.actual = actual
         self.forecast = forecast
 
@@ -64,7 +67,7 @@ class TraceSimulator(ABC):
         except KeyError:
             raise ValueError(f"Cannot retrieve actual data at zone '{zone}'.")
         try:
-            return zone_actual.loc[self.data.index.asof(dt)]
+            return zone_actual.loc[self.actual.index.asof(dt)]
         except KeyError:
             raise ValueError(f"Cannot retrieve actual data at {dt} in zone {zone}.")
 
@@ -76,7 +79,7 @@ class TraceSimulator(ABC):
                 raise ValueError("Zone needs to be specified.")
         try:
             if self.forecast is None:
-                zone_forecast = self.actual[zone][dt]
+                zone_forecast = self.actual[zone][self.actual.index >= dt]
             else:
                 zone_forecast = self.forecast[zone]
         except KeyError:
@@ -91,9 +94,9 @@ class TraceSimulator(ABC):
 
         This method is being called in the time-based simulation model for Mosaik.
         """
-        current_index = self.data.index.asof(dt)
-        next_iloc = self.data.index.get_loc(current_index) + 1
-        return self.data.index[next_iloc]
+        current_index = self.actual.index.asof(dt)
+        next_iloc = self.actual.index.get_loc(current_index) + 1
+        return self.actual.index[next_iloc]
 
 
 class CarbonApi(TraceSimulator):
@@ -109,13 +112,14 @@ class CarbonApi(TraceSimulator):
     def __init__(
         self,
         actual: pd.DataFrame,
-        forecast: Optional[pd.DataFrame],
+        forecast: Optional[pd.DataFrame] = None,
         unit: str = "g_per_kWh"
     ):
         super().__init__(actual, forecast)
         if unit == "lb_per_MWh":
             self.actual = self.actual * 0.45359237
-            self.forecast = self.forecast * 0.45359237
+            if self.forecast is not None:
+                self.forecast = self.forecast * 0.45359237
         elif unit != "g_per_kWh":
             raise ValueError(f"Carbon intensity unit '{unit}' is not supported.")
 
