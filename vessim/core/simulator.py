@@ -71,23 +71,42 @@ class TraceSimulator(ABC):
         except KeyError:
             raise ValueError(f"Cannot retrieve actual data at {dt} in zone {zone}.")
 
-    def forecast_at(self, dt: Time, end: Time, zone: Optional[str] = None) -> pd.Series:
+    def forecast_at(self, dt: Time, end: Time, frequency: int, zone: Optional[str] = None) -> pd.Series:
+        """Retrieves `frequency` number of forecasted data points within window.
+
+        If no forecast time-series data is provided, actual data is used.
+
+        Args:
+            dt: Starting time of the window.
+            end: End time of the window.
+            frequency: Number of data points to be generated within the window.
+            zone: Geographical zone of the forecast. Defaults to the first zone of
+                the dataset.
+        """
         if zone is None:
             if len(self.zones()) == 1:
                 zone = self.zones()[0]
             else:
                 raise ValueError("Zone needs to be specified.")
+
+        # Determine which data source to use
+        data_source = self.forecast if self.forecast is not None else self.actual
+
         try:
-            if self.forecast is None:
-                zone_forecast = self.actual[zone][self.actual.index >= dt]
-            else:
-                zone_forecast = self.forecast[zone]
+            zone_data = data_source[zone]
         except KeyError:
-            raise ValueError(f"Cannot retrieve forecast at zone '{zone}'.")
-        try:
-            return zone_forecast.loc[self.data.index.asof(dt)]
-        except KeyError:
-            raise ValueError(f"Cannot retrieve actual data at {dt} in zone {zone}.")
+            raise ValueError(f"Cannot retrieve forecast data for zone '{zone}'.")
+
+        # Filter the data within the specified window
+        filtered_data = zone_data.loc[dt:end]
+
+        # Resample the data to get the desired number of points
+        if len(filtered_data) > frequency:
+            resampled_data = filtered_data.sample(n=frequency)
+            return resampled_data.sort_index()
+        else:
+            # TODO: Do we want to return whats available or raise an error?
+            return filtered_data
 
     def next_update(self, dt: Time) -> datetime:
         """Returns the next time of when the trace will change.
