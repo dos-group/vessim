@@ -1,6 +1,7 @@
 from abc import ABC
 from datetime import datetime
 from typing import Union, List, Optional
+import numpy as np
 
 import pandas as pd
 
@@ -47,6 +48,30 @@ class TraceSimulator(ABC):
     def zones(self) -> List:
         """Returns a list of all available zones."""
         return list(self.actual.columns)
+
+    def apply_error(self, error: float, target: str = "actual", seed: Optional[int] = None) -> None:
+        """Apply random noise to specified dataframe (actual or forecast).
+
+        Derived from https://github.com/dos-group/lets-wait-awhile/blob/master/simulate.py
+
+        Args:
+            error The magnitude of the error to apply.
+            target: The dataframe to apply error to, either "actual" or "forecast". Defaults to "actual".
+            seed: The random seed for reproducibility. Defaults to None.
+
+        Raises:
+            ValueError: If the specified target is neither "actual" nor "forecast".
+        """
+        rng = np.random.default_rng(seed)
+
+        if target == "actual":
+            self.actual += rng.normal(0, error * self.actual.mean(), size=self.actual.shape)
+        elif target == "forecast":
+            if self.forecast is None:
+                raise ValueError("Forecast data is not provided.")
+            self.forecast += rng.normal(0, error * self.forecast.mean(), size=self.forecast.shape)
+        else:
+            raise ValueError(f"Invalid target: {target}. Target should be either 'actual' or 'forecast'.")
 
     def actual_at(self, dt: Time, zone: Optional[str] = None) -> float:
         """Retrieves actual data point of zone at given time.
