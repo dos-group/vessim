@@ -49,14 +49,17 @@ class TraceSimulator(ABC):
         """Returns a list of all available zones."""
         return list(self.actual.columns)
 
-    def apply_error(self, error: float, target: str = "actual", seed: Optional[int] = None) -> None:
+    def apply_error(
+        self, error: float, target: str = "actual", seed: Optional[int] = None
+    ) -> None:
         """Apply random noise to specified dataframe (actual or forecast).
 
         Derived from https://github.com/dos-group/lets-wait-awhile/blob/master/simulate.py
 
         Args:
-            error The magnitude of the error to apply.
-            target: The dataframe to apply error to, either "actual" or "forecast". Defaults to "actual".
+            error: The magnitude of the error to apply.
+            target: The dataframe to apply error to, either "actual" or "forecast".
+                Defaults to "actual".
             seed: The random seed for reproducibility. Defaults to None.
 
         Raises:
@@ -65,13 +68,19 @@ class TraceSimulator(ABC):
         rng = np.random.default_rng(seed)
 
         if target == "actual":
-            self.actual += rng.normal(0, error * self.actual.mean(), size=self.actual.shape)
+            self.actual += rng.normal(
+                0, error * self.actual.mean(), size=self.actual.shape
+            )
         elif target == "forecast":
             if self.forecast is None:
                 raise ValueError("Forecast data is not provided.")
-            self.forecast += rng.normal(0, error * self.forecast.mean(), size=self.forecast.shape)
+            self.forecast += rng.normal(
+                0, error * self.forecast.mean(), size=self.forecast.shape
+            )
         else:
-            raise ValueError(f"Invalid target: {target}. Target should be either 'actual' or 'forecast'.")
+            raise ValueError(
+                f"Invalid target: {target}. Target should be  'actual' or 'forecast'."
+            )
 
     def actual_at(self, dt: Time, zone: Optional[str] = None) -> float:
         """Retrieves actual data point of zone at given time.
@@ -96,7 +105,9 @@ class TraceSimulator(ABC):
         except KeyError:
             raise ValueError(f"Cannot retrieve actual data at {dt} in zone {zone}.")
 
-    def forecast_at(self, dt: Time, end: Time, frequency: int, zone: Optional[str] = None) -> pd.Series:
+    def forecast_at(
+        self, dt: Time, end: Time, frequency: int, zone: Optional[str] = None
+    ) -> pd.Series:
         """Retrieves `frequency` number of forecasted data points within window.
 
         If no forecast time-series data is provided, actual data is used.
@@ -115,8 +126,12 @@ class TraceSimulator(ABC):
                 raise ValueError("Zone needs to be specified.")
 
         # Determine which data source to use
-        data_source = self.forecast if self.forecast is not None else self.actual
+        if self.forecast is None:
+            data_source = self.actual
+        else:
+            data_source = self.forecast.loc[dt]
 
+        # Get data of specified zone
         try:
             zone_data = data_source[zone]
         except KeyError:
@@ -130,8 +145,7 @@ class TraceSimulator(ABC):
             resampled_data = filtered_data.sample(n=frequency)
             return resampled_data.sort_index()
         else:
-            # TODO: Do we want to return whats available or raise an error?
-            return filtered_data
+            raise ValueError(f"Not enough data provided for frequency {frequency}.")
 
     def next_update(self, dt: Time) -> datetime:
         """Returns the next time of when the trace will change.
