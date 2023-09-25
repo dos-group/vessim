@@ -12,28 +12,38 @@ class TraceSimulator(ABC):
     """Base class for integrating time-series data into simulation.
 
     Args:
-        actual: The actual time-series data to be used. It should follow this structure:
+        actual: The actual time-series data to be used. It should follow this
+            structure:
             ------------------------------------------------------------------------
-            Timestamp             Zone A  Zone B  Zone C
+            Timestamp (index)       Zone A  Zone B  Zone C
 
-            2020-01-01 00:00:00   100     800     700
-            2020-01-01 01:00:00   110     850     720
-            2020-01-01 02:00:00   105     820     710
-            2020-01-01 03:00:00   108     840     730
+            2020-01-01 00:00:00     100     800     700
+            2020-01-01 01:00:00     110     850     720
+            2020-01-01 02:00:00     105     820     710
+            2020-01-01 03:00:00     108     840     730
             ------------------------------------------------------------------------
-        forecast: Optional time-series data for forecasted trace. If not provided,
-            forecasts are generated from actual data.
+        forecast: An optional time-series dataset representing forecasted values.
+            - If `forecast` is not provided, predictions are derived from the
+            actual data.  
+            - It's assumed that the forecasted data is supplied with a reference
+            timestamp, termed as "Request Timestamp." 
+            - Correspondingly, each row in the forecasted data will also have an
+            associated "Forecast Timestamp" indicating the actual time of the
+            forecasted data. For example:
             ------------------------------------------------------------------------
-            Timestamp                                   Zone A  Zone B  Zone C
-                                  2020-01-01 01:00:00   115     850     710
-            2020-01-01 00:00:00   2020-01-01 02:00:00   120     850     715
-                                  2020-01-01 03:00:00   110     870 	720
+            Request Timestamp     Forecast Timestamp    Zone A Zone B Zone C
+            (index1)              (index2)
 
-                                  2020-01-01 02:00:00   110     830     715
-            2020-01-01 01:00:00   2020-01-01 03:00:00   105     860     725
-                                  2020-01-01 04:00:00   120     870 	740
+            2020-01-01 00:00:00   2020-01-01 00:05:00   115    850    710
+            ...
+            2020-01-01 00:00:00   2020-01-01 00:55:00   110    870 	  720
+
+            2020-01-01 01:00:00   2020-01-01 01:05:00   110    830    715
+            ...
+            2020-01-01 01:00:00   2020-01-01 01:55:00   120    870 	  740
             ------------------------------------------------------------------------
-    """
+    """                   
+                   
     def __init__(
         self,
         actual: Union[pd.Series, pd.DataFrame],
