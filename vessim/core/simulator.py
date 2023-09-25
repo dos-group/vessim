@@ -116,30 +116,39 @@ class TraceSimulator(ABC):
             raise ValueError(f"Cannot retrieve actual data at {dt} in zone {zone}.")
 
     def forecast_at(
-        self, dt: Time, end: Time, frequency: int, zone: Optional[str] = None
+        self, 
+        start_time: Time, 
+        end_time: Time, 
+        frequency: Optional[int] = None,  # issue #140
+        zone: Optional[str] = None
     ) -> pd.Series:
         """Retrieves `frequency` number of forecasted data points within window.
 
-        If no forecast time-series data is provided, actual data is used.
+        - If no forecast time-series data is provided, actual data is used.
+        - Specified timestamps are always rounded down to the nearest existing.
 
         Args:
-            dt: Starting time of the window.
-            end: End time of the window.
+            start_time: Starting time of the window.
+            end_time: End time of the window.
+            request_time: Time at which the forecasts are generated. Defaults to
+                `start_time`.
             frequency: Number of data points to be generated within the window.
+                Defaults to the number of available data points.
             zone: Geographical zone of the forecast. Defaults to the first zone of
                 the dataset.
         """
+        zones : List[str] = self.zones()
         if zone is None:
-            if len(self.zones()) == 1:
-                zone = self.zones()[0]
+            if len(zones) == 1:
+                zone = zones[0]
             else:
                 raise ValueError("Zone needs to be specified.")
 
+        if request_time is None:
+            request_time = start_time
+
         # Determine which data source to use
-        if self.forecast is None:
-            data_source = self.actual
-        else:
-            data_source = self.forecast.loc[dt]
+        data_source = self.actual if self.forecast is None else self.forecast
 
         # Get data of specified zone
         try:
