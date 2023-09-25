@@ -1,7 +1,7 @@
 import sys
 sys.path.append("../")
 from node_api_server import FastApiServer
-from pi_controller import PiController
+from lib.pi_controller import PiController
 
 class RpiNodeApiServer(FastApiServer):
     """A Raspberry Pi node API server, extending the base FastApiServer class.

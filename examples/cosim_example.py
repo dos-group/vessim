@@ -1,6 +1,13 @@
 """Co-simulation example.
 
 Runs a fully simulated example scenario over the course of two days.
+
+Attributes:
+    COSIM_CONFIG (dict): Configuration for the co-simulation modules.
+    SIM_START (str): The simulation start time.
+    DURATION (int): The simulation duration in seconds (two days).
+    STORAGE (SimpleBattery): A simple battery used for the microgrid.
+    STORAGE_POLICY (DefaultStoragePolicy): The storage policy for the battery.
 """
 import argparse
 
@@ -41,6 +48,15 @@ STORAGE_POLICY = DefaultStoragePolicy()
 
 
 def run_simulation(carbon_aware: bool, result_csv: str):
+    """Run the co-simulation scenario.
+
+    Args:
+        carbon_aware (bool): Whether to run the experiment in a carbon-aware manner.
+        result_csv (str): Path to output CSV file where the results will be stored.
+
+    Returns:
+        None
+    """
     world = mosaik.World(COSIM_CONFIG)
 
     mock_power_meters = [

@@ -6,8 +6,16 @@ through software-in-the-loop integration as described in our paper:
   [under review]
 
 This is example experimental and documentation is still in progress.
-"""
 
+Attributes:
+    COSIM_SIL_CONFIG (dict): Co-simulation configuration for software-in-the-loop.
+    RT_FACTOR (float): Real-time factor, where 1 wall-clock second equals 60 sim seconds.
+    GCP_ADDRESS (str): Address for the GCP server.
+    RASPI_ADDRESS (str): Address for the Raspberry Pi server.
+
+"""
+import sys
+sys.path.append("../")
 import mosaik  # type: ignore
 
 from _data import load_carbon_data, load_solar_data
@@ -40,6 +48,14 @@ disable_mosaik_warnings(behind_threshold=0.01)
 
 
 def run_simulation():
+    """Run the co-simulation scenario with software-in-the-loop integration.
+
+    The simulation connects to real computing systems and monitors power consumption,
+    solar generation, carbon intensity, and microgrid power delta.
+
+    Returns:
+        None
+    """
     world = mosaik.World(COSIM_SIL_CONFIG)
 
     # Initialize nodes
