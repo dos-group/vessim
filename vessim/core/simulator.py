@@ -1,6 +1,7 @@
 from abc import ABC
 from datetime import datetime
 from typing import Union, List, Optional
+import numpy as np
 
 import pandas as pd
 
@@ -48,6 +49,30 @@ class TraceSimulator(ABC):
         """Returns a list of all available zones."""
         return list(self.actual.columns)
 
+    def apply_error(self, error: float, target: str = "actual", seed: Optional[int] = None) -> None:
+        """Apply random noise to specified dataframe (actual or forecast).
+
+        Derived from https://github.com/dos-group/lets-wait-awhile/blob/master/simulate.py
+
+        Args:
+            error The magnitude of the error to apply.
+            target: The dataframe to apply error to, either "actual" or "forecast". Defaults to "actual".
+            seed: The random seed for reproducibility. Defaults to None.
+
+        Raises:
+            ValueError: If the specified target is neither "actual" nor "forecast".
+        """
+        rng = np.random.default_rng(seed)
+
+        if target == "actual":
+            self.actual += rng.normal(0, error * self.actual.mean(), size=self.actual.shape)
+        elif target == "forecast":
+            if self.forecast is None:
+                raise ValueError("Forecast data is not provided.")
+            self.forecast += rng.normal(0, error * self.forecast.mean(), size=self.forecast.shape)
+        else:
+            raise ValueError(f"Invalid target: {target}. Target should be either 'actual' or 'forecast'.")
+
     def actual_at(self, dt: Time, zone: Optional[str] = None) -> float:
         """Retrieves actual data point of zone at given time.
 
@@ -71,23 +96,42 @@ class TraceSimulator(ABC):
         except KeyError:
             raise ValueError(f"Cannot retrieve actual data at {dt} in zone {zone}.")
 
-    def forecast_at(self, dt: Time, end: Time, zone: Optional[str] = None) -> pd.Series:
+    def forecast_at(self, dt: Time, end: Time, frequency: int, zone: Optional[str] = None) -> pd.Series:
+        """Retrieves `frequency` number of forecasted data points within window.
+
+        If no forecast time-series data is provided, actual data is used.
+
+        Args:
+            dt: Starting time of the window.
+            end: End time of the window.
+            frequency: Number of data points to be generated within the window.
+            zone: Geographical zone of the forecast. Defaults to the first zone of
+                the dataset.
+        """
         if zone is None:
             if len(self.zones()) == 1:
                 zone = self.zones()[0]
             else:
                 raise ValueError("Zone needs to be specified.")
+
+        # Determine which data source to use
+        data_source = self.forecast if self.forecast is not None else self.actual
+
         try:
-            if self.forecast is None:
-                zone_forecast = self.actual[zone][self.actual.index >= dt]
-            else:
-                zone_forecast = self.forecast[zone]
+            zone_data = data_source[zone]
         except KeyError:
-            raise ValueError(f"Cannot retrieve forecast at zone '{zone}'.")
-        try:
-            return zone_forecast.loc[self.data.index.asof(dt)]
-        except KeyError:
-            raise ValueError(f"Cannot retrieve actual data at {dt} in zone {zone}.")
+            raise ValueError(f"Cannot retrieve forecast data for zone '{zone}'.")
+
+        # Filter the data within the specified window
+        filtered_data = zone_data.loc[dt:end]
+
+        # Resample the data to get the desired number of points
+        if len(filtered_data) > frequency:
+            resampled_data = filtered_data.sample(n=frequency)
+            return resampled_data.sort_index()
+        else:
+            # TODO: Do we want to return whats available or raise an error?
+            return filtered_data
 
     def next_update(self, dt: Time) -> datetime:
         """Returns the next time of when the trace will change.
