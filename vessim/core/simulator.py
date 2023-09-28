@@ -24,15 +24,15 @@ class TraceSimulator(ABC):
             ------------------------------------------------------------------------
         forecast: An optional time-series dataset representing forecasted values.
             - If `forecast` is not provided, predictions are derived from the
-            actual data.  
+            actual data.
             - It's assumed that the forecasted data is supplied with a reference
-            timestamp, termed as "Request Timestamp." 
+            timestamp, termed as "Request Timestamp."
             - Correspondingly, each row in the forecasted data will also have an
             associated "Forecast Timestamp" indicating the actual time of the
             forecasted data. For example:
             ------------------------------------------------------------------------
             Request Timestamp     Forecast Timestamp    Zone A Zone B Zone C
-            (index1)              (index2)
+            (index1, sorted)      (index2)
 
             2020-01-01 00:00:00   2020-01-01 00:05:00   115    850    710
             ...
@@ -42,15 +42,15 @@ class TraceSimulator(ABC):
             ...
             2020-01-01 01:00:00   2020-01-01 01:55:00   120    870 	  740
             ------------------------------------------------------------------------
-    """                   
-                   
+    """
+
     def __init__(
         self,
         actual: Union[pd.Series, pd.DataFrame],
-        forecast: Optional[pd.DataFrame] = None
+        forecast: Optional[pd.DataFrame] = None,
     ):
         if isinstance(actual, pd.Series):
-                actual = actual.to_frame()
+            actual = actual.to_frame()
 
         self.actual = actual
         self.forecast = forecast
@@ -98,6 +98,11 @@ class TraceSimulator(ABC):
         If queried timestamp is not available in the `actual` dataframe, the last valid
         datapoint is being returned.
 
+        Args:
+            dt: Timestamp, at which the data is needed.
+            zone: Optional Zone for the data. Has to be provided if there is more than one
+                zone specified in the data. Defaults to None.
+
         Raises:
             ValueError: If there is no available data at apecified zone or time.
         """
@@ -116,11 +121,11 @@ class TraceSimulator(ABC):
             raise ValueError(f"Cannot retrieve actual data at {dt} in zone {zone}.")
 
     def forecast_at(
-        self, 
-        start_time: Time, 
-        end_time: Time, 
+        self,
+        start_time: Time,
+        end_time: Time,
         frequency: Optional[int] = None,  # issue #140
-        zone: Optional[str] = None
+        zone: Optional[str] = None,
     ) -> pd.Series:
         """Retrieves `frequency` number of forecasted data points within window.
 
@@ -130,41 +135,53 @@ class TraceSimulator(ABC):
         Args:
             start_time: Starting time of the window.
             end_time: End time of the window.
-            request_time: Time at which the forecasts are generated. Defaults to
-                `start_time`.
             frequency: Number of data points to be generated within the window.
                 Defaults to the number of available data points.
             zone: Geographical zone of the forecast. Defaults to the first zone of
                 the dataset.
+
+        Returns:
+            pd.Series of forecasted data with timestamps of forecast as index.
         """
-        zones : List[str] = self.zones()
         if zone is None:
-            if len(zones) == 1:
-                zone = zones[0]
+            if len(self.zones()) == 1:
+                zone = self.zones()[0]
             else:
                 raise ValueError("Zone needs to be specified.")
 
-        if request_time is None:
-            request_time = start_time
-
         # Determine which data source to use
-        data_source = self.actual if self.forecast is None else self.forecast
-
-        # Get data of specified zone
         try:
-            zone_data = data_source[zone]
+            if self.forecast is None:
+                # Get all data points beginning at the nearest existing timestamp
+                # lower than start time from actual data
+                data_src = self.actual.loc[self.actual.index.asof(start_time):]
+            else:
+                # Get all data points corresponding to the nearest existing timestamp
+                # of first index lower than start time
+                datetime_index = self.forecast.index.get_level_values(0)
+                data_src = self.forecast.loc[
+                    datetime_index[datetime_index <= start_time].max()
+                ]
+        except KeyError:
+            raise ValueError(
+                f"Cannot retrieve forecast data beginning at '{start_time}'."
+            )
+
+        # Get data of specified zone and convert to pd.Series
+        try:
+            zone_data = data_src[zone].squeeze()
         except KeyError:
             raise ValueError(f"Cannot retrieve forecast data for zone '{zone}'.")
 
-        # Filter the data within the specified window
-        filtered_data = zone_data.loc[dt:end]
+        # Cutoff the data at specified time window
+        filtered_data = zone_data[zone_data.index <= end_time]
 
         # Resample the data to get the desired number of points
-        if len(filtered_data) > frequency:
-            resampled_data = filtered_data.sample(n=frequency)
-            return resampled_data.sort_index()
-        else:
-            raise ValueError(f"Not enough data provided for frequency {frequency}.")
+        if frequency is not None:
+            #TODO
+            return None
+
+        return filtered_data
 
     def next_update(self, dt: Time) -> datetime:
         """Returns the next time of when the trace will change.
@@ -188,11 +205,12 @@ class CarbonApi(TraceSimulator):
             (`lb_per_MWh`). Note that Vessim internally assumes gCO2/kWh, so choosing
             lb/MWh will simply convert this data to gCO2/kWh.
     """
+
     def __init__(
         self,
         actual: pd.DataFrame,
         forecast: Optional[pd.DataFrame] = None,
-        unit: str = "g_per_kWh"
+        unit: str = "g_per_kWh",
     ):
         super().__init__(actual, forecast)
         if unit == "lb_per_MWh":
@@ -212,7 +230,6 @@ class CarbonApi(TraceSimulator):
 
 
 class Generator(TraceSimulator):
-
     def power_at(self, dt: Time, zone: Optional[str] = None) -> float:
         """Returns the power generated at a given time.
 
