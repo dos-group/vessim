@@ -56,11 +56,14 @@ def run_simulation(carbon_aware: bool, result_csv: str):
 
     # Initialize solar generator
     solar_sim = world.start("Generator", sim_start=SIM_START)
-    solar = solar_sim.Generator(generator=Generator(data=load_solar_data(sqm=0.4 * 0.5)))
+    solar = solar_sim.Generator(
+        generator=Generator(actual=load_solar_data(sqm=0.4 * 0.5))
+    )
 
     # Initialize carbon intensity API
-    carbon_api_sim = world.start("CarbonApi", sim_start=SIM_START,
-                                 carbon_api=CarbonApi(data=load_carbon_data()))
+    carbon_api_sim = world.start(
+        "CarbonApi", sim_start=SIM_START, carbon_api=CarbonApi(actual=load_carbon_data())
+    )
     carbon_api_de = carbon_api_sim.CarbonApi(zone="DE")
 
     if carbon_aware:
