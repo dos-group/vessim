@@ -182,7 +182,7 @@ class TestTraceSimulator:
     def test_forecast_at_fails_if_start_too_early(self, trace_sim):
         with pytest.raises(ValueError):
             trace_sim.forecast_at(
-                pd.to_datetime("2022-31-12T23:59:59"),
+                pd.to_datetime("2022-12-31T23:59:59"),
                 pd.to_datetime("2023-01-01T01:00:00"),
                 zone="a",
             )
