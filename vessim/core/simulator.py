@@ -118,27 +118,32 @@ class TraceSimulator(ABC):
         try:
             return zone_actual.loc[self.actual.index.asof(dt)]
         except KeyError:
-            raise ValueError(f"Cannot retrieve actual data at {dt} in zone {zone}.")
+            raise ValueError(f"Cannot retrieve actual data at '{dt}' in zone '{zone}'.")
 
     def forecast_at(
         self,
         start_time: Time,
         end_time: Time,
-        frequency: Optional[int] = None,  # issue #140
         zone: Optional[str] = None,
+        frequency: Optional[int] = None,  # issue #140
+        resampling_method: Optional[str] = None,
     ) -> pd.Series:
-        """Retrieves `frequency` number of forecasted data points within window.
+        """Retrieves of forecasted data points within window at a frequency.
 
         - If no forecast time-series data is provided, actual data is used.
         - Specified timestamps are always rounded down to the nearest existing.
+        - If there is more than one zone present in the data, zone has to be specified.
+        - If frequency is not specified, all existing data in the window will be returned.
 
         Args:
             start_time: Starting time of the window.
             end_time: End time of the window.
-            frequency: Number of data points to be generated within the window.
-                Defaults to the number of available data points.
-            zone: Geographical zone of the forecast. Defaults to the first zone of
-                the dataset.
+            zone: Optional geographical zone of the forecast. Defaults to None.
+            frequency: Optional interval, in which the forecast data is to be provided.
+                Defaults to None.
+            resampling_method: Optional method, to deal with holes in resampled data.
+                Can be either 'bfill', 'ffill' or an interpolation method.
+                https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.interpolate.html#pandas.DataFrame.interpolate)
 
         Returns:
             pd.Series of forecasted data with timestamps of forecast as index.
@@ -150,22 +155,20 @@ class TraceSimulator(ABC):
                 raise ValueError("Zone needs to be specified.")
 
         # Determine which data source to use
-        try:
-            if self.forecast is None:
-                # Get all data points beginning at the nearest existing timestamp
-                # lower than start time from actual data
-                data_src = self.actual.loc[self.actual.index.asof(start_time):]
-            else:
-                # Get all data points corresponding to the nearest existing timestamp
-                # of first index lower than start time
-                datetime_index = self.forecast.index.get_level_values(0)
-                data_src = self.forecast.loc[
-                    datetime_index[datetime_index <= start_time].max()
-                ]
-        except KeyError:
-            raise ValueError(
-                f"Cannot retrieve forecast data beginning at '{start_time}'."
-            )
+        if self.forecast is None:
+            # Get all data points beginning at the nearest existing timestamp
+            # lower than start time from actual data
+            data_src = self.actual.loc[self.actual.index.asof(start_time):]
+        else:
+            # Get all data points corresponding to the nearest existing timestamp
+            # of first index lower than start time
+            first_index = self.forecast.index.get_level_values(0)
+            data_src = self.forecast.loc[
+                first_index[first_index <= start_time].max()
+            ]
+
+        if data_src.empty:
+            raise ValueError(f"Cannot retrieve forecast data at '{start_time}'.")
 
         # Get data of specified zone and convert to pd.Series
         try:
@@ -174,14 +177,17 @@ class TraceSimulator(ABC):
             raise ValueError(f"Cannot retrieve forecast data for zone '{zone}'.")
 
         # Cutoff the data at specified time window
-        filtered_data = zone_data[zone_data.index <= end_time]
+        sampled_data = zone_data[zone_data.index <= end_time]
 
-        # Resample the data to get the desired number of points
+        # Resample the data to get the data to specified frequency with resampling_method
         if frequency is not None:
-            #TODO
-            return None
+            if resampling_method in ["bfill", "ffill", None]:
+                sampled_data = sampled_data.asfreq(frequency, method=resampling_method)
+            else:
+                sampled_data = sampled_data.asfreq(frequency)
+                sampled_data.interpolate(method=resampling_method, inplace=True)
 
-        return filtered_data
+        return sampled_data
 
     def next_update(self, dt: Time) -> datetime:
         """Returns the next time of when the trace will change.
@@ -208,7 +214,7 @@ class CarbonApi(TraceSimulator):
 
     def __init__(
         self,
-        actual: pd.DataFrame,
+        actual: Union[pd.Series, pd.DataFrame],
         forecast: Optional[pd.DataFrame] = None,
         unit: str = "g_per_kWh",
     ):
