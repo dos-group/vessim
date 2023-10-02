@@ -1,6 +1,6 @@
 from abc import ABC
-from datetime import datetime
-from typing import Union, List, Optional
+from datetime import datetime, timedelta
+from typing import Union, List, Optional, Any
 import numpy as np
 
 import pandas as pd
@@ -49,10 +49,7 @@ class TraceSimulator(ABC):
         actual: Union[pd.Series, pd.DataFrame],
         forecast: Optional[pd.DataFrame] = None,
     ):
-        if isinstance(actual, pd.Series):
-            actual = actual.to_frame()
-
-        self.actual = actual
+        self.actual = actual if isinstance(actual, pd.DataFrame) else actual.to_frame()
         self.forecast = forecast
 
     def zones(self) -> List:
@@ -92,7 +89,7 @@ class TraceSimulator(ABC):
                 f"Invalid target: {target}. Target should be  'actual' or 'forecast'."
             )
 
-    def actual_at(self, dt: Time, zone: Optional[str] = None) -> float:
+    def actual_at(self, dt: Time, zone: Optional[str] = None) -> Any:
         """Retrieves actual data point of zone at given time.
 
         If queried timestamp is not available in the `actual` dataframe, the last valid
@@ -125,7 +122,7 @@ class TraceSimulator(ABC):
         start_time: Time,
         end_time: Time,
         zone: Optional[str] = None,
-        frequency: Optional[int] = None,  # issue #140
+        frequency: Optional[Union[str, pd.DateOffset, timedelta]] = None,  # issue #140
         resampling_method: Optional[str] = None,
     ) -> pd.Series:
         """Retrieves of forecasted data points within window at a frequency.
@@ -155,6 +152,7 @@ class TraceSimulator(ABC):
                 raise ValueError("Zone needs to be specified.")
 
         # Determine which data source to use
+        data_src: pd.DataFrame
         if self.forecast is None:
             # Get all data points beginning at the nearest existing timestamp
             # lower than start time from actual data
@@ -172,19 +170,24 @@ class TraceSimulator(ABC):
 
         # Get data of specified zone and convert to pd.Series
         try:
-            zone_data = data_src[zone].squeeze()
+            zone_data: pd.Series = data_src[[zone]].squeeze()
         except KeyError:
             raise ValueError(f"Cannot retrieve forecast data for zone '{zone}'.")
 
         # Cutoff the data at specified time window
-        sampled_data = zone_data[zone_data.index <= end_time]
+        sampled_data: pd.Series = zone_data[zone_data.index <= end_time]
 
-        # Resample the data to get the data to specified frequency with resampling_method
+        # Resample the data to get the data to specified frequency
         if frequency is not None:
-            if resampling_method in ["bfill", "ffill", None]:
-                sampled_data = sampled_data.asfreq(frequency, method=resampling_method)
-            else:
-                sampled_data = sampled_data.asfreq(frequency)
+            frequency = pd.tseries.frequencies.to_offset(frequency)
+            sampled_data = sampled_data.asfreq(frequency)
+
+            # Use specific resampling method if specified to fill NaN values
+            if resampling_method == "ffill":
+                sampled_data.ffill(inplace=True)
+            elif resampling_method == "bfill":
+                sampled_data.bfill(inplace=True)
+            elif resampling_method is not None:
                 sampled_data.interpolate(method=resampling_method, inplace=True)
 
         return sampled_data
