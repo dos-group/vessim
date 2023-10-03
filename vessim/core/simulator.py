@@ -17,10 +17,10 @@ class TraceSimulator(ABC):
             ------------------------------------------------------------------------
             Timestamp (index)       Zone A  Zone B  Zone C
 
-            2020-01-01 00:00:00     100     800     700
-            2020-01-01 01:00:00     110     850     720
-            2020-01-01 02:00:00     105     820     710
-            2020-01-01 03:00:00     108     840     730
+            2020-01-01T00:00:00     100     800     700
+            2020-01-01T01:00:00     110     850     720
+            2020-01-01T02:00:00     105     820     710
+            2020-01-01T03:00:00     108     840     730
             ------------------------------------------------------------------------
         forecast: An optional time-series dataset representing forecasted values.
             - If `forecast` is not provided, predictions are derived from the
@@ -32,15 +32,14 @@ class TraceSimulator(ABC):
             forecasted data. For example:
             ------------------------------------------------------------------------
             Request Timestamp     Forecast Timestamp    Zone A Zone B Zone C
-            (index1, sorted)      (index2)
+            (index1)              (index2)
 
-            2020-01-01 00:00:00   2020-01-01 00:05:00   115    850    710
+            2020-01-01T00:00:00   2020-01-01T00:05:00   115    850    710
             ...
-            2020-01-01 00:00:00   2020-01-01 00:55:00   110    870 	  720
-
-            2020-01-01 01:00:00   2020-01-01 01:05:00   110    830    715
+            2020-01-01T00:00:00   2020-01-01T00:55:00   110    870 	  720
+            2020-01-01T00:00:00   2020-01-01T01:00:00   110    860 	  715
+            2020-01-01T01:00:00   2020-01-01T01:05:00   110    830    715
             ...
-            2020-01-01 01:00:00   2020-01-01 01:55:00   120    870 	  740
             ------------------------------------------------------------------------
     """
 
@@ -50,7 +49,10 @@ class TraceSimulator(ABC):
         forecast: Optional[pd.DataFrame] = None,
     ):
         self.actual = actual if isinstance(actual, pd.DataFrame) else actual.to_frame()
+        self.actual.sort_index()
         self.forecast = forecast
+        if self.forecast is not None:
+            self.forecast.sort_index()
 
     def zones(self) -> List:
         """Returns a list of all available zones."""
@@ -123,7 +125,7 @@ class TraceSimulator(ABC):
         end_time: Time,
         zone: Optional[str] = None,
         frequency: Optional[Union[str, pd.DateOffset, timedelta]] = None,  # issue #140
-        resampling_method: Optional[str] = None,
+        resample_method: Optional[str] = None,
     ) -> pd.Series:
         """Retrieves of forecasted data points within window at a frequency.
 
@@ -138,12 +140,51 @@ class TraceSimulator(ABC):
             zone: Optional geographical zone of the forecast. Defaults to None.
             frequency: Optional interval, in which the forecast data is to be provided.
                 Defaults to None.
-            resampling_method: Optional method, to deal with holes in resampled data.
+            resample_method: Optional method, to deal with holes in resampled data.
                 Can be either 'bfill', 'ffill' or an interpolation method.
                 https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.interpolate.html#pandas.DataFrame.interpolate)
 
         Returns:
             pd.Series of forecasted data with timestamps of forecast as index.
+
+        Raises:
+            ValueError: If there is no available data at apecified zone or time, or
+                there is not enough data for frequency, without resample_method specified.
+
+        Example:
+            With actual data like this:
+            ------------------------------------------------------------------------
+            Timestamp (index)       Zone A
+
+            2020-01-01T00:00:00     4
+            2020-01-01T01:00:00     6
+            2020-01-01T02:00:00     2
+            2020-01-01T03:00:00     8
+            ------------------------------------------------------------------------
+            And forecast data like this:
+            ------------------------------------------------------------------------
+            Request Timestamp     Forecast Timestamp    Zone A
+            (index1)              (index2)
+
+            2020-01-01T00:00:00   2020-01-01T01:00:00   5
+            2020-01-01T00:00:00   2020-01-01T02:00:00   2
+            2020-01-01T00:00:00   2020-01-01T03:00:00   6
+            ------------------------------------------------------------------------
+            The call forecast_at(
+                start_time=pd.to_datetime("2020-01-01T00:00:00"),
+                end_time=pd.to_datetime("2020-01-01T02:00:00"),
+                frequency="30T",
+                resample_method="linear",
+            )
+            would return the following:
+            ------------------------------------------------------------------------
+            Forecast Timestamp (index)  Zone A
+
+            2020-01-01T00:30:00         4.5
+            2020-01-01T01:00:00         5
+            2020-01-01T01:30:00         3.5
+            2020-01-01T02:00:00         2
+            ------------------------------------------------------------------------
         """
         if zone is None:
             if len(self.zones()) == 1:
@@ -156,41 +197,61 @@ class TraceSimulator(ABC):
         if self.forecast is None:
             # Get all data points beginning at the nearest existing timestamp
             # lower than start time from actual data
-            data_src = self.actual.loc[self.actual.index.asof(start_time):]
+            data_src = self.actual.loc[self.actual.index.asof(start_time) :]
         else:
-            # Get all data points corresponding to the nearest existing timestamp
-            # of first index lower than start time
+            # Get the nearest existing timestamp lower than start time from forecasts
             first_index = self.forecast.index.get_level_values(0)
-            data_src = self.forecast.loc[
-                first_index[first_index <= start_time].max()
-            ]
+            request_time = first_index[first_index <= start_time].max()
+
+            # Retrieve the actual value at the time and attach it to the front of the
+            # forecast data with the timestamp (for interpolation at a later stage)
+            actual_value = self.actual.loc[self.actual.index.asof(request_time)]
+            actual_value.name = request_time
+            data_src = pd.concat(
+                [actual_value.to_frame().T, self.forecast.loc[request_time]]
+            )
 
         if data_src.empty:
             raise ValueError(f"Cannot retrieve forecast data at '{start_time}'.")
 
         # Get data of specified zone and convert to pd.Series
         try:
-            zone_data: pd.Series = data_src[[zone]].squeeze()
+            forecast: pd.Series = data_src[[zone]].squeeze()
         except KeyError:
             raise ValueError(f"Cannot retrieve forecast data for zone '{zone}'.")
-
-        # Cutoff the data at specified time window
-        sampled_data: pd.Series = zone_data[zone_data.index <= end_time]
 
         # Resample the data to get the data to specified frequency
         if frequency is not None:
             frequency = pd.tseries.frequencies.to_offset(frequency)
-            sampled_data = sampled_data.asfreq(frequency)
 
-            # Use specific resampling method if specified to fill NaN values
-            if resampling_method == "ffill":
-                sampled_data.ffill(inplace=True)
-            elif resampling_method == "bfill":
-                sampled_data.bfill(inplace=True)
-            elif resampling_method is not None:
-                sampled_data.interpolate(method=resampling_method, inplace=True)
+            # Add NaN values in the specified frequency
+            new_index = pd.date_range(start=start_time, end=end_time, freq=frequency)
+            combined_index = forecast.index.union(new_index).sort_values()
+            forecast = forecast.reindex(combined_index)
 
-        return sampled_data
+            # Use specific resample method if specified to fill NaN values
+            if resample_method == "ffill":
+                forecast.ffill(inplace=True)
+            elif resample_method == "bfill":
+                forecast.bfill(inplace=True)
+            elif resample_method is not None:
+                forecast.interpolate(method=resample_method, inplace=True)  # type: ignore
+            elif forecast.isnull().values.any():
+                # Check if there are NaN values if resample method is not specified
+                raise ValueError(
+                    f"Not enough data at frequency '{frequency}'. Specify resample_method"
+                )
+
+            # Get the data to the desired frequency after interpolation
+            return (
+                forecast.loc[
+                    (forecast.index >= start_time) & (forecast.index <= end_time)
+                ]
+                .asfreq(frequency)
+                .iloc[1:]
+            )
+
+        return forecast.loc[(forecast.index > start_time) & (forecast.index <= end_time)]
 
     def next_update(self, dt: Time) -> datetime:
         """Returns the next time of when the trace will change.

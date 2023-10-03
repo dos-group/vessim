@@ -1,5 +1,6 @@
 import pandas as pd
 import pytest
+from datetime import timedelta
 
 from vessim.core.simulator import CarbonApi, Generator, TraceSimulator
 
@@ -109,9 +110,8 @@ class TestTraceSimulator:
             end_time=pd.to_datetime("2023-01-01T01:00:00"),
         ).equals(
             pd.Series(
-                [1, 2, 3],
+                [2, 3],
                 index=[
-                    pd.to_datetime("2023-01-01T00:00:00"),
                     pd.to_datetime("2023-01-01T00:30:00"),
                     pd.to_datetime("2023-01-01T01:00:00"),
                 ],
@@ -164,6 +164,80 @@ class TestTraceSimulator:
             pd.to_datetime(start), pd.to_datetime(end), zone=zone
         ).equals(expected)
 
+    @pytest.mark.parametrize(
+        "start, end, zone, frequency, method, expected",
+        [
+            (
+                "2023-01-01T00:00:00",
+                "2023-01-01T03:00:00",
+                "a",
+                "2H",
+                None,
+                pd.Series([2.5], index=[pd.to_datetime("2023-01-01T02:00:00")]),
+            ),
+            (
+                "2023-01-01T00:00:00",
+                "2023-01-01T01:00:00",
+                "b",
+                pd.tseries.offsets.DateOffset(minutes=35),
+                "bfill",
+                pd.Series([3.0], index=[pd.to_datetime("2023-01-01T00:35:00")]),
+            ),
+            (
+                "2023-01-01T01:00:00",
+                "2023-01-01T03:00:00",
+                "a",
+                timedelta(minutes=45),
+                "ffill",
+                pd.Series(
+                    [2.0, 3.0],
+                    index=[
+                        pd.to_datetime("2023-01-01T01:45:00"),
+                        pd.to_datetime("2023-01-01T02:30:00"),
+                    ],
+                ),
+            ),
+            (
+                "2023-01-01T00:00:00",
+                "2023-01-01T03:00:00",
+                "a",
+                timedelta(hours=1, minutes=30),
+                "linear",
+                pd.Series(
+                    [2.0, 2.0],
+                    index=[
+                        pd.to_datetime("2023-01-01T01:30:00"),
+                        pd.to_datetime("2023-01-01T03:00:00"),
+                    ],
+                ),
+            ),
+            (
+                "2023-01-01T00:20:00",
+                "2023-01-01T01:00:00",
+                "b",
+                "20T",
+                "bfill",
+                pd.Series(
+                    [3.0, 3.0],
+                    index=[
+                        pd.to_datetime("2023-01-01T00:40:00"),
+                        pd.to_datetime("2023-01-01T01:00:00"),
+                    ],
+                ),
+            ),
+        ],
+    )
+    def test_forecast_at_with_frequency(
+        self, trace_sim_forecast, start, end, zone, frequency, method, expected
+    ):
+        assert trace_sim_forecast.forecast_at(
+            pd.to_datetime(start),
+            pd.to_datetime(end),
+            zone=zone,
+            frequency=frequency,
+            resample_method=method,
+        ).equals(expected)
+
     def test_forecast_at_fails_if_zone_not_specified(self, trace_sim):
         with pytest.raises(ValueError):
             trace_sim.forecast_at(
@@ -185,6 +259,15 @@ class TestTraceSimulator:
                 pd.to_datetime("2022-12-31T23:59:59"),
                 pd.to_datetime("2023-01-01T01:00:00"),
                 zone="a",
+            )
+
+    def test_forecast_at_fails_if_not_enough_data_for_frequency(self, trace_sim):
+        with pytest.raises(ValueError):
+            trace_sim.forecast_at(
+                pd.to_datetime("2023-01-01T00:00:00"),
+                pd.to_datetime("2023-01-01T01:00:00"),
+                zone="a",
+                frequency="15T",
             )
 
 
