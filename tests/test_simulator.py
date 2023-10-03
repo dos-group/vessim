@@ -261,6 +261,17 @@ class TestTraceSimulator:
                 zone="a",
             )
 
+    def test_forecast_at_fails_with_invalid_frequency(self, trace_sim):
+        with pytest.raises(ValueError):
+            trace_sim.forecast_at(
+                trace_sim.forecast_at(
+                pd.to_datetime("2023-01-01T00:00:00"),
+                pd.to_datetime("2023-01-01T01:00:00"),
+                zone="a",
+                frequency="invalid",
+            )
+            )
+
     def test_forecast_at_fails_if_not_enough_data_for_frequency(self, trace_sim):
         with pytest.raises(ValueError):
             trace_sim.forecast_at(

@@ -121,8 +121,8 @@ class TraceSimulator(ABC):
 
     def forecast_at(
         self,
-        start_time: Time,
-        end_time: Time,
+        start_time: datetime,
+        end_time: datetime,
         zone: Optional[str] = None,
         frequency: Optional[Union[str, pd.DateOffset, timedelta]] = None,  # issue #140
         resample_method: Optional[str] = None,
@@ -223,6 +223,8 @@ class TraceSimulator(ABC):
         # Resample the data to get the data to specified frequency
         if frequency is not None:
             frequency = pd.tseries.frequencies.to_offset(frequency)
+            if frequency is None:
+                raise ValueError(f"Frequency '{frequency}' invalid." )
 
             # Add NaN values in the specified frequency
             new_index = pd.date_range(start=start_time, end=end_time, freq=frequency)
@@ -236,7 +238,7 @@ class TraceSimulator(ABC):
                 forecast.bfill(inplace=True)
             elif resample_method is not None:
                 forecast.interpolate(method=resample_method, inplace=True)  # type: ignore
-            elif forecast.isnull().values.any():
+            elif forecast.isnull().values.any(): # type: ignore
                 # Check if there are NaN values if resample method is not specified
                 raise ValueError(
                     f"Not enough data at frequency '{frequency}'. Specify resample_method"
