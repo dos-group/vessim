@@ -12,8 +12,9 @@ Vessim is in alpha stage and under active development. Functionality and documen
 
 Vessim allows users to test real applications within a co-simulation testbed composed of domain-specific simulators on energy system components.
 The following Figure shows the different aspects of carbon-aware systems that can be investigated through Vessim.
+
 <div style="text-align: center;">
-    <img src="../docs/pics/CarbonAware_vessim_Aspects.png" alt="Carbon Aware Vessim Aspects" width="700">
+    <img src="pics/CarbonAware_vessim_Aspects.png" alt="Carbon Aware Vessim Aspects" width="700">
 </div>
 As depicted in the above Figure, Vessim enables research on various aspects related to the interplay of energy and computing systems.
 
@@ -28,7 +29,7 @@ Additionally, using Vessim as a digital twin, carbon-aware datacenters can predi
 
 ## How does it work?
 <div style="text-align: center;">
-    <img src="../docs/pics/Experiment_SiL_Design.png" alt="Experiment SiL Design" width="700">
+    <img src="pics/Experiment_SiL_Design.png" alt="Experiment SiL Design" width="700">
 </div>
 
 ## ⚙️ Installation
