@@ -5,7 +5,7 @@ through software-in-the-loop integration as described in our paper:
 - 'Software-in-the-loop simulation for developing and testing carbon-aware applications'.
   [under review]
 
-This is example experimental and documentation is still in progress.
+This example is experimental and documentation is still in progress.
 
 Attributes:
     COSIM_SIL_CONFIG (dict): Co-simulation configuration for software-in-the-loop.
@@ -14,8 +14,7 @@ Attributes:
     RASPI_ADDRESS (str): Address for the Raspberry Pi server.
 
 """
-import sys
-sys.path.append("../")
+
 import mosaik  # type: ignore
 
 from _data import load_carbon_data, load_solar_data

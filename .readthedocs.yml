@@ -12,7 +12,7 @@ build:
     - pip install poetry
     - poetry config virtualenvs.create false
     - poetry install --extras "sil analysis"
-    - pip install pdoc3
-    - pdoc --html --force -o docs/ vessim
+    - pip install pdoc
+    - pdoc --docformat google -o docs/ vessim/ examples/cosim_example.py examples/sil_example.py 
     - mkdir --parents $READTHEDOCS_OUTPUT/html/
-    - cp --recursive docs/vessim/* $READTHEDOCS_OUTPUT/html/
+    - cp --recursive docs/* $READTHEDOCS_OUTPUT/html/
