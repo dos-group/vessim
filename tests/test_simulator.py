@@ -202,7 +202,7 @@ class TestTraceSimulator:
                 "2023-01-01T03:00:00",
                 "a",
                 timedelta(hours=1, minutes=30),
-                "linear",
+                "time",
                 pd.Series(
                     [2.0, 2.0],
                     index=[
@@ -223,6 +223,17 @@ class TestTraceSimulator:
                         pd.to_datetime("2023-01-01T00:40:00"),
                         pd.to_datetime("2023-01-01T01:00:00"),
                     ],
+                ),
+            ),
+            (
+                "2023-01-01T00:30:00",
+                "2023-01-01T01:00:00",
+                "b",
+                "20T",
+                "time",
+                pd.Series(
+                    [2.5],
+                    index=[pd.to_datetime("2023-01-01T00:50:00")],
                 ),
             ),
         ],

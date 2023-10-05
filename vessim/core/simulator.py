@@ -133,6 +133,7 @@ class TraceSimulator(ABC):
         - Specified timestamps are always rounded down to the nearest existing.
         - If there is more than one zone present in the data, zone has to be specified.
         - If frequency is not specified, all existing data in the window will be returned.
+        - For various resampling methods, the last actual value is used.
 
         Args:
             start_time: Starting time of the window.
@@ -174,7 +175,7 @@ class TraceSimulator(ABC):
                 start_time=pd.to_datetime("2020-01-01T00:00:00"),
                 end_time=pd.to_datetime("2020-01-01T02:00:00"),
                 frequency="30T",
-                resample_method="linear",
+                resample_method="time",
             )
             would return the following:
             ------------------------------------------------------------------------
@@ -206,7 +207,6 @@ class TraceSimulator(ABC):
             # Retrieve the actual value at the time and attach it to the front of the
             # forecast data with the timestamp (for interpolation at a later stage)
             actual_value = self.actual.loc[self.actual.index.asof(request_time)]
-            actual_value.name = request_time
             data_src = pd.concat(
                 [actual_value.to_frame().T, self.forecast.loc[request_time]]
             )
