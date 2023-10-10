@@ -9,10 +9,9 @@ build:
   tools: 
     python: "3.8"
   commands:
-    - pip install poetry
+    - pip install poetry pdoc
     - poetry config virtualenvs.create false
     - poetry install --extras "sil analysis"
-    - pip install pdoc
-    - pdoc --docformat google -o docs/ vessim/ examples/cosim_example.py examples/sil_example.py 
+    - pdoc --docformat google --template-dir docs/custom/ -o docs/output/ vessim/ examples/cosim_example.py examples/sil_example.py docs/extra/About\ Vessim.py docs/extra/Concept.py docs/extra/Getting\ Started docs/extra/Installation.py
     - mkdir --parents $READTHEDOCS_OUTPUT/html/
-    - cp --recursive docs/* $READTHEDOCS_OUTPUT/html/
+    - cp --recursive docs/output/* $READTHEDOCS_OUTPUT/html/
