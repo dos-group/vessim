@@ -1,14 +1,13 @@
-from abc import ABC
 from datetime import datetime, timedelta
 from typing import Union, List, Optional, Any
 import numpy as np
 
 import pandas as pd
 
-Time = Union[int, float, str, datetime]
+DatetimeLike = Union[str, datetime]
 
 
-class TraceSimulator(ABC):
+class TraceSimulator:
     """Base class for integrating time-series data into simulation.
 
     Args:
@@ -22,6 +21,10 @@ class TraceSimulator(ABC):
             2020-01-01T02:00:00     105     820     710
             2020-01-01T03:00:00     108     840     730
             ------------------------------------------------------------------------
+            Note that while interpolation is possible when retrieving forecasts,
+            `frontfill` is always used on the actual data if no data is present at the
+            time. If you wish a different behavior, you have to change your actual data
+            beforehand (e.g by resampling into a different frequency).
         forecast: An optional time-series dataset representing forecasted values.
             - If `forecast` is not provided, predictions are derived from the
             actual data.
@@ -91,7 +94,7 @@ class TraceSimulator(ABC):
                 f"Invalid target: {target}. Target should be  'actual' or 'forecast'."
             )
 
-    def actual_at(self, dt: Time, zone: Optional[str] = None) -> Any:
+    def actual_at(self, dt: DatetimeLike, zone: Optional[str] = None) -> Any:
         """Retrieves actual data point of zone at given time.
 
         If queried timestamp is not available in the `actual` dataframe, the last valid
@@ -121,8 +124,8 @@ class TraceSimulator(ABC):
 
     def forecast_at(
         self,
-        start_time: datetime,
-        end_time: datetime,
+        start_time: DatetimeLike,
+        end_time: DatetimeLike,
         zone: Optional[str] = None,
         frequency: Optional[Union[str, pd.DateOffset, timedelta]] = None,  # issue #140
         resample_method: Optional[str] = None,
@@ -255,7 +258,7 @@ class TraceSimulator(ABC):
 
         return forecast.loc[(forecast.index > start_time) & (forecast.index <= end_time)]
 
-    def next_update(self, dt: Time) -> datetime:
+    def next_update(self, dt: DatetimeLike) -> datetime:
         """Returns the next time of when the trace will change.
 
         This method is being called in the time-based simulation model for Mosaik.
@@ -292,7 +295,7 @@ class CarbonApi(TraceSimulator):
         elif unit != "g_per_kWh":
             raise ValueError(f"Carbon intensity unit '{unit}' is not supported.")
 
-    def carbon_intensity_at(self, dt: Time, zone: Optional[str] = None) -> float:
+    def carbon_intensity_at(self, dt: DatetimeLike, zone: Optional[str] = None) -> float:
         """Returns the carbon intensity at a given time and zone.
 
         Raises:
@@ -302,7 +305,7 @@ class CarbonApi(TraceSimulator):
 
 
 class Generator(TraceSimulator):
-    def power_at(self, dt: Time, zone: Optional[str] = None) -> float:
+    def power_at(self, dt: DatetimeLike, zone: Optional[str] = None) -> float:
         """Returns the power generated at a given time.
 
         If the queried timestamp is not available in the `data` dataframe, the last valid
