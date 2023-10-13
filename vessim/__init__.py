@@ -53,7 +53,13 @@ class TimeSeriesApi:
         forecast: Optional[Union[pd.Series, pd.DataFrame]] = None,
     ):
         actual.sort_index()
-        self._actual = actual.to_frame() if isinstance(actual, pd.Series) else actual
+        if isinstance(actual, pd.Series):
+            self._actual = actual.to_frame()
+        elif isinstance(actual, pd.DataFrame):
+            self._actual = actual
+        else:
+            raise ValueError(f"Incompatible type {type(actual)} for 'actual'.")
+
         if isinstance(forecast, (pd.Series, pd.DataFrame)):
             forecast.sort_index()
             if isinstance(forecast, pd.Series):
