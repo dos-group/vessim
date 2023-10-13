@@ -2,8 +2,8 @@ import pytest
 
 from vessim.core.consumer import MockPowerMeter, ComputingSystem
 
-class TestMockPowerMeter:
 
+class TestMockPowerMeter:
     @pytest.fixture
     def power_meter(self) -> MockPowerMeter:
         return MockPowerMeter(name="test", p=20)
@@ -21,14 +21,14 @@ class TestMockPowerMeter:
 
 
 class TestComputingSystem:
-
     @pytest.fixture
     def computing_system(self) -> ComputingSystem:
         return ComputingSystem(
             power_meters=[
-                MockPowerMeter(name="test1", p=5), MockPowerMeter(name="test2", p=7)
+                MockPowerMeter(name="test1", p=5),
+                MockPowerMeter(name="test2", p=7),
             ],
-            pue=1.5
+            pue=1.5,
         )
 
     def test_consumption(self, computing_system):

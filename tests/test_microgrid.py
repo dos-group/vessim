@@ -4,8 +4,8 @@ from typing import Dict
 from vessim.core.microgrid import SimpleMicrogrid
 from vessim.core.storage import SimpleBattery
 
-class TestSimpleMicrogrid:
 
+class TestSimpleMicrogrid:
     @pytest.fixture
     def microgrid(self) -> SimpleMicrogrid:
         return SimpleMicrogrid()

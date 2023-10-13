@@ -7,9 +7,9 @@ import argparse
 import mosaik  # type: ignore
 
 from _data import load_carbon_data, load_solar_data
+from vessim import TimeSeriesApi
 from vessim.core.consumer import ComputingSystem, MockPowerMeter
 from vessim.core.microgrid import SimpleMicrogrid
-from vessim.core.simulator import Generator, CarbonApi
 from vessim.core.storage import SimpleBattery, DefaultStoragePolicy
 
 COSIM_CONFIG = {
@@ -29,7 +29,7 @@ COSIM_CONFIG = {
         "python": "vessim.cosim:MonitorSim",
     },
     "Cacu": {
-        "python": "cosim_example.cacu:CacuSim",
+        "python": "util.simulated_cacu:CacuSim",
     }
 }
 SIM_START = "2020-06-11 00:00:00"
@@ -56,11 +56,15 @@ def run_simulation(carbon_aware: bool, result_csv: str):
 
     # Initialize solar generator
     solar_sim = world.start("Generator", sim_start=SIM_START)
-    solar = solar_sim.Generator(generator=Generator(data=load_solar_data(sqm=0.4 * 0.5)))
+    solar = solar_sim.Generator(
+        generator=TimeSeriesApi(actual=load_solar_data(sqm=0.4 * 0.5))
+    )
 
     # Initialize carbon intensity API
-    carbon_api_sim = world.start("CarbonApi", sim_start=SIM_START,
-                                 carbon_api=CarbonApi(data=load_carbon_data()))
+    carbon_api_sim = world.start(
+        "CarbonApi", sim_start=SIM_START, carbon_api=TimeSeriesApi(
+            actual=load_carbon_data())
+    )
     carbon_api_de = carbon_api_sim.CarbonApi(zone="DE")
 
     if carbon_aware:
