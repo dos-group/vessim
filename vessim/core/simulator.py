@@ -49,50 +49,19 @@ class TraceSimulator:
     def __init__(
         self,
         actual: Union[pd.Series, pd.DataFrame],
-        forecast: Optional[pd.DataFrame] = None,
+        forecast: Optional[Union[pd.Series, pd.DataFrame]] = None,
     ):
-        self.actual = actual if isinstance(actual, pd.DataFrame) else actual.to_frame()
-        self.actual.sort_index()
-        self.forecast = forecast
-        if self.forecast is not None:
-            self.forecast.sort_index()
+        actual.sort_index()
+        self._actual = actual.to_frame() if isinstance(actual, pd.Series) else actual
+        if isinstance(forecast, (pd.Series, pd.DataFrame)):
+            forecast.sort_index()
+            if isinstance(forecast, pd.Series):
+                forecast = forecast.to_frame()
+        self._forecast = forecast
 
     def zones(self) -> List:
         """Returns a list of all available zones."""
-        return list(self.actual.columns)
-
-    def apply_error(
-        self, error: float, target: str = "actual", seed: Optional[int] = None
-    ) -> None:
-        """Apply random noise to specified dataframe (actual or forecast).
-
-        Derived from https://github.com/dos-group/lets-wait-awhile/blob/master/simulate.py
-
-        Args:
-            error: The magnitude of the error to apply.
-            target: The dataframe to apply error to, either "actual" or "forecast".
-                Defaults to "actual".
-            seed: The random seed for reproducibility. Defaults to None.
-
-        Raises:
-            ValueError: If the specified target is neither "actual" nor "forecast".
-        """
-        rng = np.random.default_rng(seed)
-
-        if target == "actual":
-            self.actual += rng.normal(
-                0, error * self.actual.mean(), size=self.actual.shape
-            )
-        elif target == "forecast":
-            if self.forecast is None:
-                raise ValueError("Forecast data is not provided.")
-            self.forecast += rng.normal(
-                0, error * self.forecast.mean(), size=self.forecast.shape
-            )
-        else:
-            raise ValueError(
-                f"Invalid target: {target}. Target should be  'actual' or 'forecast'."
-            )
+        return list(self._actual.columns)
 
     def actual_at(self, dt: DatetimeLike, zone: Optional[str] = None) -> Any:
         """Retrieves actual data point of zone at given time.
@@ -198,20 +167,20 @@ class TraceSimulator:
 
         # Determine which data source to use
         data_src: pd.DataFrame
-        if self.forecast is None:
+        if self._forecast is None:
             # Get all data points beginning at the nearest existing timestamp
             # lower than start time from actual data
-            data_src = self.actual.loc[self.actual.index.asof(start_time) :]
+            data_src = self._actual.loc[self._actual.index.asof(start_time):]
         else:
             # Get the nearest existing timestamp lower than start time from forecasts
-            first_index = self.forecast.index.get_level_values(0)
+            first_index = self._forecast.index.get_level_values(0)
             request_time = first_index[first_index <= start_time].max()
 
             # Retrieve the actual value at the time and attach it to the front of the
             # forecast data with the timestamp (for interpolation at a later stage)
-            actual_value = self.actual.loc[self.actual.index.asof(request_time)]
+            actual_value = self._actual.loc[self._actual.index.asof(request_time)]
             data_src = pd.concat(
-                [actual_value.to_frame().T, self.forecast.loc[request_time]]
+                [actual_value.to_frame().T, self._forecast.loc[request_time]]
             )
 
         if data_src.empty:
@@ -263,9 +232,9 @@ class TraceSimulator:
 
         This method is being called in the time-based simulation model for Mosaik.
         """
-        current_index = self.actual.index.asof(dt)
-        next_iloc = self.actual.index.get_loc(current_index) + 1
-        return self.actual.index[next_iloc]
+        current_index = self._actual.index.asof(dt)
+        next_iloc = self._actual.index.get_loc(current_index) + 1
+        return self._actual.index[next_iloc]
 
 
 class CarbonApi(TraceSimulator):
@@ -289,9 +258,9 @@ class CarbonApi(TraceSimulator):
     ):
         super().__init__(actual, forecast)
         if unit == "lb_per_MWh":
-            self.actual = self.actual * 0.45359237
-            if self.forecast is not None:
-                self.forecast = self.forecast * 0.45359237
+            self.actual = self._actual * 0.45359237
+            if self._forecast is not None:
+                self.forecast = self._forecast * 0.45359237
         elif unit != "g_per_kWh":
             raise ValueError(f"Carbon intensity unit '{unit}' is not supported.")
 
@@ -312,6 +281,6 @@ class Generator(TraceSimulator):
         datapoint is being returned.
 
         Raises:
-            ValueError: If there is no available data at apecified zone or time.
+            ValueError: If there is no available data at specified zone or time.
         """
         return self.actual_at(dt, zone)
