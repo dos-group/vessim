@@ -17,9 +17,9 @@ from cosim_example import (
     STORAGE,
     DURATION
 )
+from vessim import TimeSeriesApi
 from vessim.core.consumer import ComputingSystem
 from vessim.core.microgrid import SimpleMicrogrid
-from vessim.core.simulator import Generator, CarbonApi
 from vessim.sil.node import Node
 from vessim.sil.power_meter import HttpPowerMeter
 from vessim.cosim._util import disable_mosaik_warnings
@@ -60,12 +60,13 @@ def run_simulation():
     # Initialize solar generator
     solar_sim = world.start("Generator", sim_start=SIM_START)
     solar = solar_sim.Generator(
-        generator=Generator(actual=load_solar_data(sqm=0.4 * 0.5))
+        generator=TimeSeriesApi(actual=load_solar_data(sqm=0.4 * 0.5))
     )
 
     # Initialize carbon intensity API
     carbon_api_sim = world.start(
-        "CarbonApi", sim_start=SIM_START, carbon_api=CarbonApi(actual=load_carbon_data())
+        "CarbonApi", sim_start=SIM_START, carbon_api=TimeSeriesApi(
+            actual=load_carbon_data())
     )
     carbon_api_de = carbon_api_sim.CarbonApi(zone="DE")
 

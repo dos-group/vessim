@@ -39,6 +39,7 @@ class _ComputingSystemModel(VessimModel):
     def __init__(self, consumer: Consumer):
         self.consumer = consumer
         self.p = 0.0
+        self.info = None
 
     def step(self, time: int, inputs: dict) -> None:
         """Updates the power consumption of the system.
