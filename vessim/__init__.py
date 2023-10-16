@@ -20,9 +20,9 @@ class TimeSeriesApi:
             If you wish a different behavior, you have to change your actual data
             beforehand (e.g by resampling into a different frequency).
         forecast: An optional time-series dataset representing forecasted values.
-            The data should contain two indices. One is the "Request Timestamp", marking
-            the time when the forecast was made. One is the "Forecast Timestamp",
-            indicating the time the forecast is made for.
+            The data should contain two datetime-like indices. One is the
+            "Request Timestamp", marking the time when the forecast was made. One is the
+            "Forecast Timestamp", indicating the time the forecast is made for.
             - If data does not include a "Request Timestamp", it is treated as a global
             forecast that does not change over time.
             - If `forecast` is not provided, predictions are derived from the
@@ -77,12 +77,13 @@ class TimeSeriesApi:
 
         if isinstance(forecast, (pd.Series, pd.DataFrame)):
             # Convert all indices (either one or two columns) to datetime
-            new_levels = [
-                forecast.index.get_level_values(i).map(pd.to_datetime)
-                for i in range(forecast.index.nlevels)
-            ]
-            new_index = pd.MultiIndex.from_arrays(new_levels, names=forecast.index.names)
-            forecast.index = new_index
+            if isinstance(forecast.index, pd.MultiIndex):
+                for level in range(forecast.index.nlevels):
+                    forecast.index = forecast.index.set_levels(
+                        pd.to_datetime(forecast.index.levels[level]), level=level
+                    )
+            else:
+                forecast.index = pd.to_datetime(forecast.index)
 
             forecast.sort_index(inplace=True)
             if isinstance(forecast, pd.Series):
@@ -202,6 +203,9 @@ class TimeSeriesApi:
             # Get all data points beginning at the nearest existing timestamp
             # lower than start time from actual data
             data_src = self._actual.loc[self._actual.index.asof(start_time) :]
+        elif self._forecast.index.nlevels == 1:
+            # Forecast data does not include request_timestamp
+            data_src = self._forecast.loc[self._forecast.index.asof(start_time) :]
         else:
             # Get the nearest existing timestamp lower than start time from forecasts
             first_index = self._forecast.index.get_level_values(0)
