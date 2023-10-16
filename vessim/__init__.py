@@ -12,43 +12,52 @@ class TimeSeriesApi:
     """Simulates an API for time series data like solar irradiance or carbon intensity.
 
     Args:
-        actual: The actual time-series data to be used. It should follow this
-            structure:
-            ------------------------------------------------------------------------
-            Timestamp (index)       Zone A  Zone B  Zone C
-
-            2020-01-01T00:00:00     100     800     700
-            2020-01-01T01:00:00     110     850     720
-            2020-01-01T02:00:00     105     820     710
-            2020-01-01T03:00:00     108     840     730
-            ------------------------------------------------------------------------
-            Note that while interpolation is possible when retrieving forecasts,
-            `frontfill` is always used on the actual data if no data is present at the
-            time. If you wish a different behavior, you have to change your actual data
+        actual: The actual time-series data to be used. It should contain a datetime-like
+            index marking the time and each column should represent a different zone
+            containing the data.
+            - Note that while interpolation is possible when retrieving forecasts, the
+            actual data between timestamps is computed using either "ffill" or "bfill".
+            If you wish a different behavior, you have to change your actual data
             beforehand (e.g by resampling into a different frequency).
         forecast: An optional time-series dataset representing forecasted values.
+            The data should contain two indices. One is the "Request Timestamp", marking
+            the time when the forecast was made. One is the "Forecast Timestamp",
+            indicating the time the forecast is made for.
+            - If there is no "Request Timestamp", the data is treated as a global
+            forecast that does not change over time.
             - If `forecast` is not provided, predictions are derived from the
-            actual data.
-            - It's assumed that the forecasted data is supplied with a reference
-            timestamp, termed as "Request Timestamp."
-            - Correspondingly, each row in the forecasted data will also have an
-            associated "Forecast Timestamp" indicating the actual time of the
-            forecasted data. For example:
-            ------------------------------------------------------------------------
-            Request Timestamp     Forecast Timestamp    Zone A Zone B Zone C
-            (index1)              (index2)
-
-            2020-01-01T00:00:00   2020-01-01T00:05:00   115    850    710
-            ...
-            2020-01-01T00:00:00   2020-01-01T00:55:00   110    870 	  720
-            2020-01-01T00:00:00   2020-01-01T01:00:00   110    860 	  715
-            2020-01-01T01:00:00   2020-01-01T01:05:00   110    830    715
-            ...
-            ------------------------------------------------------------------------
+            actual data when requesting forecasts.
         fill_method: Either "ffill" or "bfill". Determines how actual data is aquired in
             between timestamps. Some data providers like "Solcast" index their data with a
             timestamp marking the end of the time-period that the data is valid for.
             In those cases, "bfill" should be chosen, but the default is "ffill".
+
+    Example:
+        >>> actual_data = [
+        ...    ["2020-01-01T00:00:00", 100, 800],
+        ...    ["2020-01-01T00:30:00", 110, 850],
+        ...    ["2020-01-01T01:00:00", 105, 820],
+        ...    ["2020-01-01T01:30:00", 108, 840],
+        ... ]
+        >>> actual = pd.DataFrame(
+        ...    actual_data, columns=["timestamp", "zone_a", "zone_b"]
+        ... )
+        >>> actual.set_index(["timestamp"], inplace=True)
+
+        >>> forecast_data = [
+        ...    ["2020-01-01T00:00:00", "2020-01-01T00:30:00", 115, 850],
+        ...    ["2020-01-01T00:00:00", "2020-01-01T01:00:00", 110, 870],
+        ...    ["2020-01-01T00:00:00", "2020-01-01T01:30:00", 110, 860],
+        ...    ["2020-01-01T00:00:00", "2020-01-01T02:00:00", 120, 830],
+        ...    ["2020-01-01T01:00:00", "2020-01-01T01:30:00", 115, 840],
+        ...    ["2020-01-01T01:00:00", "2020-01-01T02:00:00", 110, 830],
+        ... ]
+        >>> forecast = pd.DataFrame(
+        ...    forecast_data, columns=["req_time", "forecast_time", "zone_a", "zone_b"]
+        ... )
+        >>> forecast.set_index(["req_time", "forecast_time"], inplace=True)
+
+        >>> time_series = TimeSeriesApi(actual, forecast)
     """
 
     def __init__(
@@ -119,7 +128,7 @@ class TimeSeriesApi:
         start_time: DatetimeLike,
         end_time: DatetimeLike,
         zone: Optional[str] = None,
-        frequency: Optional[Union[str, pd.DateOffset, timedelta]] = None,  # issue #140
+        frequency: Optional[Union[str, pd.DateOffset, timedelta]] = None,
         resample_method: Optional[str] = None,
     ) -> pd.Series:
         """Retrieves of forecasted data points within window at a frequency.
@@ -148,46 +157,35 @@ class TimeSeriesApi:
                 there is not enough data for frequency, without resample_method specified.
 
         Example:
-            With actual data like this:
-            ------------------------------------------------------------------------
-            Timestamp (index)       Zone A
+            >>> index = pd.date_range(
+            ...    "2020-01-01T00:00:00", "2020-01-01T03:00:00", freq="1H"
+            ... )
+            >>> actual = pd.DataFrame({"zone_a": [4, 6, 2, 8]}, index=index)
 
-            2020-01-01T00:00:00     4
-            2020-01-01T01:00:00     6
-            2020-01-01T02:00:00     2
-            2020-01-01T03:00:00     8
-            ------------------------------------------------------------------------
-            And forecast data like this:
-            ------------------------------------------------------------------------
-            Request Timestamp     Forecast Timestamp    Zone A
-            (index1)              (index2)
+            >>> forecast_data = [
+            ...    ["2020-01-01T00:00:00", "2020-01-01T01:00:00", 5],
+            ...    ["2020-01-01T00:00:00", "2020-01-01T02:00:00", 2],
+            ...    ["2020-01-01T00:00:00", "2020-01-01T03:00:00", 6],
+            ... ]
+            >>> forecast = pd.DataFrame(
+            ...    forecast_data, columns=["req_time", "forecast_time", "zone_a"]
+            ... )
+            >>> forecast.set_index(["req_time", "forecast_time"], inplace=True)
 
-            2020-01-01T00:00:00   2020-01-01T01:00:00   5
-            2020-01-01T00:00:00   2020-01-01T02:00:00   2
-            2020-01-01T00:00:00   2020-01-01T03:00:00   6
-            ------------------------------------------------------------------------
-            The call forecast_at(
-                start_time=pd.to_datetime("2020-01-01T00:00:00"),
-                end_time=pd.to_datetime("2020-01-01T02:00:00"),
-                frequency="30T",
-                resample_method="time",
-            )
-            would return the following:
-            ------------------------------------------------------------------------
-            Forecast Timestamp (index)  Zone A
+            >>> time_series = TimeSeriesApi(actual, forecast)
 
-            2020-01-01T00:30:00         4.5
-            2020-01-01T01:00:00         5
-            2020-01-01T01:30:00         3.5
-            2020-01-01T02:00:00         2
-            ------------------------------------------------------------------------
+            >>> time_series.forecast(
+            ...    start_time="2020-01-01T00:00:00",
+            ...    end_time="2020-01-01T02:00:00",
+            ...    frequency="30T",
+            ...    resample_method="time",
+            ... )
+            2020-01-01 00:30:00    4.5
+            2020-01-01 01:00:00    5.0
+            2020-01-01 01:30:00    3.5
+            2020-01-01 02:00:00    2.0
+            Freq: 30T, Name: zone_a, dtype: float64
         """
-        if zone is None:
-            if len(self.zones()) == 1:
-                zone = self.zones()[0]
-            else:
-                raise ValueError("Zone needs to be specified.")
-
         # Determine which data source to use
         data_src: pd.DataFrame
         if self._forecast is None:
@@ -209,11 +207,19 @@ class TimeSeriesApi:
         if data_src.empty:
             raise ValueError(f"Cannot retrieve forecast data at '{start_time}'.")
 
+        if zone is None:
+            if len(self.zones()) == 1:
+                zone_index = 0
+            else:
+                raise ValueError("Zone needs to be specified.")
+        else:
+            try:
+                zone_index = data_src.columns.get_loc(zone)
+            except KeyError:
+                raise ValueError(f"Cannot retrieve forecast data for zone '{zone}'.")
+
         # Get data of specified zone and convert to pd.Series
-        try:
-            forecast: pd.Series = data_src[[zone]].squeeze()
-        except KeyError:
-            raise ValueError(f"Cannot retrieve forecast data for zone '{zone}'.")
+        forecast: pd.Series = data_src.iloc[:, zone_index].squeeze()
 
         # Resample the data to get the data to specified frequency
         if frequency is not None:
