@@ -1,7 +1,7 @@
 """A simulator for carbon-aware applications and systems."""
 
 from datetime import datetime, timedelta
-from typing import Union, List, Optional, Any
+from typing import Union, List, Optional, Any, Literal
 
 import pandas as pd
 
@@ -45,14 +45,20 @@ class TimeSeriesApi:
             2020-01-01T01:00:00   2020-01-01T01:05:00   110    830    715
             ...
             ------------------------------------------------------------------------
+        fill_method: Either "ffill" or "bfill". Determines how actual data is aquired in
+            between timestamps. Some data providers like "Solcast" index their data with a
+            timestamp marking the end of the time-period that the data is valid for.
+            In those cases, "bfill" should be chosen, but the default is "ffill".
     """
 
     def __init__(
         self,
         actual: Union[pd.Series, pd.DataFrame],
         forecast: Optional[Union[pd.Series, pd.DataFrame]] = None,
+        fill_method: Literal["ffill", "bfill"] = "ffill",
     ):
-        actual.sort_index()
+        actual.index = pd.to_datetime(actual.index)
+        actual.sort_index(inplace=True)
         if isinstance(actual, pd.Series):
             self._actual = actual.to_frame()
         elif isinstance(actual, pd.DataFrame):
@@ -61,10 +67,19 @@ class TimeSeriesApi:
             raise ValueError(f"Incompatible type {type(actual)} for 'actual'.")
 
         if isinstance(forecast, (pd.Series, pd.DataFrame)):
-            forecast.sort_index()
+            # Convert all indices (either one or two columns) to datetime
+            new_levels = [
+                forecast.index.get_level_values(i).map(pd.to_datetime)
+                for i in range(forecast.index.nlevels)
+            ]
+            new_index = pd.MultiIndex.from_arrays(new_levels, names=forecast.index.names)
+            forecast.index = new_index
+
+            forecast.sort_index(inplace=True)
             if isinstance(forecast, pd.Series):
                 forecast = forecast.to_frame()
         self._forecast = forecast
+        self._fill_method = fill_method
 
     def zones(self) -> List:
         """Returns a list of all available zones."""
@@ -93,10 +108,11 @@ class TimeSeriesApi:
             zone_actual = self._actual[zone]
         except KeyError:
             raise ValueError(f"Cannot retrieve actual data at zone '{zone}'.")
-        try:
-            return zone_actual.loc[self._actual.index.asof(dt)]
-        except KeyError:
+
+        data_point = zone_actual.reindex(index=[dt], method=self._fill_method).iloc[0]
+        if pd.isna(data_point):
             raise ValueError(f"Cannot retrieve actual data at '{dt}' in zone '{zone}'.")
+        return data_point
 
     def forecast(
         self,
@@ -177,7 +193,7 @@ class TimeSeriesApi:
         if self._forecast is None:
             # Get all data points beginning at the nearest existing timestamp
             # lower than start time from actual data
-            data_src = self._actual.loc[self._actual.index.asof(start_time):]
+            data_src = self._actual.loc[self._actual.index.asof(start_time) :]
         else:
             # Get the nearest existing timestamp lower than start time from forecasts
             first_index = self._forecast.index.get_level_values(0)
@@ -203,7 +219,7 @@ class TimeSeriesApi:
         if frequency is not None:
             frequency = pd.tseries.frequencies.to_offset(frequency)
             if frequency is None:
-                raise ValueError(f"Frequency '{frequency}' invalid." )
+                raise ValueError(f"Frequency '{frequency}' invalid.")
 
             # Add NaN values in the specified frequency
             new_index = pd.date_range(start=start_time, end=end_time, freq=frequency)
@@ -217,7 +233,7 @@ class TimeSeriesApi:
                 forecast.bfill(inplace=True)
             elif resample_method is not None:
                 forecast.interpolate(method=resample_method, inplace=True)  # type: ignore
-            elif forecast.isnull().values.any(): # type: ignore
+            elif forecast.isnull().values.any():  # type: ignore
                 # Check if there are NaN values if resample method is not specified
                 raise ValueError(
                     f"Not enough data at frequency '{frequency}'. Specify resample_method"
