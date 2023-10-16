@@ -78,17 +78,20 @@ class TimeSeriesApi:
         if isinstance(forecast, (pd.Series, pd.DataFrame)):
             # Convert all indices (either one or two columns) to datetime
             if isinstance(forecast.index, pd.MultiIndex):
+                forecast_index: pd.MultiIndex = forecast.index
                 for level in range(forecast.index.nlevels):
-                    forecast.index = forecast.index.set_levels(
-                        pd.to_datetime(forecast.index.levels[level]), level=level
+                    forecast.index = forecast_index.set_levels(
+                        pd.to_datetime(forecast_index.levels[level]), level=level
                     )
             else:
                 forecast.index = pd.to_datetime(forecast.index)
 
             forecast.sort_index(inplace=True)
-            if isinstance(forecast, pd.Series):
-                forecast = forecast.to_frame()
-        self._forecast = forecast
+        self._forecast: Optional[pd.DataFrame]
+        if isinstance(forecast, pd.Series):
+            self._forecast = forecast.to_frame()
+        else:
+            self._forecast = forecast  # type: ignore
         self._fill_method = fill_method
 
     def zones(self) -> List:
@@ -247,13 +250,13 @@ class TimeSeriesApi:
 
     def _resample_to_frequency(
         self,
-        df: pd.DataFrame,
+        df: pd.Series,
         start_time: DatetimeLike,
         end_time: DatetimeLike,
         frequency: Optional[Union[str, pd.DateOffset, timedelta]] = None,
         resample_method: Optional[str] = None,
     ):
-        """Transform dataframe into the desired frequency between start and end time."""
+        """Transform series into the desired frequency between start and end time."""
         frequency = pd.tseries.frequencies.to_offset(frequency)
         if frequency is None:
             raise ValueError(f"Frequency '{frequency}' invalid.")
