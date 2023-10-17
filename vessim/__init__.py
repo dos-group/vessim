@@ -232,7 +232,7 @@ class TimeSeriesApi:
                 .iloc[1:]
             )
 
-        return forecast.loc[(forecast.index > start_time) & (forecast.index <= end_time)]
+        return forecast.loc[(forecast.index >= start_time) & (forecast.index <= end_time)]
 
     def next_update(self, dt: DatetimeLike) -> datetime:
         """Returns the next time of when the trace will change.
