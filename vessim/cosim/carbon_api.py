@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from vessim.core.simulator import CarbonApi
+from vessim import TimeSeriesApi
 from vessim.cosim._util import VessimSimulator, VessimModel, Clock
 
 
@@ -24,7 +24,7 @@ class CarbonApiSim(VessimSimulator):
         self.carbon_api = None
 
     def init(self, sid, time_resolution, sim_start: datetime, # type: ignore
-            carbon_api: CarbonApi, eid_prefix=None):
+            carbon_api: TimeSeriesApi, eid_prefix=None):
         super().init(sid, time_resolution, eid_prefix=eid_prefix)
         self.clock = Clock(sim_start)
         self.carbon_api = carbon_api
@@ -41,7 +41,7 @@ class CarbonApiSim(VessimSimulator):
 
 
 class _CarbonApiModel(VessimModel):
-    def __init__(self, carbon_api: CarbonApi, clock: Clock, zone: str):
+    def __init__(self, carbon_api: TimeSeriesApi, clock: Clock, zone: str):
         self.api = carbon_api
         self.clock = clock
         self.zone = zone
@@ -49,4 +49,4 @@ class _CarbonApiModel(VessimModel):
 
     def step(self, time: int, inputs: dict) -> None:
         dt = self.clock.to_datetime(time)
-        self.carbon_intensity = self.api.carbon_intensity_at(dt, self.zone)
+        self.carbon_intensity = self.api.actual(dt, self.zone)

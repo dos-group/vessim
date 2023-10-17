@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from vessim.core.simulator import Generator
+from vessim import TimeSeriesApi
 from vessim.cosim._util import Clock, VessimSimulator, VessimModel
 
 
@@ -38,11 +38,11 @@ class GeneratorSim(VessimSimulator):
 
 
 class _GeneratorModel(VessimModel):
-    def __init__(self, generator: Generator, clock: Clock):
+    def __init__(self, generator: TimeSeriesApi, clock: Clock):
         self.generator = generator
         self.clock = clock
         self.p: Optional[float] = None
 
     def step(self, time: int, inputs: dict) -> None:
         dt = self.clock.to_datetime(time)
-        self.p = self.generator.power_at(dt)
+        self.p = self.generator.actual(dt)

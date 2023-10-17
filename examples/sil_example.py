@@ -5,14 +5,7 @@ through software-in-the-loop integration as described in our paper:
 - 'Software-in-the-loop simulation for developing and testing carbon-aware applications'.
   [under review]
 
-This example is experimental and documentation is still in progress.
-
-Attributes:
-    COSIM_SIL_CONFIG (dict): Co-simulation configuration for software-in-the-loop.
-    RT_FACTOR (float): Real-time factor, where 1 wall-clock second equals 60 sim seconds.
-    GCP_ADDRESS (str): Address for the GCP server.
-    RASPI_ADDRESS (str): Address for the Raspberry Pi server.
-
+This is example experimental and documentation is still in progress.
 """
 
 import mosaik  # type: ignore
@@ -24,9 +17,9 @@ from cosim_example import (
     STORAGE,
     DURATION
 )
+from vessim import TimeSeriesApi
 from vessim.core.consumer import ComputingSystem
 from vessim.core.microgrid import SimpleMicrogrid
-from vessim.core.simulator import Generator, CarbonApi
 from vessim.sil.node import Node
 from vessim.sil.power_meter import HttpPowerMeter
 from vessim.cosim._util import disable_mosaik_warnings
@@ -47,14 +40,6 @@ disable_mosaik_warnings(behind_threshold=0.01)
 
 
 def run_simulation():
-    """Run the co-simulation scenario with software-in-the-loop integration.
-
-    The simulation connects to real computing systems and monitors power consumption,
-    solar generation, carbon intensity, and microgrid power delta.
-
-    Returns:
-        None
-    """
     world = mosaik.World(COSIM_SIL_CONFIG)
 
     # Initialize nodes
@@ -74,11 +59,15 @@ def run_simulation():
 
     # Initialize solar generator
     solar_sim = world.start("Generator", sim_start=SIM_START)
-    solar = solar_sim.Generator(generator=Generator(data=load_solar_data(sqm=0.4 * 0.5)))
+    solar = solar_sim.Generator(
+        generator=TimeSeriesApi(actual=load_solar_data(sqm=0.4 * 0.5))
+    )
 
     # Initialize carbon intensity API
-    carbon_api_sim = world.start("CarbonApi", sim_start=SIM_START,
-                                 carbon_api=CarbonApi(data=load_carbon_data()))
+    carbon_api_sim = world.start(
+        "CarbonApi", sim_start=SIM_START, carbon_api=TimeSeriesApi(
+            actual=load_carbon_data())
+    )
     carbon_api_de = carbon_api_sim.CarbonApi(zone="DE")
 
     # Connect consumers and producers to microgrid

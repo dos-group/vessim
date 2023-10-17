@@ -9,9 +9,12 @@ build:
   tools: 
     python: "3.8"
   commands:
-    - pip install poetry pdoc
+    - pip install poetry sphinx sphinx-copybutton furo
     - poetry config virtualenvs.create false
-    - poetry install --extras "sil analysis"
-    - pdoc --docformat google --template-dir docs/custom/ -o docs/output/ vessim/ examples/cosim_example.py examples/sil_example.py docs/extra/About\ Vessim.py docs/extra/Concept.py docs/extra/Getting\ Started docs/extra/Installation.py
+    - poetry install --extras "sil analysis" 
     - mkdir --parents $READTHEDOCS_OUTPUT/html/
-    - cp --recursive docs/output/* $READTHEDOCS_OUTPUT/html/
+    - sphinx-apidoc -f -o docs/docstrings vessim
+    - cd docs
+    - make html
+    - cd ..
+    - cp --recursive docs/_build/* $READTHEDOCS_OUTPUT/html/

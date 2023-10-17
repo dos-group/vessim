@@ -1,3 +1,5 @@
+from typing import Dict
+
 from vessim.core.consumer import Consumer
 from vessim.cosim._util import VessimSimulator, VessimModel
 
@@ -39,6 +41,7 @@ class _ComputingSystemModel(VessimModel):
     def __init__(self, consumer: Consumer):
         self.consumer = consumer
         self.p = 0.0
+        self.info: Dict = {}
 
     def step(self, time: int, inputs: dict) -> None:
         """Updates the power consumption of the system.
