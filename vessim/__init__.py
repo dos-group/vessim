@@ -139,6 +139,7 @@ class TimeSeriesApi:
             (Note, that the zone also has to appear in the actual data.)
         - If frequency is not specified, all existing data in the window will be returned.
         - For various resampling methods, the last actual value is used.
+        - The forecast does not include the value at `start_time` (see example).
 
         Args:
             start_time: Starting time of the window.
