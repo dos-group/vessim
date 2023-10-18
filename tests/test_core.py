@@ -9,25 +9,28 @@ class TestTraceSimulator:
     @pytest.fixture
     def time_series(self) -> TimeSeriesApi:
         index = [
-            "2023-01-01T00:00:00", "2023-01-01T00:30:00", "2023-01-01T01:00:00",
+            "2023-01-01T00:00:00",
+            "2023-01-01T00:30:00",
+            "2023-01-01T01:00:00",
         ]
         actual = pd.DataFrame({"a": [1, 2, 3], "b": [0, 3, 0]}, index=index)
         return TimeSeriesApi(actual)
 
     @pytest.fixture
     def time_series_single(self) -> TimeSeriesApi:
-        index = [
-            "2023-01-01T00:00:00", "2023-01-01T00:30:00", "2023-01-01T01:00:00"
-        ]
+        index = ["2023-01-01T00:00:00", "2023-01-01T00:30:00", "2023-01-01T01:00:00"]
         actual = pd.Series([1, 2, 3], index=index)
         return TimeSeriesApi(actual, fill_method="bfill")
 
     @pytest.fixture
     def time_series_forecast(self) -> TimeSeriesApi:
-        index = ["2023-01-01T00:00:00", "2023-01-01T01:00:00"]
-        actual = pd.DataFrame({"a": [1, 2], "b": [0, 3]}, index=index)
+        index = pd.date_range("2023-01-01T00:00:00", "2023-01-01T01:00:00", freq="20T")
+        actual = pd.DataFrame(
+            {"a": [1, 5, 3, 2], "b": [0, 1, 2, 3], "c": [4, 3, 2, 7]}, index=index
+        )
 
         forecast_data = [
+            ["2023-01-01T00:00:00", "2023-01-01T00:10:00", 2, 2.5],
             ["2023-01-01T00:00:00", "2023-01-01T01:00:00", 1.5, 3],
             ["2023-01-01T00:00:00", "2023-01-01T02:00:00", 2.5, 3.5],
             ["2023-01-01T00:00:00", "2023-01-01T03:00:00", 2, 1.5],
@@ -142,7 +145,13 @@ class TestTraceSimulator:
                 "2023-01-01T00:00:00",
                 "2023-01-01T01:00:00",
                 "a",
-                pd.Series([1.5], index=[pd.to_datetime("2023-01-01T01:00:00")]),
+                pd.Series(
+                    [2.0, 1.5],
+                    index=[
+                        pd.to_datetime("2023-01-01T00:10:00"),
+                        pd.to_datetime("2023-01-01T01:00:00"),
+                    ],
+                ),
             ),
             (
                 "2023-01-01T01:00:00",
@@ -151,14 +160,14 @@ class TestTraceSimulator:
                 pd.Series([3.0], index=[pd.to_datetime("2023-01-01T02:00:00")]),
             ),
             (
-                "2023-01-01T00:10:00",
-                "2023-01-01T01:00:00",
+                "2023-01-01T00:05:00",
+                "2023-01-01T00:50:00",
                 "a",
-                pd.Series([1.5], index=[pd.to_datetime("2023-01-01T01:00:00")]),
+                pd.Series([2.0], index=[pd.to_datetime("2023-01-01T00:10:00")]),
             ),
             (
-                "2023-01-01T00:00:00",
-                "2023-01-01T00:40:00",
+                "2023-01-01T00:11:00",
+                "2023-01-01T00:59:00",
                 "a",
                 pd.Series([], dtype=float, index=pd.DatetimeIndex([])),
             ),
@@ -167,8 +176,9 @@ class TestTraceSimulator:
                 "2023-01-01T02:00:00",
                 "b",
                 pd.Series(
-                    [3, 3.5],
+                    [2.5, 3, 3.5],
                     index=[
+                        pd.to_datetime("2023-01-01T00:10:00"),
                         pd.to_datetime("2023-01-01T01:00:00"),
                         pd.to_datetime("2023-01-01T02:00:00"),
                     ],
@@ -251,6 +261,22 @@ class TestTraceSimulator:
                     index=[pd.to_datetime("2023-01-01T00:50:00")],
                 ),
             ),
+            (
+                "2023-01-01T00:45:00",
+                "2023-01-01T01:00:00",
+                "b",
+                "10T",
+                "time",
+                pd.Series([2.75], index=[pd.to_datetime("2023-01-01T00:55:00")]),
+            ),
+            (
+                "2023-01-01T00:35:00",
+                "2023-01-01T00:40:00",
+                "a",
+                "5T",
+                "time",
+                pd.Series([3.25], index=[pd.to_datetime("2023-01-01T00:40:00")]),
+            ),
         ],
     )
     def test_forecast_with_frequency(
@@ -291,11 +317,11 @@ class TestTraceSimulator:
         with pytest.raises(ValueError):
             time_series.forecast(
                 time_series.forecast(
-                pd.to_datetime("2023-01-01T00:00:00"),
-                pd.to_datetime("2023-01-01T01:00:00"),
-                zone="a",
-                frequency="invalid",
-            )
+                    pd.to_datetime("2023-01-01T00:00:00"),
+                    pd.to_datetime("2023-01-01T01:00:00"),
+                    zone="a",
+                    frequency="invalid",
+                )
             )
 
     def test_forecast_fails_if_not_enough_data_for_frequency(self, time_series):

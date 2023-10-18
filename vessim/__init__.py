@@ -27,6 +27,9 @@ class TimeSeriesApi:
             forecast that does not change over time.
             - If `forecast` is not provided, predictions are derived from the
             actual data when requesting forecasts.
+            - Even if there is only one column specified in both dataframes, make sure
+            they have the same column name (or series name) if they contain data for the
+            same zone.
         fill_method: Either "ffill" or "bfill". Determines how actual data is aquired in
             between timestamps. Some data providers like "Solcast" index their data with a
             timestamp marking the end of the time-period that the data is valid for.
@@ -133,6 +136,7 @@ class TimeSeriesApi:
         - If no forecast time-series data is provided, actual data is used.
         - Specified timestamps are always rounded down to the nearest existing.
         - If there is more than one zone present in the data, zone has to be specified.
+            (Note, that the zone also has to appear in the actual data.)
         - If frequency is not specified, all existing data in the window will be returned.
         - For various resampling methods, the last actual value is used.
 
@@ -210,15 +214,16 @@ class TimeSeriesApi:
             # Forecast data does not include request_timestamp
             data_src = self._forecast.loc[self._forecast.index.asof(start_time) :]
         else:
-            # Get the nearest existing timestamp lower than start time from forecasts
+            # Get forecasts of the nearest existing timestamp lower than start time
             first_index = self._forecast.index.get_level_values(0)
-            request_time = first_index[first_index <= start_time].max()
+            request_time = first_index[first_index <= start_time][-1]
+            data_src = self._forecast.loc[request_time]  # type: ignore
 
-            # Retrieve the actual value at the time and attach it to the front of the
+            # Retrieve the actual value at start_time and attach it to the front of the
             # forecast data with the timestamp (for interpolation at a later stage)
-            actual_value = self._actual.loc[self._actual.index.asof(request_time)]
+            actual_value = self._actual.loc[self._actual.index.asof(start_time)]
             data_src = pd.concat(
-                [actual_value.to_frame().T, self._forecast.loc[request_time]]
+                [actual_value.to_frame().T, data_src.loc[(data_src.index > start_time)]]
             )
 
         if data_src.empty:
