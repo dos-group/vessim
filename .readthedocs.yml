@@ -18,7 +18,5 @@ build:
 sphinx:
   configuration: docs/conf.py
 
-formats: html
-
-build:
-  image: latest
+formats: 
+  - html
