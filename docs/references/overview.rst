@@ -1,7 +1,7 @@
 Overview
 ==========
 
-Vessim is a versatile co-simulation testbed for carbon-aware applications and systems.
+Vessim is a versatile **co-simulation testbed for carbon-aware applications and systems**.
 It lets users connect domain-specific simulators for energy system components like renewable power generation, 
 energy storage, and power flow analysis with real software and hardware.
 

@@ -5,12 +5,12 @@ This scenario builds on `cosim_example <https://github.com/dos-group/vessim/blob
 This example is experimental and documentation is still in progress.
 
 Install vessim with the software-in-the-loop dependencies
-.. code-block:: bash 
+.. code-block:: console 
 
-    $ pip install vessim[sil]
+    pip install vessim[sil]
 
 and run
 
-.. code-block:: bash 
+.. code-block:: console 
 
-    $ python examples/sil_example.py
+    python examples/sil_example.py
