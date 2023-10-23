@@ -10,7 +10,7 @@ Vessim is in alpha stage and under active development. Functionality and documen
 
 The documentation provides a guide explaining the concept of this project, two examples to get you started with it and an API reference.
 
-.. image:: ../_static/CarbonAware_vessim_Aspects.png
+.. image:: _static/CarbonAware_vessim_Aspects.png
     :width: 480px
     :align: center
 
