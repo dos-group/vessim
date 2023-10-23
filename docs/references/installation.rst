@@ -1,6 +1,6 @@
-===============
-⚙️ Installation
-===============
+============
+Installation
+============
 
 If you are using Vessim for the first time, we recommend to clone and install this repository, so you have all
 code and examples at hand:
