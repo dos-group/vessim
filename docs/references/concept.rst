@@ -9,7 +9,7 @@ Vessim allows users to test real applications within a co-simulation testbed com
 The following Figure shows the different aspects of carbon-aware systems that can be investigated through Vessim.
 
 .. image:: ../_static/CarbonAware_vessim_Aspects.png
-    :width: 450px
+    :width: 480px
     :align: center
 
 As depicted in the above Figure, Vessim enables research on various aspects related to the interplay of energy and computing systems.

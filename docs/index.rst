@@ -10,6 +10,10 @@ Vessim is in alpha stage and under active development. Functionality and documen
 
 The documentation provides a guide explaining the concept of this project, two examples to get you started with it and an API reference.
 
+.. image:: ../_static/CarbonAware_vessim_Aspects.png
+    :width: 480px
+    :align: center
+
 Vessim is released under the `MIT License <https://github.com/dos-group/vessim/blob/main/LICENSE>`_. 
 
 .. toctree::
@@ -21,11 +25,3 @@ Vessim is released under the `MIT License <https://github.com/dos-group/vessim/b
    references/examples
    docstrings/modules
    references/aboutvessim  
-   
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
