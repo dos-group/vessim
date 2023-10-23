@@ -23,5 +23,5 @@ Vessim is released under the `MIT License <https://github.com/dos-group/vessim/b
    
    references/overview
    references/examples
-   reference/apireference
+   references/apireference
    references/aboutvessim  
