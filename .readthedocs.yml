@@ -6,15 +6,19 @@ version: 2
 
 build:
   os: "ubuntu-22.04"
-  tools: 
+  tools:
     python: "3.8"
-  commands:
-    - pip install poetry sphinx sphinx-copybutton furo
-    - poetry config virtualenvs.create false
-    - poetry install --extras "sil analysis" 
-    - mkdir --parents $READTHEDOCS_OUTPUT/html/
-    - sphinx-apidoc -f -o docs/docstrings vessim
-    - cd docs
-    - make html
-    - cd ..
-    - cp --recursive docs/_build/* $READTHEDOCS_OUTPUT/html/
+  jobs:
+    post_create_environment:
+      - pip install poetry
+      - poetry config virtualenvs.create false
+    post_install:
+      - poetry install --extras "sil analysis docs"
+
+sphinx:
+  configuration: docs/conf.py
+
+formats: html
+
+build:
+  image: latest
