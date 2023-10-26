@@ -23,10 +23,10 @@ class TimeSeriesApi:
             The data should contain two datetime-like indices. One is the
             "Request Timestamp", marking the time when the forecast was made. One is the
             "Forecast Timestamp", indicating the time the forecast is made for.
-            - If data does not include a "Request Timestamp", it is treated as a global
+            - If data does not include a "Request Timestamp", it is treated as a static
             forecast that does not change over time.
-            - If `forecast` is not provided, predictions are derived from the
-            actual data when requesting forecasts.
+            - If `forecast` is not provided, predictions are derived from the actual data
+            when requesting forecasts (actual data is treated as static forecast).
             - Even if there is only one column specified in both dataframes, make sure
             they have the same column name (or series name) if they contain data for the
             same zone.
@@ -115,10 +115,10 @@ class TimeSeriesApi:
         Raises:
             ValueError: If there is no available data at apecified zone or time.
         """
+        data_at_time = self._get_actual_values_at_time(dt)
         zone_index = self._get_zone_index_from_dataframe(self._actual, zone)
-        zone_actual = self._actual.iloc[:, zone_index]
 
-        data_point = zone_actual.reindex(index=[dt], method=self._fill_method).iloc[0]
+        data_point = data_at_time.iloc[0, zone_index]
         if pd.isna(data_point):
             raise ValueError(f"Cannot retrieve actual data at '{dt}' in zone '{zone}'.")
         return data_point
@@ -138,7 +138,8 @@ class TimeSeriesApi:
         - If there is more than one zone present in the data, zone has to be specified.
             (Note, that the zone also has to appear in the actual data.)
         - If frequency is not specified, all existing data in the window will be returned.
-        - For various resampling methods, the last actual value is used.
+        - For various resampling methods, the actual value valid at start_time is used.
+            So you have to make sure that there is a valid actual value.
         - The forecast does not include the value at `start_time` (see example).
 
         Args:
@@ -176,17 +177,34 @@ class TimeSeriesApi:
 
             >>> time_series = TimeSeriesApi(actual, forecast)
 
+            Forward-fill resampling between 2020-01-01T00:00:00 (actual value = 4.0) and
+            forecasted values between 2020-01-01T01:00:00 and 2020-01-01T02:00:00:
+
             >>> time_series.forecast(
             ...    start_time="2020-01-01T00:00:00",
             ...    end_time="2020-01-01T02:00:00",
             ...    frequency="30T",
-            ...    resample_method="time",
+            ...    resample_method="ffill",
             ... )
-            2020-01-01 00:30:00    4.5
+            2020-01-01 00:30:00    4.0
             2020-01-01 01:00:00    5.0
-            2020-01-01 01:30:00    3.5
+            2020-01-01 01:30:00    5.0
             2020-01-01 02:00:00    2.0
             Freq: 30T, Name: zone_a, dtype: float64
+
+            Time interpolation between 2020-01-01T01:10:00 (actual value = 6.0) and
+            2020-01-01T02:00:00 (forecasted value = 2.0):
+
+            >>> time_series.forecast(
+            ...    start_time="2020-01-01T01:10:00",
+            ...    end_time="2020-01-01T01:55:00",
+            ...    zone="zone_a",
+            ...    frequency=timedelta(minutes=20),
+            ...    resample_method="time",
+            ... )
+            2020-01-01 01:30:00    4.4
+            2020-01-01 01:50:00    2.8
+            Freq: 20T, Name: zone_a, dtype: float64
         """
         data_src = self._get_forecast_data_source(start_time)
 
@@ -222,15 +240,19 @@ class TimeSeriesApi:
 
             # Retrieve the actual value at start_time and attach it to the front of the
             # forecast data with the timestamp (for interpolation at a later stage)
-            actual_value = self._actual.loc[self._actual.index.asof(start_time)]
+            actual_value = self._get_actual_values_at_time(start_time)
             data_src = pd.concat(
-                [actual_value.to_frame().T, data_src.loc[(data_src.index > start_time)]]
+                [actual_value, data_src.loc[(data_src.index > start_time)]]
             )
 
         if data_src.empty:
             raise ValueError(f"Cannot retrieve forecast data at '{start_time}'.")
 
         return data_src
+
+    def _get_actual_values_at_time(self, dt: DatetimeLike) -> pd.DataFrame:
+        """Return actual data that is valid at specific time."""
+        return self._actual.reindex(index=[pd.to_datetime(dt)], method=self._fill_method)
 
     def _get_zone_index_from_dataframe(self, df: pd.DataFrame, zone: Optional[str]):
         """Return column index of zone from given dataframe.
