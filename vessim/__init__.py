@@ -116,7 +116,7 @@ class TimeSeriesApi:
             ValueError: If there is no available data at apecified zone or time.
         """
         data_at_time = self._get_actual_values_at_time(dt)
-        zone_index = self._get_zone_index_from_dataframe(self._actual, zone)
+        zone_index = self._get_zone_index_from_dataframe(data_at_time, zone)
 
         data_point = data_at_time.iloc[0, zone_index]
         if pd.isna(data_point):

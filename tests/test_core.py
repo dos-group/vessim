@@ -46,8 +46,8 @@ class TestTraceSimulator:
     @pytest.fixture
     def time_series_static_forecast(self) -> TimeSeriesApi:
         index = pd.date_range("2023-01-01T00:00:00", "2023-01-01T03:00:00", freq="1H")
-        actual = pd.DataFrame([3, 2, 4, 0], index=index)
-        forecast = pd.DataFrame([4, 2, 4, 1], index=index)
+        actual = pd.Series([3, 2, 4, 0], index=index)
+        forecast = pd.Series([4, 2, 4, 1], index=index)
         return TimeSeriesApi(actual, forecast)
 
     @pytest.mark.parametrize(
