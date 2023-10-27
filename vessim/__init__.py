@@ -13,27 +13,27 @@ class TimeSeriesApi:
 
     Args:
         actual: The actual time-series data to be used. It should contain a datetime-like
-            index marking the time and each column should represent a different zone
-            containing the data.
-            - Note that while interpolation is possible when retrieving forecasts, the
-            actual data between timestamps is computed using either "ffill" or "bfill".
+            index marking the time, and each column should represent a different zone
+            containing the data. The name of the zone is equal to the column name.
+            Note that while interpolation is possible when retrieving forecasts, the
+            actual data between timestamps is computed using either `ffill` or `bfill`.
             If you wish a different behavior, you have to change your actual data
-            beforehand (e.g by resampling into a different frequency).
+            beforehand (e.g. by resampling into a different frequency).
         forecast: An optional time-series dataset representing forecasted values.
             The data should contain two datetime-like indices. One is the
-            "Request Timestamp", marking the time when the forecast was made. One is the
-            "Forecast Timestamp", indicating the time the forecast is made for.
-            - If data does not include a "Request Timestamp", it is treated as a static
-            forecast that does not change over time.
+            `Request Timestamp`, marking the time when the forecast was made. One is the
+            `Forecast Timestamp`, indicating the time the forecast is made for.
+            - If data does not include a `Request Timestamp`, it is treated as a static
+                forecast that does not change over time.
             - If `forecast` is not provided, predictions are derived from the actual data
-            when requesting forecasts (actual data is treated as static forecast).
-            - Even if there is only one column specified in both dataframes, make sure
-            they have the same column name (or series name) if they contain data for the
-            same zone.
-        fill_method: Either "ffill" or "bfill". Determines how actual data is aquired in
-            between timestamps. Some data providers like "Solcast" index their data with a
+                when requesting forecasts (actual data is treated as static forecast).
+            - When using a non-static forecast, you have to be aware that all the
+                zones/column names also have to appear in the actual dataframe because
+                some actual values are used for interpolation.
+        fill_method: Either `ffill` or `bfill`. Determines how actual data is acquired in
+            between timestamps. Some data providers like `Solcast` index their data with a
             timestamp marking the end of the time-period that the data is valid for.
-            In those cases, "bfill" should be chosen, but the default is "ffill".
+            In those cases, `bfill` should be chosen, but the default is `ffill`.
 
     Example:
         >>> actual_data = [
@@ -113,7 +113,7 @@ class TimeSeriesApi:
                 zone specified in the data. Defaults to None.
 
         Raises:
-            ValueError: If there is no available data at apecified zone or time.
+            ValueError: If there is no available data at specified zone or time.
         """
         data_at_time = self._get_actual_values_at_time(dt)
         zone_index = self._get_zone_index_from_dataframe(data_at_time, zone)
@@ -135,11 +135,11 @@ class TimeSeriesApi:
 
         - If no forecast time-series data is provided, actual data is used.
         - Specified timestamps are always rounded down to the nearest existing.
-        - If there is more than one zone present in the data, zone has to be specified.
-            (Note, that the zone also has to appear in the actual data.)
         - If frequency is not specified, all existing data in the window will be returned.
         - For various resampling methods, the actual value valid at start_time is used.
             So you have to make sure that there is a valid actual value.
+        - If there is more than one zone present in the data, zone has to be specified.
+            (Note that zone name must also appear in actual data for non-static forecast.)
         - The forecast does not include the value at `start_time` (see example).
 
         Args:
@@ -240,9 +240,9 @@ class TimeSeriesApi:
 
             # Retrieve the actual value at start_time and attach it to the front of the
             # forecast data with the timestamp (for interpolation at a later stage)
-            actual_value = self._get_actual_values_at_time(start_time)
+            actual_values = self._get_actual_values_at_time(start_time)
             data_src = pd.concat(
-                [actual_value, data_src.loc[(data_src.index > start_time)]]
+                [actual_values, data_src.loc[(data_src.index > start_time)]]
             )
 
         if data_src.empty:
@@ -251,7 +251,7 @@ class TimeSeriesApi:
         return data_src
 
     def _get_actual_values_at_time(self, dt: DatetimeLike) -> pd.DataFrame:
-        """Return actual data that is valid at specific time."""
+        """Return actual data that is valid at a specific time."""
         return self._actual.reindex(index=[pd.to_datetime(dt)], method=self._fill_method)
 
     def _get_zone_index_from_dataframe(self, df: pd.DataFrame, zone: Optional[str]):
@@ -272,7 +272,7 @@ class TimeSeriesApi:
             try:
                 zone_index = df.columns.get_loc(zone)
             except KeyError:
-                raise ValueError(f"Cannot retrieve forecast data for zone '{zone}'.")
+                raise ValueError(f"Cannot retrieve data for zone '{zone}'.")
 
         return zone_index
 
@@ -311,7 +311,7 @@ class TimeSeriesApi:
         return df.loc[(df.index >= start_time) & (df.index <= end_time)].asfreq(frequency)
 
     def next_update(self, dt: DatetimeLike) -> datetime:
-        """Returns the next time of when the trace will change.
+        """Returns the next time of when the actual trace will change.
 
         This method is being called in the time-based simulation model for Mosaik.
         """
