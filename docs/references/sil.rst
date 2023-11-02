@@ -6,7 +6,7 @@ This example is experimental and documentation is still in progress.
 
 Install vessim with the software-in-the-loop dependencies
 
-.. code-block:: console 
+.. code-block:: console
 
     pip install vessim[sil]
 

@@ -2,8 +2,9 @@ API Reference
 ==============
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 1
 
    ../source/vessim.core
    ../source/vessim.cosim
    ../source/vessim.sil
+   ../source/vessim.analysis

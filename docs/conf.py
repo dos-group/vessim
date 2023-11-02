@@ -18,25 +18,40 @@ copyright = f"{datetime.now().year} {author}"
 
 # Fetch the latest Git tag
 def get_latest_git_tag():
-    return subprocess.check_output(["git", "describe", "--tags"], cwd=os.path.dirname(__file__)).decode("utf-8").strip()
+    tag_description = subprocess.check_output(["git", "describe", "--tags"], cwd=os.path.dirname(__file__)).decode("utf-8").strip()
+    return tag_description.split('-')[0]
 
 version = get_latest_git_tag()
+
 
 # The full version, including alpha/beta/rc tags
 release = version
 
 # -- General configuration -------
 
-extensions = ['sphinx.ext.napoleon', 'sphinx_copybutton']
+extensions = [
+    'sphinx.ext.napoleon',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.viewcode',
+    'sphinx_copybutton'
+    ]
 
 html_static_path = ["_static"]
 html_logo = "_static/logo_transparent.png"
+
 html_theme_options = {
-    "source_repository": "https://github.com/dos-group/vessim",
-    "source_branch": "main",
-    "source_directory": "docs/",
+    "top_of_page_button": None,
+    "light_css_variables": {
+        "color-brand-primary": "#4FACB3",
+        "color-brand-content": "#4FACB3",
+    },
+    "dark_css_variables": {
+        "color-brand-primary": "#4FACB3",
+        "color-brand-content": "#4FACB3",
+    },
 }
-html_title = "Vessim Documentation"
+
+html_title = f"Vessim Documentation v{version}"
 templates_path = ['_templates']
 
 source_suffix = '.rst'
@@ -46,8 +61,8 @@ master_doc = 'index'
 
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
-pygments_style = "sphinx"
-pygments_dark_style = "monokai"
+pygments_style = "default"
+pygments_dark_style = "gruvbox-dark"
 
 # -- Options for HTML output ------
 html_theme = 'furo'

@@ -10,7 +10,6 @@ build:
       - poetry config virtualenvs.create false
     post_install:
       - poetry install --extras "sil analysis docs"
-      - sphinx-apidoc -f -o docs/source/ vessim
 
 sphinx:
   configuration: docs/conf.py

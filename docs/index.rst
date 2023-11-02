@@ -17,10 +17,10 @@ The documentation provides a guide explaining the concept of this project, two e
 Vessim is released under the `MIT License <https://github.com/dos-group/vessim/blob/main/LICENSE>`_. 
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 3
    :hidden:
    :caption: Content:
-   
+ 
    references/overview
    references/examples
    references/apireference
