@@ -18,7 +18,9 @@ copyright = f"{datetime.now().year} {author}"
 
 # Fetch the latest Git tag
 def get_latest_git_tag():
-    tag_description = subprocess.check_output(["git", "describe", "--tags"], cwd=os.path.dirname(__file__)).decode("utf-8").strip()
+    tag_description = subprocess.check_output(["git", "describe", "--tags"], 
+                                              cwd=os.path.dirname(__file__)
+                                              ).decode("utf-8").strip()
     return tag_description.split('-')[0]
 
 version = get_latest_git_tag()

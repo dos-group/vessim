@@ -2,9 +2,6 @@ vessim.cosim
 ====================
 
 .. automodule:: vessim.cosim
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 vessim.cosim.carbon\_api module
 -------------------------------
