@@ -19,14 +19,14 @@ If you are using Vessim for the first time, we recommend to clone and install th
 code and examples at hand:
 
 ```
-$ pip install -e .
+pip install -e .
 ```
 
 Alternatively, you can also install our [latest release](https://pypi.org/project/vessim/) 
 via [pip](https://pip.pypa.io/en/stable/quickstart/):
 
 ```
-$ pip install vessim
+pip install vessim
 ```
 
 
@@ -35,7 +35,7 @@ $ pip install vessim
 To execute our exemplary co-simulation scenario, run:
 
 ```
-$ python examples/cosim_example.py
+python examples/cosim_example.py
 ```
 
 
@@ -52,7 +52,7 @@ pip install vessim[sil]
 and running:
 
 ```
-$ python examples/sil_example.py
+python examples/sil_example.py
 ```
 
 

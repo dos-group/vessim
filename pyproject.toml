@@ -56,11 +56,15 @@ pandas-stubs = {version = "*", optional = true}
 types-requests = {version = "*", optional = true}
 black = {version = "*", optional = true}
 ruff = {version = "*", optional = true}
+# Optional dependencies (documentation)
+furo = {version = "*", optional = true}
+sphinx-copybutton = {version = "*", optional = true}
 
 [tool.poetry.extras]
 sil = ["requests", "fastapi", "docker", "redis", "uvicorn"]
 analysis = ["jupyterlab", "matplotlib", "seaborn"]
 dev = ["pytest", "mypy", "types-psutil", "pandas-stubs", "types-requests", "black", "ruff"]
+docs = ["furo", "sphinx-copybutton"]
 
 [build-system]
 requires = ["poetry-core>=1.1.0"]
