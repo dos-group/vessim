@@ -10,7 +10,7 @@ class Node:
         id: A unique ID assigned to each node.
         address: The network address of the node.
         port: The application port of the node api.
-        power_mode: The power mode of the node. Default is "high performance".
+        power_mode: The power mode of the node. Default is `high performance`.
     """
 
     existing_ids: Set[str] = set()

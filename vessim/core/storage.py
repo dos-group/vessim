@@ -29,10 +29,11 @@ class SimpleBattery(Storage):
     """(Way too) simple battery.
 
     Args:
-        capacity: Battery capacity in Ws
-        charge_level: Initial charge level in Ws
-        min_soc: Minimum allowed soc for the battery
-        c_rate: C-rate (https://www.batterydesign.net/electrical/c-rate/)
+        capacity: Battery capacity in watt-seconds (Ws).
+        charge_level: Initial charge level in watt-seconds (Ws).
+        min_soc: Minimum allowed state of charge (SoC) for the battery.
+        c_rate: C-rate, which defines the charge and discharge rate of the battery.
+            For more information on C-rate, see `C-rate explanation <https://www.batterydesign.net/electrical/c-rate/>`_.
     """
 
     def __init__(
