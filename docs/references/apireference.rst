@@ -3,6 +3,15 @@ API Reference
 
 This API reference provides detailed descriptions of vessim's classes and functions. 
 
+Time Series API
+----------------
+Simulates an API for time series data like solar irradiance or carbon intensity.
+
+.. toctree::
+   :maxdepth: 1
+
+   ../source/vessim.timeseriesAPI.rst
+
 Core module
 -----------
 The Core module provides the base classes and functions.
