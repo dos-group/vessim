@@ -19,17 +19,22 @@ class TimeSeriesApi:
             actual data between timestamps is computed using either `ffill` or `bfill`.
             If you wish a different behavior, you have to change your actual data
             beforehand (e.g. by resampling into a different frequency).
-        forecast: An optional time-series dataset representing forecasted values.
-            The data should contain two datetime-like indices. One is the
+
+        forecast: An optional time-series dataset representing forecasted values. The
+            data should contain two datetime-like indices. One is the
             `Request Timestamp`, marking the time when the forecast was made. One is the
             `Forecast Timestamp`, indicating the time the forecast is made for.
+
             - If data does not include a `Request Timestamp`, it is treated as a static
-                forecast that does not change over time.
-            - If `forecast` is not provided, predictions are derived from the actual data
-                when requesting forecasts (actual data is treated as static forecast).
+              forecast that does not change over time.
+
+            - If `forecast` is not provided, predictions are derived from the actual
+              data when requesting forecasts (actual data is treated as static forecast).
+
             - When using a non-static forecast, you have to be aware that all the
-                zones/column names also have to appear in the actual dataframe because
-                some actual values are used for interpolation.
+              zones/column names also have to appear in the actual dataframe because some
+              actual values are used for interpolation.
+
         fill_method: Either `ffill` or `bfill`. Determines how actual data is acquired in
             between timestamps. Some data providers like `Solcast` index their data with a
             timestamp marking the end of the time-period that the data is valid for.
@@ -109,7 +114,7 @@ class TimeSeriesApi:
 
         Args:
             dt: Timestamp, at which the data is needed.
-            zone: Optional Zone for the data. Has to be provided if there is more than one
+            zone: Optional zone for the data. Has to be provided if there is more than one
                 zone specified in the data. Defaults to None.
 
         Raises:
@@ -136,10 +141,10 @@ class TimeSeriesApi:
         - If no forecast time-series data is provided, actual data is used.
         - Specified timestamps are always rounded down to the nearest existing.
         - If frequency is not specified, all existing data in the window will be returned.
-        - For various resampling methods, the actual value valid at start_time is used.
-            So you have to make sure that there is a valid actual value.
+        - For various resampling methods, the actual value valid at `start_time` is used.
+          So you have to make sure that there is a valid actual value.
         - If there is more than one zone present in the data, zone has to be specified.
-            (Note that zone name must also appear in actual data for non-static forecast.)
+          (Note that zone name must also appear in actual data for non-static forecast.)
         - The forecast does not include the value at `start_time` (see example).
 
         Args:
@@ -149,15 +154,17 @@ class TimeSeriesApi:
             frequency: Optional interval, in which the forecast data is to be provided.
                 Defaults to None.
             resample_method: Optional method, to deal with holes in resampled data.
-                Can be either 'bfill', 'ffill' or an interpolation method.
-                https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.interpolate.html#pandas.DataFrame.interpolate)
+                Can be either `bfill`, `ffill` or an interpolation method.
+                For more information on interpolation methods, see the
+                `pandas documentation <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.interpolate.html>`_.
 
         Returns:
             pd.Series of forecasted data with timestamps of forecast as index.
 
         Raises:
-            ValueError: If there is no available data at apecified zone or time, or
-                there is not enough data for frequency, without resample_method specified.
+            ValueError: If no data is available for the specified zone or time, or if
+                insufficient data exists for the frequency, without `resample_method`
+                specified.
 
         Example:
             >>> index = pd.date_range(

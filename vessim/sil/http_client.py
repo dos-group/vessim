@@ -22,7 +22,7 @@ class HttpClient:
             route: The path of the endpoint to send the request to.
 
         Raises:
-            HTTPError if response code is != 200.
+            HTTPError: If response code is != 200.
 
         Returns:
             A dictionary containing the response.
@@ -41,7 +41,7 @@ class HttpClient:
             data: The data to be updated, in dictionary format.
 
         Raises:
-            HTTPError if response code is != 200.
+            HTTPError: If response code is != 200.
         """
         headers = {"Content-type": "application/json"}
         response = requests.put(

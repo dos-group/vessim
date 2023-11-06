@@ -19,7 +19,7 @@ class SilApi(ABC):
     necessary cleanup tasks of the child process running the API.
 
     Attributes:
-        app: The FastApi instance to be runned.
+        app: The FastApi instance to be run.
     """
 
     def __init__(self) -> None:
@@ -39,8 +39,10 @@ class ApiServer(multiprocessing.Process):
 
     Args:
         api_type: The type of the class containing the app to be executed.
-        host: The host address, defaults to '127.0.0.1'.
-        port: The port to run the FastAPI application, defaults to 8000.
+        host: The host address where the server will be accessible.
+            Defaults to '127.0.0.1'.
+        port: The port number on which the FastAPI application will run.
+            Defaults to 8000.
     """
 
     def __init__(
@@ -84,11 +86,10 @@ class VessimApi(SilApi):
     """Specialized Vessim API to be executed in a different process.
 
     Initializes a FastAPI instance with specific routes related to the Vessim API.
-    This app is very specific for the use case of the vessim vision paper:
-    https://arxiv.org/pdf/2306.09774.pdf
+    This app is very specific for the use case of the `Vessim vision paper <https://arxiv.org/pdf/2306.09774.pdf>`_.
 
     Attributes:
-        app: The FastApi instance to be runned.
+        app: The FastApi instance to be run.
     """
 
     def __init__(self) -> None:

@@ -5,11 +5,11 @@ import pandas as pd
 
 
 def plot_basic_evaluation(data: pd.DataFrame, title: str = "Evaluation"):
-    """Simple function for plotting of the simulation _data.
+    """Simple function for plotting of the simulation data.
 
     Args:
         data: The dataframe containing the simulation data.
-        title: The title of the plot. Defaults to `Evaluation`
+        title: The title of the plot. Defaults to `Evaluation`.
     """
     data.index = pd.to_datetime(data.index)
 
@@ -100,7 +100,8 @@ def plot_accumulated_emissions(
 ) -> float:
     """Create plot of total carbon emission over time.
 
-    Returns: The total emission over the whole simulation as float.
+    Returns:
+        The total emission over the whole simulation as float.
     """
     emissions = (-p_grid) * carbon_intensity  # 60 Ws * gCO2/kWh
     emissions /= 60000
