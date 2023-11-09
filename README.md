@@ -13,7 +13,7 @@ Vessim is in alpha stage and under active development.
 Functionality and documentation will improve in the next weeks and months.
 
 
-## ⚙️ Installation
+## Installation
 
 If you are using Vessim for the first time, we recommend to clone and install this repository, so you have all
 code and examples at hand:
@@ -30,7 +30,7 @@ pip install vessim
 ```
 
 
-## 🚀 Getting started
+## Getting started
 
 To execute our exemplary co-simulation scenario, run:
 
@@ -38,57 +38,54 @@ To execute our exemplary co-simulation scenario, run:
 python examples/cosim_example.py
 ```
 
-
-### Software-in-the-Loop Simulation
-
-Software-in-the-Loop (SiL) allows Vessim to interact with real computing systems.
-There is not yet good documentation on how to set up a full SiL scenario, but you can play with the existing
-functionality by installing 
-
-```
-pip install vessim[sil]
-```
-
-and running:
+Software-in-the-Loop (SiL) simulation allows real computing systems to interact with Vessim at runtime.
+We're currently working on better documentation on how to set up a full SiL scenario, but you can experiment with the existing
+functionality by installing the "sil" extension (`pip install vessim[sil]`) and running:
 
 ```
 python examples/sil_example.py
 ```
 
 
-### Vessim Base Components
+## Work in progress
 
-We are still working on examples for the base modules such as `CarbonApi` or `Generator` which can be used directly
-without the use of Mosaik to support simple experiments that do not require the entire co-simulation engine to run.
+Our team at the [Distributed and Operating Systems](https://distributedsystems.berlin/) group at TU Berlin is actively working to improve Vessim.
+We are currently working on the following aspects and features:
 
-Documentation and API are in progress.
-
-
-## 🏗️ Development
-
-Install Vessim with the `dev` option in a virtual environment:
-
-```
-python -m venv venv                # create venv
-. venv/bin/activate                # activate venv
-pip install ".[sil,dev,analysis]"  # install dependencies
-```
+- **Better documentation**: You can find the current WiP documentation [here](https://vessim.readthedocs.io/en/latest/)
+- **Improving the scenario API**: We currently heavily rely on [Mosaik](https://mosaik.offis.de/)'s scenario interface for defining experiment, but want to offer a more opinionated, high-level API to improve usability.
+- **Software-in-the-loop (SiL) capabilities**: The current SiL implementation is focussed around our exemplary use case presented in our [journal paper](https://doi.org/10.1002/spe.3275). We want this to become more general purpose, so users can implement custom interfaces for the communication of computing and energy systems.
+- **Prodiving access to relevant datasets**: We're currently collectig relevant datasets for carbon-aware test cases such as solar production or carbon intensity traces to simplify the setup of test cases.
+- **Integrating the SAM**: NREL's [System Advisor Model (SAM)](https://sam.nrel.gov/) will soon be available as a subsystem in Vessim.
 
 
-## 📖 Publications
+## Publications
 
 If you use Vessim in your research, please cite our vision paper:
 
 - Philipp Wiesner, Ilja Behnke and Odej Kao. "[A Testbed for Carbon-Aware Applications and Systems](https://arxiv.org/pdf/2306.09774.pdf)" arXiv:2302.08681 [cs.DC]. 2023.
-
-Bibtex:
 ```
-@misc{vessim2023,
+@misc{wiesner2023vessim,
     title={A Testbed for Carbon-Aware Applications and Systems}, 
     author={Wiesner, Philipp and Behnke, Ilja and Kao, Odej},
     year={2023},
     eprint={2306.09774},
     archivePrefix={arXiv},
     primaryClass={cs.DC}
+}
+```
+
+Or our journal paper on software-in-the-loop similation for carbon-aware applications:
+- Philipp Wiesner, Marvin Steinke, Henrik Nickel, Yazan Kitana, and Odej Kao. "[Software-in-the-Loop Simulation for Developing and Testing Carbon-Aware Applications](https://doi.org/10.1002/spe.3275)" Software: Practice and Experience, 53 (12). 2023.
+```
+@article{wiesner2023sil,
+    author = {Wiesner, Philipp and Steinke, Marvin and Nickel, Henrik and Kitana, Yazan and Kao, Odej},
+    title = {Software-in-the-loop simulation for developing and testing carbon-aware applications},
+    journal = {Software: Practice and Experience},
+    year = {2023},
+    volume = {53},
+    number = {12},
+    pages = {2362-2376},
+    doi = {https://doi.org/10.1002/spe.3275}
 }
 ```
