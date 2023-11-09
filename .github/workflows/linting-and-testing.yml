@@ -42,7 +42,7 @@ jobs:
       run: mypy vessim
 
     - name: Run linter
-      run: ruff .
+      run: ruff vessim
 
     - name: Run tests
       run: python -m pytest
