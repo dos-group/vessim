@@ -224,7 +224,7 @@ class TimeSeriesApi:
         """
         start_time = pd.to_datetime(start_time)
         end_time = pd.to_datetime(end_time)
-        data_src = self._get_forecast_data_source(start_time)
+        data_src = self._get_forecast_data_source(start_time, end_time)
 
         zone_index = self._get_zone_index_from_dataframe(data_src, zone)
 
@@ -253,7 +253,7 @@ class TimeSeriesApi:
             (forecast.index > start_time) & (forecast.index <= end_time)
         ].dropna()
 
-    def _get_forecast_data_source(self, start_time: datetime):
+    def _get_forecast_data_source(self, start_time: datetime, end_time: datetime):
         """Returns dataframe used to derive forecast prediction."""
         data_src: pd.DataFrame
 
@@ -277,11 +277,16 @@ class TimeSeriesApi:
         common_cols = actual_values.columns.intersection(data_src.columns)
         data_src = pd.concat([actual_values[common_cols], data_src])
 
-        return data_src
+        # Cut off data for performance
+        return data_src.iloc[
+            :min(data_src.index.searchsorted(end_time) + 1, len(data_src)) # type: ignore
+        ]
 
     def _get_actual_values_at_time(self, dt: datetime) -> pd.DataFrame:
         """Return actual data that is valid at a specific time."""
-        return self._actual.reindex(index=[dt], method=self._fill_method)
+        dt_index: int = self._actual.index.searchsorted(dt, side="right") # type: ignore
+        sliced = self._actual[min(0, dt_index - 1): max(len(self._actual), dt_index + 1)]
+        return sliced.reindex(index=[dt], method=self._fill_method)
 
     def _get_zone_index_from_dataframe(self, df: pd.DataFrame, zone: Optional[str]):
         """Return column index of zone from given dataframe.

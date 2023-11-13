@@ -165,6 +165,18 @@ class TestTraceSimulator:
                     ],
                 ),
             ),
+            (
+                "2023-01-01T01:00:00",
+                "2023-04-04T14:00:00",
+                "a",
+                pd.Series(
+                    [3.0, 1.5],
+                    index=[
+                        pd.to_datetime("2023-01-01T02:00:00"),
+                        pd.to_datetime("2023-01-01T03:00:00"),
+                    ],
+                ),
+            ),
         ],
     )
     def test_forecast(self, time_series_forecast, start, end, zone, expected):
