@@ -81,7 +81,7 @@ class TestTraceSimulator:
 
     def test_actual_fails_if_zone_does_not_exist(self, time_series):
         with pytest.raises(ValueError):
-            time_series.actual(pd.to_datetime("2023-01-01T00:00:00"), "c")
+            time_series.actual(pd.to_datetime("2023-01-01T00:00:00"), "d")
 
     def test_actual_fails_if_now_too_early(self, time_series):
         with pytest.raises(ValueError):

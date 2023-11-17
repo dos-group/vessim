@@ -118,8 +118,8 @@ class TimeSeriesApi:
     def actual(self, dt: DatetimeLike, zone: Optional[str] = None) -> Any:
         """Retrieves actual data point of zone at given time.
 
-        If queried timestamp is not available in the `actual` dataframe, the last valid
-        datapoint is being returned.
+        If queried timestamp is not available in the `actual` dataframe, the fill_method
+        is used to determine the data point.
 
         Args:
             dt: Timestamp, at which the data is needed.
@@ -130,13 +130,18 @@ class TimeSeriesApi:
             ValueError: If there is no available data at specified zone or time.
         """
         dt = pd.to_datetime(dt)
-        data_at_time = self._get_actual_values_at_time(dt)
-        zone_index = self._get_zone_index_from_dataframe(data_at_time, zone)
+        zone = self._actual.columns[
+            self._get_zone_index_from_dataframe(self._actual, zone)
+        ]
 
-        data_point = data_at_time.iloc[0, zone_index]
-        if pd.isna(data_point):
+        if dt in self._actual.index:
+            return self._actual.loc[dt, zone] # type: ignore
+        elif self._fill_method == "ffill" and dt > self._actual.index[0]:
+            return self._actual.loc[:dt, zone].iloc[-1] # type: ignore
+        elif self._fill_method == "bfill" and dt < self._actual.index[-1]:
+            return self._actual.loc[dt:, zone].iloc[0] # type: ignore
+        else:
             raise ValueError(f"Cannot retrieve actual data at '{dt}' in zone '{zone}'.")
-        return data_point
 
     def forecast(
         self,
@@ -229,7 +234,7 @@ class TimeSeriesApi:
         zone_index = self._get_zone_index_from_dataframe(data_src, zone)
 
         # Get data of zone and convert to pd.Series
-        forecast: pd.Series = data_src.iloc[:, zone_index].squeeze()
+        forecast: pd.Series = data_src.iloc[:, zone_index]
 
         # Resample the data to get the data to specified frequency
         if frequency is not None:
@@ -272,21 +277,10 @@ class TimeSeriesApi:
 
         data_src = data_src.loc[(data_src.index > start_time)]
 
-        # Concat actual values with data_src (for interpolation at a later stage)
-        actual_values = self._get_actual_values_at_time(start_time)
-        common_cols = actual_values.columns.intersection(data_src.columns)
-        data_src = pd.concat([actual_values[common_cols], data_src])
-
         # Cut off data for performance
         return data_src.iloc[
             :min(data_src.index.searchsorted(end_time) + 1, len(data_src)) # type: ignore
         ]
-
-    def _get_actual_values_at_time(self, dt: datetime) -> pd.DataFrame:
-        """Return actual data that is valid at a specific time."""
-        dt_index: int = self._actual.index.searchsorted(dt, side="right") # type: ignore
-        sliced = self._actual[min(0, dt_index - 1): max(len(self._actual), dt_index + 1)]
-        return sliced.reindex(index=[dt], method=self._fill_method)
 
     def _get_zone_index_from_dataframe(self, df: pd.DataFrame, zone: Optional[str]):
         """Return column index of zone from given dataframe.
@@ -325,12 +319,15 @@ class TimeSeriesApi:
         df = df.reindex(combined_index)
 
         # Use specific resample method if specified to fill NaN values
-        if resample_method == "ffill":
-            df.ffill(inplace=True)
-        elif resample_method == "bfill":
+        if resample_method == "bfill":
             df.bfill(inplace=True)
         elif resample_method is not None:
-            df.interpolate(method=resample_method, inplace=True)  # type: ignore
+            # Add actual value to front of series because it is needed for interpolation
+            df[start_time] = self.actual(start_time, zone=str(df.name))
+            if resample_method == "ffill":
+                df.ffill(inplace=True)
+            else:
+                df.interpolate(method=resample_method, inplace=True)  # type: ignore
 
         # Get the data to the desired frequency after interpolation
         return df.loc[(df.index >= start_time) & (df.index <= end_time)].asfreq(frequency)
