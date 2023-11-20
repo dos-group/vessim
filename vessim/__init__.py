@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from typing import Union, List, Optional, Any, Literal
 
 import pandas as pd
-from pandas._typing import InterpolateOptions
 
 DatetimeLike = Union[str, datetime]
 
@@ -136,6 +135,7 @@ class TimeSeriesApi:
         ]
 
         # Mypy somehow has trouble with indexing in a dataframe with DatetimeIndex
+        # <https://github.com/python/mypy/issues/2410>
         if dt in self._actual.index:
             return self._actual.loc[dt, zone] # type: ignore
         elif self._fill_method == "ffill" and dt > self._actual.index[0]:
@@ -151,7 +151,7 @@ class TimeSeriesApi:
         end_time: DatetimeLike,
         zone: Optional[str] = None,
         frequency: Optional[Union[str, pd.DateOffset, timedelta]] = None,
-        resample_method: Optional[InterpolateOptions] = None,
+        resample_method: Optional[str] = None,
     ) -> pd.Series:
         """Retrieves of forecasted data points within window at a frequency.
 
@@ -308,7 +308,7 @@ class TimeSeriesApi:
         start_time: datetime,
         end_time: datetime,
         frequency: pd.DateOffset,
-        resample_method: Optional[InterpolateOptions] = None,
+        resample_method: Optional[str] = None,
     ) -> pd.Series:
         """Transform series into the desired frequency between start and end time."""
         # Cutoff data for performance
@@ -329,7 +329,7 @@ class TimeSeriesApi:
             if resample_method == "ffill":
                 df.ffill(inplace=True)
             else:
-                df.interpolate(method=resample_method, inplace=True)
+                df.interpolate(method=resample_method, inplace=True) # type: ignore
 
         # Get the data to the desired frequency after interpolation
         return df.loc[start_time:end_time].asfreq(frequency) # type: ignore
