@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import Union, List, Optional, Any, Literal
 
 import pandas as pd
+from pandas._typing import InterpolateOptions
 
 DatetimeLike = Union[str, datetime]
 
@@ -86,10 +87,10 @@ class TimeSeriesApi:
         if isinstance(forecast, (pd.Series, pd.DataFrame)):
             # Convert all indices (either one or two columns) to datetime
             if isinstance(forecast.index, pd.MultiIndex):
-                for i, level in enumerate(forecast.index.levels):
-                    forecast.index = forecast.index.set_levels( # type: ignore
-                        pd.to_datetime(level), level=i
-                    )
+                index: pd.MultiIndex = forecast.index
+                for i, level in enumerate(index.levels):
+                    index = index.set_levels(pd.to_datetime(level), level=i)
+                forecast.index = index
             else:
                 forecast.index = pd.to_datetime(forecast.index)
 
@@ -134,6 +135,7 @@ class TimeSeriesApi:
             self._get_zone_index_from_dataframe(self._actual, zone)
         ]
 
+        # Mypy somehow has trouble with indexing in a dataframe with DatetimeIndex
         if dt in self._actual.index:
             return self._actual.loc[dt, zone] # type: ignore
         elif self._fill_method == "ffill" and dt > self._actual.index[0]:
@@ -149,7 +151,7 @@ class TimeSeriesApi:
         end_time: DatetimeLike,
         zone: Optional[str] = None,
         frequency: Optional[Union[str, pd.DateOffset, timedelta]] = None,
-        resample_method: Optional[str] = None,
+        resample_method: Optional[InterpolateOptions] = None,
     ) -> pd.Series:
         """Retrieves of forecasted data points within window at a frequency.
 
@@ -229,12 +231,12 @@ class TimeSeriesApi:
         """
         start_time = pd.to_datetime(start_time)
         end_time = pd.to_datetime(end_time)
-        data_src = self._get_forecast_data_source(start_time, end_time)
+        data_src = self._get_forecast_data_source(start_time)
 
         zone_index = self._get_zone_index_from_dataframe(data_src, zone)
 
         # Get data of zone and convert to pd.Series
-        forecast: pd.Series = data_src.iloc[:, zone_index]
+        forecast: pd.Series = data_src.iloc[:, zone_index].dropna()
 
         # Resample the data to get the data to specified frequency
         if frequency is not None:
@@ -242,23 +244,21 @@ class TimeSeriesApi:
             if frequency is None:
                 raise ValueError(f"Frequency '{frequency}' invalid.")
 
-            forecast = self._resample_to_frequency(
+            forecast_in_freq: pd.Series = self._resample_to_frequency(
                 forecast, start_time, end_time, frequency, resample_method=resample_method
             ).iloc[1:]
 
-            if forecast.isnull().values.any():  # type: ignore
-                # Check if there are NaN values in the result
+            # Check if there are NaN values in the result
+            if forecast_in_freq.hasnans:
                 raise ValueError(
                     f"Not enough data for frequency '{frequency}'"
                     f"with resample_method '{resample_method}'."
                 )
-            return forecast
+            return forecast_in_freq
 
-        return forecast.loc[
-            (forecast.index > start_time) & (forecast.index <= end_time)
-        ].dropna()
+        return forecast.loc[start_time:end_time].drop(start_time, errors="ignore") # type: ignore
 
-    def _get_forecast_data_source(self, start_time: datetime, end_time: datetime):
+    def _get_forecast_data_source(self, start_time: datetime) -> pd.DataFrame:
         """Returns dataframe used to derive forecast prediction."""
         data_src: pd.DataFrame
 
@@ -269,20 +269,18 @@ class TimeSeriesApi:
             data_src = self._forecast
         else:
             # Get forecasts of the nearest existing timestamp lower than start time
-            first_index = self._forecast.index.get_level_values(0)
-            req_time_index = first_index.searchsorted(start_time, side="right") - 1 # type: ignore
-            if req_time_index < 0:
+            try:
+                req_time = self._forecast.loc[:start_time].index.get_level_values(0)[-1] # type: ignore
+            except IndexError:
                 raise ValueError(f"No forecasts available at time {start_time}.")
-            data_src = self._forecast.loc[first_index[req_time_index]]  # type: ignore
+            data_src = self._forecast.loc[req_time]
 
-        data_src = data_src.loc[(data_src.index > start_time)]
+        return data_src.loc[start_time:] # type: ignore
 
-        # Cut off data for performance
-        return data_src.iloc[
-            :min(data_src.index.searchsorted(end_time) + 1, len(data_src)) # type: ignore
-        ]
 
-    def _get_zone_index_from_dataframe(self, df: pd.DataFrame, zone: Optional[str]):
+    def _get_zone_index_from_dataframe(
+        self, df: pd.DataFrame, zone: Optional[str]
+    ) -> int:
         """Return column index of zone from given dataframe.
 
         If zone is not specified, but there is only one column in the dataframe, the
@@ -310,12 +308,16 @@ class TimeSeriesApi:
         start_time: datetime,
         end_time: datetime,
         frequency: pd.DateOffset,
-        resample_method: Optional[str] = None,
-    ):
+        resample_method: Optional[InterpolateOptions] = None,
+    ) -> pd.Series:
         """Transform series into the desired frequency between start and end time."""
+        # Cutoff data for performance
+        cutoff_time = df.loc[end_time:].first_valid_index() # type: ignore
+        df = df.loc[:cutoff_time] # type: ignore
+
         # Add NaN values in the specified frequency
         new_index = pd.date_range(start=start_time, end=end_time, freq=frequency)
-        combined_index = df.index.union(new_index).sort_values()
+        combined_index = df.index.union(new_index, sort=True)
         df = df.reindex(combined_index)
 
         # Use specific resample method if specified to fill NaN values
@@ -327,10 +329,10 @@ class TimeSeriesApi:
             if resample_method == "ffill":
                 df.ffill(inplace=True)
             else:
-                df.interpolate(method=resample_method, inplace=True)  # type: ignore
+                df.interpolate(method=resample_method, inplace=True)
 
         # Get the data to the desired frequency after interpolation
-        return df.loc[(df.index >= start_time) & (df.index <= end_time)].asfreq(frequency)
+        return df.loc[start_time:end_time].asfreq(frequency) # type: ignore
 
     def next_update(self, dt: DatetimeLike) -> datetime:
         """Returns the next time of when the actual trace will change.
