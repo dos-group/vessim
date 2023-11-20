@@ -298,7 +298,7 @@ class TestTraceSimulator:
                 zone="d",
             )
 
-    def test_forecast_fails_if_start_to_early(self, time_series_forecast):
+    def test_forecast_fails_if_start_too_early(self, time_series_forecast):
         with pytest.raises(ValueError):
             time_series_forecast.forecast(
                 pd.to_datetime("2022-12-31T23:59:59"),
