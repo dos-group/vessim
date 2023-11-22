@@ -1,7 +1,9 @@
 name: Publish new release on PyPI
 
 # workflow is triggered when a new release is created or a new git tag is pushed to this repository
+# and it can be manually triggered
 on:
+  workflow_dispatch:
   release:
     types: [created]
   push:
