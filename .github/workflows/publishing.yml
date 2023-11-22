@@ -31,7 +31,7 @@ jobs:
       run: poetry self add poetry-plugin-export
 
     - name: Install dependencies
-      run: poetry install --extras "dev"
+      run: poetry install
 
     - name: Build package out of local poject
       run: poetry build
