@@ -348,4 +348,4 @@ class TestTraceSimulator:
         ],
     )
     def test_next_update(self, time_series, dt, expected):
-        assert time_series.next_update(dt) == expected
+        assert time_series.next_update(dt, "a") == expected
