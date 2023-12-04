@@ -94,11 +94,13 @@ class TimeSeriesApi:
                 forecast.index = pd.to_datetime(forecast.index)
 
             forecast.sort_index(inplace=True)
-        self._forecast: Optional[pd.DataFrame]
+        self._forecast: pd.DataFrame
         if isinstance(forecast, pd.Series):
             self._forecast = forecast.to_frame()
-        elif isinstance(forecast, pd.DataFrame) or forecast is None:
+        elif isinstance(forecast, pd.DataFrame):
             self._forecast = forecast
+        elif forecast is None:
+            self._forecast = self._actual.copy(deep=True)
         else:
             raise ValueError(f"Incompatible type {type(forecast)} for 'forecast'.")
 
@@ -130,9 +132,7 @@ class TimeSeriesApi:
             ValueError: If there is no available data at specified zone or time.
         """
         dt = pd.to_datetime(dt)
-        zone = self._actual.columns[
-            self._get_zone_index_from_dataframe(self._actual, zone)
-        ]
+        zone = self._get_zone_name(self._actual, zone)
 
         # Mypy somehow has trouble with indexing in a dataframe with DatetimeIndex
         # <https://github.com/python/mypy/issues/2410>
@@ -231,13 +231,9 @@ class TimeSeriesApi:
         """
         start_time = pd.to_datetime(start_time)
         end_time = pd.to_datetime(end_time)
-        data_src = self._get_forecast_data_source(start_time)
+        forecast = self._get_forecast_data_source(start_time)
 
-        zone_index = self._get_zone_index_from_dataframe(data_src, zone)
-
-        # Get data of zone and convert to pd.Series
-        forecast: pd.Series = data_src.iloc[:, zone_index].dropna()
-
+        zone = self._get_zone_name(forecast, zone)
         # Resample the data to get the data to specified frequency
         if frequency is not None:
             frequency = pd.tseries.frequencies.to_offset(frequency)
@@ -245,7 +241,7 @@ class TimeSeriesApi:
                 raise ValueError(f"Frequency '{frequency}' invalid.")
 
             forecast_in_freq: pd.Series = self._resample_to_frequency(
-                forecast, start_time, end_time, frequency, resample_method=resample_method
+                forecast, start_time, end_time, zone, frequency, resample_method
             ).iloc[1:]
 
             # Check if there are NaN values in the result
@@ -256,64 +252,58 @@ class TimeSeriesApi:
                 )
             return forecast_in_freq
 
-        return forecast.loc[start_time:end_time].drop(start_time, errors="ignore") # type: ignore
+        start_index = forecast.index.searchsorted(start_time, side='right')
+        return forecast.loc[forecast.index[start_index]:end_time, zone].dropna() # type: ignore
 
     def _get_forecast_data_source(self, start_time: datetime) -> pd.DataFrame:
         """Returns dataframe used to derive forecast prediction."""
-        data_src: pd.DataFrame
+        data_src = self._forecast
 
-        if self._forecast is None:
-            data_src = self._actual
-        elif self._forecast.index.nlevels == 1:
-            # Forecast data does not include request_timestamp
-            data_src = self._forecast
-        else:
-            # Get forecasts of the nearest existing timestamp lower than start time
+        if self._forecast.index.nlevels > 1:
+            # Forecast does include request timestamp
             try:
-                req_time = self._forecast.loc[:start_time].index.get_level_values(0)[-1] # type: ignore
+                # Get forecasts of the nearest existing timestamp lower than start time
+                req_time = data_src[:start_time].index.get_level_values(0)[-1] # type: ignore
             except IndexError:
                 raise ValueError(f"No forecasts available at time {start_time}.")
-            data_src = self._forecast.loc[req_time]
+            data_src = data_src.loc[req_time]
 
-        return data_src.loc[start_time:] # type: ignore
+        return data_src
 
-
-    def _get_zone_index_from_dataframe(
-        self, df: pd.DataFrame, zone: Optional[str]
-    ) -> int:
-        """Return column index of zone from given dataframe.
+    def _get_zone_name(self, df: pd.DataFrame, zone: Optional[str]) -> str:
+        """Return name of zone to be used.
 
         If zone is not specified, but there is only one column in the dataframe, the
-        first index is returned.
+        name of that zone is returned.
 
         Raises:
-            ValueError: If zone index can not be determined.
+            ValueError: If zone can not be determined.
         """
         if zone is None:
             if len(df.columns) == 1:
-                zone_index = 0
+                zone_name = df.columns[0]
             else:
                 raise ValueError("Zone needs to be specified.")
+        elif zone in df.columns:
+            zone_name = zone
         else:
-            try:
-                zone_index = df.columns.get_loc(zone)
-            except KeyError:
-                raise ValueError(f"Cannot retrieve data for zone '{zone}'.")
+            raise ValueError(f"Cannot retrieve data for zone '{zone}'.")
 
-        return zone_index
+        return zone_name
 
     def _resample_to_frequency(
         self,
-        df: pd.Series,
+        df: pd.DataFrame,
         start_time: datetime,
         end_time: datetime,
+        zone: str,
         frequency: pd.DateOffset,
         resample_method: Optional[str] = None,
     ) -> pd.Series:
-        """Transform series into the desired frequency between start and end time."""
+        """Transform frame into the desired frequency between start and end time."""
         # Cutoff data for performance
         cutoff_time = df.loc[end_time:].first_valid_index() # type: ignore
-        df = df.loc[:cutoff_time] # type: ignore
+        df = df.loc[start_time:cutoff_time, zone] # type: ignore
 
         # Add NaN values in the specified frequency
         new_index = pd.date_range(start=start_time, end=end_time, freq=frequency)
@@ -332,7 +322,7 @@ class TimeSeriesApi:
                 df.interpolate(method=resample_method, inplace=True) # type: ignore
 
         # Get the data to the desired frequency after interpolation
-        return df.loc[start_time:end_time].asfreq(frequency) # type: ignore
+        return df.loc[:end_time].reindex(new_index) # type: ignore
 
     def next_update(self, dt: DatetimeLike) -> datetime:
         """Returns the next time of when the actual trace will change.
