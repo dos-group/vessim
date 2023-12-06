@@ -133,14 +133,19 @@ class TimeSeriesApi:
 
         # Mypy somehow has trouble with indexing in a dataframe with DatetimeIndex
         # <https://github.com/python/mypy/issues/2410>
-        if dt in zone_data.index:
-            return zone_data.loc[dt] # type: ignore
-        elif self._fill_method == "ffill" and dt > zone_data.index[0]:
-            return zone_data.loc[:dt].iloc[-1] # type: ignore
-        elif self._fill_method == "bfill" and dt < zone_data.index[-1]:
-            return zone_data.loc[dt:].iloc[0] # type: ignore
+        if self._fill_method == "ffill":
+            # searchsorted with 'side' specified in sorted df always returns an int
+            time_index: int = zone_data.index.searchsorted(dt, side="right") # type: ignore
+            if time_index > 0:
+                return zone_data.iloc[time_index - 1] # type: ignore
+            else:
+                raise ValueError(f"'{dt}' is too early to get data in zone '{zone}'.")
         else:
-            raise ValueError(f"Cannot retrieve actual data at '{dt}' in zone '{zone}'.")
+            time_index = zone_data.index.searchsorted(dt, side="left") # type: ignore
+            try:
+                return zone_data.iloc[time_index] # type: ignore
+            except IndexError:
+                raise ValueError(f"'{dt}' is too late to get data in zone '{zone}'.")
 
     def forecast(
         self,
@@ -154,6 +159,8 @@ class TimeSeriesApi:
 
         - If no forecast time-series data is provided, actual data is used.
         - If frequency is not specified, all existing data in the window will be returned.
+          If data is already in the right frequency, it is advised that the frequency is
+          not specified as that causes some performance overhead due to resampling.
         - For various resampling methods, the actual value valid at `start_time` is used.
           So you have to make sure that there is a valid actual value.
         - If there is more than one zone present in the data, zone has to be specified.
@@ -238,7 +245,7 @@ class TimeSeriesApi:
 
             forecast_in_freq: pd.Series = self._resample_to_frequency(
                 forecast, start_time, end_time, frequency, resample_method
-            ).iloc[1:]
+            )
 
             # Check if there are NaN values in the result
             if forecast_in_freq.hasnans:
@@ -301,8 +308,11 @@ class TimeSeriesApi:
     ) -> pd.Series:
         """Transform frame into the desired frequency between start and end time."""
         # Cutoff data for performance
-        cutoff_time = df.loc[end_time:].first_valid_index() # type: ignore
-        df = df.loc[start_time:cutoff_time] # type: ignore
+        try:
+            cutoff_time = df.index[df.index.searchsorted(end_time, side='right')]
+            df = df.loc[start_time:cutoff_time] # type: ignore
+        except IndexError:
+            df = df.loc[start_time:] # type: ignore
 
         # Add NaN values in the specified frequency
         new_index = pd.date_range(start=start_time, end=end_time, freq=frequency)
@@ -321,7 +331,7 @@ class TimeSeriesApi:
                 df.interpolate(method=resample_method, inplace=True) # type: ignore
 
         # Get the data to the desired frequency after interpolation
-        return df.loc[:end_time].reindex(new_index) # type: ignore
+        return df.reindex(new_index).iloc[1:] # type: ignore
 
     def next_update(self, dt: DatetimeLike, zone: Optional[str] = None) -> datetime:
         """Returns the next time of when the actual trace will change.
