@@ -10,14 +10,13 @@ This is example experimental and documentation is still in progress.
 
 import mosaik  # type: ignore
 
-from _data import load_carbon_data, load_solar_data
+from _data import get_ci_time_series_api, get_solar_time_series_api
 from cosim_example import (
     COSIM_CONFIG,
     SIM_START,
     STORAGE,
     DURATION
 )
-from vessim import TimeSeriesApi
 from vessim.core.consumer import ComputingSystem
 from vessim.core.microgrid import SimpleMicrogrid
 from vessim.sil.node import Node
@@ -59,14 +58,11 @@ def run_simulation():
 
     # Initialize solar generator
     solar_sim = world.start("Generator", sim_start=SIM_START)
-    solar = solar_sim.Generator(
-        generator=TimeSeriesApi(actual=load_solar_data(sqm=0.4 * 0.5))
-    )
+    solar = solar_sim.Generator(generator=get_solar_time_series_api())
 
     # Initialize carbon intensity API
     carbon_api_sim = world.start(
-        "CarbonApi", sim_start=SIM_START, carbon_api=TimeSeriesApi(
-            actual=load_carbon_data())
+        "CarbonApi", sim_start=SIM_START, carbon_api=get_ci_time_series_api()
     )
     carbon_api_de = carbon_api_sim.CarbonApi(zone="DE")
 

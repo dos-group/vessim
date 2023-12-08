@@ -3,15 +3,13 @@
 Runs a fully simulated example scenario over the course of two days.
 """
 import argparse
-import os
-from datetime import timedelta
 
 import mosaik  # type: ignore
 
+from _data import get_solar_time_series_api, get_ci_time_series_api
 from vessim.core.consumer import ComputingSystem, MockPowerMeter
 from vessim.core.microgrid import SimpleMicrogrid
 from vessim.core.storage import SimpleBattery, DefaultStoragePolicy
-from vessim.datasets import DataLoader
 
 COSIM_CONFIG = {
     "Microgrid": {
@@ -40,14 +38,8 @@ STORAGE = SimpleBattery(capacity=32 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
                         min_soc=.6)
 STORAGE_POLICY = DefaultStoragePolicy()
 
-def transform_solar_data(solar_data, sqm: float):
-    solar_data.index -= timedelta(days=365)
-    return solar_data * sqm * .17  # W/m^2 * m^2 = W
-
 
 def run_simulation(carbon_aware: bool, result_csv: str):
-    data = DataLoader(f"{os.path.dirname(__file__)}/data")
-
     world = mosaik.World(COSIM_CONFIG)
 
     mock_power_meters = [
@@ -62,20 +54,12 @@ def run_simulation(carbon_aware: bool, result_csv: str):
     )
 
     # Initialize solar generator
-    solar_api = data.get_time_series_api(
-        actual_file_name = "weather_berlin_2021-06.csv",
-        actual_index_col = "time",
-        actual_value_cols=["solar"],
-        actual_transform=transform_solar_data,
-        sqm=0.4 * 0.5,
-    )
     solar_sim = world.start("Generator", sim_start=SIM_START)
-    solar = solar_sim.Generator(generator=solar_api)
+    solar = solar_sim.Generator(generator=get_solar_time_series_api())
 
     # Initialize carbon intensity API
-    carbon_api = data.get_time_series_api("carbon_intensity.csv", actual_index_col="time")
     carbon_api_sim = world.start(
-        "CarbonApi", sim_start=SIM_START, carbon_api=carbon_api
+        "CarbonApi", sim_start=SIM_START, carbon_api=get_ci_time_series_api()
     )
     carbon_api_de = carbon_api_sim.CarbonApi(zone="DE")
 
