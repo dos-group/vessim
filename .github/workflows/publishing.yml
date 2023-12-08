@@ -1,0 +1,45 @@
+name: Publish new release on PyPI
+
+# workflow is triggered when a new release is created or a new git tag is pushed to this repository
+# and it can be manually triggered
+on:
+  workflow_dispatch:
+  release:
+    types: [created]
+  push:
+    tags:
+      - '*'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    # downloads the repository code to the runner's file system for workflow access
+    - uses: actions/checkout@v2
+    - name: Fetch all history for all tags and branches
+      run: git fetch --prune --unshallow
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+    
+    - name: Install poetry
+      uses: snok/install-poetry@v1
+      with:
+        virtualenvs-create: false
+
+    - name: Install poetry dynamic version plugin, extracts version number from git tag
+      run: poetry self add poetry-plugin-export
+
+    - name: Install dependencies
+      run: poetry install
+
+    - name: Build package out of local poject
+      run: poetry build
+    
+    - name: Publish
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_API_TOKEN }}
