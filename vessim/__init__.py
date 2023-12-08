@@ -307,31 +307,32 @@ class TimeSeriesApi:
         resample_method: Optional[str] = None,
     ) -> pd.Series:
         """Transform frame into the desired frequency between start and end time."""
-        # Cutoff data for performance
-        try:
-            cutoff_time = df.index[df.index.searchsorted(end_time, side='right')]
-            df = df.loc[start_time:cutoff_time] # type: ignore
-        except IndexError:
-            df = df.loc[start_time:] # type: ignore
-
-        # Add NaN values in the specified frequency
         new_index = pd.date_range(start=start_time, end=end_time, freq=frequency)
-        combined_index = df.index.union(new_index, sort=True)
-        df = df.reindex(combined_index)
 
-        # Use specific resample method if specified to fill NaN values
-        if resample_method == "bfill":
-            df.bfill(inplace=True)
-        elif resample_method is not None:
-            # Add actual value to front of series because it is needed for interpolation
-            df[start_time] = self.actual(start_time, zone=str(df.name))
-            if resample_method == "ffill":
-                df.ffill(inplace=True)
-            else:
-                df.interpolate(method=resample_method, inplace=True) # type: ignore
+        if resample_method is not None:
+            # Cutoff data for performance
+            try:
+                cutoff_time = df.index[df.index.searchsorted(end_time, side='right')]
+                df = df.loc[start_time:cutoff_time] # type: ignore
+            except IndexError:
+                df = df.loc[start_time:] # type: ignore
+            # Add NaN values in the specified frequency
+            combined_index = df.index.union(new_index, sort=True)
+            df = df.reindex(combined_index)
+
+            # Use specific resample method if specified to fill NaN values
+            if resample_method == "bfill":
+                df.bfill(inplace=True)
+            elif resample_method is not None:
+                # Add actual value to front of series because needed for interpolation
+                df[start_time] = self.actual(start_time, zone=str(df.name))
+                if resample_method == "ffill":
+                    df.ffill(inplace=True)
+                else:
+                    df.interpolate(method=resample_method, inplace=True) # type: ignore
 
         # Get the data to the desired frequency after interpolation
-        return df.reindex(new_index).iloc[1:] # type: ignore
+        return df.reindex(new_index[1:]) # type: ignore
 
     def next_update(self, dt: DatetimeLike, zone: Optional[str] = None) -> datetime:
         """Returns the next time of when the actual trace will change.
