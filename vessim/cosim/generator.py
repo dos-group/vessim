@@ -2,7 +2,21 @@ from datetime import datetime
 from typing import Optional
 
 from vessim import TimeSeriesApi
-from vessim.cosim._util import Clock, VessimSimulator, VessimModel
+from vessim.cosim._util import SimWrapper, Clock, VessimSimulator, VessimModel
+
+
+class Generator(SimWrapper):
+    def __init__(self, generator: TimeSeriesApi) -> None:
+        sim_name = type(self).__name__
+        factory_name = sim_name + "Sim"
+        super().__init__(factory_name, sim_name)
+        self.generator = generator
+
+    def _factory_args(self):
+        return (self.sim_name,), {"sim_start": self.cosim_data.sim_start}
+
+    def _sim_args(self):
+        return (), {"generator": self.generator}
 
 
 class GeneratorSim(VessimSimulator):

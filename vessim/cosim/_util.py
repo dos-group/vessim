@@ -1,11 +1,118 @@
-import sys
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Type, Dict, Any, Union
-
-import mosaik_api  # type: ignore
-import pandas as pd
+from typing import Type, Dict, Any, Union, Tuple, List
+from dataclasses import dataclass
 from loguru import logger
+from copy import deepcopy
+import pandas as pd
+import sys
+
+from vessim.core.storage import Storage, StoragePolicy
+from mosaik.scenario import World, Entity
+import mosaik_api  # type: ignore
+
+
+@dataclass
+class CosimData:
+    sim_start: str
+    duration: int
+    storage: Storage
+    storage_policy: StoragePolicy
+    rt_factor: float
+    step_size: int
+
+
+class SimWrapper(ABC):
+
+    def __init__(self, factory_name: str, sim_name: str) -> None:
+        self.factory_name = factory_name
+        self.sim_name = sim_name
+        self.cosim_data = None
+        self.sim = None
+        self.factory = None
+
+    def get_config(self) -> dict:
+        sim_address = ".".join(__name__.split(".")[:-1]) + f":{self.factory_name}"
+        return {self.sim_name: {"python": sim_address}}
+
+    @abstractmethod
+    def _factory_args(self) -> Tuple[Tuple[Any, ...], Dict[str, Any]]:
+        pass
+
+    @abstractmethod
+    def _sim_args(self) -> Tuple[Tuple[Any, ...], Dict[str, Any]]:
+        pass
+
+    def start(self, world: World, cosim_data: CosimData) -> Entity:
+        self.cosim_data = deepcopy(cosim_data)
+        factory_args, factory_kwargs = self._factory_args()
+        self.factory = world.start(*factory_args, **factory_kwargs)
+        sim_args, sim_kwargs = self._sim_args()
+        self.sim = getattr(self.factory, self.sim_name)(*sim_args, **sim_kwargs)
+        return self.sim
+
+
+class VessimCoordinator:
+
+    def __init__(
+        self, 
+        sim_start: str, 
+        duration: int, 
+        storage: Storage, 
+        storage_policy: StoragePolicy,
+        rt_factor: Union[float, None] = None,
+        step_size: int = 60
+    ) -> None:
+        self.cosim_data = CosimData(
+            sim_start, 
+            duration, 
+            storage, 
+            storage_policy, 
+            rt_factor, 
+            step_size
+        )
+        self.cosim_config: Dict[str, Dict[str, str]] = {}
+        self.sim_wrappers: List[SimWrapper] = []
+        self.connections: List[Tuple] = []
+        self.world = None
+
+    def start_sim(self, sim_wrapper: SimWrapper) -> None:
+        self.sim_wrappers.append(sim_wrapper)
+        self.cosim_config.update(sim_wrapper.get_config())
+
+    def connect(
+        self,
+        src: SimWrapper,
+        dest: SimWrapper,
+        *attr_pairs: Union[str, Tuple[str, str]],
+        async_requests: bool = False,
+        time_shifted: bool = False,
+        initial_data: Dict[str, Any] = {},
+        weak: bool = False
+    ) -> None:
+        args = (src, dest) + attr_pairs
+        kwargs = {
+            "async_requests": async_requests,
+            "time_shifted": time_shifted,
+            "initial_data": initial_data,
+            "weak": weak
+        }
+        self.connections.append((args, kwargs))
+
+    def run_cosim(self) -> None:
+        self.world = World(self.cosim_config)
+        for sim_wrapper in self.sim_wrappers:
+            sim_wrapper.start(self.world, self.cosim_data)
+        for args, kwargs in self.connections:
+            # Replace src: SimWrapper and dest: SimWrapper from args with their sim Entity
+            current_src, current_dest, *rest = args
+            new_args = (current_src.sim, current_dest.sim) + tuple(rest)
+            # Finnally call Mosaiks connect()
+            self.world.connect(*new_args, **kwargs)
+        self.world.run(
+            until=self.cosim_data.duration, 
+            rt_factor=self.cosim_data.rt_factor
+        )
 
 
 class VessimModel:

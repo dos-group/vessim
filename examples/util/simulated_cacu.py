@@ -2,7 +2,30 @@ from typing import List, Dict
 
 from vessim.core.consumer import MockPowerMeter
 from vessim.core.storage import SimpleBattery, DefaultStoragePolicy
-from vessim.cosim._util import VessimSimulator, VessimModel, simplify_inputs
+from vessim.cosim._util import SimWrapper, VessimSimulator, VessimModel, simplify_inputs
+
+
+class Cacu(SimWrapper):
+    def __init__(
+        self,  
+        mock_power_meters: List[MockPowerMeter],
+        battery: SimpleBattery,
+        policy: DefaultStoragePolicy
+    ) -> None:
+        sim_name = type(self).__name__
+        factory_name = sim_name + "Sim"
+        super().__init__(factory_name, sim_name)
+        self.mock_power_meters = mock_power_meters
+        self.battery = battery
+        self.policy = policy
+
+    def _factory_args(self):
+        return (self.sim_name,), {
+            "step_size": self.cosim_data.step_size
+        }
+
+    def _sim_args(self):
+        return (self.mock_power_meters, self.battery, self.policy), {}
 
 
 class CacuSim(VessimSimulator):

@@ -1,7 +1,25 @@
 from datetime import datetime
 
 from vessim import TimeSeriesApi
-from vessim.cosim._util import VessimSimulator, VessimModel, Clock
+from vessim.cosim._util import SimWrapper, VessimSimulator, VessimModel, Clock
+
+
+class CarbonApi(SimWrapper):
+    def __init__(self, carbon_api: TimeSeriesApi, zone: str) -> None:
+        sim_name = type(self).__name__
+        factory_name = sim_name + "Sim"
+        super().__init__(factory_name, sim_name)
+        self.carbon_api = carbon_api
+        self.zone = zone
+
+    def _factory_args(self):
+        return (self.sim_name,), {
+            "sim_start": self.cosim_data.sim_start,
+            "carbon_api": self.carbon_api
+        }
+
+    def _sim_args(self):
+        return (), {"zone": self.zone}
 
 
 class CarbonApiSim(VessimSimulator):

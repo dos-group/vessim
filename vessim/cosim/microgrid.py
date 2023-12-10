@@ -1,7 +1,21 @@
 from typing import Dict
 
-from vessim.core.microgrid import Microgrid
-from vessim.cosim._util import VessimSimulator, VessimModel
+from vessim.core.microgrid import Microgrid as _Microgrid
+from vessim.cosim._util import SimWrapper, VessimSimulator, VessimModel
+
+
+class Microgrid(SimWrapper):
+    def __init__(self, microgrid: _Microgrid) -> None:
+        sim_name = type(self).__name__
+        factory_name = sim_name + "Sim"
+        super().__init__(factory_name, sim_name)
+        self.microgrid = microgrid
+
+    def _factory_args(self):
+        return (self.sim_name,), {}
+
+    def _sim_args(self):
+        return (), {"microgrid": self.microgrid}
 
 
 class MicrogridSim(VessimSimulator):
@@ -26,7 +40,7 @@ class MicrogridSim(VessimSimulator):
 
 
 class _MicrogridModel(VessimModel):
-    def __init__(self, microgrid: Microgrid):
+    def __init__(self, microgrid: _Microgrid):
         self.microgrid = microgrid
         self.p_delta = 0.0
         self._last_step_time = 0

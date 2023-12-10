@@ -4,7 +4,31 @@ from typing import Dict, Callable, Any
 
 import pandas as pd
 
-from vessim.cosim._util import Clock, VessimSimulator, VessimModel, simplify_inputs
+from vessim.cosim._util import (
+    SimWrapper, 
+    Clock, 
+    VessimSimulator, 
+    VessimModel, 
+    simplify_inputs
+)
+
+
+class Monitor(SimWrapper):
+    def __init__(self, out_path: str, fn: Callable[[], Dict[str, Any]]) -> None:
+        sim_name = type(self).__name__
+        factory_name = sim_name + "Sim"
+        super().__init__(factory_name, sim_name)
+        self.out_path = out_path
+        self.fn = fn
+
+    def _factory_args(self):
+        return (self.sim_name,), {
+            "sim_start": self.cosim_data.sim_start,
+            "step_size": self.cosim_data.step_size
+        }
+
+    def _sim_args(self):
+        return (), {"out_path": self.out_path, "fn": self.fn}
 
 
 class MonitorSim(VessimSimulator):

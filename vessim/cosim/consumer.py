@@ -1,8 +1,23 @@
 from typing import Dict
 
-from vessim.core.consumer import Consumer
-from vessim.cosim._util import VessimSimulator, VessimModel
+from vessim.core.consumer import Consumer as _Consumer
+from vessim.core.consumer import ComputingSystem
+from vessim.cosim._util import SimWrapper, VessimSimulator, VessimModel
 
+
+class Consumer(SimWrapper):
+    def __init__(self, consumer: _Consumer) -> None:
+        sim_name = type(self).__name__
+        factory_name = sim_name + "Sim"
+        super().__init__(factory_name, sim_name)
+        self.consumer = consumer
+
+    def _factory_args(self):
+        return (self.sim_name,), {"step_size": self.cosim_data.step_size}
+
+    def _sim_args(self):
+        return (), {"consumer": self.consumer}
+ 
 
 class ConsumerSim(VessimSimulator):
     """Computing System simulator that executes its model."""
@@ -38,7 +53,7 @@ class ConsumerSim(VessimSimulator):
 
 class _ComputingSystemModel(VessimModel):
 
-    def __init__(self, consumer: Consumer):
+    def __init__(self, consumer: _Consumer):
         self.consumer = consumer
         self.p = 0.0
         self.info: Dict = {}
