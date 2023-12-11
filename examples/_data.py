@@ -17,8 +17,8 @@ def transform_solar_data(solar_data, sqm: float):
 
 def get_solar_time_series_api() -> TimeSeriesApi:
     return data.get_time_series_api(
-        actual_file_name = SOLAR_DATA_FILE,
-        actual_index_col = "time",
+        actual_file_name=SOLAR_DATA_FILE,
+        actual_index_cols="time",
         actual_value_cols=["solar"],
         actual_transform=transform_solar_data,
         sqm=0.4 * 0.5,
@@ -26,4 +26,4 @@ def get_solar_time_series_api() -> TimeSeriesApi:
 
 
 def get_ci_time_series_api() -> TimeSeriesApi:
-    return data.get_time_series_api(CARBON_DATA_FILE, actual_index_col="time")
+    return data.get_time_series_api(CARBON_DATA_FILE, actual_index_cols="time")
