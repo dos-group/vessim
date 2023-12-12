@@ -30,11 +30,6 @@ jobs:
       with:
         virtualenvs-create: false
 
-    - name: Install poetry dynamic version plugin, extracts version number from git tag
-      run: |
-        pip install poetry-version-plugin
-        poetry self add poetry-version-plugin
-
     - name: Build package out of local poject
       run: poetry build
 
