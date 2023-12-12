@@ -28,9 +28,11 @@ jobs:
       uses: snok/install-poetry@v1
       with:
         virtualenvs-create: false
-
+        
     - name: Install poetry dynamic version plugin, extracts version number from git tag
-      run: poetry self add poetry-plugin-export
+      run: |
+        pip install poetry-version-plugin
+        poetry self add poetry-version-plugin
 
     - name: Install dependencies
       run: poetry install
