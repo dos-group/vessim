@@ -1,10 +1,14 @@
 import os
-from typing import Optional, Callable, Literal, List, Union
+import hashlib
+import urllib.request
+from zipfile import ZipFile
+from typing import Optional, Callable, Literal, List, Union, Dict
 
 import pandas as pd
 from vessim import TimeSeriesApi
 
 Column = Union[int, str]
+
 
 class DataLoader:
     """Base class for loading and unpacking data.
@@ -14,8 +18,9 @@ class DataLoader:
         download: Boolean indicating whether the downloading of data should be handled.
             This base class does not provide any functionality regarding downloading, but
             subclasses should override the download function in case that the data is
-            available on the internet.
+            available on the internet or elsewhere.
     """
+
     def __init__(self, base_dir: str, download: bool = False):
         self._base_dir = base_dir
 
@@ -25,7 +30,7 @@ class DataLoader:
                 os.makedirs(base_dir)
             self.download()
 
-    def download(self):
+    def download(self) -> None:
         """Base method for automatic download of data. Should be overridden."""
         raise NotImplementedError()
 
@@ -73,7 +78,7 @@ class DataLoader:
         Returns:
             Initialized TimeSeriesApi that allows queries of actual data and forecast data
         """
-        actual = self._read_data_from_csv(
+        actual = self.read_data_from_csv(
             actual_file_name,
             actual_index_cols,
             actual_value_cols,
@@ -82,7 +87,7 @@ class DataLoader:
         )
         forecast: Optional[Union[pd.Series, pd.DataFrame]] = None
         if forecast_file_name is not None:
-            forecast = self._read_data_from_csv(
+            forecast = self.read_data_from_csv(
                 forecast_file_name,
                 forecast_index_cols,
                 forecast_value_cols,
@@ -91,9 +96,9 @@ class DataLoader:
             )
         return TimeSeriesApi(actual, forecast, fill_method)
 
-    def _read_data_from_csv(
+    def read_data_from_csv(
         self,
-        file_name: str,
+        file: str,
         index_cols: Optional[Union[Column, List[Column]]],
         value_cols: Optional[List[Column]],
         transform: Optional[Callable],
@@ -101,7 +106,7 @@ class DataLoader:
     ) -> Union[pd.Series, pd.DataFrame]:
         """Helper function to read in a csv file and transforming it."""
         data = pd.read_csv(
-            f"{self._base_dir}/{file_name}", index_col=index_cols, parse_dates=True
+            os.path.join(self._base_dir, file), index_col=index_cols, parse_dates=True
         )
         if value_cols is not None:
             data = data[value_cols]
@@ -109,8 +114,94 @@ class DataLoader:
             data = transform(data, **kwargs)
         return data.astype(float)
 
+    def unzip_file(self, zip_file: str, remove_finished: bool = False) -> None:
+        """Unzips a given zip-file into the base directory.
+
+        Args:
+            zip_file: Relative path from the base_directory to the zip file that should
+                be extracted. The file must be located within the base directory.
+            remove_finished: Boolean indicating whether the zipped file should be deleted
+                after files are extracted.
+        """
+        path = os.path.join(self._base_dir, zip_file)
+        with ZipFile(path, "r") as zip_ref:
+            zip_ref.extractall(path=self._base_dir)
+        if remove_finished:
+            os.remove(path)
+
+    def check_integrity(
+        self,
+        files: List[str],
+        file_checksums: Dict[str, str] = {},
+        hash_algorithm: str = "md5",
+        block_size: int = 65536,
+    ) -> bool:
+        """Check whether files are present in base directory and valid.
+
+        Args:
+            files: Names of files to be checked.
+            file_checksums: Dictionary of files with their respective checksums. For every
+                file in the dictionary, the integrity is checked.
+            hash_algorithm: Type of hashing method used for checksum. Defaults to `md5`.
+            block_size: Determines amount of data read at once. Defaults to 65536 bytes.
+
+        Returns:
+            True if all files are present and valid and False otherwise.
+        """
+        for file in files:
+            path = os.path.join(self._base_dir, file)
+            if not os.path.isfile(path):
+                return False
+
+            # Check if checksum is invalid
+            if file in file_checksums.keys():
+                checksum = self._calculate_checksum(file, hash_algorithm, block_size)
+                if checksum != file_checksums[file]:
+                    return False
+        return True
+
+    def _calculate_checksum(self, file: str, hash_algorithm: str, block_size: int) -> str:
+        """Calculate the checksum of a given file depending on specific hash algorithm."""
+        hasher = hashlib.new(hash_algorithm)
+        with open(os.path.join(self._base_dir, file), "rb") as f:
+            buf = f.read(block_size)
+            while len(buf) > 0:
+                hasher.update(buf)
+                buf = f.read(block_size)
+        return hasher.hexdigest()
+
+
 
 class SolcastDataLoader(DataLoader):
+    """DataLoader for Solcast Dataset extracted from."""
+    _url =  ""
+    _file_name = "solcast2022_1h.zip"
+    _checksums: Dict[str, str] = {
+        "solcast2022_germany_actual.csv": "",
+        "solcast2022_germany_forecast_1h.csv": "",
+        "solcast2022_global_actual.csv": "",
+        "solcast2022_global_forecast_1h.csv": "",
+    }
+    _files = list(_checksums.keys())
+    _hash_algorithm = "md5"
+
+    def download(self) -> None:
+        """Download Solcast data from url if not already downloaded."""
+        if self.check_integrity(self._files, self._checksums, self._hash_algorithm):
+            print("Files already downloaded and verified")
+        else:
+            urllib.request.urlretrieve(
+                self._url, os.path.join(self._base_dir, self._file_name)
+            )
+            print(f"Data downloaded successfully to {self._base_dir}")
+
+            self.unzip_file(self._file_name)
+
+            if self.check_integrity(self._files, self._checksums, self._hash_algorithm):
+                print("Successfully unpacked and verified data files")
+            else:
+                raise RuntimeError("Integrity of data could not be verified.")
+
     def get_solar_time_series_api(
         self, scenario: Literal["global", "germany"], solar_size: Union[int, float]
     ) -> TimeSeriesApi:
