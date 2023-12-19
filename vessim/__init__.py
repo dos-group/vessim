@@ -1,9 +1,12 @@
 """A simulator for carbon-aware applications and systems."""
 
+import os
 from datetime import datetime, timedelta
-from typing import Union, List, Optional, Any, Literal, Dict, Hashable
+from typing import Union, List, Optional, Literal, Dict, Hashable
 
 import pandas as pd
+
+from vessim.datasets import download_dataset, read_data_from_csv
 
 DatetimeLike = Union[str, datetime]
 
@@ -110,11 +113,54 @@ class TimeSeriesApi:
 
         self._fill_method = fill_method
 
+    @classmethod
+    def from_dataset(
+        cls,
+        dataset: str,
+        data_dir: Optional[str] = None,
+        scale: float = 1.0,
+        offset: float = 0.0,
+        start_time: Optional[DatetimeLike] = None,
+        use_forecasts: bool = True,
+        **kwargs
+    ):
+        path, files = download_dataset(dataset, data_dir)
+
+        # Currently specific for Solcast, needs change if more datasets are introduced
+        def _solcast_transform(df):
+            df = df.unstack(level=0)
+            df.columns = [col[1] for col in df.columns]
+            return df
+
+        actual_path = os.path.join(path, files["actual"])
+        actual = read_data_from_csv(
+            actual_path,
+            index_cols=[0, 1],
+            value_cols=["actual"],
+            scale=scale,
+            offset=offset,
+            transform=_solcast_transform,
+            **kwargs,
+        )
+        if use_forecasts:
+            forecast_path = os.path.join(path, files["forecast"])
+            forecast = read_data_from_csv(
+                forecast_path,
+                index_cols=[0, 1, 2],
+                value_cols=["median"],
+                scale=scale,
+                offset=offset,
+                transform=_solcast_transform,
+                **kwargs,
+        )
+        return cls(actual, forecast, fill_method="bfill")
+
+
     def zones(self) -> List:
         """Returns a list of all zones, where actual data is available."""
         return list(self._actual.keys())
 
-    def actual(self, dt: DatetimeLike, zone: Optional[str] = None) -> Any:
+    def actual(self, dt: DatetimeLike, zone: Optional[str] = None):
         """Retrieves actual data point of zone at given time.
 
         If queried timestamp is not available in the `actual` dataframe, the fill_method
