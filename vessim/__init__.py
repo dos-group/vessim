@@ -1,12 +1,12 @@
 """A simulator for carbon-aware applications and systems."""
 
-import os
+from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Union, List, Optional, Literal, Dict, Hashable
 
 import pandas as pd
 
-from vessim.datasets import download_dataset, read_data_from_csv
+from vessim.datasets import load_dataset, read_data_from_csv
 
 DatetimeLike = Union[str, datetime]
 
@@ -119,12 +119,9 @@ class TimeSeriesApi:
         dataset: str,
         data_dir: Optional[str] = None,
         scale: float = 1.0,
-        offset: float = 0.0,
-        start_time: Optional[DatetimeLike] = None,
-        use_forecasts: bool = True,
-        **kwargs
     ):
-        path, files = download_dataset(dataset, data_dir)
+        dir_path = Path(data_dir or "").expanduser().resolve()
+        files = load_dataset(dataset, dir_path)
 
         # Currently specific for Solcast, needs change if more datasets are introduced
         def _solcast_transform(df):
@@ -132,26 +129,22 @@ class TimeSeriesApi:
             df.columns = [col[1] for col in df.columns]
             return df
 
-        actual_path = os.path.join(path, files["actual"])
+        actual_path = dir_path / files["actual"]
         actual = read_data_from_csv(
             actual_path,
             index_cols=[0, 1],
             value_cols=["actual"],
             scale=scale,
-            offset=offset,
             transform=_solcast_transform,
-            **kwargs,
         )
-        if use_forecasts:
-            forecast_path = os.path.join(path, files["forecast"])
-            forecast = read_data_from_csv(
-                forecast_path,
-                index_cols=[0, 1, 2],
-                value_cols=["median"],
-                scale=scale,
-                offset=offset,
-                transform=_solcast_transform,
-                **kwargs,
+
+        forecast_path = dir_path / files["forecast"]
+        forecast = read_data_from_csv(
+            forecast_path,
+            index_cols=[0, 1, 2],
+            value_cols=["median"],
+            scale=scale,
+            transform=_solcast_transform,
         )
         return cls(actual, forecast, fill_method="bfill")
 

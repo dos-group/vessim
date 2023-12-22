@@ -1,29 +1,29 @@
-import os
+from pathlib import Path
 from datetime import timedelta
 
 from vessim import TimeSeriesApi
-from vessim.datasets import DataLoader
+from vessim.datasets import read_data_from_csv
 
-BASE_DIR = f"{os.path.dirname(__file__)}/data"
-SOLAR_DATA_FILE = "weather_berlin_2021-06.csv"
-CARBON_DATA_FILE = "carbon_intensity.csv"
+BASE_DIR = Path(__file__).parent.resolve() / "data"
+SOLAR_DATA_FILE = BASE_DIR / "weather_berlin_2021-06.csv"
+CARBON_DATA_FILE = BASE_DIR / "carbon_intensity.csv"
 
-data = DataLoader(BASE_DIR)
+SQM = 0.4 * 0.5     # Solar area
 
-def transform_solar_data(solar_data, sqm: float):
+def transform_solar_data(solar_data):
     solar_data.index -= timedelta(days=365)
-    return solar_data * sqm * .17  # W/m^2 * m^2 = W
+    return solar_data
 
 
 def get_solar_time_series_api() -> TimeSeriesApi:
-    return data.get_time_series_api(
-        actual_file_name=SOLAR_DATA_FILE,
-        actual_index_cols="time",
-        actual_value_cols=["solar"],
-        actual_transform=transform_solar_data,
-        sqm=0.4 * 0.5,
-    )
+    return TimeSeriesApi(actual=read_data_from_csv(
+        path=SOLAR_DATA_FILE,
+        index_cols="time",
+        value_cols=["solar"],
+        scale=SQM * .17, # W/m^2 * m^2 = W
+        transform=transform_solar_data,
+    ))
 
 
 def get_ci_time_series_api() -> TimeSeriesApi:
-    return data.get_time_series_api(CARBON_DATA_FILE, actual_index_cols="time")
+    return TimeSeriesApi(actual=read_data_from_csv(CARBON_DATA_FILE, index_cols="time"))
