@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Dict, List
+
+from vessim import TimeSeriesApi
 
 
 class PowerMeter(ABC):
@@ -53,26 +56,28 @@ class MockPowerMeter(PowerMeter):
     def finalize(self) -> None:
         pass
 
-class Consumer(ABC):
-    """Abstract base class representing a consumer of power."""
+
+class Actor(ABC):
+    """Abstract base class representing a power consumer or producer."""
 
     @abstractmethod
-    def consumption(self) -> float:
-        """Calculates and returns the power consumption of the consumer."""
+    def p(self, now: datetime) -> float:
+        """Return the power consumption/production of the actor."""
 
-    def info(self) -> Dict:
+    def info(self, now: datetime) -> Dict:
+        """Return additional information about the state of the actor."""
         return {}
 
-    @abstractmethod
     def finalize(self) -> None:
         """Perform any finalization tasks for the consumer.
 
-        This method should be overridden by subclasses to implement necessary
+        This method can be overridden by subclasses to implement necessary
         finalization steps.
         """
+        return
 
 
-class ComputingSystem(Consumer):
+class ComputingSystem(Actor):
     """Model of the computing system.
 
     This model considers the power usage effectiveness (PUE) and power
@@ -88,12 +93,18 @@ class ComputingSystem(Consumer):
         self.power_meters = power_meters
         self.pue = pue
 
-    def consumption(self) -> float:
+    def p(self, now: datetime) -> float:
         return self.pue * sum(pm.measure() for pm in self.power_meters)
 
-    def info(self) -> Dict:
+    def info(self, now: datetime) -> Dict:
         return {pm.name: pm.measure() for pm in self.power_meters}
 
     def finalize(self) -> None:
         for power_meter in self.power_meters:
             power_meter.finalize()
+
+
+class Generator(TimeSeriesApi, Actor):
+
+    def p(self, now: datetime) -> float:
+        return self.actual(now)  # TODO TimeSeriesApi must be for a single region

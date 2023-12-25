@@ -1,4 +1,4 @@
-from vessim.core.consumer import PowerMeter
+from vessim.core.actor import PowerMeter
 from vessim.sil.http_client import HttpClient
 from vessim.sil.loop_thread import LoopThread
 

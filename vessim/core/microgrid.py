@@ -1,39 +1,32 @@
-from abc import ABC, abstractmethod
-from typing import Dict, Optional
+from typing import List, Optional
 
-from vessim.core.storage import Storage, StoragePolicy, DefaultStoragePolicy
-
-
-class Microgrid(ABC):
-    @abstractmethod
-    def power_flow(self, p: Dict[str, float], duration: int) -> float:
-        """Calculates the microgrids power flow.
-
-        Args:
-            p: Maps power consumers/producers to the amount of power they demand/supply
-            duration: Duration of the power flow (relevant for battery (dis)charge)
-
-        Returns:
-            Power delta (excess power if positive, power demand if negative)
-        """
+from vessim.core.actor import Actor
+from vessim.core.storage import Storage, StoragePolicy
 
 
-class SimpleMicrogrid(Microgrid):
+class Microgrid:
     def __init__(
-        self, storage: Optional[Storage] = None, policy: Optional[StoragePolicy] = None
+        self,
+        actors: List[Actor],
+        storage: Optional[Storage] = None,
+        storage_policy: Optional[StoragePolicy] = None,
+        # grid_signals: Optional[Dict[str, TimeSeriesApi]] = None,
+        # ecovisor: Optional[Ecovisor] = None,
+        # monitor: bool = False,
     ):
-        """Simply aggregates all supplied and demanded power.
-
-        Args:
-            storage: Optional energy storage to be used to (dis)charge a power delta
-            policy: Storage policy on when and how to use the battery
-        """
+        self.actors = actors
         self.storage = storage
-        self.policy = policy if policy is not None else DefaultStoragePolicy()
+        self.storage_policy = storage_policy
+        # self.grid_signals = grid_signals
+        # self.ecovisor = ecovisor
+        # self.monitor = monitor
 
-    def power_flow(self, p: Dict[str, float], duration: int) -> float:
-        p_delta = sum(p.values())
-        if self.storage is None:
-            return p_delta
-        else:
-            return self.policy.apply(self.storage, p_delta, duration)
+    def initialize(self, world, sim_start):
+        """Create co-simulation entities and connect them to world"""
+        grid_sim = world.start("Grid")
+        grid = grid_sim.Grid(storage=self.storage, policy=self.storage_policy)
+
+        for actor in self.actors:
+            actor_sim = world.start("Actor", sim_start=sim_start, step_size=60)  # TODO step_size, probably it should be an actor property? or maybe we should get this argument out of ActorSim
+            actor_sim_entity = actor_sim.Actor(actor=actor)
+            world.connect(actor_sim_entity, grid, "p")

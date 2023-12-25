@@ -52,7 +52,7 @@ class VessimSimulator(mosaik_api.Simulator, ABC):
         self.entities: Dict[str, VessimModel] = {}
         self.time = 0
 
-    def init(self, sid, time_resolution, eid_prefix=None):
+    def init(self, sid, time_resolution, eid_prefix=None):  # TODO this should match the Simulator interface
         """Initialize Simulator and set `step_size` and `eid_prefix`."""
         if float(time_resolution) != 1.0:
             raise ValueError(
