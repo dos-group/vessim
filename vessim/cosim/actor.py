@@ -21,7 +21,7 @@ class ActorSim(VessimSimulator):
 
     def __init__(self):
         self.step_size = None
-        super().__init__(self.META, _ComputingSystemModel)
+        super().__init__(self.META, _ActorModel)
 
     def init(self, sid, time_resolution, sim_start: datetime, step_size: int, eid_prefix=None):  # TODO interfaces don't match with base class
         self.step_size = step_size
@@ -49,7 +49,7 @@ class ActorSim(VessimSimulator):
     #     return self.clock.to_simtime(next_dt)
 
 
-class _ComputingSystemModel(VessimModel):
+class _ActorModel(VessimModel):
 
     def __init__(self, actor: Actor, clock: Clock):  # TODO revise if this clock is still the most meaninful way to manage time
         self.actor = actor
@@ -64,5 +64,5 @@ class _ComputingSystemModel(VessimModel):
         sum of the node power of all power meters.
         """
         now = self._clock.to_datetime(time)
-        self.p = -self.actor.p(now)
+        self.p = self.actor.p(now)
         self.info = self.actor.info(now)

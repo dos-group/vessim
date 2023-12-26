@@ -1,4 +1,5 @@
 from examples._data import load_solar_data
+from vessim import TimeSeriesApi
 from vessim.core.actor import ComputingSystem, Generator, MockPowerMeter
 from vessim.core.enviroment import Environment
 from vessim.core.microgrid import Microgrid
@@ -17,20 +18,26 @@ def main():
 
     microgrid = Microgrid(
         actors=[
-            ComputingSystem(power_meters=[
-                MockPowerMeter(name="mpm0", p=2.194),
-                MockPowerMeter(name="mpm1", p=7.6)
-            ]),
-            Generator(actual=load_solar_data(sqm=0.4 * 0.5)),  # solar
+            ComputingSystem(
+                name="server",
+                power_meters=[
+                    MockPowerMeter(name="mpm0", p=2.194),
+                    MockPowerMeter(name="mpm1", p=7.6)
+                ]
+            ),
+            Generator(
+                name="solar",
+                time_series_api=TimeSeriesApi(load_solar_data(sqm=0.4 * 0.5))
+            ),
         ],
         storage=STORAGE,
         # grid_signals=...,
-        # ecovisor=Ecovisor(...),
-        # monitor=...,
     )
 
     environment.add(microgrid)
     environment.run(until=DURATION)
+
+    microgrid.ecovisor.monitor_to_csv("result.csv")
 
 
 if __name__ == "__main__":

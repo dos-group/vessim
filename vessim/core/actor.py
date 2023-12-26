@@ -60,6 +60,9 @@ class MockPowerMeter(PowerMeter):
 class Actor(ABC):
     """Abstract base class representing a power consumer or producer."""
 
+    def __init__(self, name: str):
+        self.name = name
+
     @abstractmethod
     def p(self, now: datetime) -> float:
         """Return the power consumption/production of the actor."""
@@ -89,22 +92,27 @@ class ComputingSystem(Actor):
         pue: The power usage effectiveness of the system.
     """
 
-    def __init__(self, power_meters: List[PowerMeter], pue: float = 1):
+    def __init__(self, name: str, power_meters: List[PowerMeter], pue: float = 1):
+        super().__init__(name)
         self.power_meters = power_meters
         self.pue = pue
 
     def p(self, now: datetime) -> float:
-        return self.pue * sum(pm.measure() for pm in self.power_meters)
+        return self.pue * sum(-pm.measure() for pm in self.power_meters)
 
     def info(self, now: datetime) -> Dict:
-        return {pm.name: pm.measure() for pm in self.power_meters}
+        return {pm.name: -pm.measure() for pm in self.power_meters}
 
     def finalize(self) -> None:
         for power_meter in self.power_meters:
             power_meter.finalize()
 
 
-class Generator(TimeSeriesApi, Actor):
+class Generator(Actor):
+
+    def __init__(self, name: str, time_series_api: TimeSeriesApi):
+        super().__init__(name)
+        self.time_series_api = time_series_api
 
     def p(self, now: datetime) -> float:
-        return self.actual(now)  # TODO TimeSeriesApi must be for a single region
+        return self.time_series_api.actual(now)  # TODO TimeSeriesApi must be for a single region

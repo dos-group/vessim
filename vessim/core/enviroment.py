@@ -11,18 +11,13 @@ class Environment:
         "Actor": {
             "python": "vessim.cosim:ActorSim",
         },
+        "Ecovisor": {
+            "python": "vessim.cosim:EcovisorSim",
+        },
         # TODO implement grid level signals
         # "CarbonApi": {
         #     "python": "vessim.cosim:CarbonApiSim",
         # },
-        # TODO implement Monitor
-        # "Monitor": {
-        #     "python": "vessim.cosim:MonitorSim",
-        # },
-        # TODO implement Cacu/Ecovisor
-        # "Cacu": {
-        #     "python": "util.simulated_cacu:CacuSim",
-        # }
     }
 
     def __init__(self, sim_start):
