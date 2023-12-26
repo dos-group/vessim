@@ -8,11 +8,11 @@ from vessim import TimeSeriesApi
 from vessim.cosim._util import Clock, VessimSimulator, VessimModel, simplify_inputs
 
 
-class Ecovisor:
+class Ecovisor:  # TODO rename to Controller?
 
     def __init__(self):
-        self.data: Dict = defaultdict(dict)
-        self.monitor_fns = []
+        self.monitor_log: Dict[datetime, Dict] = defaultdict(dict)
+        self.custom_monitor_fns = []
         self.grid_signals = None
         self.zone = None
         self._clock = None
@@ -22,8 +22,8 @@ class Ecovisor:
         self.zone = zone
         self._clock = Clock(sim_start)
 
-    def add_monitor_fn(self, fn: Callable[[], Dict[str, Any]]):
-        self.monitor_fns.append(fn)
+    def add_custom_monitor_fn(self, fn: Callable[[], Dict[str, Any]]):
+        self.custom_monitor_fns.append(fn)
 
     def step(self, time: int, inputs: Dict) -> None:
         self._monitor(time, inputs)
@@ -34,14 +34,18 @@ class Ecovisor:
         inputs = simplify_inputs(inputs)
         dt = self._clock.to_datetime(time)
 
-        for monitor_fn in self.monitor_fns:
+        self.monitor_log[dt] = inputs
+
+        for monitor_fn in self.custom_monitor_fns:
             inputs.update(monitor_fn())
 
         for attr, value in inputs.items():
-            self.data[attr][dt] = value
+            # TODO data should be a more generic format
+            self.monitor_log[attr][dt] = value
 
     def monitor_to_csv(self, out_path: str):
-        pd.DataFrame(self.data).to_csv(out_path)
+        # TODO this should translate data into CSV format
+        pd.DataFrame(self.monitor_log).to_csv(out_path)
 
 
 class EcovisorSim(VessimSimulator):

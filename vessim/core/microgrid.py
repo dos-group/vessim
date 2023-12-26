@@ -32,7 +32,7 @@ class Microgrid:
     ):
         """Create co-simulation entities and connect them to world"""
         self.ecovisor.start(sim_start, grid_signals, self.zone)
-        self.ecovisor.add_monitor_fn(lambda: dict(battery_soc=self.storage.soc()))  # TODO example, this should be user-defined
+        self.ecovisor.add_custom_monitor_fn(lambda: dict(battery_soc=self.storage.soc()))  # TODO example, this should be user-defined
         ecovisor_sim = world.start("Ecovisor", step_size=60)  # TODO step_size
         ecovisor_entity = ecovisor_sim.EcovisorModel(ecovisor=self.ecovisor)
 
@@ -44,4 +44,5 @@ class Microgrid:
             actor_sim = world.start("Actor", sim_start=sim_start, step_size=60)  # TODO step_size
             actor_entity = actor_sim.ActorModel(actor=actor)
             world.connect(actor_entity, grid_entity, "p")
-            world.connect(actor_entity, ecovisor_entity, ("p", f"{actor.name}/p"))
+            world.connect(actor_entity, ecovisor_entity, ("p", f"actor/{actor.name}/p"))
+            world.connect(actor_entity, ecovisor_entity, ("info", f"actor/{actor.name}/info"))
