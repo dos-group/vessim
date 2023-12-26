@@ -9,7 +9,7 @@ class GridSim(VessimSimulator):
     META = {
         "type": "event-based",
         "models": {
-            "Grid": {
+            "GridModel": {
                 "public": True,
                 "params": ["storage", "policy"],
                 "attrs": ["p", "p_delta"],

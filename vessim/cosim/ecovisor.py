@@ -1,35 +1,41 @@
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, Callable, Any, Optional
+from typing import Dict, Callable, Any, Optional, List
 
 import pandas as pd
 
+from vessim import TimeSeriesApi
 from vessim.cosim._util import Clock, VessimSimulator, VessimModel, simplify_inputs
 
 
 class Ecovisor:
 
-    def __init__(
-        self,
-        monitor_fn: Optional[Callable[[], Dict[str, Any]]] = None,
-    ):
+    def __init__(self):
         self.data: Dict = defaultdict(dict)
-        self.monitor_fn = monitor_fn
+        self.monitor_fns = []
+        self.grid_signals = None
+        self.zone = None
         self._clock = None
 
-    def initialize(self, sim_start: datetime):
+    def start(self, sim_start: datetime, grid_signals: Dict[str, TimeSeriesApi], zone: str):
+        self.grid_signals = grid_signals
+        self.zone = zone
         self._clock = Clock(sim_start)
+
+    def add_monitor_fn(self, fn: Callable[[], Dict[str, Any]]):
+        self.monitor_fns.append(fn)
 
     def step(self, time: int, inputs: Dict) -> None:
         self._monitor(time, inputs)
-        # TODO other tasks like hosting a REST server and adapting the simulation
+        # TODO here goes all code for the Cacu and SiL stuff
+        #  this code can make use of all <inputs> and self.grid_signals
 
     def _monitor(self, time: int, inputs: Dict):
         inputs = simplify_inputs(inputs)
         dt = self._clock.to_datetime(time)
 
-        if self.monitor_fn is not None:
-            inputs.update(self.monitor_fn())
+        for monitor_fn in self.monitor_fns:
+            inputs.update(monitor_fn())
 
         for attr, value in inputs.items():
             self.data[attr][dt] = value
@@ -41,9 +47,9 @@ class Ecovisor:
 class EcovisorSim(VessimSimulator):
 
     META = {
-        "type": "time-based",
+        "type": "time-based",  # TODO maybe we should make this hybrid and let users decide
         "models": {
-            "Ecovisor": {
+            "EcovisorModel": {
                 "public": True,
                 "any_inputs": True,
                 "params": ["ecovisor"],

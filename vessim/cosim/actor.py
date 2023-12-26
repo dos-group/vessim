@@ -11,7 +11,7 @@ class ActorSim(VessimSimulator):
     META = {
         "type": "time-based",
         "models": {
-            "Actor": {
+            "ActorModel": {
                 "public": True,
                 "params": ["actor"],
                 "attrs": ["p", "info"],

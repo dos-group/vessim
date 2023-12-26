@@ -1,4 +1,4 @@
-from examples._data import load_solar_data
+from examples._data import load_solar_data, load_carbon_data
 from vessim import TimeSeriesApi
 from vessim.core.actor import ComputingSystem, Generator, MockPowerMeter
 from vessim.core.enviroment import Environment
@@ -15,6 +15,7 @@ STORAGE = SimpleBattery(capacity=32 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
 
 def main():
     environment = Environment(sim_start=SIM_START)
+    environment.add_grid_signal("carbon_intensity", TimeSeriesApi(load_carbon_data()))
 
     microgrid = Microgrid(
         actors=[
@@ -31,10 +32,10 @@ def main():
             ),
         ],
         storage=STORAGE,
-        # grid_signals=...,
+        zone="DE",
     )
 
-    environment.add(microgrid)
+    environment.add_microgrid(microgrid)
     environment.run(until=DURATION)
 
     microgrid.ecovisor.monitor_to_csv("result.csv")
