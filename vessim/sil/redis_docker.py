@@ -1,6 +1,7 @@
 from time import sleep
-import docker # type: ignore
-import redis # type: ignore
+
+import docker  # type: ignore
+import redis  # type: ignore
 
 
 class RedisDocker:

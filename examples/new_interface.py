@@ -1,10 +1,10 @@
 from examples._data import load_solar_data, load_carbon_data
 from vessim import TimeSeriesApi
-from vessim.core.actor import ComputingSystem, Generator, MockPowerMeter
 from vessim.core.enviroment import Environment
 from vessim.core.microgrid import Microgrid
+from vessim.core.power_meters import MockPowerMeter
 from vessim.core.storage import SimpleBattery
-
+from vessim.cosim.actor import ComputingSystem, Generator
 
 SIM_START = "2020-06-11 00:00:00"
 DURATION = 3600 * 24 * 2  # two days

@@ -5,8 +5,8 @@ from vessim.core.storage import SimpleBattery, DefaultStoragePolicy, StoragePoli
 from vessim.cosim._util import VessimSimulator, VessimModel, simplify_inputs
 from vessim.sil.api_server import ApiServer, VessimApi
 from vessim.sil.http_client import HttpClient
-from vessim.sil.node import Node
 from vessim.sil.loop_thread import LoopThread
+from vessim.sil.node import Node
 
 
 class SilInterfaceSim(VessimSimulator):

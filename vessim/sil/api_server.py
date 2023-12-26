@@ -1,8 +1,8 @@
-import multiprocessing
 import json
+import multiprocessing
 from abc import ABC, abstractmethod
-from time import sleep
 from datetime import datetime
+from time import sleep
 from typing import Optional, Dict, Type
 
 import uvicorn  # type: ignore

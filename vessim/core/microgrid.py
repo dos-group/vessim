@@ -4,8 +4,8 @@ from typing import List, Optional, Dict
 import mosaik
 
 from vessim import TimeSeriesApi
-from vessim.core.actor import Actor
 from vessim.core.storage import Storage, StoragePolicy
+from vessim.cosim.actor import Actor
 from vessim.cosim.ecovisor import Ecovisor
 
 

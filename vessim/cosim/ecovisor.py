@@ -1,6 +1,6 @@
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, Callable, Any, Optional, List
+from typing import Dict, Callable, Any
 
 import pandas as pd
 
