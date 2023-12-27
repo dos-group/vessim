@@ -38,7 +38,7 @@ def main(result_csv: str):
                 time_series_api=TimeSeriesApi(load_solar_data(sqm=0.4 * 0.5))
             ),
         ],
-        controller=monitor,
+        controllers=[monitor],
         storage=STORAGE,
         zone="DE",
     )

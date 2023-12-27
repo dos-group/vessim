@@ -13,13 +13,13 @@ class Microgrid:
     def __init__(
         self,
         actors: List[Actor],
-        controller: Controller,
+        controllers: List[Controller],
         storage: Optional[Storage] = None,
         storage_policy: Optional[StoragePolicy] = None,
         zone: Optional[str] = None,
     ):
         self.actors = actors
-        self.controller = controller
+        self.controllers = controllers
         self.storage = storage
         self.storage_policy = storage_policy
         self.zone = zone
@@ -31,17 +31,21 @@ class Microgrid:
         grid_signals: Dict[str, TimeSeriesApi]
     ):
         """Create co-simulation entities and connect them to world"""
-        self.controller.start(self, sim_start, grid_signals)
-        controller_sim = world.start("Controller", step_size=self.controller.step_size)
-        controller_entity = controller_sim.Controller(controller=self.controller)
-
         grid_sim = world.start("Grid")
         grid_entity = grid_sim.Grid(storage=self.storage, policy=self.storage_policy)
-        world.connect(grid_entity, controller_entity, "p_delta")
+
+        controller_entities = []
+        for controller in self.controllers:
+            controller.start(self, sim_start, grid_signals)
+            controller_sim = world.start("Controller", step_size=controller.step_size)
+            controller_entity = controller_sim.Controller(controller=controller)
+            world.connect(grid_entity, controller_entity, "p_delta")
 
         for actor in self.actors:
             actor_sim = world.start("Actor", sim_start=sim_start, step_size=actor.step_size)
             actor_entity = actor_sim.Actor(actor=actor)
             world.connect(actor_entity, grid_entity, "p")
-            world.connect(actor_entity, controller_entity, ("p", f"actor/{actor.name}/p"))
-            world.connect(actor_entity, controller_entity, ("info", f"actor/{actor.name}/info"))
+
+            for controller_entity in controller_entities:
+                world.connect(actor_entity, controller_entity, ("p", f"actor.{actor.name}.p"))
+                world.connect(actor_entity, controller_entity, ("info", f"actor.{actor.name}.info"))

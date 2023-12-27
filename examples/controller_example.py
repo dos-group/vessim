@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Dict, List
 
 from examples._data import load_solar_data, load_carbon_data
@@ -7,8 +8,9 @@ from vessim.core.enviroment import Environment
 from vessim.core.microgrid import Microgrid
 from vessim.core.power_meters import MockPowerMeter
 from vessim.core.storage import DefaultStoragePolicy
+from vessim.cosim._util import Clock
 from vessim.cosim.actor import ComputingSystem, Generator
-from vessim.cosim.controller import Monitor
+from vessim.cosim.controller import Monitor, Controller
 
 POLICY = DefaultStoragePolicy()
 POWER_MODES = {
@@ -33,7 +35,8 @@ def main(result_csv: str):
         MockPowerMeter(name="mpm0", p=2.194),
         MockPowerMeter(name="mpm1", p=7.6)
     ]
-    controller = CarbonAwareController(
+    monitor = Monitor(step_size=60)
+    carbon_aware_controller = CarbonAwareController(
         step_size=60,
         mock_power_meters=power_meters,
         battery=STORAGE,
@@ -54,38 +57,38 @@ def main(result_csv: str):
         ],
         storage=STORAGE,
         storage_policy=POLICY,
-        controller=controller,
+        controllers=[monitor, carbon_aware_controller],  # first executes monitor, then controller
         zone="DE",
     )
 
     environment.add_microgrid(microgrid)
     environment.run(until=DURATION)
-    controller.monitor_log_to_csv(result_csv)
+    monitor.monitor_log_to_csv(result_csv)
 
 
-class CarbonAwareController(Monitor):
-    # TODO should we allow multiple controllers (e.g. multi agent systems)
-    #  instead of subclassing Monitor? and can we map this in mosaik efficiently?
-
+class CarbonAwareController(Controller):
     def __init__(self, step_size, mock_power_meters, battery, policy):
         super().__init__(step_size)
         self.mock_power_meters = mock_power_meters
         self.battery = battery
         self.policy = policy
 
+    def start(self, microgrid: "Microgrid", sim_start: datetime, grid_signals: Dict):
+        self.zone = microgrid.zone
+        self.grid_signals = grid_signals
+        self.clock = Clock(sim_start)
+
     def step(self, time: int, p_delta: float, actors: Dict):
         """Performs a time step in the model."""
-        self.monitor(time, p_delta, actors)
-
         new_state = cacu_scenario(
             time=time,
             battery_soc=self.battery.soc(),
-            ci=self.grid_signals["carbon_intensity"].actual(self.clock.to_datetime(time), self.microgrid.zone),
+            ci=self.grid_signals["carbon_intensity"].actual(self.clock.to_datetime(time), self.zone),
             node_ids=[mpm.name for mpm in self.mock_power_meters],
         )
         self.policy.grid_power = new_state["grid_power"]
         self.battery.min_soc = new_state["battery_min_soc"]
-        assert {"mpm0", "mpm1"}.issubset({mpm.name for mpm in self.mock_power_meters})  # TODO
+        assert {"mpm0", "mpm1"}.issubset({mpm.name for mpm in self.mock_power_meters})
         for mpm in self.mock_power_meters:
             mpm.p = POWER_MODES[mpm.name][new_state["nodes_power_mode"][mpm.name]]
 

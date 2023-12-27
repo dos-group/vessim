@@ -40,8 +40,6 @@ class Monitor(Controller):
         self.grid_signals = None
 
     def start(self, microgrid: "Microgrid", sim_start: datetime, grid_signals: Dict):
-        self.microgrid = microgrid  # TODO unused in monitor but used in cacu
-        self.grid_signals = grid_signals  # TODO unused in monitor but used in cacu
         self.clock = Clock(sim_start)
         if self.monitor_storage:
             self.add_monitor_fn(lambda time: {"storage": microgrid.storage.info()})
