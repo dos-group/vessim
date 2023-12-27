@@ -1,6 +1,6 @@
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, Callable, Any
+from typing import Dict, Callable, Any, List
 
 import pandas as pd
 
@@ -8,11 +8,12 @@ from vessim import TimeSeriesApi
 from vessim.cosim._util import Clock, VessimSimulator, VessimModel, simplify_inputs
 
 
-class Ecovisor:  # TODO rename to Controller?
+class Controller:
 
     def __init__(self):
         self.monitor_log: Dict[datetime, Dict] = defaultdict(dict)
         self.custom_monitor_fns = []
+
         self.grid_signals = None
         self.zone = None
         self._clock = None
@@ -25,12 +26,11 @@ class Ecovisor:  # TODO rename to Controller?
     def add_custom_monitor_fn(self, fn: Callable[[], Dict[str, Any]]):
         self.custom_monitor_fns.append(fn)
 
-    def step(self, time: int, inputs: Dict) -> None:
-        self._monitor(time, inputs)
-        # TODO here goes all code for the Cacu and SiL stuff
-        #  this code can make use of all <inputs> and self.grid_signals
+    def monitor_and_step(self, time: int, inputs: Dict) -> None:
+        self.monitor(time, inputs)
+        self.step(time, inputs)
 
-    def _monitor(self, time: int, inputs: Dict):
+    def monitor(self, time: int, inputs: Dict):
         inputs = simplify_inputs(inputs)
         dt = self._clock.to_datetime(time)
 
@@ -43,20 +43,23 @@ class Ecovisor:  # TODO rename to Controller?
             # TODO data should be a more generic format
             self.monitor_log[attr][dt] = value
 
+    def step(self, time: int, inputs: Dict):
+        pass  # TODO
+
     def monitor_to_csv(self, out_path: str):
         # TODO this should translate data into CSV format
         pd.DataFrame(self.monitor_log).to_csv(out_path)
 
 
-class EcovisorSim(VessimSimulator):
+class ControllerSim(VessimSimulator):
 
     META = {
         "type": "time-based",  # TODO maybe we should make this hybrid and let users decide
         "models": {
-            "EcovisorModel": {
+            "ControllerModel": {
                 "public": True,
                 "any_inputs": True,
-                "params": ["ecovisor"],
+                "params": ["controller"],
                 "attrs": [],
             },
         },
@@ -65,7 +68,7 @@ class EcovisorSim(VessimSimulator):
     def __init__(self) -> None:
         """Simple data collector for printing data at the end of simulation."""
         self.step_size = None
-        super().__init__(self.META, _EcovisorModel)
+        super().__init__(self.META, _ControllerModel)
 
     def init(self, sid, time_resolution, step_size: int, eid_prefix=None):
         self.step_size = step_size  # type: ignore
@@ -75,11 +78,11 @@ class EcovisorSim(VessimSimulator):
         return time + self.step_size
 
 
-class _EcovisorModel(VessimModel):
-    def __init__(self, ecovisor: Ecovisor):
-        self.ecovisor = ecovisor
+class _ControllerModel(VessimModel):
+    def __init__(self, controller: Controller):
+        self.controller = controller
 
     def step(self, time: int, inputs: Dict) -> None:
-        self.ecovisor.step(time, inputs)
+        self.controller.monitor_and_step(time, inputs)
         # TODO here we need to set all properties that other entities should
         #   have access to in the simulation (if there are any)

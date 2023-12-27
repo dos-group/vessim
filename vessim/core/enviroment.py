@@ -9,8 +9,8 @@ class Environment:
         "Actor": {
             "python": "vessim.cosim.actor:ActorSim",
         },
-        "Ecovisor": {
-            "python": "vessim.cosim.ecovisor:EcovisorSim",
+        "Controller": {
+            "python": "vessim.cosim.controller:ControllerSim",
         },
         "Grid": {
             "python": "vessim.cosim.grid:GridSim"
