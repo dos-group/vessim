@@ -39,7 +39,6 @@ def main(result_csv: str):
         battery=STORAGE,
         policy=POLICY,
     )
-    controller.add_custom_monitor_fn(lambda: dict(battery_soc=STORAGE.soc()))
     microgrid = Microgrid(
         actors=[
             ComputingSystem(
@@ -65,6 +64,8 @@ def main(result_csv: str):
 
 
 class CarbonAwareController(Monitor):
+    # TODO should we allow multiple controllers (e.g. multi agent systems)
+    #  instead of subclassing Monitor? and can we map this in mosaik efficiently?
 
     def __init__(self, step_size, mock_power_meters, battery, policy):
         super().__init__(step_size)
@@ -79,7 +80,7 @@ class CarbonAwareController(Monitor):
         new_state = cacu_scenario(
             time=time,
             battery_soc=self.battery.soc(),
-            ci=self.grid_signals["carbon_intensity"].actual(self._clock.to_datetime(time), self.zone),
+            ci=self.grid_signals["carbon_intensity"].actual(self.clock.to_datetime(time), self.microgrid.zone),
             node_ids=[mpm.name for mpm in self.mock_power_meters],
         )
         self.policy.grid_power = new_state["grid_power"]

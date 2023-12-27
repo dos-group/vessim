@@ -25,7 +25,6 @@ def main(result_csv: str):
         MockPowerMeter(name="mpm1", p=7.6)
     ]
     monitor = Monitor(step_size=60)
-    monitor.add_custom_monitor_fn(lambda: dict(battery_soc=STORAGE.soc()))
     microgrid = Microgrid(
         actors=[
             ComputingSystem(

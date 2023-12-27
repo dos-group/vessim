@@ -31,7 +31,7 @@ class Microgrid:
         grid_signals: Dict[str, TimeSeriesApi]
     ):
         """Create co-simulation entities and connect them to world"""
-        self.controller.start(sim_start, grid_signals, self.zone)
+        self.controller.start(self, sim_start, grid_signals)
         controller_sim = world.start("Controller", step_size=self.controller.step_size)
         controller_entity = controller_sim.ControllerModel(controller=self.controller)
 

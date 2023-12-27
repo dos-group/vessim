@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Dict
 
 from loguru import logger
 
@@ -23,6 +23,11 @@ class Storage(ABC):
     @abstractmethod
     def soc(self) -> float:
         """Returns the current State of Charge (SoC)."""
+
+    @abstractmethod
+    def info(self) -> Dict:
+        """Returns the current state of the storage for logging."""
+
 
 
 class SimpleBattery(Storage):
@@ -91,6 +96,14 @@ class SimpleBattery(Storage):
 
     def soc(self) -> float:
         return self.charge_level / self.capacity
+
+    def info(self) -> Dict:
+        return {
+            "charge_level": self.charge_level,
+            "capacity": self.capacity,
+            "min_soc": self.min_soc,
+            "c_rate": self.c_rate,
+        }
 
 
 class StoragePolicy(ABC):

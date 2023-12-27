@@ -1,12 +1,14 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, Callable, Any, Tuple
+from typing import Dict, Callable, Any, Tuple, TYPE_CHECKING
 
 import pandas as pd
 
-from vessim import TimeSeriesApi
 from vessim.cosim._util import Clock, VessimSimulator, VessimModel
+
+if TYPE_CHECKING:
+    from vessim.core.microgrid import Microgrid
 
 
 class Controller(ABC):
@@ -15,7 +17,7 @@ class Controller(ABC):
         self.step_size = step_size
 
     @abstractmethod
-    def start(self, sim_start: datetime, grid_signals: Dict[str, TimeSeriesApi], zone: str) -> None:
+    def start(self, microgrid: "Microgrid", sim_start: datetime, grid_signals: Dict):
         pass  # TODO document
 
     @abstractmethod
@@ -25,34 +27,43 @@ class Controller(ABC):
 
 class Monitor(Controller):
 
-    def __init__(self, step_size: int):
+    def __init__(self, step_size: int, monitor_storage=True, monitor_grid_signals=True):
         super().__init__(step_size)
+        self.monitor_storage = monitor_storage
+        self.monitor_grid_signals = monitor_grid_signals
         self.monitor_log: Dict[datetime, Dict] = defaultdict(dict)
         self.custom_monitor_fns = []
 
+        self.microgrid = None
+        self.clock = None
         self.grid_signals = None
-        self.zone = None
-        self._clock = None
 
-    def start(self, sim_start: datetime, grid_signals: Dict[str, TimeSeriesApi], zone: str) -> None:
-        self.grid_signals = grid_signals
-        self.zone = zone
-        self._clock = Clock(sim_start)
+    def start(self, microgrid: "Microgrid", sim_start: datetime, grid_signals: Dict):
+        self.microgrid = microgrid  # TODO unused in monitor but used in cacu
+        self.grid_signals = grid_signals  # TODO unused in monitor but used in cacu
+        self.clock = Clock(sim_start)
+        if self.monitor_storage:
+            self.add_monitor_fn(lambda time: {"storage": microgrid.storage.info()})
+        if self.monitor_grid_signals:
+            for signal_name, signal_api in grid_signals.items():
+                self.add_monitor_fn(lambda time: {
+                    signal_name: grid_signals[signal_name].actual(self.clock.to_datetime(time))
+                })
 
-    def add_custom_monitor_fn(self, fn: Callable[[], Dict[str, Any]]):
+    def add_monitor_fn(self, fn: Callable[[float], Dict[str, Any]]):
         self.custom_monitor_fns.append(fn)
 
     def step(self, time: int, p_delta: float, actors: Dict) -> None:
         self.monitor(time, p_delta, actors)
 
     def monitor(self, time: int, p_delta: float, actors: Dict) -> None:
-        dt = self._clock.to_datetime(time)
-        self.monitor_log[dt] = dict(
+        log = dict(
             p_delta=p_delta,
             actors=actors,
         )
         for monitor_fn in self.custom_monitor_fns:
-            self.monitor_log[dt].update(monitor_fn())
+            log.update(monitor_fn(time))
+        self.monitor_log[self.clock.to_datetime(time)] = log
 
     def monitor_log_to_csv(self, out_path: str):
         # TODO this should translate data into CSV format
