@@ -36,7 +36,7 @@ class Microgrid:
         controller_entity = controller_sim.ControllerModel(controller=self.controller)
 
         grid_sim = world.start("Grid")
-        grid_entity = grid_sim.GridModel(storage=self.storage, policy=self.storage_policy)
+        grid_entity = grid_sim.Grid(storage=self.storage, policy=self.storage_policy)
         world.connect(grid_entity, controller_entity, "p_delta")
 
         for actor in self.actors:
