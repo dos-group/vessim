@@ -2,7 +2,7 @@ from threading import Thread
 from typing import List, Optional
 
 from vessim.core.storage import SimpleBattery, DefaultStoragePolicy, StoragePolicy
-from vessim.cosim._util import VessimSimulator, VessimModel, simplify_inputs
+from vessim.cosim.util import VessimSimulator, VessimModel, simplify_inputs
 from vessim.sil.api_server import ApiServer, VessimApi
 from vessim.sil.http_client import HttpClient
 from vessim.sil.loop_thread import LoopThread

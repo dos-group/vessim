@@ -20,7 +20,7 @@ from controller_example import (
 )
 from vessim import TimeSeriesApi
 from vessim.core.microgrid import SimpleMicrogrid
-from vessim.cosim._util import disable_mosaik_warnings
+from vessim.cosim.util import disable_mosaik_warnings
 from vessim.sil.node import Node
 from vessim.sil.power_meter import HttpPowerMeter
 

@@ -6,7 +6,7 @@ from typing import Dict, Callable, Any, Tuple, TYPE_CHECKING, MutableMapping
 import mosaik_api
 import pandas as pd
 
-from vessim.cosim._util import Clock
+from vessim.cosim.util import Clock
 
 if TYPE_CHECKING:
     from vessim.core.microgrid import Microgrid
@@ -18,7 +18,7 @@ class Controller(ABC):
         self.step_size = step_size
 
     @abstractmethod
-    def start(self, microgrid: "Microgrid", sim_start: datetime, grid_signals: Dict):
+    def start(self, microgrid: "Microgrid", clock: Clock, grid_signals: Dict):
         pass  # TODO document
 
     @abstractmethod
@@ -39,8 +39,8 @@ class Monitor(Controller):
         self.clock = None
         self.grid_signals = None
 
-    def start(self, microgrid: "Microgrid", sim_start: datetime, grid_signals: Dict):
-        self.clock = Clock(sim_start)
+    def start(self, microgrid: "Microgrid", clock: Clock, grid_signals: Dict):
+        self.clock = clock
         if self.monitor_storage:
             self.add_monitor_fn(lambda time: {"storage": microgrid.storage.info()})
         if self.monitor_grid_signals:

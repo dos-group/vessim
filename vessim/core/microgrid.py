@@ -1,10 +1,10 @@
-from datetime import datetime
 from typing import List, Optional, Dict
 
 import mosaik
 
 from vessim import TimeSeriesApi
 from vessim.core.storage import Storage, StoragePolicy
+from vessim.cosim.util import Clock
 from vessim.cosim.actor import Actor
 from vessim.cosim.controller import Controller
 
@@ -27,7 +27,7 @@ class Microgrid:
     def initialize(
         self,
         world: mosaik.World,
-        sim_start: datetime,
+        clock: Clock,
         grid_signals: Dict[str, TimeSeriesApi]
     ):
         """Create co-simulation entities and connect them to world"""
@@ -36,13 +36,13 @@ class Microgrid:
 
         controller_entities = []
         for controller in self.controllers:
-            controller.start(self, sim_start, grid_signals)
+            controller.start(self, clock, grid_signals)
             controller_sim = world.start("Controller", step_size=controller.step_size)
             controller_entity = controller_sim.Controller(controller=controller)
             world.connect(grid_entity, controller_entity, "p_delta")
 
         for actor in self.actors:
-            actor_sim = world.start("Actor", sim_start=sim_start, step_size=actor.step_size)
+            actor_sim = world.start("Actor", clock=clock, step_size=actor.step_size)
             actor_entity = actor_sim.Actor(actor=actor)
             world.connect(actor_entity, grid_entity, "p")
 

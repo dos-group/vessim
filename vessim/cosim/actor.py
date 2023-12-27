@@ -6,7 +6,6 @@ import mosaik_api
 
 from vessim import TimeSeriesApi
 from vessim.core.power_meters import PowerMeter
-from vessim.cosim._util import Clock
 
 
 class Actor(ABC):
@@ -94,7 +93,7 @@ class ActorSim(mosaik_api.Simulator):
 
     def init(self, sid, time_resolution=1., **sim_params):
         self.step_size = sim_params["step_size"]
-        self.clock = Clock(sim_params["sim_start"])
+        self.clock = sim_params["clock"]
         return self.meta
 
     def create(self, num, model, **model_params):
