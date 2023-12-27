@@ -1,7 +1,7 @@
 import sys
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Type, Dict, Any, Union
+from typing import Type, Dict, Any, Union, Optional
 
 import mosaik_api  # type: ignore
 import pandas as pd
@@ -31,7 +31,7 @@ class VessimSimulator(mosaik_api.Simulator, ABC):
     Attributes:
         eid_prefix: The prefix to be used for entity IDs.
         model_class: The class of the model to be simulated.
-        entities: A dictionary that maps entity IDs to their instances.
+        entity: The simulation entity.
         time: The current simulation time.
         step_size: The simulation step size.
     """
@@ -47,39 +47,30 @@ class VessimSimulator(mosaik_api.Simulator, ABC):
                 must be overwritten and implemented individually.
         """
         super().__init__(meta)
-        self.eid_prefix = list(self.meta["models"])[0] + "_"
+        self.eid = list(self.meta["models"])[0]
         self.model_class = model_class
-        self.entities: Dict[str, VessimModel] = {}
+        self.entity: Optional[VessimModel] = None
         self.time = 0
 
-    def init(self, sid, time_resolution, eid_prefix=None):  # TODO this should match the Simulator interface
+    def init(self, sid, time_resolution=1., **sim_params):
         """Initialize Simulator and set `step_size` and `eid_prefix`."""
         if float(time_resolution) != 1.0:
-            raise ValueError(
-                f"{self.__class__.__name__} only supports time_resolution=1., "
-                f"but {time_resolution} was set."
-            )
-        if eid_prefix is not None:
-            self.eid_prefix = eid_prefix
+            raise ValueError(f"{self.__class__.__name__} only supports time_resolution=1")
         return self.meta
 
     def create(self, num, model, *args, **kwargs):
         """Create model instance and save it in `entities`."""
-        next_eid = len(self.entities)
-        entities = []
-        for i in range(next_eid, next_eid + num):
-            # Instantiate `model_class` specified in constructor and pass through args
-            entity = self.model_class(*args, **kwargs)
-            eid = self.eid_prefix + str(i)
-            self.entities[eid] = entity
-            entities.append({"eid": eid, "type": model})
-        return entities
+        if self.entity is not None or num > 1:
+            raise RuntimeError("Only one entity per simulator is supported.")
+
+        # Instantiate `model_class` specified in constructor and pass through args
+        self.entity = self.model_class(*args, **kwargs)
+        return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
         """Set all `inputs` attr values to the `entity` attrs, then step the `entity`."""
         self.time = time
-        for eid, entity in self.entities.items():
-            entity.step(time, inputs.get(eid, {}))
+        self.entity.step(time, inputs.get(self.eid, {}))
         return self.next_step(time)
 
     @abstractmethod
@@ -91,14 +82,13 @@ class VessimSimulator(mosaik_api.Simulator, ABC):
         data = {}
         model_name = list(self.meta["models"])[0]
         for eid, attrs in outputs.items():
-            model = self.entities[eid]
             data["time"] = self.time
             data[eid] = {}
-            for attr in attrs:
+            for attr in set(attrs):
                 if attr not in self.meta["models"][model_name]["attrs"]:
                     raise ValueError(f"Unknown output attribute: {attr}")
-                if hasattr(model, attr):
-                    data[eid][attr] = getattr(model, attr)
+                if hasattr(self.entity, attr):
+                    data[eid][attr] = getattr(self.entity, attr)
         return data
 
 

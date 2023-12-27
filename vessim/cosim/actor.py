@@ -97,8 +97,7 @@ class ActorSim(VessimSimulator):
     def finalize(self) -> None:
         """Stops power meters' threads."""
         super().finalize()
-        for model_instance in self.entities.values():  # TODO we only want a single actor per simulator
-            model_instance.actor.finalize()  # TODO it's not nice that it's unclear here that model_instance.actor is of type Actor
+        self.entity.actor.finalize()  # TODO it's not nice that it's unclear here that entity.actor is of type Actor
 
     def next_step(self, time):
         return time + self.step_size
