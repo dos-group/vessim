@@ -1,6 +1,6 @@
 """Co-simulation example with software-in-the-loop.
 
-This scenario builds on `cosim_example.py` but connects to a real computing system
+This scenario builds on `controller_example.py` but connects to a real computing system
 through software-in-the-loop integration as described in our paper:
 - 'Software-in-the-loop simulation for developing and testing carbon-aware applications'.
   [under review]
@@ -12,7 +12,7 @@ import mosaik  # type: ignore
 from vessim.core.consumer import ComputingSystem
 
 from _data import load_carbon_data, load_solar_data
-from cosim_example import (
+from controller_example import (
     COSIM_CONFIG,
     SIM_START,
     STORAGE,
