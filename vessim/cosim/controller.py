@@ -3,9 +3,10 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Dict, Callable, Any, Tuple, TYPE_CHECKING, MutableMapping
 
+import mosaik_api
 import pandas as pd
 
-from vessim.cosim._util import Clock, VessimSimulator, VessimModel
+from vessim.cosim._util import Clock
 
 if TYPE_CHECKING:
     from vessim.core.microgrid import Microgrid
@@ -81,12 +82,11 @@ def flatten_dict(d: MutableMapping, parent_key: str = '') -> MutableMapping:
     return dict(items)
 
 
-class ControllerSim(VessimSimulator):
-
+class ControllerSim(mosaik_api.Simulator):
     META = {
         "type": "time-based",
         "models": {
-            "ControllerModel": {
+            "Controller": {
                 "public": True,
                 "any_inputs": True,
                 "params": ["controller"],
@@ -95,25 +95,27 @@ class ControllerSim(VessimSimulator):
         },
     }
 
-    def __init__(self) -> None:
-        """Simple data collector for printing data at the end of simulation."""
+    def __init__(self):
+        super().__init__(self.META)
+        self.eid = "Controller"
         self.step_size = None
-        super().__init__(self.META, _ControllerModel)
+        self.controller = None
 
-    def init(self, sid, time_resolution, step_size: int):
-        self.step_size = step_size  # type: ignore
-        return super().init(sid, time_resolution)
+    def init(self, sid, time_resolution=1., **sim_params):
+        self.step_size = sim_params["step_size"]
+        return self.meta
 
-    def next_step(self, time):
+    def create(self, num, model, **model_params):
+        assert num == 1, "Only one instance per simulation is supported"
+        self.controller = model_params["controller"]
+        return [{"eid": self.eid, "type": model}]
+
+    def step(self, time, inputs, max_advance):
+        self.controller.step(time, *_parse_controller_inputs(inputs[self.eid]))
         return time + self.step_size
 
-
-class _ControllerModel(VessimModel):
-    def __init__(self, controller: Controller):
-        self.controller = controller
-
-    def step(self, time: int, inputs: Dict) -> None:
-        self.controller.step(time, *_parse_controller_inputs(inputs))
+    def get_data(self, outputs):
+        return {self.eid: {"p": self.p, "info": self.info}}
 
 
 def _parse_controller_inputs(inputs: Dict[str, Dict[str, Any]]) -> Tuple[float, Dict]:

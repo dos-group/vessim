@@ -6,7 +6,7 @@ import mosaik_api
 
 from vessim import TimeSeriesApi
 from vessim.core.power_meters import PowerMeter
-from vessim.cosim._util import VessimSimulator, VessimModel, Clock
+from vessim.cosim._util import Clock
 
 
 class Actor(ABC):
@@ -72,8 +72,6 @@ class Generator(Actor):
 
 
 class ActorSim(mosaik_api.Simulator):
-    """Computing System simulator that executes its model."""
-
     META = {
         "type": "time-based",
         "models": {
@@ -88,9 +86,9 @@ class ActorSim(mosaik_api.Simulator):
     def __init__(self):
         super().__init__(self.META)
         self.eid = "Actor"
-        self.actor = None
         self.step_size = None
         self.clock = None
+        self.actor = None
         self.p = 0
         self.info = {}
 

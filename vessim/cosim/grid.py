@@ -1,9 +1,6 @@
-from typing import Dict, Optional
-
 import mosaik_api
 
-from vessim.core.storage import Storage, StoragePolicy, DefaultStoragePolicy
-from vessim.cosim._util import VessimSimulator, VessimModel
+from vessim.core.storage import DefaultStoragePolicy
 
 
 class GridSim(mosaik_api.Simulator):
@@ -35,8 +32,8 @@ class GridSim(mosaik_api.Simulator):
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
-        self._last_step_time = time
         duration = time - self._last_step_time
+        self._last_step_time = time
         if duration == 0:
             return
         p_delta = sum(inputs[self.eid]["p"].values())
