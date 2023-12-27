@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime
 from typing import Dict, Callable, Any, Tuple
@@ -8,9 +9,20 @@ from vessim import TimeSeriesApi
 from vessim.cosim._util import Clock, VessimSimulator, VessimModel
 
 
-class Controller:
+class Controller(ABC):
 
-    def __init__(self):
+    def __init__(self, step_size: int):
+        self.step_size = step_size
+
+    @abstractmethod
+    def step(self, time: int, p_delta: float, actors: Dict) -> None:
+        pass  # TODO document
+
+
+class Monitor(Controller):
+
+    def __init__(self, step_size: int):
+        super().__init__(step_size)
         self.monitor_log: Dict[datetime, Dict] = defaultdict(dict)
         self.custom_monitor_fns = []
 
@@ -26,12 +38,10 @@ class Controller:
     def add_custom_monitor_fn(self, fn: Callable[[], Dict[str, Any]]):
         self.custom_monitor_fns.append(fn)
 
-    def monitor_and_step(self, time: int, inputs: Dict) -> None:
-        p_delta, actors = _parse_controller_inputs(inputs)
+    def step(self, time: int, p_delta: float, actors: Dict) -> None:
         self.monitor(time, p_delta, actors)
-        self.step(time, p_delta, actors)
 
-    def monitor(self, time: int, p_delta: float, actors: Dict):
+    def monitor(self, time: int, p_delta: float, actors: Dict) -> None:
         dt = self._clock.to_datetime(time)
         self.monitor_log[dt] = dict(
             p_delta=p_delta,
@@ -40,32 +50,15 @@ class Controller:
         for monitor_fn in self.custom_monitor_fns:
             self.monitor_log[dt].update(monitor_fn())
 
-    def step(self, time: int, p_delta: float, actors: Dict):
-        pass  # TODO
-
     def monitor_to_csv(self, out_path: str):
         # TODO this should translate data into CSV format
         pd.DataFrame(self.monitor_log).to_csv(out_path)
 
 
-def _parse_controller_inputs(inputs: Dict[str, Dict[str, Any]]) -> Tuple[float, Dict]:
-    p_delta = _get_val(inputs, "p_delta")
-    actor_keys = [k for k in inputs.keys() if k.startswith("actor")]
-    actors = defaultdict(dict)
-    for k in actor_keys:
-        _, actor_name, attr = k.split("/")
-        actors[actor_name][attr] = _get_val(inputs, k)
-    return p_delta, dict(actors)
-
-
-def _get_val(inputs: Dict[str, Dict[str, Any]], key: str) -> Any:
-    return list(inputs[key].values())[0]
-
-
 class ControllerSim(VessimSimulator):
 
     META = {
-        "type": "time-based",  # TODO maybe we should make this hybrid and let users decide
+        "type": "time-based",
         "models": {
             "ControllerModel": {
                 "public": True,
@@ -94,6 +87,20 @@ class _ControllerModel(VessimModel):
         self.controller = controller
 
     def step(self, time: int, inputs: Dict) -> None:
-        self.controller.monitor_and_step(time, inputs)
+        self.controller.step(time, *_parse_controller_inputs(inputs))
         # TODO here we need to set all properties that other entities should
         #   have access to in the simulation (if there are any)
+
+
+def _parse_controller_inputs(inputs: Dict[str, Dict[str, Any]]) -> Tuple[float, Dict]:
+    p_delta = _get_val(inputs, "p_delta")
+    actor_keys = [k for k in inputs.keys() if k.startswith("actor")]
+    actors = defaultdict(dict)
+    for k in actor_keys:
+        _, actor_name, attr = k.split("/")
+        actors[actor_name][attr] = _get_val(inputs, k)
+    return p_delta, dict(actors)
+
+
+def _get_val(inputs: Dict[str, Dict[str, Any]], key: str) -> Any:
+    return list(inputs[key].values())[0]

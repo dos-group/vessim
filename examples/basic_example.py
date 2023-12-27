@@ -5,6 +5,7 @@ from vessim.core.microgrid import Microgrid
 from vessim.core.power_meters import MockPowerMeter
 from vessim.core.storage import SimpleBattery
 from vessim.cosim.actor import ComputingSystem, Generator
+from vessim.cosim.controller import Monitor
 
 SIM_START = "2020-06-11 00:00:00"
 DURATION = 3600 * 24 * 2  # two days
@@ -27,13 +28,16 @@ def main(result_csv: str):
         actors=[
             ComputingSystem(
                 name="server",
+                step_size=60,
                 power_meters=power_meters
             ),
             Generator(
                 name="solar",
+                step_size=60,
                 time_series_api=TimeSeriesApi(load_solar_data(sqm=0.4 * 0.5))
             ),
         ],
+        controller=Monitor(step_size=60),
         storage=STORAGE,
         zone="DE",
     )

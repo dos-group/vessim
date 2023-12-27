@@ -10,8 +10,9 @@ from vessim.cosim._util import VessimSimulator, VessimModel, Clock
 class Actor(ABC):
     """Abstract base class representing a power consumer or producer."""
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, step_size: int):
         self.name = name
+        self.step_size = step_size
 
     @abstractmethod
     def p(self, now: datetime) -> float:
@@ -42,8 +43,8 @@ class ComputingSystem(Actor):
         pue: The power usage effectiveness of the system.
     """
 
-    def __init__(self, name: str, power_meters: List[PowerMeter], pue: float = 1):
-        super().__init__(name)
+    def __init__(self, name: str, step_size: int, power_meters: List[PowerMeter], pue: float = 1):
+        super().__init__(name, step_size)
         self.power_meters = power_meters
         self.pue = pue
 
@@ -60,8 +61,8 @@ class ComputingSystem(Actor):
 
 class Generator(Actor):
 
-    def __init__(self, name: str, time_series_api: TimeSeriesApi):
-        super().__init__(name)
+    def __init__(self, name: str, step_size: int, time_series_api: TimeSeriesApi):
+        super().__init__(name, step_size)
         self.time_series_api = time_series_api
 
     def p(self, now: datetime) -> float:

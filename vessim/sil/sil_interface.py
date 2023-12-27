@@ -9,7 +9,7 @@ from vessim.sil.loop_thread import LoopThread
 from vessim.sil.node import Node
 
 
-class SilInterfaceSim(VessimSimulator):
+class SilInterfaceSim(VessimSimulator):  # TODO this should be merged with cosim.controller.Controller
     """Software-in-the-Loop (SiL) interface simulator that executes the model."""
 
     META = {

@@ -8,7 +8,7 @@ from vessim.core.microgrid import Microgrid
 from vessim.core.power_meters import MockPowerMeter
 from vessim.core.storage import DefaultStoragePolicy
 from vessim.cosim.actor import ComputingSystem, Generator
-from vessim.cosim.controller import Controller
+from vessim.cosim.controller import Monitor
 
 POLICY = DefaultStoragePolicy()
 POWER_MODES = {
@@ -37,16 +37,23 @@ def main(result_csv: str):
         actors=[
             ComputingSystem(
                 name="server",
+                step_size=60,
                 power_meters=power_meters
             ),
             Generator(
                 name="solar",
+                step_size=60,
                 time_series_api=TimeSeriesApi(load_solar_data(sqm=0.4 * 0.5))
             ),
         ],
         storage=STORAGE,
         storage_policy=POLICY,
-        controller=ScenarioController(power_meters, STORAGE, POLICY),
+        controller=CarbonAwareController(
+            step_size=60,
+            mock_power_meters=power_meters,
+            battery=STORAGE,
+            policy=POLICY,
+        ),
         zone="DE",
     )
 
@@ -56,16 +63,18 @@ def main(result_csv: str):
     microgrid.controller.monitor_to_csv(result_csv)
 
 
-class ScenarioController(Controller):
+class CarbonAwareController(Monitor):
 
-    def __init__(self, mock_power_meters, battery, policy):
-        super().__init__()
+    def __init__(self, step_size, mock_power_meters, battery, policy):
+        super().__init__(step_size)
         self.mock_power_meters = mock_power_meters
         self.battery = battery
         self.policy = policy
 
     def step(self, time: int, p_delta: float, actors: Dict):
         """Performs a time step in the model."""
+        self.monitor(time, p_delta, actors)
+
         new_state = cacu_scenario(
             time=time,
             battery_soc=self.battery.soc(),
@@ -79,7 +88,6 @@ class ScenarioController(Controller):
             mpm.p = POWER_MODES[mpm.name][new_state["nodes_power_mode"][mpm.name]]
 
 
-# TODO refactor
 def cacu_scenario(
     time: int,
     battery_soc: float,
@@ -109,8 +117,6 @@ def cacu_scenario(
               'power-saving') as values.
     """
     new_state = {}
-
-    #
     time_of_day = time % (3600 * 24)
     if 11 * 3600 <= time_of_day < 24 * 3600 and battery_soc >= 0.6:
         new_state["battery_min_soc"] = .6
@@ -126,7 +132,7 @@ def cacu_scenario(
             new_state["nodes_power_mode"][node_id] = "power-saving"
         else:
             new_state["nodes_power_mode"][node_id] = "normal"
-        return new_state
+    return new_state
 
 
 if __name__ == "__main__":
