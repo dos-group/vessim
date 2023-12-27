@@ -9,6 +9,7 @@ This is example experimental and documentation is still in progress.
 """
 
 import mosaik  # type: ignore
+from vessim.core.consumer import ComputingSystem
 
 from _data import load_carbon_data, load_solar_data
 from cosim_example import (
@@ -18,12 +19,10 @@ from cosim_example import (
     DURATION
 )
 from vessim import TimeSeriesApi
-from vessim.core.consumer import ComputingSystem
 from vessim.core.microgrid import SimpleMicrogrid
+from vessim.cosim._util import disable_mosaik_warnings
 from vessim.sil.node import Node
 from vessim.sil.power_meter import HttpPowerMeter
-from vessim.cosim._util import disable_mosaik_warnings
-
 
 COSIM_SIL_CONFIG = {
     **COSIM_CONFIG,

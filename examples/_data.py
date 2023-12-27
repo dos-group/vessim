@@ -1,7 +1,7 @@
+import os
 from datetime import timedelta
 
 import pandas as pd
-import os
 
 BASE_DIR = os.path.dirname(__file__)
 SOLAR_DATA_FILE = f"{BASE_DIR}/data/weather_berlin_2021-06.csv"

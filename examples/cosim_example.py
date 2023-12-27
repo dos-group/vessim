@@ -6,7 +6,6 @@ from vessim.core.enviroment import Environment
 from vessim.core.microgrid import Microgrid
 from vessim.core.power_meters import MockPowerMeter
 from vessim.core.storage import SimpleBattery, DefaultStoragePolicy
-from vessim.cosim._util import simplify_inputs
 from vessim.cosim.actor import ComputingSystem, Generator
 from vessim.cosim.controller import Controller
 
@@ -61,11 +60,8 @@ class ScenarioController(Controller):
         self.battery = battery
         self.policy = policy
 
-    def step(self, time: int, inputs: Dict):
+    def step(self, time: int, p_delta: float, actors: Dict):
         """Performs a time step in the model."""
-        # TODO highly custom scenario code, this should be passed through the Scenario API
-        inputs = simplify_inputs(inputs)
-
         # Apply scenario logic
         scenario_data = cacu_scenario(
             time,

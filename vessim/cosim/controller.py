@@ -1,11 +1,11 @@
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, Callable, Any, List
+from typing import Dict, Callable, Any, Tuple
 
 import pandas as pd
 
 from vessim import TimeSeriesApi
-from vessim.cosim._util import Clock, VessimSimulator, VessimModel, simplify_inputs
+from vessim.cosim._util import Clock, VessimSimulator, VessimModel
 
 
 class Controller:
@@ -27,28 +27,39 @@ class Controller:
         self.custom_monitor_fns.append(fn)
 
     def monitor_and_step(self, time: int, inputs: Dict) -> None:
-        self.monitor(time, inputs)
-        self.step(time, inputs)
+        p_delta, actors = _parse_controller_inputs(inputs)
+        self.monitor(time, p_delta, actors)
+        self.step(time, p_delta, actors)
 
-    def monitor(self, time: int, inputs: Dict):
-        inputs = simplify_inputs(inputs)
+    def monitor(self, time: int, p_delta: float, actors: Dict):
         dt = self._clock.to_datetime(time)
-
-        self.monitor_log[dt] = inputs
-
+        self.monitor_log[dt] = dict(
+            p_delta=p_delta,
+            actors=actors,
+        )
         for monitor_fn in self.custom_monitor_fns:
-            inputs.update(monitor_fn())
+            self.monitor_log[dt].update(monitor_fn())
 
-        for attr, value in inputs.items():
-            # TODO data should be a more generic format
-            self.monitor_log[attr][dt] = value
-
-    def step(self, time: int, inputs: Dict):
+    def step(self, time: int, p_delta: float, actors: Dict):
         pass  # TODO
 
     def monitor_to_csv(self, out_path: str):
         # TODO this should translate data into CSV format
         pd.DataFrame(self.monitor_log).to_csv(out_path)
+
+
+def _parse_controller_inputs(inputs: Dict[str, Dict[str, Any]]) -> Tuple[float, Dict]:
+    p_delta = _get_val(inputs, "p_delta")
+    actor_keys = [k for k in inputs.keys() if k.startswith("actor")]
+    actors = defaultdict(dict)
+    for k in actor_keys:
+        _, actor_name, attr = k.split("/")
+        actors[actor_name][attr] = _get_val(inputs, k)
+    return p_delta, dict(actors)
+
+
+def _get_val(inputs: Dict[str, Dict[str, Any]], key: str) -> Any:
+    return list(inputs[key].values())[0]
 
 
 class ControllerSim(VessimSimulator):
@@ -70,9 +81,9 @@ class ControllerSim(VessimSimulator):
         self.step_size = None
         super().__init__(self.META, _ControllerModel)
 
-    def init(self, sid, time_resolution, step_size: int, eid_prefix=None):
+    def init(self, sid, time_resolution, step_size: int):
         self.step_size = step_size  # type: ignore
-        return super().init(sid, time_resolution, eid_prefix=eid_prefix)
+        return super().init(sid, time_resolution)
 
     def next_step(self, time):
         return time + self.step_size

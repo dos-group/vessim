@@ -1,7 +1,7 @@
 import sys
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
-from typing import Type, Dict, Any, Union, Optional
+from typing import Type, Union, Optional
 
 import mosaik_api  # type: ignore
 import pandas as pd
@@ -101,26 +101,6 @@ class Clock:
 
     def to_simtime(self, dt: datetime) -> int:
         return int((dt - self.sim_start).total_seconds())
-
-
-def simplify_inputs(attrs: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
-    """Removes Mosaik source entity from input dict.
-
-    Examples:
-        >>> simplify_inputs({'p': {'ComputingSystem-0.ComputingSystem_0': -50}})
-        {'p': -50}
-    """
-    # TODO We should make this function a bit more elegant once we better evaluated
-    #   our requirements for Vessim simulations.
-    result = {}
-    for key, val_dict in attrs.items():
-        result[key] = list(val_dict.values())[0]
-        # flattening dicts
-        if isinstance(result[key], dict):
-            for kk in result[key].keys():
-                result[f"{key}.{kk}"] = result[key][kk]
-            del result[key]
-    return result
 
 
 def disable_mosaik_warnings(behind_threshold: float):
