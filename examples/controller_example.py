@@ -33,6 +33,13 @@ def main(result_csv: str):
         MockPowerMeter(name="mpm0", p=2.194),
         MockPowerMeter(name="mpm1", p=7.6)
     ]
+    controller = CarbonAwareController(
+        step_size=60,
+        mock_power_meters=power_meters,
+        battery=STORAGE,
+        policy=POLICY,
+    )
+    controller.add_custom_monitor_fn(lambda: dict(battery_soc=STORAGE.soc()))
     microgrid = Microgrid(
         actors=[
             ComputingSystem(
@@ -48,19 +55,13 @@ def main(result_csv: str):
         ],
         storage=STORAGE,
         storage_policy=POLICY,
-        controller=CarbonAwareController(
-            step_size=60,
-            mock_power_meters=power_meters,
-            battery=STORAGE,
-            policy=POLICY,
-        ),
+        controller=controller,
         zone="DE",
     )
 
     environment.add_microgrid(microgrid)
     environment.run(until=DURATION)
-
-    microgrid.controller.monitor_to_csv(result_csv)
+    controller.monitor_log_to_csv(result_csv)
 
 
 class CarbonAwareController(Monitor):

@@ -27,13 +27,6 @@ class VessimSimulator(mosaik_api.Simulator, ABC):
     to model_instance attrs and then step the model_instance. This class takes
     care of all basic mosaik abstractions that are simple copy and paste tasks
     for each new simulator.
-
-    Attributes:
-        eid_prefix: The prefix to be used for entity IDs.
-        model_class: The class of the model to be simulated.
-        entity: The simulation entity.
-        time: The current simulation time.
-        step_size: The simulation step size.
     """
 
     def __init__(self, meta, model_class: Type[VessimModel]):
@@ -53,7 +46,7 @@ class VessimSimulator(mosaik_api.Simulator, ABC):
         self.time = 0
 
     def init(self, sid, time_resolution=1., **sim_params):
-        """Initialize Simulator and set `step_size` and `eid_prefix`."""
+        """Initialize Simulator."""
         if float(time_resolution) != 1.0:
             raise ValueError(f"{self.__class__.__name__} only supports time_resolution=1")
         return self.meta

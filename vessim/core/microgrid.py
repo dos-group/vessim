@@ -32,7 +32,6 @@ class Microgrid:
     ):
         """Create co-simulation entities and connect them to world"""
         self.controller.start(sim_start, grid_signals, self.zone)
-        self.controller.add_custom_monitor_fn(lambda: dict(battery_soc=self.storage.soc()))  # TODO example, this should be user-defined
         controller_sim = world.start("Controller", step_size=self.controller.step_size)
         controller_entity = controller_sim.ControllerModel(controller=self.controller)
 

@@ -24,6 +24,8 @@ def main(result_csv: str):
         MockPowerMeter(name="mpm0", p=2.194),
         MockPowerMeter(name="mpm1", p=7.6)
     ]
+    monitor = Monitor(step_size=60)
+    monitor.add_custom_monitor_fn(lambda: dict(battery_soc=STORAGE.soc()))
     microgrid = Microgrid(
         actors=[
             ComputingSystem(
@@ -37,14 +39,14 @@ def main(result_csv: str):
                 time_series_api=TimeSeriesApi(load_solar_data(sqm=0.4 * 0.5))
             ),
         ],
-        controller=Monitor(step_size=60),
+        controller=monitor,
         storage=STORAGE,
         zone="DE",
     )
 
     environment.add_microgrid(microgrid)
     environment.run(until=DURATION)
-    microgrid.controller.monitor_to_csv(result_csv)
+    monitor.monitor_log_to_csv(result_csv)
 
 
 if __name__ == "__main__":

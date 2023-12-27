@@ -87,10 +87,10 @@ class ActorSim(VessimSimulator):
         self.step_size = None
         super().__init__(self.META, _ActorModel)
 
-    def init(self, sid, time_resolution, sim_start: datetime, step_size: int, eid_prefix=None):  # TODO interfaces don't match with base class
+    def init(self, sid, time_resolution, sim_start: datetime, step_size: int):  # TODO interfaces don't match with base class
         self.step_size = step_size
         self.clock = Clock(sim_start)
-        return super().init(sid, time_resolution, eid_prefix=eid_prefix)
+        return super().init(sid, time_resolution)
 
     def create(self, num, model, *args, **kwargs):
         return super().create(num, model, *args, **kwargs, clock=self.clock)
@@ -103,18 +103,10 @@ class ActorSim(VessimSimulator):
     def next_step(self, time):
         return time + self.step_size
 
-    # TODO the old GeneratorSim was able to automatically step to the next available item
-    #   do we still want and need this?
-    # def next_step(self, time: int) -> int:
-    #     dt = self.clock.to_datetime(time)
-    #     next_dt = min(e.generator.next_update(dt)   # type: ignore
-    #                   for e in self.entities.values())
-    #     return self.clock.to_simtime(next_dt)
-
 
 class _ActorModel(VessimModel):
 
-    def __init__(self, actor: Actor, clock: Clock):  # TODO revise if this clock is still the most meaninful way to manage time
+    def __init__(self, actor: Actor, clock: Clock):
         self.actor = actor
         self._clock = clock
         self.p = 0.0

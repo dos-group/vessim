@@ -35,9 +35,9 @@ class SilInterfaceSim(VessimSimulator):  # TODO this should be merged with cosim
         self.step_size = None
         super().__init__(self.META, _SilInterfaceModel)
 
-    def init(self, sid, time_resolution, step_size, eid_prefix=None):
+    def init(self, sid, time_resolution, step_size):
         self.step_size = step_size
-        return super().init(sid, time_resolution, eid_prefix=eid_prefix)
+        return super().init(sid, time_resolution)
 
     def finalize(self) -> None:
         """Stops the api server and the collector thread when the simulation finishes."""

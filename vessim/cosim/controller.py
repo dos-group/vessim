@@ -15,6 +15,10 @@ class Controller(ABC):
         self.step_size = step_size
 
     @abstractmethod
+    def start(self, sim_start: datetime, grid_signals: Dict[str, TimeSeriesApi], zone: str) -> None:
+        pass  # TODO document
+
+    @abstractmethod
     def step(self, time: int, p_delta: float, actors: Dict) -> None:
         pass  # TODO document
 
@@ -30,7 +34,7 @@ class Monitor(Controller):
         self.zone = None
         self._clock = None
 
-    def start(self, sim_start: datetime, grid_signals: Dict[str, TimeSeriesApi], zone: str):
+    def start(self, sim_start: datetime, grid_signals: Dict[str, TimeSeriesApi], zone: str) -> None:
         self.grid_signals = grid_signals
         self.zone = zone
         self._clock = Clock(sim_start)
@@ -50,7 +54,7 @@ class Monitor(Controller):
         for monitor_fn in self.custom_monitor_fns:
             self.monitor_log[dt].update(monitor_fn())
 
-    def monitor_to_csv(self, out_path: str):
+    def monitor_log_to_csv(self, out_path: str):
         # TODO this should translate data into CSV format
         pd.DataFrame(self.monitor_log).to_csv(out_path)
 
@@ -88,8 +92,6 @@ class _ControllerModel(VessimModel):
 
     def step(self, time: int, inputs: Dict) -> None:
         self.controller.step(time, *_parse_controller_inputs(inputs))
-        # TODO here we need to set all properties that other entities should
-        #   have access to in the simulation (if there are any)
 
 
 def _parse_controller_inputs(inputs: Dict[str, Dict[str, Any]]) -> Tuple[float, Dict]:
