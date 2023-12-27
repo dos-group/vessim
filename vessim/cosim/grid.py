@@ -35,12 +35,10 @@ class GridSim(mosaik_api.Simulator):
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
-        duration = time - self._last_step_time
         self._last_step_time = time
-
+        duration = time - self._last_step_time
         if duration == 0:
             return
-
         p_delta = sum(inputs[self.eid]["p"].values())
         if self.storage is None:
             self.p_delta = p_delta

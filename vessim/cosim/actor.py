@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Dict, List
 
+import mosaik_api
+
 from vessim import TimeSeriesApi
 from vessim.core.power_meters import PowerMeter
 from vessim.cosim._util import VessimSimulator, VessimModel, Clock
@@ -69,13 +71,13 @@ class Generator(Actor):
         return self.time_series_api.actual(now)  # TODO TimeSeriesApi must be for a single region
 
 
-class ActorSim(VessimSimulator):
+class ActorSim(mosaik_api.Simulator):
     """Computing System simulator that executes its model."""
 
     META = {
         "type": "time-based",
         "models": {
-            "ActorModel": {
+            "Actor": {
                 "public": True,
                 "params": ["actor"],
                 "attrs": ["p", "info"],
@@ -84,40 +86,29 @@ class ActorSim(VessimSimulator):
     }
 
     def __init__(self):
+        super().__init__(self.META)
+        self.eid = "Actor"
+        self.actor = None
         self.step_size = None
-        super().__init__(self.META, _ActorModel)
+        self.clock = None
+        self.p = 0
+        self.info = {}
 
-    def init(self, sid, time_resolution, sim_start: datetime, step_size: int):  # TODO interfaces don't match with base class
-        self.step_size = step_size
-        self.clock = Clock(sim_start)
-        return super().init(sid, time_resolution)
+    def init(self, sid, time_resolution=1., **sim_params):
+        self.step_size = sim_params["step_size"]
+        self.clock = Clock(sim_params["sim_start"])
+        return self.meta
 
-    def create(self, num, model, *args, **kwargs):
-        return super().create(num, model, *args, **kwargs, clock=self.clock)
+    def create(self, num, model, **model_params):
+        assert num == 1, "Only one instance per simulation is supported"
+        self.actor = model_params["actor"]
+        return [{"eid": self.eid, "type": model}]
 
-    def finalize(self) -> None:
-        """Stops power meters' threads."""
-        super().finalize()
-        self.entity.actor.finalize()  # TODO it's not nice that it's unclear here that entity.actor is of type Actor
-
-    def next_step(self, time):
-        return time + self.step_size
-
-
-class _ActorModel(VessimModel):
-
-    def __init__(self, actor: Actor, clock: Clock):
-        self.actor = actor
-        self._clock = clock
-        self.p = 0.0
-        self.info: Dict = {}
-
-    def step(self, time: int, inputs: dict) -> None:
-        """Updates the power consumption of the system.
-
-        The power consumption is calculated as the product of the PUE and the
-        sum of the node power of all power meters.
-        """
-        now = self._clock.to_datetime(time)
+    def step(self, time, inputs, max_advance):
+        now = self.clock.to_datetime(time)
         self.p = self.actor.p(now)
         self.info = self.actor.info(now)
+        return time + self.step_size
+
+    def get_data(self, outputs):
+        return {self.eid: {"p": self.p, "info": self.info}}

@@ -41,7 +41,7 @@ class Microgrid:
 
         for actor in self.actors:
             actor_sim = world.start("Actor", sim_start=sim_start, step_size=actor.step_size)
-            actor_entity = actor_sim.ActorModel(actor=actor)
+            actor_entity = actor_sim.Actor(actor=actor)
             world.connect(actor_entity, grid_entity, "p")
             world.connect(actor_entity, controller_entity, ("p", f"actor/{actor.name}/p"))
             world.connect(actor_entity, controller_entity, ("info", f"actor/{actor.name}/info"))
