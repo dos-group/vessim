@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, Callable, Any, Tuple, TYPE_CHECKING
+from typing import Dict, Callable, Any, Tuple, TYPE_CHECKING, MutableMapping
 
 import pandas as pd
 
@@ -57,17 +57,28 @@ class Monitor(Controller):
         self.monitor(time, p_delta, actors)
 
     def monitor(self, time: int, p_delta: float, actors: Dict) -> None:
-        log = dict(
+        log_entry = dict(
             p_delta=p_delta,
             actors=actors,
         )
         for monitor_fn in self.custom_monitor_fns:
-            log.update(monitor_fn(time))
-        self.monitor_log[self.clock.to_datetime(time)] = log
+            log_entry.update(monitor_fn(time))
+        self.monitor_log[self.clock.to_datetime(time)] = log_entry
 
     def monitor_log_to_csv(self, out_path: str):
-        # TODO this should translate data into CSV format
-        pd.DataFrame(self.monitor_log).to_csv(out_path)
+        df = pd.DataFrame({k: flatten_dict(v) for k, v in self.monitor_log.items()}).T
+        df.to_csv(out_path)
+
+
+def flatten_dict(d: MutableMapping, parent_key: str = '') -> MutableMapping:
+    items = []
+    for k, v in d.items():
+        new_key = parent_key + "." + k if parent_key else k
+        if isinstance(v, MutableMapping):
+            items.extend(flatten_dict(v, str(new_key)).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
 
 
 class ControllerSim(VessimSimulator):
