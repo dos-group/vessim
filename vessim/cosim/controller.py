@@ -1,12 +1,15 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, Callable, Any, Tuple, TYPE_CHECKING, MutableMapping
+from typing import Dict, Callable, Any, Tuple, TYPE_CHECKING, MutableMapping, List, \
+    Optional
 
 import mosaik_api
 import pandas as pd
 
+from vessim.core.storage import SimpleBattery, StoragePolicy
 from vessim.cosim.util import Clock
+from vessim.sil.node import Node
 
 if TYPE_CHECKING:
     from vessim.core.microgrid import Microgrid
@@ -25,11 +28,14 @@ class Controller(ABC):
     def step(self, time: int, p_delta: float, actors: Dict) -> None:
         pass  # TODO document
 
+    def finalize(self) -> None:
+        """This method can be overridden clean-up after the simulation finished."""
+
 
 class Monitor(Controller):
 
     def __init__(self, step_size: int, monitor_storage=True, monitor_grid_signals=True):
-        super().__init__(step_size)
+        super().__init__(step_size=step_size)
         self.monitor_storage = monitor_storage
         self.monitor_grid_signals = monitor_grid_signals
         self.monitor_log: Dict[datetime, Dict] = defaultdict(dict)
@@ -114,6 +120,10 @@ class ControllerSim(mosaik_api.Simulator):
 
     def get_data(self, outputs):
         return {self.eid: {"p": self.p, "info": self.info}}
+
+    def finalize(self) -> None:
+        """Stops the api server and the collector thread when the simulation finishes."""
+        self.controller.finalize()
 
 
 def _parse_controller_inputs(inputs: Dict[str, Dict[str, Any]]) -> Tuple[float, Dict]:

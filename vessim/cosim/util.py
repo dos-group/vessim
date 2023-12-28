@@ -18,7 +18,7 @@ class Clock:
         return int((dt - self.sim_start).total_seconds())
 
 
-def disable_mosaik_warnings(behind_threshold: float):
+def disable_mosaik_warnings(behind_threshold: float):  # TODO do we still need this since there is rt_strict?
     """Disables Mosaik's incorrect Loguru warnings.
 
     Mosaik currently deems specific attribute connections as incorrect and logs

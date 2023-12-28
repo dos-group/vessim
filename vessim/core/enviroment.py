@@ -1,3 +1,5 @@
+from typing import Optional
+
 import mosaik
 
 from vessim import TimeSeriesApi
@@ -33,5 +35,5 @@ class Environment:
             raise RuntimeError("Add all grid signals before adding microgrids.")
         self.grid_signals[name] = grid_signal
 
-    def run(self, until):
-        self.world.run(until=until)
+    def run(self, until: int, rt_factor: Optional[float] = None):
+        self.world.run(until=until, rt_factor=rt_factor)
