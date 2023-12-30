@@ -7,8 +7,13 @@ through software-in-the-loop integration as described in our paper:
 
 This is example experimental and documentation is still in progress.
 """
+import multiprocessing
 from threading import Thread
 from typing import List, Optional, Dict
+
+import pandas as pd
+import uvicorn
+from fastapi import FastAPI
 
 from _data import load_carbon_data, load_solar_data
 from controller_example import (
@@ -25,9 +30,8 @@ from vessim.cosim.controller import Controller, Monitor
 from vessim.cosim.util import disable_mosaik_warnings, Clock
 from vessim.sil.api_server import ApiServer, VessimApi
 from vessim.sil.http_client import HttpClient
-from vessim.sil.loop_thread import LoopThread
 from vessim.sil.node import Node
-from vessim.sil.power_meter import HttpPowerMeter
+from vessim.sil.redis_docker import RedisContainer
 
 RT_FACTOR = 1/60  # 1 wall-clock second ^= 60 sim seconds
 GCP_ADDRESS = "http://35.198.148.144"
@@ -41,18 +45,16 @@ def main(result_csv: str):
 
     # Initialize nodes
     nodes = [
-        Node(address=GCP_ADDRESS, id="gcp"),
-        Node(address=RASPI_ADDRESS, id="raspi")
+        #Node(address=GCP_ADDRESS, id="gcp"),
+        #Node(address=RASPI_ADDRESS, id="raspi")
     ]
     power_meters = [
-        HttpPowerMeter(name="mpm0", interval=1, server_address=GCP_ADDRESS),
-        HttpPowerMeter(name="mpm1", interval=1, server_address=RASPI_ADDRESS),
+        #HttpPowerMeter(name="mpm0", interval=1, server_address=GCP_ADDRESS),
+        #HttpPowerMeter(name="mpm1", interval=1, server_address=RASPI_ADDRESS),
     ]
     monitor = Monitor(step_size=60)
     carbon_aware_controller = SilController(
-        step_size=60,
-
-        nodes=nodes, battery=STORAGE, collection_interval=1,
+        step_size=60, api_host="127.0.0.1", api_port=8000
     )
     microgrid = Microgrid(
         actors=[
@@ -78,23 +80,85 @@ def main(result_csv: str):
     monitor.monitor_log_to_csv(result_csv)
 
 
+def serve_api(
+    api_host: str,
+    api_port: int,
+    clock: Clock,
+    grid_signals: Dict[str, TimeSeriesApi],
+):
+    print("Starting API server...")
+    app = FastAPI()
+
+    @app.get("/")
+    async def root():
+        return "Hello World"
+
+    @app.get("/carbon-intensity")
+    async def test(time: str):
+        return grid_signals["carbon_intensity"].actual(pd.to_datetime(time))
+
+    config = uvicorn.Config(app=app, host=api_host, port=api_port, access_log=False)
+    server = uvicorn.Server(config=config)
+    server.run()
+
+
 class SilController(Controller):
 
     def __init__(
         self,
         step_size: int,
-        nodes: List[Node],
-        collection_interval: float,
-        battery: SimpleBattery,
-        policy: StoragePolicy,
         api_host: str = "127.0.0.1",
         api_port: int = 8000,
     ):
         super().__init__(step_size=step_size)
-        self.nodes = nodes
-        self.updated_nodes: List[Node] = []
-        self.battery = battery
-        self.policy = policy
+        self.api_host = api_host
+        self.api_port = api_port
+        self.redis_container = None
+        self.api_server_process = None
+
+    def start(self, microgrid: "Microgrid", clock: Clock, grid_signals: Dict):
+        self.redis_container = RedisContainer()  # TODO logging
+        self.api_server_process = multiprocessing.Process(  # TODO logging
+            target=serve_api,
+            name="Vessim API",
+            kwargs=dict(
+                api_host=self.api_host,
+                api_port=self.api_port,
+                clock=clock,
+                grid_signals=grid_signals,
+            )
+        )
+        self.api_server_process.start()
+
+    def step(self, time: int, p_delta: float, actors: Dict) -> None:
+        pass
+
+    def finalize(self) -> None:
+        print("Shutting down Redis...")  # TODO logging
+        if self.redis_container is not None:
+            self.redis_container.finalize()
+        print("Shutting down API server...")  # TODO logging
+        if self.api_server_process is not None:
+            self.api_server_process.join()
+
+
+class SilControllerOld(Controller):
+
+    def __init__(
+        self,
+        step_size: int,
+        #nodes,  # : List[Node],
+        #collection_interval: float,
+        #battery: SimpleBattery,
+        #policy: StoragePolicy,
+        api_host: str = "127.0.0.1",
+        api_port: int = 8000,
+    ):
+        super().__init__(step_size=step_size)
+        #self.nodes = nodes
+        #self.updated_nodes: List[Node] = []
+        #self.battery = battery
+        #self.policy = policy
         self.p_cons = 0
         self.p_gen = 0
         self.p_grid = 0

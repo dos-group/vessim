@@ -27,7 +27,7 @@ class Environment:
         self.world = mosaik.World(self.COSIM_CONFIG)
 
     def add_microgrid(self, microgrid: Microgrid):
-        microgrid.initialize(self.world, self.clock, self.grid_signals)
+        # We do not yet instantiate the microgrids
         self.microgrids.append(microgrid)
 
     def add_grid_signal(self, name: str, grid_signal: TimeSeriesApi):
@@ -36,4 +36,11 @@ class Environment:
         self.grid_signals[name] = grid_signal
 
     def run(self, until: int, rt_factor: Optional[float] = None):
-        self.world.run(until=until, rt_factor=rt_factor)
+        try:
+            for microgrid in self.microgrids:
+                microgrid.initialize(self.world, self.clock, self.grid_signals)
+            self.world.run(until=until, rt_factor=rt_factor)
+        except Exception as e:
+            for microgrid in self.microgrids:
+                microgrid.finalize()
+            raise e

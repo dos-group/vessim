@@ -9,7 +9,7 @@ import uvicorn  # type: ignore
 from fastapi import FastAPI, HTTPException  # type: ignore
 from pydantic import BaseModel  # type: ignore
 
-from vessim.sil.redis_docker import RedisDocker
+from vessim.sil.redis_docker import RedisContainer
 
 
 class SilApi(ABC):
@@ -94,7 +94,7 @@ class VessimApi(SilApi):
 
     def __init__(self) -> None:
         super().__init__()
-        self.redis_docker = RedisDocker()
+        self.redis_docker = RedisContainer()
         self._init_get_routes(self.app)
         self._init_put_routes(self.app)
 

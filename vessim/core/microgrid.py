@@ -49,3 +49,12 @@ class Microgrid:
             for controller_entity in controller_entities:
                 world.connect(actor_entity, controller_entity, ("p", f"actor.{actor.name}.p"))
                 world.connect(actor_entity, controller_entity, ("info", f"actor.{actor.name}.info"))
+
+    def finalize(self):
+        """Clean up in case the simulation was interrupted.
+
+        Mosaik already has a cleanup functionality but this is an additional safety net
+        in case the user interrupts the simulation before entering the mosiak event loop.
+        """
+        for controller in self.controllers:
+            controller.finalize()

@@ -1,64 +1,60 @@
 from time import sleep
+from typing import Optional
 
 import docker  # type: ignore
 import redis  # type: ignore
+from docker.models.containers import Container
 
 
-class RedisDocker:
+class RedisContainer:
     """Class for connection to a Docker container with Redis.
 
     Args:
-        host: Host address, defaults to '127.0.0.1'.
-        port: Port for connection, defaults to 6379 as specified by Redis.
+        port: Port for connection, defaults to 6379 (Redis default).
 
     Attributes:
         redis: The redis db that can be used to get and set key, value pairs.
     """
 
-    def __init__(self, host: str = "127.0.0.1", port: int = 6379) -> None:
-        self.host = host
-        self.port = port
+    def __init__(self, docker_client: Optional[docker.DockerClient] = None, port: int = 6379):
+        self.docker_container = _init_docker(docker_client, port)
+        self.redis = _connect_redis()
+
+    def finalize(self) -> None:
+        """Stops the Docker container with Redis when instance is deleted."""
+        self.docker_container.stop()
+
+
+def _connect_redis() -> redis.Redis:
+    """Connects to the Redis instance in the Docker container.
+
+    Waits until a connection is established.
+    """
+    while True:
         try:
-            self._init_docker()
-        except docker.errors.DockerException:
-            raise RuntimeError("Please start Docker before execution.")
-        self.redis = self._connect_redis()
-
-    def _init_docker(self) -> None:
-        """Initializes Docker client and starts Docker container with Redis."""
-        client = docker.from_env()
-        self.redis_container = client.containers.run(
-            "redis:latest",
-            auto_remove=True,
-            ports={f"{self.port}/tcp": self.port},
-            detach=True,
-        )
-
-        # Check if the container has started
-        while True:
-            container_info = client.containers.get(self.redis_container.id)
-            if container_info.status == "running":
-                break
+            db = redis.Redis()
+            if db.ping():
+                return db
+        except redis.exceptions.RedisError as redis_error:
+            print(f"Error connecting to Redis: {redis_error}")
             sleep(1)
 
-    def _connect_redis(self) -> redis.Redis:
-        """Connects to the Redis instance in the Docker container.
 
-        Waits until a connection is established.
-        """
-        db = None
-        connected = False
-        while not connected:
-            try:
-                db = redis.Redis(host=self.host, port=self.port, db=0)
-                connected = db.ping()
-            except redis.exceptions.RedisError as redis_error:
-                print(f"Error connecting to Redis: {redis_error}")
-                sleep(1)
-        assert db is not None
-        return db
+def _init_docker(docker_client: Optional[docker.DockerClient], port: int) -> Container:
+    """Initializes Docker client and starts Docker container with Redis."""
+    if docker_client is None:
+        docker_client = docker.from_env()
+    redis_container = docker_client.containers.run(
+        "redis:latest",
+        ports={f"6379/tcp": port},
+        detach=True,  # run in background
+    )
 
-    def __del__(self) -> None:
-        """Stops the Docker container with Redis when instance is deleted."""
-        if self.redis_container:
-            self.redis_container.stop()
+    # Check if the container has started
+    while True:
+        container_info = docker_client.containers.get(redis_container.id)
+        if container_info.status == "running":
+            break
+        sleep(1)
+
+    return redis_container
