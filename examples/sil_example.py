@@ -7,11 +7,13 @@ through software-in-the-loop integration as described in our paper:
 
 This is example experimental and documentation is still in progress.
 """
+import json
 import multiprocessing
 from threading import Thread
 from typing import List, Optional, Dict
 
 import pandas as pd
+import redis
 import uvicorn
 from fastapi import FastAPI
 
@@ -33,7 +35,7 @@ from vessim.sil.http_client import HttpClient
 from vessim.sil.node import Node
 from vessim.sil.redis_docker import RedisContainer
 
-RT_FACTOR = 1/60  # 1 wall-clock second ^= 60 sim seconds
+RT_FACTOR = 1  # 1 wall-clock second ^= 60 sim seconds
 GCP_ADDRESS = "http://35.198.148.144"
 RASPI_ADDRESS = "http://192.168.207.71"
 disable_mosaik_warnings(behind_threshold=0.01)
@@ -83,11 +85,11 @@ def main(result_csv: str):
 def serve_api(
     api_host: str,
     api_port: int,
-    clock: Clock,
     grid_signals: Dict[str, TimeSeriesApi],
 ):
     print("Starting API server...")
     app = FastAPI()
+    db = redis.Redis()
 
     @app.get("/")
     async def root():
@@ -96,6 +98,10 @@ def serve_api(
     @app.get("/carbon-intensity")
     async def test(time: str):
         return grid_signals["carbon_intensity"].actual(pd.to_datetime(time))
+
+    @app.get("/grid-energy")
+    async def grid_energy():
+        return float(db.get("p_delta"))
 
     config = uvicorn.Config(app=app, host=api_host, port=api_port, access_log=False)
     server = uvicorn.Server(config=config)
@@ -113,10 +119,16 @@ class SilController(Controller):
         super().__init__(step_size=step_size)
         self.api_host = api_host
         self.api_port = api_port
+        self.microgrid = None
+        self.clock = None
+        self.grid_signals = None
         self.redis_container = None
         self.api_server_process = None
 
     def start(self, microgrid: "Microgrid", clock: Clock, grid_signals: Dict):
+        self.microgrid = microgrid
+        self.clock = clock
+        self.grid_signals = grid_signals
         self.redis_container = RedisContainer()  # TODO logging
         self.api_server_process = multiprocessing.Process(  # TODO logging
             target=serve_api,
@@ -124,21 +136,26 @@ class SilController(Controller):
             kwargs=dict(
                 api_host=self.api_host,
                 api_port=self.api_port,
-                clock=clock,
                 grid_signals=grid_signals,
             )
         )
         self.api_server_process.start()
 
     def step(self, time: int, p_delta: float, actors: Dict) -> None:
-        pass
+        pipe = self.redis_container.redis.pipeline()
+        pipe.set("time", time)
+        pipe.set("p_delta", p_delta)
+        pipe.set("actors", json.dumps(actors))
+        pipe.set("microgrid", json.dumps(self.microgrid.state()))
+        pipe.execute()
 
     def finalize(self) -> None:
         print("Shutting down Redis...")  # TODO logging
         if self.redis_container is not None:
             self.redis_container.finalize()
         print("Shutting down API server...")  # TODO logging
-        if self.api_server_process is not None:
+        if self.api_server_process is not None and self.api_server_process.is_alive():
+            self.api_server_process.terminate()
             self.api_server_process.join()
 
 

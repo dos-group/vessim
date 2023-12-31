@@ -25,8 +25,8 @@ class Storage(ABC):
         """Returns the current State of Charge (SoC)."""
 
     @abstractmethod
-    def info(self) -> Dict:
-        """Returns the current state of the storage for logging."""
+    def state(self) -> Dict:
+        """Returns information about the current state of the storage."""
 
 
 
@@ -97,7 +97,7 @@ class SimpleBattery(Storage):
     def soc(self) -> float:
         return self.charge_level / self.capacity
 
-    def info(self) -> Dict:
+    def state(self) -> Dict:
         return {
             "charge_level": self.charge_level,
             "capacity": self.capacity,
@@ -110,6 +110,10 @@ class StoragePolicy(ABC):
     @abstractmethod
     def apply(self, storage: Storage, p_delta: float, time_since_last_step: int) -> float:
         """(Dis)charge the storage according to the policy."""
+
+    @abstractmethod
+    def state(self) -> Dict:
+        """Returns information about the current state of the storage policy."""
 
 
 class DefaultStoragePolicy(StoragePolicy):
@@ -133,3 +137,8 @@ class DefaultStoragePolicy(StoragePolicy):
             )
             real_charge_power = self.grid_power - excess_energy
             return p_delta - real_charge_power
+
+    def state(self) -> Dict:
+        return {
+            "grid_power": self.grid_power,
+        }

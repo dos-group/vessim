@@ -40,6 +40,7 @@ class Microgrid:
             controller_sim = world.start("Controller", step_size=controller.step_size)
             controller_entity = controller_sim.Controller(controller=controller)
             world.connect(grid_entity, controller_entity, "p_delta")
+            controller_entities.append(controller_entity)
 
         for actor in self.actors:
             actor_sim = world.start("Actor", clock=clock, step_size=actor.step_size)
@@ -49,6 +50,13 @@ class Microgrid:
             for controller_entity in controller_entities:
                 world.connect(actor_entity, controller_entity, ("p", f"actor.{actor.name}.p"))
                 world.connect(actor_entity, controller_entity, ("info", f"actor.{actor.name}.info"))
+
+    def state(self) -> Dict:
+        """Returns a Dict with the current state of the microgrid for monitoring."""
+        return {
+            "storage": self.storage.state(),
+            "storage_policy": self.storage_policy.state(),
+        }
 
     def finalize(self):
         """Clean up in case the simulation was interrupted.
