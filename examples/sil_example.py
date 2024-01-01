@@ -27,7 +27,7 @@ from vessim.core.microgrid import Microgrid
 from vessim.core.storage import SimpleBattery, StoragePolicy, DefaultStoragePolicy
 from vessim.cosim.actor import ComputingSystem, Generator
 from vessim.cosim.controller import Controller, Monitor
-from vessim.cosim.util import disable_mosaik_warnings, Clock
+from vessim.cosim.util import Clock
 from vessim.sil.api_server import ApiServer, VessimApi
 from vessim.sil.http_client import HttpClient
 from vessim.sil.node import Node
@@ -36,7 +36,6 @@ from vessim.sil.redis_docker import RedisContainer
 RT_FACTOR = 1/60  # 1 wall-clock second ^= 60 sim seconds
 GCP_ADDRESS = "http://35.198.148.144"
 RASPI_ADDRESS = "http://192.168.207.71"
-disable_mosaik_warnings(behind_threshold=0.01)
 
 
 def main(result_csv: str):

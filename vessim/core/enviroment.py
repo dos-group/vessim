@@ -39,7 +39,9 @@ class Environment:
         try:
             for microgrid in self.microgrids:
                 microgrid.initialize(self.world, self.clock, self.grid_signals)
-            self.world.run(until=until, rt_factor=rt_factor)
+            self.world.run(until=until, rt_factor=rt_factor, rt_strict=True)
+        except RuntimeError:
+            pass
         except Exception as e:
             for microgrid in self.microgrids:
                 microgrid.finalize()
