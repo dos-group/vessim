@@ -124,7 +124,7 @@ def _redis_docker_container(
 
     # Check if the container has started
     while True:
-        container_info = docker_client.containers.get(container.id)
+        container_info = docker_client.containers.get(container.name)
         if container_info.status == "running":
             break
         time.sleep(1)

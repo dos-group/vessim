@@ -9,7 +9,7 @@ import pandas as pd
 
 from vessim.core.storage import SimpleBattery, StoragePolicy
 from vessim.cosim.util import Clock
-from vessim.sil.node import Node
+from vessim.sil.silnode import SiLNode
 
 if TYPE_CHECKING:
     from vessim.core.microgrid import Microgrid

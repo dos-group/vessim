@@ -30,6 +30,7 @@ from vessim.cosim.actor import ComputingSystem, Generator
 from vessim.cosim.controller import Monitor
 from vessim.cosim.util import disable_mosaik_warnings
 from vessim.sil.sil import SilController, latest_event
+from vessim.sil.silnode import SilNode
 
 RT_FACTOR = 1  # 1 wall-clock second ^= 60 sim seconds
 GCP_ADDRESS = "http://35.198.148.144"
@@ -43,8 +44,8 @@ def main(result_csv: str):
 
     # Initialize nodes
     nodes = [
-        #Node(address=GCP_ADDRESS, id="gcp"),
-        #Node(address=RASPI_ADDRESS, id="raspi")
+        SilNode(address=GCP_ADDRESS, name="gcp"),
+        SilNode(address=RASPI_ADDRESS, name="raspi")
     ]
     power_meters = [
         #HttpPowerMeter(name="mpm0", interval=1, server_address=GCP_ADDRESS),
