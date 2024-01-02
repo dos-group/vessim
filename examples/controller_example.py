@@ -134,7 +134,7 @@ def cacu_scenario(
     new_state["nodes_power_mode"] = {}
     for node_name in node_names:
         if ci <= 200 or battery_soc > .8:
-            new_state["nodes_po wer_mode"][node_name] = "high performance"
+            new_state["nodes_power_mode"][node_name] = "high performance"
         elif ci >= 250 and battery_soc < .6:
             new_state["nodes_power_mode"][node_name] = "power-saving"
         else:

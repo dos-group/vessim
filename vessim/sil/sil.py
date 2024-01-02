@@ -54,6 +54,27 @@ class ComputeNode:  # TODO we could soon replace this agent-based implementation
         self.power_mode = power_mode
 
 
+class Broker:
+    def __init__(self):
+        self.redis_db = redis.Redis()
+
+    def get_microgrid(self) -> Microgrid:
+        return pickle.loads(self.redis_db.get("microgrid"))
+
+    def get_actor(self, actor: str) -> Dict:
+        return json.loads(self.redis_db.get("actors"))[actor]
+
+    def get_grid_power(self) -> float:
+        return float(self.redis_db.get("p_delta"))
+
+    def set_event(self, category: str, value: Any) -> None:
+        self.redis_db.lpush("set_events", pickle.dumps(dict(
+            category=category,
+            time=datetime.now(),
+            value=value,
+        )))
+
+
 class SilController(Controller):
 
     def __init__(
@@ -140,7 +161,7 @@ def _serve_api(
 ):
     print("Starting API server...")
     app = FastAPI()
-    api_routes(app, grid_signals, redis.Redis())
+    api_routes(app, Broker(), grid_signals)
     config = uvicorn.Config(app=app, host=api_host, port=api_port, access_log=False)
     server = uvicorn.Server(config=config)
     server.run()

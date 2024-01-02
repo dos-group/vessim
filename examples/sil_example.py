@@ -30,7 +30,7 @@ from vessim.core.microgrid import Microgrid
 from vessim.cosim.actor import ComputingSystem, Generator
 from vessim.cosim.controller import Monitor
 from vessim.cosim.util import disable_mosaik_warnings
-from vessim.sil.sil import SilController, latest_event, ComputeNode
+from vessim.sil.sil import SilController, latest_event, ComputeNode, Broker
 
 RT_FACTOR = 1  # 1 wall-clock second ^= 60 sim seconds
 GCP_ADDRESS = "http://35.198.148.144"
@@ -86,32 +86,25 @@ def main(result_csv: str):
 
 def api_routes(
     app: FastAPI,
-    # TODO the following two arguments should be coupled into a
-    #  class with helper functions for accessing Redis
+    broker: Broker,
     grid_signals: Dict[str, TimeSeriesApi],
-    redis_db: redis.Redis
 ):
-    @app.get("/")
-    async def root():
-        return "Hello World"
+    @app.get("/actors/{actor}/p")
+    async def get_solar(actor: str):
+        return broker.get_actor(actor)["p"]
+
+    @app.get("/battery/soc")
+    async def get_battery_soc():
+        return broker.get_microgrid().storage.soc()
+
+    @app.get("/grid-power")
+    async def get_grid_energy():
+        return broker.get_grid_power()
 
     @app.get("/carbon-intensity")
     async def get_carbon_intensity(time: Optional[str]):
         time = pd.to_datetime(time) if time is not None else datetime.now()
         return grid_signals["carbon_intensity"].actual(time)
-
-    @app.get("/solar")
-    async def get_solar():
-        return json.loads(redis_db.get("actors"))["solar"]["p"]
-
-    @app.get("/battery/soc")
-    async def get_battery_soc():
-        microgrid = pickle.loads(redis_db.get("microgrid"))
-        return microgrid.storage.soc()
-
-    @app.get("/grid-energy")
-    async def get_grid_energy():
-        return float(redis_db.get("p_delta"))
 
     class BatteryModel(BaseModel):
         min_soc: Optional[float]
@@ -119,40 +112,15 @@ def api_routes(
 
     @app.put("/battery")
     async def put_battery(battery_model: BatteryModel):
-        pipe = redis_db.pipeline()
-        if battery_model.min_soc is not None:
-            pipe.lpush("set_events", pickle.dumps({
-                "category": "battery_min_soc",
-                "time": datetime.now().isoformat(),
-                "value": battery_model.min_soc,
-            }))
-        if battery_model.grid_charge is not None:
-            redis_db.lpush("set_events", pickle.dumps({
-                "category": "battery_grid_charge",
-                "time": datetime.now().isoformat(),
-                "value": battery_model.grid_charge,
-            }))
-        pipe.execute()
+        broker.set_event("battery_min_soc", battery_model.min_soc)
+        broker.set_event("battery_grid_charge", battery_model.grid_charge)
 
     class NodeModel(BaseModel):
         power_mode: str
 
-    @app.put("/nodes/{item_id}")
-    async def put_nodes(node: NodeModel, item_id: str):
-        # TODO generalize
-        power_modes = ["power-saving", "normal", "high performance"]
-        power_mode = node.power_mode
-        if power_mode not in power_modes:
-            raise HTTPException(
-                status_code=400,
-                detail=f"{power_mode} is not a valid power mode. "
-                f"Available power modes: {power_modes}",
-            )
-        redis_db.lpush("set_events", pickle.dumps({
-            "category": "nodes_power_mode",
-            "time": datetime.now().isoformat(),
-            "value": {item_id: power_mode},
-        }))
+    @app.put("/nodes/{node_name}")
+    async def put_nodes(node: NodeModel, node_name: str):
+        broker.set_event("nodes_power_mode", {node_name: node.power_mode})
 
 
 # curl -X PUT -d '{"min_soc": 0.5,"grid_charge": 1}' http://localhost:8000/battery -H 'Content-Type: application/json'
