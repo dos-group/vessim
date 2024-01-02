@@ -14,7 +14,7 @@ from typing import Optional, Dict
 
 import pandas as pd
 import redis
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from _data import load_carbon_data, load_solar_data
@@ -55,7 +55,7 @@ def main(result_csv: str):
     carbon_aware_controller = SilController(
         step_size=60,
         api_routes=api_routes,
-        set_request_collector=collector,
+        set_request_collector=set_request_collector,
     )
     microgrid = Microgrid(
         actors=[
@@ -97,8 +97,8 @@ def api_routes(app: FastAPI, grid_signals: Dict[str, TimeSeriesApi], redis_db: r
 
     @app.get("/battery/soc")
     async def get_battery_soc():
-        microgrid = json.loads(redis_db.get("microgrid"))
-        return float()
+        microgrid = pickle.loads(redis_db.get("microgrid"))
+        return microgrid.storage.soc()
 
     @app.get("/grid-energy")
     async def get_grid_energy():
@@ -123,8 +123,27 @@ def api_routes(app: FastAPI, grid_signals: Dict[str, TimeSeriesApi], redis_db: r
             }))
         pipe.execute()
 
+    class NodeModel(BaseModel):
+        power_mode: str
 
-def collector(events: Dict, microgrid: Microgrid):
+    @app.put("/api/nodes/{item_id}")
+    async def put_nodes(node: NodeModel, item_id: str) -> NodeModel:
+        # TODO generalize
+        power_modes = ["power-saving", "normal", "high performance"]
+        power_mode = node.power_mode
+        if power_mode not in power_modes:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{power_mode} is not a valid power mode. "
+                f"Available power modes: {power_modes}",
+            )
+        redis_db.lpush("set_events", pickle.dumps({
+            "key": "battery_grid_charge",
+            datetime.now().isoformat(): {item_id: power_mode},
+        }))
+
+
+def set_request_collector(events: Dict, microgrid: Microgrid):
     if "battery.min_soc" in events:
         print(f"Received battery.min_soc: {events['battery.min_soc']}")
         microgrid.storage.min_soc = _get_latest(events["battery.min_soc"])

@@ -1,3 +1,5 @@
+import pickle
+from copy import copy
 from typing import List, Optional, Dict
 
 import mosaik
@@ -51,12 +53,11 @@ class Microgrid:
                 world.connect(actor_entity, controller_entity, ("p", f"actor.{actor.name}.p"))
                 world.connect(actor_entity, controller_entity, ("info", f"actor.{actor.name}.info"))
 
-    def state(self) -> Dict:
+    def pickle(self) -> bytes:
         """Returns a Dict with the current state of the microgrid for monitoring."""
-        return {
-            "storage": self.storage.state(),
-            "storage_policy": self.storage_policy.state(),
-        }
+        cp = copy(self)
+        cp.controllers = []  # controllers are not needed and often not pickleable
+        return pickle.dumps(cp)
 
     def finalize(self):
         """Clean up in case the simulation was interrupted.
