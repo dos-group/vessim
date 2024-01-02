@@ -1,15 +1,12 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, Callable, Any, Tuple, TYPE_CHECKING, MutableMapping, List, \
-    Optional
+from typing import Dict, Callable, Any, Tuple, TYPE_CHECKING, MutableMapping
 
 import mosaik_api
 import pandas as pd
 
-from vessim.core.storage import SimpleBattery, StoragePolicy
 from vessim.cosim.util import Clock
-from vessim.sil.node import Node
 
 if TYPE_CHECKING:
     from vessim.core.microgrid import Microgrid
@@ -48,7 +45,7 @@ class Monitor(Controller):
     def start(self, microgrid: "Microgrid", clock: Clock, grid_signals: Dict):
         self.clock = clock
         if self.monitor_storage:
-            self.add_monitor_fn(lambda time: {"storage": microgrid.storage.info()})
+            self.add_monitor_fn(lambda time: {"storage": microgrid.storage.state()})
         if self.monitor_grid_signals:
             for signal_name, signal_api in grid_signals.items():
                 self.add_monitor_fn(lambda time: {
@@ -119,7 +116,7 @@ class ControllerSim(mosaik_api.Simulator):
         return time + self.step_size
 
     def get_data(self, outputs):
-        return {self.eid: {"p": self.p, "info": self.info}}
+        return {}  # TODO so far unused
 
     def finalize(self) -> None:
         """Stops the api server and the collector thread when the simulation finishes."""
@@ -127,14 +124,17 @@ class ControllerSim(mosaik_api.Simulator):
 
 
 def _parse_controller_inputs(inputs: Dict[str, Dict[str, Any]]) -> Tuple[float, Dict]:
-    p_delta = _get_val(inputs, "p_delta")
+    try:
+        p_delta = _get_val(inputs, "p_delta")
+    except KeyError:
+        p_delta = None  # in case there has not yet been any power reported by actors
     actor_keys = [k for k in inputs.keys() if k.startswith("actor")]
     actors = defaultdict(dict)
     for k in actor_keys:
-        _, actor_name, attr = k.split("/")
+        _, actor_name, attr = k.split(".")
         actors[actor_name][attr] = _get_val(inputs, k)
     return p_delta, dict(actors)
 
 
-def _get_val(inputs: Dict[str, Dict[str, Any]], key: str) -> Any:
+def _get_val(inputs: Dict, key: str) -> Any:
     return list(inputs[key].values())[0]

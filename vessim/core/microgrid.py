@@ -1,12 +1,14 @@
+import pickle
+from copy import copy
 from typing import List, Optional, Dict
 
 import mosaik
 
 from vessim import TimeSeriesApi
 from vessim.core.storage import Storage, StoragePolicy
-from vessim.cosim.util import Clock
 from vessim.cosim.actor import Actor
 from vessim.cosim.controller import Controller
+from vessim.cosim.util import Clock
 
 
 class Microgrid:
@@ -40,6 +42,7 @@ class Microgrid:
             controller_sim = world.start("Controller", step_size=controller.step_size)
             controller_entity = controller_sim.Controller(controller=controller)
             world.connect(grid_entity, controller_entity, "p_delta")
+            controller_entities.append(controller_entity)
 
         for actor in self.actors:
             actor_sim = world.start("Actor", clock=clock, step_size=actor.step_size)
@@ -49,6 +52,12 @@ class Microgrid:
             for controller_entity in controller_entities:
                 world.connect(actor_entity, controller_entity, ("p", f"actor.{actor.name}.p"))
                 world.connect(actor_entity, controller_entity, ("info", f"actor.{actor.name}.info"))
+
+    def pickle(self) -> bytes:
+        """Returns a Dict with the current state of the microgrid for monitoring."""
+        cp = copy(self)
+        cp.controllers = []  # controllers are not needed and often not pickleable
+        return pickle.dumps(cp)
 
     def finalize(self):
         """Clean up in case the simulation was interrupted.

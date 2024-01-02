@@ -7,13 +7,12 @@ through software-in-the-loop integration as described in our paper:
 
 This is example experimental and documentation is still in progress.
 """
-import multiprocessing
-from threading import Thread
-from typing import List, Optional, Dict
+from datetime import datetime
+from typing import Optional, Dict
 
 import pandas as pd
-import uvicorn
 from fastapi import FastAPI
+from pydantic import BaseModel
 
 from _data import load_carbon_data, load_solar_data
 from controller_example import (
@@ -24,16 +23,12 @@ from controller_example import (
 from vessim import TimeSeriesApi
 from vessim.core.enviroment import Environment
 from vessim.core.microgrid import Microgrid
-from vessim.core.storage import SimpleBattery, StoragePolicy, DefaultStoragePolicy
+from vessim.core.power_meter import HttpPowerMeter
 from vessim.cosim.actor import ComputingSystem, Generator
-from vessim.cosim.controller import Controller, Monitor
-from vessim.cosim.util import Clock
-from vessim.sil.api_server import ApiServer, VessimApi
-from vessim.sil.http_client import HttpClient
-from vessim.sil.node import Node
-from vessim.sil.redis_docker import RedisContainer
+from vessim.cosim.controller import Monitor
+from vessim.sil.sil import SilController, latest_event, ComputeNode, Broker
 
-RT_FACTOR = 1/60  # 1 wall-clock second ^= 60 sim seconds
+RT_FACTOR = 1  # 1 wall-clock second ^= 60 sim seconds
 GCP_ADDRESS = "http://35.198.148.144"
 RASPI_ADDRESS = "http://192.168.207.71"
 
@@ -42,18 +37,23 @@ def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
     environment.add_grid_signal("carbon_intensity", TimeSeriesApi(load_carbon_data()))
 
-    # Initialize nodes
-    nodes = [
-        #Node(address=GCP_ADDRESS, id="gcp"),
-        #Node(address=RASPI_ADDRESS, id="raspi")
-    ]
     power_meters = [
-        #HttpPowerMeter(name="mpm0", interval=1, server_address=GCP_ADDRESS),
-        #HttpPowerMeter(name="mpm1", interval=1, server_address=RASPI_ADDRESS),
+        HttpPowerMeter(name="gcp", address=GCP_ADDRESS),
+        HttpPowerMeter(name="raspi", address=RASPI_ADDRESS)
     ]
     monitor = Monitor(step_size=60)
     carbon_aware_controller = SilController(
-        step_size=60, api_host="127.0.0.1", api_port=8000
+        step_size=60,
+        api_routes=api_routes,
+        request_collectors={
+            "battery_min_soc": battery_min_soc_collector,
+            "battery_grid_charge": grid_charge_collector,
+            "nodes_power_mode": node_power_mode_collector,
+        },
+        compute_nodes=[
+            ComputeNode(name="gcp", address=GCP_ADDRESS),
+            ComputeNode(name="raspi", address=RASPI_ADDRESS),
+        ],
     )
     microgrid = Microgrid(
         actors=[
@@ -75,189 +75,67 @@ def main(result_csv: str):
     )
 
     environment.add_microgrid(microgrid)
-    environment.run(until=DURATION, rt_factor=RT_FACTOR)
+    environment.run(until=DURATION, rt_factor=RT_FACTOR, print_progress=False)
     monitor.monitor_log_to_csv(result_csv)
 
 
-def serve_api(
-    api_host: str,
-    api_port: int,
-    clock: Clock,
+def api_routes(
+    app: FastAPI,
+    broker: Broker,
     grid_signals: Dict[str, TimeSeriesApi],
 ):
-    print("Starting API server...")
-    app = FastAPI()
+    @app.get("/actors/{actor}/p")
+    async def get_solar(actor: str):
+        return broker.get_actor(actor)["p"]
 
-    @app.get("/")
-    async def root():
-        return "Hello World"
+    @app.get("/battery/soc")
+    async def get_battery_soc():
+        return broker.get_microgrid().storage.soc()
+
+    @app.get("/grid-power")
+    async def get_grid_energy():
+        return broker.get_grid_power()
 
     @app.get("/carbon-intensity")
-    async def test(time: str):
-        return grid_signals["carbon_intensity"].actual(pd.to_datetime(time))
+    async def get_carbon_intensity(time: Optional[str]):
+        time = pd.to_datetime(time) if time is not None else datetime.now()
+        return grid_signals["carbon_intensity"].actual(time)
 
-    config = uvicorn.Config(app=app, host=api_host, port=api_port, access_log=False)
-    server = uvicorn.Server(config=config)
-    server.run()
+    class BatteryModel(BaseModel):
+        min_soc: Optional[float]
+        grid_charge: Optional[float]
 
+    @app.put("/battery")
+    async def put_battery(battery_model: BatteryModel):
+        broker.set_event("battery_min_soc", battery_model.min_soc)
+        broker.set_event("battery_grid_charge", battery_model.grid_charge)
 
-class SilController(Controller):
+    class NodeModel(BaseModel):
+        power_mode: str
 
-    def __init__(
-        self,
-        step_size: int,
-        api_host: str = "127.0.0.1",
-        api_port: int = 8000,
-    ):
-        super().__init__(step_size=step_size)
-        self.api_host = api_host
-        self.api_port = api_port
-        self.redis_container = None
-        self.api_server_process = None
-
-    def start(self, microgrid: "Microgrid", clock: Clock, grid_signals: Dict):
-        self.redis_container = RedisContainer()  # TODO logging
-        self.api_server_process = multiprocessing.Process(  # TODO logging
-            target=serve_api,
-            name="Vessim API",
-            kwargs=dict(
-                api_host=self.api_host,
-                api_port=self.api_port,
-                clock=clock,
-                grid_signals=grid_signals,
-            )
-        )
-        self.api_server_process.start()
-
-    def step(self, time: int, p_delta: float, actors: Dict) -> None:
-        pass
-
-    def finalize(self) -> None:
-        print("Shutting down Redis...")  # TODO logging
-        if self.redis_container is not None:
-            self.redis_container.finalize()
-        print("Shutting down API server...")  # TODO logging
-        if self.api_server_process is not None:
-            self.api_server_process.join()
+    @app.put("/nodes/{node_name}")
+    async def put_nodes(node: NodeModel, node_name: str):
+        broker.set_event("nodes_power_mode", {node_name: node.power_mode})
 
 
-class SilControllerOld(Controller):
+# curl -X PUT -d '{"min_soc": 0.5,"grid_charge": 1}' http://localhost:8000/battery -H 'Content-Type: application/json'
+def battery_min_soc_collector(events: Dict, microgrid: Microgrid, compute_nodes: Dict):
+    print(f"Received battery.min_soc events: {events}")
+    microgrid.storage.min_soc = latest_event(events)
 
-    def __init__(
-        self,
-        step_size: int,
-        #nodes,  # : List[Node],
-        #collection_interval: float,
-        #battery: SimpleBattery,
-        #policy: StoragePolicy,
-        api_host: str = "127.0.0.1",
-        api_port: int = 8000,
-    ):
-        super().__init__(step_size=step_size)
-        #self.nodes = nodes
-        #self.updated_nodes: List[Node] = []
-        #self.battery = battery
-        #self.policy = policy
-        self.p_cons = 0
-        self.p_gen = 0
-        self.p_grid = 0
-        self.ci = 0
 
-        # start server process
-        self.api_server = ApiServer(VessimApi, api_host, api_port)
-        self.api_server.start()
-        self.api_server.wait_for_startup_complete()
+def grid_charge_collector(events: Dict, microgrid: Microgrid, compute_nodes: Dict):
+    print(f"Received grid_charge events: {events}")
+    microgrid.storage_policy.grid_power = latest_event(events)
 
-        # init server values and wait for put request confirmation
-        self.http_client = HttpClient(f"http://{api_host}:{api_port}")
-        self.http_client.put("/sim/update", {
-            "solar": self.p_gen,
-            "ci": self.ci,
-            "battery_soc": self.battery.soc(),
-        })
 
-        self.collector_thread = LoopThread(self._api_collector, collection_interval)
-        self.collector_thread.start()
-
-    def start(self, microgrid: "Microgrid", clock: Clock, grid_signals: Dict):
-        pass
-
-    def step(self, time: int, p_delta: float, actors: Dict) -> None:
-        self.collector_thread.propagate_exception()
-        self.p_cons = inputs["p_cons"]
-        self.p_gen = inputs["p_gen"]
-        self.ci = inputs["ci"]
-        self.p_grid = inputs["p_grid"]
-
-        # update values to the api server
-        def update_api_server():
-            self.http_client.put("/sim/update", {
-                "solar": self.p_gen,
-                "ci": self.ci,
-                "battery_soc": self.battery.soc(),
-            })
-
-        # use thread to not slow down simulation
-        api_server_update_thread = Thread(target=update_api_server)
-        api_server_update_thread.start()
-
-        # update power mode for the node remotely
-        for node in self.updated_nodes:
-            http_client = HttpClient(f"{node.address}:{node.port}")
-
-            def update_node_power_model():
-                http_client.put("/power_mode", {"power_mode": node.power_mode})
-
-            # use thread to not slow down simulation
-            node_update_thread = Thread(target=update_node_power_model)
-            node_update_thread.start()
-        self.updated_nodes.clear()
-
-    def finalize(self) -> None:
-        """This method can be overridden clean-up after the simulation finished."""
-        self.collector_thread.stop()
-        self.collector_thread.join()
-        self.http_client.put("/shutdown")
-        self.api_server.terminate()
-        self.api_server.join()
-
-    def _api_collector(self):
-        """Collects data from the API server.
-
-        The endpoint "/sim/collect-set" yields the 3 fields `battery_min_soc`,
-        `battery_grid_charge` and `nodes_power_mode`. Since multiple set
-        request of these values from different actors are possible, each of
-        these fields is a list of dictionaries with the timestamp (formated as
-        `datetime.now().isoformat()`) and the set value at that time.
-
-        TODO implement user defined collection method. Current static
-        collection method: most recent entry.
-        """
-        collection = self.http_client.get("/sim/collect-set")
-
-        # The value of the keys is None by default if no set request was made
-        # by an actor => Check if not None first.
-        if collection["battery_min_soc"]:
-            # The newest entry is the one with the highest iso timestamp.
-            newest_key = max(collection["battery_min_soc"].keys())
-            self.battery.min_soc = float(collection["battery_min_soc"][newest_key])
-
-        if collection["battery_grid_charge"]:
-            newest_key = max(collection["battery_grid_charge"].keys())
-            self.policy.grid_power = float(collection["battery_grid_charge"][newest_key])
-
-        if collection["nodes_power_mode"]:
-            newest_key = max(collection["nodes_power_mode"].keys())
-            nodes_power_mode = dict(collection['nodes_power_mode'][newest_key].items())
-            # nodes_power_mode looks e.g. like {"gcp": "normal",...}
-            # Loop through all nodes,
-            for node in self.nodes:
-                if node.id in nodes_power_mode:
-                    # update the power_mode if it changed
-                    node.power_mode = nodes_power_mode[node.id]
-                    # and save whatever node had its powermode updated to
-                    # remotely update only that nodes' power mode in step().
-                    self.updated_nodes.append(node)
+# curl -X PUT -d '{"power_mode": "normal"}' http://localhost:8000/nodes/gcp -H 'Content-Type: application/json'
+def node_power_mode_collector(events: Dict, microgrid: Microgrid, compute_nodes: Dict):
+    print(f"Received nodes_power_mode events: {events}")
+    latest = latest_event(events)
+    for node_name, power_mode in latest.items():
+        compute_node: ComputeNode = compute_nodes[node_name]
+        compute_node.set_power_mode(power_mode)
 
 
 if __name__ == "__main__":

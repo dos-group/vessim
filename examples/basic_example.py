@@ -1,8 +1,8 @@
 from examples._data import load_solar_data, load_carbon_data
 from vessim import TimeSeriesApi
+from vessim.core.power_meter import MockPowerMeter
 from vessim.core.enviroment import Environment
 from vessim.core.microgrid import Microgrid
-from vessim.core.power_meters import MockPowerMeter
 from vessim.core.storage import SimpleBattery
 from vessim.cosim.actor import ComputingSystem, Generator
 from vessim.cosim.controller import Monitor
@@ -20,17 +20,16 @@ def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
     environment.add_grid_signal("carbon_intensity", TimeSeriesApi(load_carbon_data()))
 
-    power_meters = [
-        MockPowerMeter(name="mpm0", p=2.194),
-        MockPowerMeter(name="mpm1", p=7.6)
-    ]
     monitor = Monitor(step_size=60)
     microgrid = Microgrid(
         actors=[
             ComputingSystem(
                 name="server",
                 step_size=60,
-                power_meters=power_meters
+                power_meters=[
+                    MockPowerMeter(name="mpm0", p=2.194),
+                    MockPowerMeter(name="mpm1", p=7.6)
+                ]
             ),
             Generator(
                 name="solar",

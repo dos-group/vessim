@@ -5,7 +5,7 @@ from typing import Dict, List
 import mosaik_api
 
 from vessim import TimeSeriesApi
-from vessim.core.power_meters import PowerMeter
+from vessim.core.power_meter import PowerMeter
 
 
 class Actor(ABC):
@@ -39,8 +39,7 @@ class ComputingSystem(Actor):
     consumption of a list of power meters.
 
     Args:
-        power_meters: A list of PowerMeter objects
-            representing power meters in the system.
+        power_meters: list of PowerMeters that constitute the computing system's demand.
         pue: The power usage effectiveness of the system.
     """
 
@@ -84,7 +83,7 @@ class ActorSim(mosaik_api.Simulator):
 
     def __init__(self):
         super().__init__(self.META)
-        self.eid = "Actor"
+        self.eid = None
         self.step_size = None
         self.clock = None
         self.actor = None
@@ -99,6 +98,7 @@ class ActorSim(mosaik_api.Simulator):
     def create(self, num, model, **model_params):
         assert num == 1, "Only one instance per simulation is supported"
         self.actor = model_params["actor"]
+        self.eid = self.actor.name
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
