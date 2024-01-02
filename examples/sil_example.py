@@ -10,7 +10,7 @@ This is example experimental and documentation is still in progress.
 import json
 import pickle
 from datetime import datetime
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 
 import pandas as pd
 import redis
@@ -29,7 +29,7 @@ from vessim.core.microgrid import Microgrid
 from vessim.cosim.actor import ComputingSystem, Generator
 from vessim.cosim.controller import Monitor
 from vessim.cosim.util import disable_mosaik_warnings
-from vessim.sil.sil import SilController
+from vessim.sil.sil import SilController, latest_event
 
 RT_FACTOR = 1  # 1 wall-clock second ^= 60 sim seconds
 GCP_ADDRESS = "http://35.198.148.144"
@@ -55,7 +55,11 @@ def main(result_csv: str):
     carbon_aware_controller = SilController(
         step_size=60,
         api_routes=api_routes,
-        set_request_collector=set_request_collector,
+        request_collectors={
+            "battery_min_soc": battery_min_soc_collector,
+            "battery_grid_charge": grid_charge_collector,
+            "nodes_power_mode": nodes_power_mode_collector,
+        },
     )
     microgrid = Microgrid(
         actors=[
@@ -81,7 +85,13 @@ def main(result_csv: str):
     monitor.monitor_log_to_csv(result_csv)
 
 
-def api_routes(app: FastAPI, grid_signals: Dict[str, TimeSeriesApi], redis_db: redis.Redis):
+def api_routes(
+    app: FastAPI,
+    # TODO the following two arguments should be coupled into a
+    #  class with helper functions for accessing Redis
+    grid_signals: Dict[str, TimeSeriesApi],
+    redis_db: redis.Redis
+):
     @app.get("/")
     async def root():
         return "Hello World"
@@ -143,43 +153,42 @@ def api_routes(app: FastAPI, grid_signals: Dict[str, TimeSeriesApi], redis_db: r
         }))
 
 
-def set_request_collector(events: Dict, microgrid: Microgrid):
-    if "battery.min_soc" in events:
-        print(f"Received battery.min_soc: {events['battery.min_soc']}")
-        microgrid.storage.min_soc = _get_latest(events["battery.min_soc"])
-    if "battery.grid_charge" in events:
-        print(f"Received battery.min_soc: {events['battery.min_soc']}")
-        microgrid.storage_policy.grid_power = _get_latest(events["battery.grid_charge"])
-    if "nodes_power_mode" in events:
-        print(f"Received nodes_power_mode: {events['nodes_power_mode']}")
-        latest_event = _get_latest(events["nodes_power_mode"])
-
-        # TODO
-        # nodes_power_mode looks e.g. like {"gcp": "normal",...}
-        # Loop through all nodes,
-        # for node in self.nodes:
-        #     if node.id in nodes_power_mode:
-        #         # update the power_mode if it changed
-        #         node.power_mode = nodes_power_mode[node.id]
-        #         # and save whatever node had its powermode updated to
-        #         # remotely update only that nodes' power mode in step().
-        #         self.updated_nodes.append(node)
-        #
-        # # update power mode for the node remotely
-        # for node in self.updated_nodes:
-        #     http_client = HttpClient(f"{node.address}:{node.port}")
-        #
-        #     def update_node_power_model():
-        #         http_client.put("/power_mode", {"power_mode": node.power_mode})
-        #
-        #     # use thread to not block the simulation
-        #     node_update_thread = Thread(target=update_node_power_model)
-        #     node_update_thread.start()
-        # self.updated_nodes.clear()
+def battery_min_soc_collector(events: Dict[datetime, Any], microgrid: Microgrid):
+    print(f"Received battery.min_soc events: {events}")
+    microgrid.storage.min_soc = latest_event(events)
 
 
-def _get_latest(events: Dict):
-    return events[max(events.keys())]
+def grid_charge_collector(events: Dict[datetime, Any], microgrid: Microgrid):
+    print(f"Received grid_charge events: {events}")
+    microgrid.storage_policy.grid_power = latest_event(events)
+
+
+def nodes_power_mode_collector(events: Dict[datetime, Any], microgrid: Microgrid):
+    print(f"Received nodes_power_mode events: {events}")
+    latest = latest_event(events)
+
+    # TODO
+    # nodes_power_mode looks e.g. like {"gcp": "normal",...}
+    # Loop through all nodes,
+    # for node in self.nodes:
+    #     if node.id in nodes_power_mode:
+    #         # update the power_mode if it changed
+    #         node.power_mode = nodes_power_mode[node.id]
+    #         # and save whatever node had its powermode updated to
+    #         # remotely update only that nodes' power mode in step().
+    #         self.updated_nodes.append(node)
+    #
+    # # update power mode for the node remotely
+    # for node in self.updated_nodes:
+    #     http_client = HttpClient(f"{node.address}:{node.port}")
+    #
+    #     def update_node_power_model():
+    #         http_client.put("/power_mode", {"power_mode": node.power_mode})
+    #
+    #     # use thread to not block the simulation
+    #     node_update_thread = Thread(target=update_node_power_model)
+    #     node_update_thread.start()
+    # self.updated_nodes.clear()
 
 
 if __name__ == "__main__":

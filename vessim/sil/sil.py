@@ -4,7 +4,7 @@ import pickle
 import time
 from collections import defaultdict
 from threading import Thread
-from typing import Dict, Callable, Optional
+from typing import Dict, Callable, Optional, List
 
 import docker
 import redis
@@ -24,15 +24,15 @@ class SilController(Controller):
         self,
         step_size: int,
         api_routes: Callable,
-        set_request_collector: Callable,
-        set_request_collector_interval: float = 1,
+        request_collectors: Dict[str, Callable],
+        request_collector_interval: float = 1,
         api_host: str = "127.0.0.1",
         api_port: int = 8000,
     ):
         super().__init__(step_size=step_size)
         self.api_routes = api_routes
-        self.set_request_collector = set_request_collector
-        self.set_request_collector_interval = set_request_collector_interval
+        self.request_collectors = request_collectors
+        self.request_collector_interval = request_collector_interval
         self.api_host = api_host
         self.api_port = api_port
         self.redis_docker_container = _redis_docker_container()
@@ -86,9 +86,10 @@ class SilController(Controller):
                     key = event["key"]
                     del event["key"]
                     events_by_type[key].append(event)
-                self.set_request_collector(events_by_type, self.microgrid)
+                for key, events in events_by_type.items():
+                    self.request_collectors[key](events_by_type[key], self.microgrid)
             self.redis_db.delete("set_events")
-            time.sleep(self.set_request_collector_interval)
+            time.sleep(self.request_collector_interval)
 
 
 def _serve_api(
@@ -129,3 +130,7 @@ def _redis_docker_container(
         time.sleep(1)
 
     return container
+
+
+def latest_event(events):
+    return events[max(events.keys())]
