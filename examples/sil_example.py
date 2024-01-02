@@ -30,7 +30,7 @@ from vessim.core.microgrid import Microgrid
 from vessim.cosim.actor import ComputingSystem, Generator
 from vessim.cosim.controller import Monitor
 from vessim.cosim.util import disable_mosaik_warnings
-from vessim.sil.sil import SilController, latest_event
+from vessim.sil.sil import SilController, latest_event, ComputeNode
 
 RT_FACTOR = 1  # 1 wall-clock second ^= 60 sim seconds
 GCP_ADDRESS = "http://35.198.148.144"
@@ -42,22 +42,23 @@ def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
     environment.add_grid_signal("carbon_intensity", TimeSeriesApi(load_carbon_data()))
 
-    # Initialize nodes
     power_meters = [
-        HttpPowerMeter(address=GCP_ADDRESS, name="gcp"),
-        HttpPowerMeter(address=RASPI_ADDRESS, name="raspi")
+        HttpPowerMeter(name="gcp", address=GCP_ADDRESS),
+        HttpPowerMeter(name="raspi", address=RASPI_ADDRESS)
     ]
     monitor = Monitor(step_size=60)
-
     carbon_aware_controller = SilController(
         step_size=60,
         api_routes=api_routes,
         request_collectors={
             "battery_min_soc": battery_min_soc_collector,
             "battery_grid_charge": grid_charge_collector,
-            "nodes_power_mode": nodes_power_mode_collector,
+            "nodes_power_mode": node_power_mode_collector,
         },
-        power_meters=power_meters,
+        compute_nodes=[
+            ComputeNode(name="gcp", address=GCP_ADDRESS),
+            ComputeNode(name="raspi", address=RASPI_ADDRESS),
+        ],
     )
     microgrid = Microgrid(
         actors=[
@@ -121,20 +122,22 @@ def api_routes(
         pipe = redis_db.pipeline()
         if battery_model.min_soc is not None:
             pipe.lpush("set_events", pickle.dumps({
-                "key": "battery_min_soc",
-                datetime.now().isoformat(): battery_model.min_soc,
+                "category": "battery_min_soc",
+                "time": datetime.now().isoformat(),
+                "value": battery_model.min_soc,
             }))
         if battery_model.grid_charge is not None:
             redis_db.lpush("set_events", pickle.dumps({
-                "key": "battery_grid_charge",
-                datetime.now().isoformat(): battery_model.grid_charge,
+                "category": "battery_grid_charge",
+                "time": datetime.now().isoformat(),
+                "value": battery_model.grid_charge,
             }))
         pipe.execute()
 
     class NodeModel(BaseModel):
         power_mode: str
 
-    @app.put("/api/nodes/{item_id}")
+    @app.put("/nodes/{item_id}")
     async def put_nodes(node: NodeModel, item_id: str):
         # TODO generalize
         power_modes = ["power-saving", "normal", "high performance"]
@@ -146,48 +149,30 @@ def api_routes(
                 f"Available power modes: {power_modes}",
             )
         redis_db.lpush("set_events", pickle.dumps({
-            "key": "battery_grid_charge",
-            datetime.now().isoformat(): {item_id: power_mode},
+            "category": "nodes_power_mode",
+            "time": datetime.now().isoformat(),
+            "value": {item_id: power_mode},
         }))
 
 
 # curl -X PUT -d '{"min_soc": 0.5,"grid_charge": 1}' http://localhost:8000/battery -H 'Content-Type: application/json'
-def battery_min_soc_collector(events: Dict[datetime, Any], microgrid: Microgrid):
+def battery_min_soc_collector(events: Dict, microgrid: Microgrid, compute_nodes: Dict):
     print(f"Received battery.min_soc events: {events}")
     microgrid.storage.min_soc = latest_event(events)
 
 
-def grid_charge_collector(events: Dict[datetime, Any], microgrid: Microgrid):
+def grid_charge_collector(events: Dict, microgrid: Microgrid, compute_nodes: Dict):
     print(f"Received grid_charge events: {events}")
     microgrid.storage_policy.grid_power = latest_event(events)
 
+
 # curl -X PUT -d '{"power_mode": "normal"}' http://localhost:8000/nodes/gcp -H 'Content-Type: application/json'
-def nodes_power_mode_collector(events: Dict[datetime, Any], microgrid: Microgrid):
+def node_power_mode_collector(events: Dict, microgrid: Microgrid, compute_nodes: Dict):
     print(f"Received nodes_power_mode events: {events}")
     latest = latest_event(events)
-
-    # TODO
-    # nodes_power_mode looks e.g. like {"gcp": "normal",...}
-    # Loop through all nodes,
-    for node in self.nodes:
-        if node.id in nodes_power_mode:
-            # update the power_mode if it changed
-            node.power_mode = nodes_power_mode[node.id]
-            # and save whatever node had its powermode updated to
-            # remotely update only that nodes' power mode in step().
-            self.updated_nodes.append(node)
-    #
-    # # update power mode for the node remotely
-    # for node in self.updated_nodes:
-    #     http_client = HttpClient(f"{node.address}:{node.port}")
-    #
-    #     def update_node_power_model():
-    #         http_client.put("/power_mode", {"power_mode": node.power_mode})
-    #
-    #     # use thread to not block the simulation
-    #     node_update_thread = Thread(target=update_node_power_model)
-    #     node_update_thread.start()
-    # self.updated_nodes.clear()
+    for node_name, power_mode in latest.items():
+        compute_node: ComputeNode = compute_nodes[node_name]
+        compute_node.set_power_mode(power_mode)
 
 
 if __name__ == "__main__":

@@ -1,10 +1,11 @@
 import json
 import multiprocessing
 import pickle
+from datetime import datetime
 from time import sleep
 from collections import defaultdict
 from threading import Thread
-from typing import Dict, Callable, Optional, List
+from typing import Dict, Callable, Optional, List, Any
 
 import docker
 import redis
@@ -17,6 +18,40 @@ from vessim.core.power_meter import HttpPowerMeter
 from vessim.core.microgrid import Microgrid
 from vessim.cosim.controller import Controller
 from vessim.cosim.util import Clock
+from vessim.sil.http_client import HttpClient
+
+
+class ComputeNode:  # TODO we could soon replace this agent-based implementation with k8s
+    """Represents a physical or virtual computing node.
+
+    This class keeps track of nodes and assigns unique IDs to each new
+    instance. It also allows the setting of a power meter and power mode.
+
+    Args:
+        name: A unique name assigned to each node.
+        address: The network address of the node API.
+        port: The application port of the node API.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        power_mode: str = "normal",
+        address: str = "127.0.0.1",
+        port: int = 8000,
+    ):
+        self.name = name
+        self.http_client = HttpClient(f"{address}:{port}")
+        self.power_mode = power_mode
+
+    def set_power_mode(self, power_mode: str):
+        if power_mode == self.power_mode:
+            return
+
+        def update_power_model():
+            self.http_client.put("/power_mode", {"power_mode": power_mode})
+        Thread(target=update_power_model).start()
+        self.power_mode = power_mode
 
 
 class SilController(Controller):
@@ -26,6 +61,7 @@ class SilController(Controller):
         step_size: int,
         api_routes: Callable,
         request_collectors: Dict[str, Callable],
+        compute_nodes: List[ComputeNode],
         api_host: str = "127.0.0.1",
         api_port: int = 8000,
         request_collector_interval: float = 1,
@@ -33,6 +69,7 @@ class SilController(Controller):
         super().__init__(step_size=step_size)
         self.api_routes = api_routes
         self.request_collectors = request_collectors
+        self.compute_nodes_dict = {n.name: n for n in compute_nodes}
         self.api_host = api_host
         self.api_port = api_port
         self.request_collector_interval = request_collector_interval
@@ -82,13 +119,15 @@ class SilController(Controller):
             events = self.redis_db.lrange("set_events", start=0, end=-1)
             if len(events) > 0:
                 events = [pickle.loads(e) for e in events]
-                events_by_type = defaultdict(list)
+                events_by_category = defaultdict(dict)
                 for event in events:
-                    key = event["key"]
-                    del event["key"]
-                    events_by_type[key].append(event)
-                for key, events in events_by_type.items():
-                    self.request_collectors[key](events_by_type[key], self.microgrid)
+                    events_by_category[event["category"]][event["time"]] = event["value"]
+                for category, events in events_by_category.items():
+                    self.request_collectors[category](
+                        events=events_by_category[category],
+                        microgrid=self.microgrid,
+                        compute_nodes=self.compute_nodes_dict,
+                    )
             self.redis_db.delete("set_events")
             sleep(self.request_collector_interval)
 
@@ -133,5 +172,5 @@ def _redis_docker_container(
     return container
 
 
-def latest_event(events):
+def latest_event(events: Dict[datetime, Any]) -> Any:
     return events[max(events.keys())]
