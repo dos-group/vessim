@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union, Literal
 
 import mosaik
 
@@ -35,11 +35,16 @@ class Environment:
             raise RuntimeError("Add all grid signals before adding microgrids.")
         self.grid_signals[name] = grid_signal
 
-    def run(self, until: int, rt_factor: Optional[float] = None):
+    def run(
+        self,
+        until: int,
+        rt_factor: Optional[float] = None,
+        print_progress: Union[bool, Literal["individual"]] = True,
+    ):
         try:
             for microgrid in self.microgrids:
                 microgrid.initialize(self.world, self.clock, self.grid_signals)
-            self.world.run(until=until, rt_factor=rt_factor)
+            self.world.run(until=until, rt_factor=rt_factor, print_progress=print_progress)
         except Exception as e:
             for microgrid in self.microgrids:
                 microgrid.finalize()

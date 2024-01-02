@@ -9,8 +9,6 @@ import uvicorn  # type: ignore
 from fastapi import FastAPI, HTTPException  # type: ignore
 from pydantic import BaseModel  # type: ignore
 
-from vessim.sil.redis_docker import RedisContainer
-
 
 class SilApi(ABC):
     """Base class for the API running on the ApiServer in different process.

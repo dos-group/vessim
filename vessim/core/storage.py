@@ -29,7 +29,6 @@ class Storage(ABC):
         """Returns information about the current state of the storage."""
 
 
-
 class SimpleBattery(Storage):
     """(Way too) simple battery.
 

@@ -84,7 +84,7 @@ class ActorSim(mosaik_api.Simulator):
 
     def __init__(self):
         super().__init__(self.META)
-        self.eid = "Actor"
+        self.eid = None
         self.step_size = None
         self.clock = None
         self.actor = None
@@ -99,6 +99,7 @@ class ActorSim(mosaik_api.Simulator):
     def create(self, num, model, **model_params):
         assert num == 1, "Only one instance per simulation is supported"
         self.actor = model_params["actor"]
+        self.eid = self.actor.name
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
