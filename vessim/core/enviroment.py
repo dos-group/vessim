@@ -36,18 +36,13 @@ class Environment:
         self.grid_signals[name] = grid_signal
 
     def run(self, until: int, rt_factor: Optional[float] = None):
-        def finalize_microgrids():
-            for microgrid in self.microgrids:
-                microgrid.finalize()
-
         try:
             for microgrid in self.microgrids:
                 microgrid.initialize(self.world, self.clock, self.grid_signals)
             self.world.run(until=until, rt_factor=rt_factor)
-        except RuntimeError as e:
-            if not str(e).startswith("Simulation too slow for real-time factor"):
-                finalize_microgrids()
-                raise
-        except Exception:
-            finalize_microgrids()
+        except Exception as e:
+            if str(e).startswith("Simulation too slow for real-time factor"):
+                return
+            for microgrid in self.microgrids:
+                microgrid.finalize()
             raise
