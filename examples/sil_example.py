@@ -7,14 +7,11 @@ through software-in-the-loop integration as described in our paper:
 
 This is example experimental and documentation is still in progress.
 """
-import json
-import pickle
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 
 import pandas as pd
-import redis
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
 
 from _data import load_carbon_data, load_solar_data
@@ -24,18 +21,16 @@ from controller_example import (
     DURATION, POLICY
 )
 from vessim import TimeSeriesApi
-from vessim.core.power_meter import HttpPowerMeter
 from vessim.core.enviroment import Environment
 from vessim.core.microgrid import Microgrid
+from vessim.core.power_meter import HttpPowerMeter
 from vessim.cosim.actor import ComputingSystem, Generator
 from vessim.cosim.controller import Monitor
-from vessim.cosim.util import disable_mosaik_warnings
 from vessim.sil.sil import SilController, latest_event, ComputeNode, Broker
 
 RT_FACTOR = 1  # 1 wall-clock second ^= 60 sim seconds
 GCP_ADDRESS = "http://35.198.148.144"
 RASPI_ADDRESS = "http://192.168.207.71"
-disable_mosaik_warnings(behind_threshold=0.01)
 
 
 def main(result_csv: str):

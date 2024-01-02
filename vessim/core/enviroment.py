@@ -46,6 +46,8 @@ class Environment:
                 microgrid.initialize(self.world, self.clock, self.grid_signals)
             self.world.run(until=until, rt_factor=rt_factor, print_progress=print_progress)
         except Exception as e:
+            if str(e).startswith("Simulation too slow for real-time factor"):
+                return
             for microgrid in self.microgrids:
                 microgrid.finalize()
-            raise e
+            raise
