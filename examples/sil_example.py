@@ -24,13 +24,13 @@ from controller_example import (
     DURATION, POLICY
 )
 from vessim import TimeSeriesApi
+from vessim.core.power_meter import HttpPowerMeter
 from vessim.core.enviroment import Environment
 from vessim.core.microgrid import Microgrid
 from vessim.cosim.actor import ComputingSystem, Generator
 from vessim.cosim.controller import Monitor
 from vessim.cosim.util import disable_mosaik_warnings
 from vessim.sil.sil import SilController, latest_event
-from vessim.sil.silnode import SilNode
 
 RT_FACTOR = 1  # 1 wall-clock second ^= 60 sim seconds
 GCP_ADDRESS = "http://35.198.148.144"
@@ -43,13 +43,9 @@ def main(result_csv: str):
     environment.add_grid_signal("carbon_intensity", TimeSeriesApi(load_carbon_data()))
 
     # Initialize nodes
-    nodes = [
-        SilNode(address=GCP_ADDRESS, name="gcp"),
-        SilNode(address=RASPI_ADDRESS, name="raspi")
-    ]
     power_meters = [
-        #HttpPowerMeter(name="mpm0", interval=1, server_address=GCP_ADDRESS),
-        #HttpPowerMeter(name="mpm1", interval=1, server_address=RASPI_ADDRESS),
+        HttpPowerMeter(address=GCP_ADDRESS, name="gcp"),
+        HttpPowerMeter(address=RASPI_ADDRESS, name="raspi")
     ]
     monitor = Monitor(step_size=60)
 
@@ -61,6 +57,7 @@ def main(result_csv: str):
             "battery_grid_charge": grid_charge_collector,
             "nodes_power_mode": nodes_power_mode_collector,
         },
+        power_meters=power_meters,
     )
     microgrid = Microgrid(
         actors=[
@@ -138,7 +135,7 @@ def api_routes(
         power_mode: str
 
     @app.put("/api/nodes/{item_id}")
-    async def put_nodes(node: NodeModel, item_id: str) -> NodeModel:
+    async def put_nodes(node: NodeModel, item_id: str):
         # TODO generalize
         power_modes = ["power-saving", "normal", "high performance"]
         power_mode = node.power_mode
@@ -154,6 +151,7 @@ def api_routes(
         }))
 
 
+# curl -X PUT -d '{"min_soc": 0.5,"grid_charge": 1}' http://localhost:8000/battery -H 'Content-Type: application/json'
 def battery_min_soc_collector(events: Dict[datetime, Any], microgrid: Microgrid):
     print(f"Received battery.min_soc events: {events}")
     microgrid.storage.min_soc = latest_event(events)
@@ -163,7 +161,7 @@ def grid_charge_collector(events: Dict[datetime, Any], microgrid: Microgrid):
     print(f"Received grid_charge events: {events}")
     microgrid.storage_policy.grid_power = latest_event(events)
 
-
+# curl -X PUT -d '{"power_mode": "normal"}' http://localhost:8000/nodes/gcp -H 'Content-Type: application/json'
 def nodes_power_mode_collector(events: Dict[datetime, Any], microgrid: Microgrid):
     print(f"Received nodes_power_mode events: {events}")
     latest = latest_event(events)
@@ -171,13 +169,13 @@ def nodes_power_mode_collector(events: Dict[datetime, Any], microgrid: Microgrid
     # TODO
     # nodes_power_mode looks e.g. like {"gcp": "normal",...}
     # Loop through all nodes,
-    # for node in self.nodes:
-    #     if node.id in nodes_power_mode:
-    #         # update the power_mode if it changed
-    #         node.power_mode = nodes_power_mode[node.id]
-    #         # and save whatever node had its powermode updated to
-    #         # remotely update only that nodes' power mode in step().
-    #         self.updated_nodes.append(node)
+    for node in self.nodes:
+        if node.id in nodes_power_mode:
+            # update the power_mode if it changed
+            node.power_mode = nodes_power_mode[node.id]
+            # and save whatever node had its powermode updated to
+            # remotely update only that nodes' power mode in step().
+            self.updated_nodes.append(node)
     #
     # # update power mode for the node remotely
     # for node in self.updated_nodes:

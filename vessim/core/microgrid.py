@@ -6,9 +6,9 @@ import mosaik
 
 from vessim import TimeSeriesApi
 from vessim.core.storage import Storage, StoragePolicy
-from vessim.cosim.util import Clock
 from vessim.cosim.actor import Actor
 from vessim.cosim.controller import Controller
+from vessim.cosim.util import Clock
 
 
 class Microgrid:

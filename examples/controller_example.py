@@ -3,16 +3,16 @@ from typing import Dict, List
 from examples._data import load_solar_data, load_carbon_data
 from examples.basic_example import SIM_START, STORAGE, DURATION
 from vessim import TimeSeriesApi
+from vessim.core.power_meter import MockPowerMeter
 from vessim.core.enviroment import Environment
 from vessim.core.microgrid import Microgrid
-from vessim.core.power_meters import MockPowerMeter
 from vessim.core.storage import DefaultStoragePolicy
 from vessim.cosim.util import Clock
 from vessim.cosim.actor import ComputingSystem, Generator
 from vessim.cosim.controller import Monitor, Controller
 
 POLICY = DefaultStoragePolicy()
-POWER_MODES = {
+POWER_MODES = {  # according to paper
     "mpm0": {
         "high performance": 2.964,
         "normal": 2.194,
@@ -37,7 +37,7 @@ def main(result_csv: str):
     monitor = Monitor(step_size=60)
     carbon_aware_controller = CarbonAwareController(
         step_size=60,
-        mock_power_meters=power_meters,
+        power_meters=power_meters,
         battery=STORAGE,
         policy=POLICY,
     )
@@ -66,9 +66,9 @@ def main(result_csv: str):
 
 
 class CarbonAwareController(Controller):
-    def __init__(self, step_size, mock_power_meters, battery, policy):
+    def __init__(self, step_size, power_meters, battery, policy):
         super().__init__(step_size)
-        self.mock_power_meters = mock_power_meters
+        self.power_meters = power_meters
         self.battery = battery
         self.policy = policy
         self.grid_signals = None
@@ -86,20 +86,20 @@ class CarbonAwareController(Controller):
             time=time,
             battery_soc=self.battery.soc(),
             ci=self.grid_signals["carbon_intensity"].actual(self.clock.to_datetime(time), self.zone),
-            node_ids=[mpm.name for mpm in self.mock_power_meters],
+            node_names=[node.name for node in self.power_meters],
         )
         self.policy.grid_power = new_state["grid_power"]
         self.battery.min_soc = new_state["battery_min_soc"]
-        assert {"mpm0", "mpm1"}.issubset({mpm.name for mpm in self.mock_power_meters})
-        for mpm in self.mock_power_meters:
-            mpm.p = POWER_MODES[mpm.name][new_state["nodes_power_mode"][mpm.name]]
+        assert {"mpm0", "mpm1"}.issubset({mpm.name for mpm in self.power_meters})
+        for node in self.power_meters:
+            node.set_power(POWER_MODES[node.name][new_state["nodes_power_mode"][node.name]])
 
 
 def cacu_scenario(
     time: int,
     battery_soc: float,
     ci: float,
-    node_ids: List[str]
+    node_names: List[str]
 ) -> dict:
     """Calculate the power mode settings for nodes based on a scenario.
 
@@ -111,7 +111,7 @@ def cacu_scenario(
         time: Time in minutes since some reference point or start.
         battery_soc: Current state of charge of the battery.
         ci: Current carbon intensity.
-        node_ids: A list of node IDs for which the power mode needs to be
+        node_names: A list of node IDs for which the power mode needs to be
             determined.
 
     Returns:
@@ -132,13 +132,13 @@ def cacu_scenario(
 
     new_state["grid_power"] = 20 if ci <= 200 and battery_soc < .6 else 0
     new_state["nodes_power_mode"] = {}
-    for node_id in node_ids:
+    for node_name in node_names:
         if ci <= 200 or battery_soc > .8:
-            new_state["nodes_power_mode"][node_id] = "high performance"
+            new_state["nodes_po wer_mode"][node_name] = "high performance"
         elif ci >= 250 and battery_soc < .6:
-            new_state["nodes_power_mode"][node_id] = "power-saving"
+            new_state["nodes_power_mode"][node_name] = "power-saving"
         else:
-            new_state["nodes_power_mode"][node_id] = "normal"
+            new_state["nodes_power_mode"][node_name] = "normal"
     return new_state
 
 

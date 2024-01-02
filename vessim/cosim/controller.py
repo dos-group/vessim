@@ -1,15 +1,12 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, Callable, Any, Tuple, TYPE_CHECKING, MutableMapping, List, \
-    Optional
+from typing import Dict, Callable, Any, Tuple, TYPE_CHECKING, MutableMapping
 
 import mosaik_api
 import pandas as pd
 
-from vessim.core.storage import SimpleBattery, StoragePolicy
 from vessim.cosim.util import Clock
-from vessim.sil.silnode import SiLNode
 
 if TYPE_CHECKING:
     from vessim.core.microgrid import Microgrid

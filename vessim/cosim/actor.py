@@ -5,7 +5,7 @@ from typing import Dict, List
 import mosaik_api
 
 from vessim import TimeSeriesApi
-from vessim.core.power_meters import PowerMeter
+from vessim.core.power_meter import PowerMeter
 
 
 class Actor(ABC):
@@ -39,8 +39,7 @@ class ComputingSystem(Actor):
     consumption of a list of power meters.
 
     Args:
-        power_meters: A list of PowerMeter objects
-            representing power meters in the system.
+        power_meters: list of PowerMeters that constitute the computing system's demand.
         pue: The power usage effectiveness of the system.
     """
 

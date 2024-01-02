@@ -1,7 +1,7 @@
 import json
 import multiprocessing
 import pickle
-import time
+from time import sleep
 from collections import defaultdict
 from threading import Thread
 from typing import Dict, Callable, Optional, List
@@ -13,6 +13,7 @@ from docker.models.containers import Container
 from fastapi import FastAPI
 
 from vessim import TimeSeriesApi
+from vessim.core.power_meter import HttpPowerMeter
 from vessim.core.microgrid import Microgrid
 from vessim.cosim.controller import Controller
 from vessim.cosim.util import Clock
@@ -25,16 +26,16 @@ class SilController(Controller):
         step_size: int,
         api_routes: Callable,
         request_collectors: Dict[str, Callable],
-        request_collector_interval: float = 1,
         api_host: str = "127.0.0.1",
         api_port: int = 8000,
+        request_collector_interval: float = 1,
     ):
         super().__init__(step_size=step_size)
         self.api_routes = api_routes
         self.request_collectors = request_collectors
-        self.request_collector_interval = request_collector_interval
         self.api_host = api_host
         self.api_port = api_port
+        self.request_collector_interval = request_collector_interval
         self.redis_docker_container = _redis_docker_container()
         self.redis_db = redis.Redis()
 
@@ -89,7 +90,7 @@ class SilController(Controller):
                 for key, events in events_by_type.items():
                     self.request_collectors[key](events_by_type[key], self.microgrid)
             self.redis_db.delete("set_events")
-            time.sleep(self.request_collector_interval)
+            sleep(self.request_collector_interval)
 
 
 def _serve_api(
@@ -127,7 +128,7 @@ def _redis_docker_container(
         container_info = docker_client.containers.get(container.name)
         if container_info.status == "running":
             break
-        time.sleep(1)
+        sleep(1)
 
     return container
 
