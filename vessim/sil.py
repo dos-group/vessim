@@ -1,10 +1,15 @@
+"""Vessim Software-in-the-Loop (SiL) components.
+
+This module is still experimental, the public API might change at any time.
+"""
+
 import json
 import multiprocessing
 import pickle
-from datetime import datetime
-from time import sleep
 from collections import defaultdict
+from datetime import datetime
 from threading import Thread
+from time import sleep
 from typing import Dict, Callable, Optional, List, Any
 
 import docker
@@ -14,11 +19,10 @@ from docker.models.containers import Container
 from fastapi import FastAPI
 
 from vessim import TimeSeriesApi
-from vessim.core.power_meter import HttpPowerMeter
 from vessim.core.microgrid import Microgrid
 from vessim.cosim.controller import Controller
 from vessim.cosim.util import Clock
-from vessim.sil.http_client import HttpClient
+from vessim.util import HttpClient
 
 
 class ComputeNode:  # TODO we could soon replace this agent-based implementation with k8s
@@ -191,7 +195,3 @@ def _redis_docker_container(
         sleep(1)
 
     return container
-
-
-def latest_event(events: Dict[datetime, Any]) -> Any:
-    return events[max(events.keys())]

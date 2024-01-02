@@ -26,7 +26,8 @@ from vessim.core.microgrid import Microgrid
 from vessim.core.power_meter import HttpPowerMeter
 from vessim.cosim.actor import ComputingSystem, Generator
 from vessim.cosim.controller import Monitor
-from vessim.sil.sil import SilController, latest_event, ComputeNode, Broker
+from vessim.sil import SilController, ComputeNode, Broker
+from vessim.util import get_latest_event
 
 RT_FACTOR = 1  # 1 wall-clock second ^= 60 sim seconds
 GCP_ADDRESS = "http://35.198.148.144"
@@ -121,18 +122,18 @@ def api_routes(
 # curl -X PUT -d '{"min_soc": 0.5,"grid_charge": 1}' http://localhost:8000/battery -H 'Content-Type: application/json'
 def battery_min_soc_collector(events: Dict, microgrid: Microgrid, compute_nodes: Dict):
     print(f"Received battery.min_soc events: {events}")
-    microgrid.storage.min_soc = latest_event(events)
+    microgrid.storage.min_soc = get_latest_event(events)
 
 
 def grid_charge_collector(events: Dict, microgrid: Microgrid, compute_nodes: Dict):
     print(f"Received grid_charge events: {events}")
-    microgrid.storage_policy.grid_power = latest_event(events)
+    microgrid.storage_policy.grid_power = get_latest_event(events)
 
 
 # curl -X PUT -d '{"power_mode": "normal"}' http://localhost:8000/nodes/gcp -H 'Content-Type: application/json'
 def node_power_mode_collector(events: Dict, microgrid: Microgrid, compute_nodes: Dict):
     print(f"Received nodes_power_mode events: {events}")
-    latest = latest_event(events)
+    latest = get_latest_event(events)
     for node_name, power_mode in latest.items():
         compute_node: ComputeNode = compute_nodes[node_name]
         compute_node.set_power_mode(power_mode)

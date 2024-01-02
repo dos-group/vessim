@@ -1,7 +1,20 @@
 import json
-from typing import Any, Dict
+from datetime import datetime, timedelta
+from typing import Union, Dict, Any
 
+import pandas as pd
 import requests
+
+
+class Clock:
+    def __init__(self, sim_start: Union[str, datetime]):
+        self.sim_start = pd.to_datetime(sim_start)
+
+    def to_datetime(self, simtime: int) -> datetime:
+        return self.sim_start + timedelta(seconds=simtime)
+
+    def to_simtime(self, dt: datetime) -> int:
+        return int((dt - self.sim_start).total_seconds())
 
 
 class HttpClient:
@@ -53,3 +66,7 @@ class HttpClient:
         )
         if response.status_code != 200:
             response.raise_for_status()
+
+
+def get_latest_event(events: Dict[datetime, Any]) -> Any:
+    return events[max(events.keys())]

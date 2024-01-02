@@ -2,7 +2,7 @@ import time
 from abc import ABC, abstractmethod
 from threading import Thread
 
-from vessim.sil.http_client import HttpClient
+from vessim.util import HttpClient
 
 
 class PowerMeter(ABC):
