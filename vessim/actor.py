@@ -5,7 +5,7 @@ from typing import Dict, List
 import mosaik_api
 
 from vessim import TimeSeriesApi
-from vessim.core.power_meter import PowerMeter
+from vessim.power_meter import PowerMeter
 
 
 class Actor(ABC):

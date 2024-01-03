@@ -21,11 +21,10 @@ from controller_example import (
     DURATION, POLICY
 )
 from vessim import TimeSeriesApi
-from vessim.core.enviroment import Environment
-from vessim.core.microgrid import Microgrid
-from vessim.core.power_meter import HttpPowerMeter
-from vessim.cosim.actor import ComputingSystem, Generator
-from vessim.cosim.controller import Monitor
+from vessim.actor import ComputingSystem, Generator
+from vessim.controller import Monitor
+from vessim.core import Environment, Microgrid
+from vessim.power_meter import HttpPowerMeter
 from vessim.sil import SilController, ComputeNode, Broker, get_latest_event
 
 RT_FACTOR = 1  # 1 wall-clock second ^= 60 sim seconds

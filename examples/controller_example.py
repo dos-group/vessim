@@ -3,12 +3,11 @@ from typing import Dict, List
 from examples._data import load_solar_data, load_carbon_data
 from examples.basic_example import SIM_START, STORAGE, DURATION
 from vessim import TimeSeriesApi
-from vessim.core.power_meter import MockPowerMeter
-from vessim.core.enviroment import Environment
-from vessim.core.microgrid import Microgrid
-from vessim.core.storage import DefaultStoragePolicy
-from vessim.cosim.actor import ComputingSystem, Generator
-from vessim.cosim.controller import Monitor, Controller
+from vessim.actor import ComputingSystem, Generator
+from vessim.controller import Monitor, Controller
+from vessim.core import Environment, Microgrid
+from vessim.power_meter import MockPowerMeter
+from vessim.storage import DefaultStoragePolicy
 
 POLICY = DefaultStoragePolicy()
 POWER_MODES = {  # according to paper

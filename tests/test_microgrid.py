@@ -2,7 +2,7 @@ import pytest
 from typing import Dict
 
 from vessim.core.microgrid import SimpleMicrogrid
-from vessim.core.storage import SimpleBattery
+from vessim.storage import SimpleBattery
 
 
 class TestSimpleMicrogrid:

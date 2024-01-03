@@ -9,7 +9,7 @@ import pandas as pd
 from vessim._util import Clock
 
 if TYPE_CHECKING:
-    from vessim.core.microgrid import Microgrid
+    from vessim.core import Microgrid
 
 
 class Controller(ABC):

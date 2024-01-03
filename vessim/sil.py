@@ -19,9 +19,9 @@ from docker.models.containers import Container
 from fastapi import FastAPI
 
 from vessim import TimeSeriesApi
-from vessim.core.microgrid import Microgrid
-from vessim.cosim.controller import Controller
-from vessim._util import Clock, HttpClient
+from vessim._util import HttpClient
+from vessim.controller import Controller
+from vessim.core import Microgrid
 
 
 class ComputeNode:  # TODO we could soon replace this agent-based implementation with k8s
