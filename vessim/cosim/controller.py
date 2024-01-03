@@ -6,7 +6,7 @@ from typing import Dict, Callable, Any, Tuple, TYPE_CHECKING, MutableMapping
 import mosaik_api
 import pandas as pd
 
-from vessim.cosim.util import Clock
+from vessim._util import Clock
 
 if TYPE_CHECKING:
     from vessim.core.microgrid import Microgrid
@@ -16,10 +16,17 @@ class Controller(ABC):
 
     def __init__(self, step_size: int):
         self.step_size = step_size
+        self.microgrid = None
+        self.grid_signals = None
+        self.clock = None
 
-    @abstractmethod
     def start(self, microgrid: "Microgrid", clock: Clock, grid_signals: Dict):
-        pass  # TODO document
+        self.microgrid = microgrid
+        self.clock = clock
+        self.grid_signals = grid_signals
+
+    def custom_init(self):
+        """TODO document"""
 
     @abstractmethod
     def step(self, time: int, p_delta: float, actors: Dict) -> None:
@@ -38,18 +45,15 @@ class Monitor(Controller):
         self.monitor_log: Dict[datetime, Dict] = defaultdict(dict)
         self.custom_monitor_fns = []
 
-        self.microgrid = None
-        self.clock = None
-        self.grid_signals = None
-
-    def start(self, microgrid: "Microgrid", clock: Clock, grid_signals: Dict):
-        self.clock = clock
+    def custom_init(self):
         if self.monitor_storage:
-            self.add_monitor_fn(lambda time: {"storage": microgrid.storage.state()})
+            self.add_monitor_fn(lambda _: {"storage": self.microgrid.storage.state()})
         if self.monitor_grid_signals:
-            for signal_name, signal_api in grid_signals.items():
+            for signal_name, signal_api in self.grid_signals.items():
                 self.add_monitor_fn(lambda time: {
-                    signal_name: grid_signals[signal_name].actual(self.clock.to_datetime(time))
+                    signal_name: self.grid_signals[signal_name].actual(
+                        self.clock.to_datetime(time)
+                    )
                 })
 
     def add_monitor_fn(self, fn: Callable[[float], Dict[str, Any]]):

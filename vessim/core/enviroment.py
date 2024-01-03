@@ -4,7 +4,7 @@ import mosaik
 
 from vessim import TimeSeriesApi
 from vessim.core.microgrid import Microgrid
-from vessim.cosim.util import Clock
+from vessim._util import Clock
 
 
 class Environment:

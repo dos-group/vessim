@@ -4,7 +4,7 @@ from threading import Thread
 from typing import Optional, Callable
 
 from examples.controller_example import cacu_scenario
-from vessim.util import HttpClient
+from vessim._util import HttpClient
 
 
 class LoopThread(threading.Thread):

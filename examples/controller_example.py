@@ -7,7 +7,6 @@ from vessim.core.power_meter import MockPowerMeter
 from vessim.core.enviroment import Environment
 from vessim.core.microgrid import Microgrid
 from vessim.core.storage import DefaultStoragePolicy
-from vessim.cosim.util import Clock
 from vessim.cosim.actor import ComputingSystem, Generator
 from vessim.cosim.controller import Monitor, Controller
 
@@ -71,21 +70,13 @@ class CarbonAwareController(Controller):
         self.power_meters = power_meters
         self.battery = battery
         self.policy = policy
-        self.grid_signals = None
-        self.clock = None
-        self.zone = None
-
-    def start(self, microgrid: "Microgrid", clock: Clock, grid_signals: Dict):
-        self.zone = microgrid.zone
-        self.clock = clock
-        self.grid_signals = grid_signals
 
     def step(self, time: int, p_delta: float, actors: Dict):
         """Performs a time step in the model."""
         new_state = cacu_scenario(
             time=time,
             battery_soc=self.battery.soc(),
-            ci=self.grid_signals["carbon_intensity"].actual(self.clock.to_datetime(time), self.zone),
+            ci=self.grid_signals["carbon_intensity"].actual(self.clock.to_datetime(time), self.microgrid.zone),
             node_names=[node.name for node in self.power_meters],
         )
         self.policy.grid_power = new_state["grid_power"]

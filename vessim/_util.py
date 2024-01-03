@@ -66,7 +66,3 @@ class HttpClient:
         )
         if response.status_code != 200:
             response.raise_for_status()
-
-
-def get_latest_event(events: Dict[datetime, Any]) -> Any:
-    return events[max(events.keys())]

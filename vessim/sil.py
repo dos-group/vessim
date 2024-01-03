@@ -21,8 +21,7 @@ from fastapi import FastAPI
 from vessim import TimeSeriesApi
 from vessim.core.microgrid import Microgrid
 from vessim.cosim.controller import Controller
-from vessim.cosim.util import Clock
-from vessim.util import HttpClient
+from vessim._util import Clock, HttpClient
 
 
 class ComputeNode:  # TODO we could soon replace this agent-based implementation with k8s
@@ -106,11 +105,7 @@ class SilController(Controller):
         self.grid_signals = None
         self.api_server_process = None
 
-    def start(self, microgrid: Microgrid, clock: Clock, grid_signals: Dict):
-        self.microgrid = microgrid
-        self.clock = clock
-        self.grid_signals = grid_signals
-
+    def custom_init(self):
         self.api_server_process = multiprocessing.Process(  # TODO logging
             target=_serve_api,
             name="Vessim API",
@@ -119,11 +114,10 @@ class SilController(Controller):
                 api_routes=self.api_routes,
                 api_host=self.api_host,
                 api_port=self.api_port,
-                grid_signals=grid_signals,
+                grid_signals=self.grid_signals,
             )
         )
         self.api_server_process.start()
-
         Thread(target=self._collect_set_requests_loop, daemon=True).start()
 
     def step(self, time: int, p_delta: float, actors: Dict) -> None:
@@ -195,3 +189,7 @@ def _redis_docker_container(
         sleep(1)
 
     return container
+
+
+def get_latest_event(events: Dict[datetime, Any]) -> Any:
+    return events[max(events.keys())]

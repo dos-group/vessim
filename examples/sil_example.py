@@ -26,8 +26,7 @@ from vessim.core.microgrid import Microgrid
 from vessim.core.power_meter import HttpPowerMeter
 from vessim.cosim.actor import ComputingSystem, Generator
 from vessim.cosim.controller import Monitor
-from vessim.sil import SilController, ComputeNode, Broker
-from vessim.util import get_latest_event
+from vessim.sil import SilController, ComputeNode, Broker, get_latest_event
 
 RT_FACTOR = 1  # 1 wall-clock second ^= 60 sim seconds
 GCP_ADDRESS = "http://35.198.148.144"
