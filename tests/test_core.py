@@ -2,7 +2,7 @@ import pytest
 import pandas as pd
 from datetime import timedelta
 
-from vessim import TimeSeriesApi
+from vessim.core import TimeSeriesApi
 
 
 class TestTraceSimulator:

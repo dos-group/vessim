@@ -1,6 +1,6 @@
 import pytest
 
-from vessim.core.consumer import MockPowerMeter, ComputingSystem
+from vessim._core.consumer import MockPowerMeter, ComputingSystem
 
 
 class TestMockPowerMeter:

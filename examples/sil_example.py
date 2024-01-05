@@ -15,17 +15,11 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from _data import load_carbon_data, load_solar_data
-from controller_example import (
-    SIM_START,
-    STORAGE,
-    DURATION, POLICY
-)
-from vessim import TimeSeriesApi
-from vessim.actor import ComputingSystem, Generator
-from vessim.controller import Monitor
-from vessim.core import Environment, Microgrid
-from vessim.power_meter import HttpPowerMeter
-from vessim.sil import SilController, ComputeNode, Broker, get_latest_event
+from controller_example import SIM_START, STORAGE, DURATION, POLICY
+from vessim.core import TimeSeriesApi
+from vessim.cosim import Environment, Monitor, Microgrid, ComputingSystem, Generator
+from vessim.sil import SilController, ComputeNode, Broker, get_latest_event, \
+    HttpPowerMeter
 
 RT_FACTOR = 1  # 1 wall-clock second ^= 60 sim seconds
 GCP_ADDRESS = "http://35.198.148.144"

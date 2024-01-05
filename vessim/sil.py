@@ -6,6 +6,7 @@ This module is still experimental, the public API might change at any time.
 import json
 import multiprocessing
 import pickle
+import time
 from collections import defaultdict
 from datetime import datetime
 from threading import Thread
@@ -18,10 +19,10 @@ import uvicorn
 from docker.models.containers import Container
 from fastapi import FastAPI
 
-from vessim import TimeSeriesApi
 from vessim._util import HttpClient
-from vessim.controller import Controller
-from vessim.core import Microgrid
+from vessim.core import TimeSeriesApi
+from vessim.cosim import Controller, PowerMeter
+from vessim.cosim.environment import Microgrid
 
 
 class ComputeNode:  # TODO we could soon replace this agent-based implementation with k8s
@@ -193,3 +194,28 @@ def _redis_docker_container(
 
 def get_latest_event(events: Dict[datetime, Any]) -> Any:
     return events[max(events.keys())]
+
+
+class HttpPowerMeter(PowerMeter):
+
+    def __init__(
+        self,
+        name: str,
+        address: str,
+        port: int = 8000,
+        collect_interval: float = 1,
+    ) -> None:
+        super().__init__(name)
+        self.http_client = HttpClient(f"{address}:{port}")
+        self.collect_interval = collect_interval
+        self._p = 0.0
+        Thread(target=self._collect_loop, daemon=True).start()
+
+    def measure(self) -> float:
+        return self._p
+
+    def _collect_loop(self) -> None:
+        """Gets the power demand every `interval` seconds from the API server."""
+        while True:
+            self._p = float(self.http_client.get("/power")["power"])
+            time.sleep(self.collect_interval)

@@ -5,6 +5,8 @@ from typing import Union, Dict, Any
 import pandas as pd
 import requests
 
+DatetimeLike = Union[str, datetime]
+
 
 class Clock:
     def __init__(self, sim_start: Union[str, datetime]):
