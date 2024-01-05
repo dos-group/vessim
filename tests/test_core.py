@@ -1,5 +1,5 @@
-import pandas as pd
 import pytest
+import pandas as pd
 from datetime import timedelta
 
 from vessim import TimeSeriesApi
@@ -13,7 +13,9 @@ class TestTraceSimulator:
             "2023-01-01T00:30:00",
             "2023-01-01T01:00:00",
         ]
-        actual = pd.DataFrame({"a": [1, 2, 3], "b": [0, 3, 0]}, index=index)
+        actual = pd.DataFrame(
+            {"a": [1, 2, 3], "b": [0, 3, 0], "c":[None, 4, None]}, index=index
+        )
         return TimeSeriesApi(actual)
 
     @pytest.fixture
@@ -50,35 +52,14 @@ class TestTraceSimulator:
         forecast = pd.Series([4, 2, 4, 1], index=index)
         return TimeSeriesApi(actual, forecast)
 
-    @pytest.mark.parametrize(
-        "dt, expected",
-        [
-            (
-                pd.to_datetime("2023-01-01T00:00:00"),
-                pd.to_datetime("2023-01-01T00:30:00"),
-            ),
-            (
-                pd.to_datetime("2023-01-01T00:10:00"),
-                pd.to_datetime("2023-01-01T00:30:00"),
-            ),
-            (
-                pd.to_datetime("2023-01-01T00:29:59"),
-                pd.to_datetime("2023-01-01T00:30:00"),
-            ),
-            (
-                pd.to_datetime("2023-01-01T00:40:00"),
-                pd.to_datetime("2023-01-01T01:00:00"),
-            ),
-        ],
-    )
-    def test_next_update(self, time_series, dt, expected):
-        assert time_series.next_update(dt) == expected
-
     def test_zones(self, time_series):
-        assert time_series.zones() == ["a", "b"]
+        assert time_series.zones() == ["a", "b", "c"]
 
-    def test_trace_actual_single_zone(self, time_series_single):
+    def test_actual_single_zone(self, time_series_single):
         assert time_series_single.actual("2023-01-01T00:45:00") == 3
+
+    def test_actual_none_values(self, time_series):
+        assert time_series.actual("2023-01-01T01:20:00", zone="c") == 4
 
     @pytest.mark.parametrize(
         "dt, zone, expected",
@@ -100,7 +81,7 @@ class TestTraceSimulator:
 
     def test_actual_fails_if_zone_does_not_exist(self, time_series):
         with pytest.raises(ValueError):
-            time_series.actual(pd.to_datetime("2023-01-01T00:00:00"), "c")
+            time_series.actual(pd.to_datetime("2023-01-01T00:00:00"), "d")
 
     def test_actual_fails_if_now_too_early(self, time_series):
         with pytest.raises(ValueError):
@@ -181,6 +162,18 @@ class TestTraceSimulator:
                         pd.to_datetime("2023-01-01T00:10:00"),
                         pd.to_datetime("2023-01-01T01:00:00"),
                         pd.to_datetime("2023-01-01T02:00:00"),
+                    ],
+                ),
+            ),
+            (
+                "2023-01-01T01:00:00",
+                "2023-04-04T14:00:00",
+                "a",
+                pd.Series(
+                    [3.0, 1.5],
+                    index=[
+                        pd.to_datetime("2023-01-01T02:00:00"),
+                        pd.to_datetime("2023-01-01T03:00:00"),
                     ],
                 ),
             ),
@@ -302,12 +295,12 @@ class TestTraceSimulator:
             time_series.forecast(
                 pd.to_datetime("2023-01-01T00:00:00"),
                 pd.to_datetime("2023-01-01T01:00:00"),
-                zone="c",
+                zone="d",
             )
 
-    def test_forecast_fails_if_start_too_early(self, time_series):
+    def test_forecast_fails_if_start_too_early(self, time_series_forecast):
         with pytest.raises(ValueError):
-            time_series.forecast(
+            time_series_forecast.forecast(
                 pd.to_datetime("2022-12-31T23:59:59"),
                 pd.to_datetime("2023-01-01T01:00:00"),
                 zone="a",
@@ -332,3 +325,27 @@ class TestTraceSimulator:
                 zone="a",
                 frequency="15T",
             )
+
+    @pytest.mark.parametrize(
+        "dt, expected",
+        [
+            (
+                pd.to_datetime("2023-01-01T00:00:00"),
+                pd.to_datetime("2023-01-01T00:30:00"),
+            ),
+            (
+                pd.to_datetime("2023-01-01T00:10:00"),
+                pd.to_datetime("2023-01-01T00:30:00"),
+            ),
+            (
+                pd.to_datetime("2023-01-01T00:29:59"),
+                pd.to_datetime("2023-01-01T00:30:00"),
+            ),
+            (
+                pd.to_datetime("2023-01-01T00:40:00"),
+                pd.to_datetime("2023-01-01T01:00:00"),
+            ),
+        ],
+    )
+    def test_next_update(self, time_series, dt, expected):
+        assert time_series.next_update(dt, "a") == expected

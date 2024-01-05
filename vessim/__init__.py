@@ -1,7 +1,7 @@
 """A simulator for carbon-aware applications and systems."""
 
 from datetime import datetime, timedelta
-from typing import Union, List, Optional, Any, Literal
+from typing import Union, List, Optional, Any, Literal, Dict, Hashable
 
 import pandas as pd
 
@@ -76,41 +76,49 @@ class TimeSeriesApi:
     ):
         actual.index = pd.to_datetime(actual.index)
         actual.sort_index(inplace=True)
+        self._actual: Dict[Hashable, pd.Series]
         if isinstance(actual, pd.Series):
-            self._actual = actual.to_frame()
+            self._actual = {actual.name: actual.dropna()}
         elif isinstance(actual, pd.DataFrame):
-            self._actual = actual
+            self._actual = {col: actual[col].dropna() for col in actual.columns}
         else:
             raise ValueError(f"Incompatible type {type(actual)} for 'actual'.")
 
         if isinstance(forecast, (pd.Series, pd.DataFrame)):
             # Convert all indices (either one or two columns) to datetime
             if isinstance(forecast.index, pd.MultiIndex):
-                forecast_index: pd.MultiIndex = forecast.index
-                for level in range(forecast.index.nlevels):
-                    forecast.index = forecast_index.set_levels(
-                        pd.to_datetime(forecast_index.levels[level]), level=level
-                    )
+                index: pd.MultiIndex = forecast.index
+                for i, level in enumerate(index.levels):
+                    index = index.set_levels(pd.to_datetime(level), level=i)
+                forecast.index = index
             else:
                 forecast.index = pd.to_datetime(forecast.index)
 
             forecast.sort_index(inplace=True)
-        self._forecast: Optional[pd.DataFrame]
+
+        self._forecast: Dict[Hashable, pd.Series]
         if isinstance(forecast, pd.Series):
-            self._forecast = forecast.to_frame()
+            self._forecast = {forecast.name: forecast.dropna()}
+        elif isinstance(forecast, pd.DataFrame):
+            self._forecast = {col: forecast[col].dropna() for col in forecast.columns}
+        elif forecast is None:
+            self._forecast = {
+                key: data.copy(deep=True) for key, data in self._actual.items()
+            }
         else:
-            self._forecast = forecast  # type: ignore
+            raise ValueError(f"Incompatible type {type(forecast)} for 'forecast'.")
+
         self._fill_method = fill_method
 
     def zones(self) -> List:
         """Returns a list of all zones, where actual data is available."""
-        return list(self._actual.columns)
+        return list(self._actual.keys())
 
     def actual(self, dt: DatetimeLike, zone: Optional[str] = None) -> Any:
         """Retrieves actual data point of zone at given time.
 
-        If queried timestamp is not available in the `actual` dataframe, the last valid
-        datapoint is being returned.
+        If queried timestamp is not available in the `actual` dataframe, the fill_method
+        is used to determine the data point.
 
         Args:
             dt: Timestamp, at which the data is needed.
@@ -120,13 +128,24 @@ class TimeSeriesApi:
         Raises:
             ValueError: If there is no available data at specified zone or time.
         """
-        data_at_time = self._get_actual_values_at_time(dt)
-        zone_index = self._get_zone_index_from_dataframe(data_at_time, zone)
+        dt = pd.to_datetime(dt)
+        zone_data = self._get_zone_data(self._actual, zone)
 
-        data_point = data_at_time.iloc[0, zone_index]
-        if pd.isna(data_point):
-            raise ValueError(f"Cannot retrieve actual data at '{dt}' in zone '{zone}'.")
-        return data_point
+        # Mypy somehow has trouble with indexing in a dataframe with DatetimeIndex
+        # <https://github.com/python/mypy/issues/2410>
+        if self._fill_method == "ffill":
+            # searchsorted with 'side' specified in sorted df always returns an int
+            time_index: int = zone_data.index.searchsorted(dt, side="right") # type: ignore
+            if time_index > 0:
+                return zone_data.iloc[time_index - 1] # type: ignore
+            else:
+                raise ValueError(f"'{dt}' is too early to get data in zone '{zone}'.")
+        else:
+            time_index = zone_data.index.searchsorted(dt, side="left") # type: ignore
+            try:
+                return zone_data.iloc[time_index] # type: ignore
+            except IndexError:
+                raise ValueError(f"'{dt}' is too late to get data in zone '{zone}'.")
 
     def forecast(
         self,
@@ -139,12 +158,13 @@ class TimeSeriesApi:
         """Retrieves of forecasted data points within window at a frequency.
 
         - If no forecast time-series data is provided, actual data is used.
-        - Specified timestamps are always rounded down to the nearest existing.
         - If frequency is not specified, all existing data in the window will be returned.
+          If data is already in the right frequency, it is advised that the frequency is
+          not specified as that causes some performance overhead due to resampling.
         - For various resampling methods, the actual value valid at `start_time` is used.
           So you have to make sure that there is a valid actual value.
         - If there is more than one zone present in the data, zone has to be specified.
-          (Note that zone name must also appear in actual data for non-static forecast.)
+          (Note that zone name must also appear in actual data.)
         - The forecast does not include the value at `start_time` (see example).
 
         Args:
@@ -213,115 +233,113 @@ class TimeSeriesApi:
             2020-01-01 01:50:00    2.8
             Freq: 20T, Name: zone_a, dtype: float64
         """
-        data_src = self._get_forecast_data_source(start_time)
-
-        zone_index = self._get_zone_index_from_dataframe(data_src, zone)
-
-        # Get data of zone and convert to pd.Series
-        forecast: pd.Series = data_src.iloc[:, zone_index].squeeze()
+        start_time = pd.to_datetime(start_time)
+        end_time = pd.to_datetime(end_time)
+        forecast: pd.Series = self._get_forecast_data_source(start_time, zone)
 
         # Resample the data to get the data to specified frequency
         if frequency is not None:
-            forecast = self._resample_to_frequency(
-                forecast, start_time, end_time, frequency, resample_method=resample_method
-            )
-            return forecast.iloc[1:]
+            frequency = pd.tseries.frequencies.to_offset(frequency)
+            if frequency is None:
+                raise ValueError(f"Frequency '{frequency}' invalid.")
 
-        return forecast.loc[(forecast.index > start_time) & (forecast.index <= end_time)]
-
-    def _get_forecast_data_source(self, start_time: DatetimeLike):
-        """Returns dataframe used to derive forecast prediction."""
-        data_src: pd.DataFrame
-        if self._forecast is None:
-            # Get all data points beginning at the nearest existing timestamp
-            # lower than start time from actual data
-            data_src = self._actual.loc[self._actual.index.asof(start_time) :]
-        elif self._forecast.index.nlevels == 1:
-            # Forecast data does not include request_timestamp
-            data_src = self._forecast.loc[self._forecast.index.asof(start_time) :]
-        else:
-            # Get forecasts of the nearest existing timestamp lower than start time
-            first_index = self._forecast.index.get_level_values(0)
-            request_time = first_index[first_index <= start_time][-1]
-            data_src = self._forecast.loc[request_time]  # type: ignore
-
-            # Retrieve the actual value at start_time and attach it to the front of the
-            # forecast data with the timestamp (for interpolation at a later stage)
-            actual_values = self._get_actual_values_at_time(start_time)
-            data_src = pd.concat(
-                [actual_values, data_src.loc[(data_src.index > start_time)]]
+            forecast_in_freq: pd.Series = self._resample_to_frequency(
+                forecast, start_time, end_time, frequency, resample_method
             )
 
-        if data_src.empty:
-            raise ValueError(f"Cannot retrieve forecast data at '{start_time}'.")
+            # Check if there are NaN values in the result
+            if forecast_in_freq.hasnans:
+                raise ValueError(
+                    f"Not enough data for frequency '{frequency}'"
+                    f"with resample_method '{resample_method}'."
+                )
+            return forecast_in_freq
+
+        start_index = forecast.index.searchsorted(start_time, side='right')
+        return forecast.loc[forecast.index[start_index]:end_time] # type: ignore
+
+    def _get_forecast_data_source(
+        self, start_time: datetime, zone: Optional[str]
+    ) -> pd.Series:
+        """Returns series of zone data used to derive forecast prediction."""
+        data_src = self._get_zone_data(self._forecast, zone)
+
+        if data_src.index.nlevels > 1:
+            # Forecast does include request timestamp
+            try:
+                # Get forecasts of the nearest existing timestamp lower than start time
+                req_time = data_src[:start_time].index.get_level_values(0)[-1] # type: ignore
+            except IndexError:
+                raise ValueError(f"No forecasts available at time {start_time}.")
+            data_src = data_src.loc[req_time]
 
         return data_src
 
-    def _get_actual_values_at_time(self, dt: DatetimeLike) -> pd.DataFrame:
-        """Return actual data that is valid at a specific time."""
-        return self._actual.reindex(index=[pd.to_datetime(dt)], method=self._fill_method)
+    def _get_zone_data(
+        self, data: Dict[Hashable, pd.Series], zone: Optional[str]
+    ) -> pd.Series:
+        """Return data of zone to be used.
 
-    def _get_zone_index_from_dataframe(self, df: pd.DataFrame, zone: Optional[str]):
-        """Return column index of zone from given dataframe.
-
-        If zone is not specified, but there is only one column in the dataframe, the
-        first index is returned.
+        If zone is not specified, but there is only one zone available, the
+        data of that zone is returned.
 
         Raises:
-            ValueError: If zone index can not be determined.
+            ValueError: If zone can not be determined.
         """
         if zone is None:
-            if len(df.columns) == 1:
-                zone_index = 0
+            if len(data.keys()) == 1:
+                zone_name = next(iter(data))
             else:
                 raise ValueError("Zone needs to be specified.")
+        elif zone in data.keys():
+            zone_name = zone
         else:
-            try:
-                zone_index = df.columns.get_loc(zone)
-            except KeyError:
-                raise ValueError(f"Cannot retrieve data for zone '{zone}'.")
+            raise ValueError(f"Cannot retrieve data for zone '{zone}'.")
 
-        return zone_index
+        return data[zone_name]
 
     def _resample_to_frequency(
         self,
         df: pd.Series,
-        start_time: DatetimeLike,
-        end_time: DatetimeLike,
-        frequency: Optional[Union[str, pd.DateOffset, timedelta]] = None,
+        start_time: datetime,
+        end_time: datetime,
+        frequency: pd.DateOffset,
         resample_method: Optional[str] = None,
-    ):
-        """Transform series into the desired frequency between start and end time."""
-        frequency = pd.tseries.frequencies.to_offset(frequency)
-        if frequency is None:
-            raise ValueError(f"Frequency '{frequency}' invalid.")
-
-        # Add NaN values in the specified frequency
+    ) -> pd.Series:
+        """Transform frame into the desired frequency between start and end time."""
         new_index = pd.date_range(start=start_time, end=end_time, freq=frequency)
-        combined_index = df.index.union(new_index).sort_values()
-        df = df.reindex(combined_index)
 
-        # Use specific resample method if specified to fill NaN values
-        if resample_method == "ffill":
-            df.ffill(inplace=True)
-        elif resample_method == "bfill":
-            df.bfill(inplace=True)
-        elif resample_method is not None:
-            df.interpolate(method=resample_method, inplace=True)  # type: ignore
-        elif df.isnull().values.any():  # type: ignore
-            # Check if there are NaN values if resample method is not specified
-            raise ValueError(
-                f"Not enough data at frequency '{frequency}'. Specify resample_method"
-            )
+        if resample_method is not None:
+            # Cutoff data for performance
+            try:
+                cutoff_time = df.index[df.index.searchsorted(end_time, side='right')]
+                df = df.loc[start_time:cutoff_time] # type: ignore
+            except IndexError:
+                df = df.loc[start_time:] # type: ignore
+            # Add NaN values in the specified frequency
+            combined_index = df.index.union(new_index, sort=True)
+            df = df.reindex(combined_index)
+
+            # Use specific resample method if specified to fill NaN values
+            if resample_method == "bfill":
+                df.bfill(inplace=True)
+            elif resample_method is not None:
+                # Add actual value to front of series because needed for interpolation
+                df[start_time] = self.actual(start_time, zone=str(df.name))
+                if resample_method == "ffill":
+                    df.ffill(inplace=True)
+                else:
+                    df.interpolate(method=resample_method, inplace=True) # type: ignore
 
         # Get the data to the desired frequency after interpolation
-        return df.loc[(df.index >= start_time) & (df.index <= end_time)].asfreq(frequency)
+        return df.reindex(new_index[1:]) # type: ignore
 
-    def next_update(self, dt: DatetimeLike) -> datetime:
+    def next_update(self, dt: DatetimeLike, zone: Optional[str] = None) -> datetime:
         """Returns the next time of when the actual trace will change.
 
         This method is being called in the time-based simulation model for Mosaik.
         """
-        current_index = self._actual.index.asof(dt)
-        next_iloc = self._actual.index.get_loc(current_index) + 1
-        return self._actual.index[next_iloc]
+        zone_data = self._get_zone_data(self._actual, zone)
+        current_index = zone_data.index.asof(dt)
+        next_iloc = zone_data.index.get_loc(current_index) + 1
+        return zone_data.index[next_iloc]
