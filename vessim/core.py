@@ -3,7 +3,7 @@ from typing import Union, Optional, Literal, Dict, Hashable, List, Any
 
 import pandas as pd
 
-from vessim import DatetimeLike
+from vessim._util import DatetimeLike
 
 
 class TimeSeriesApi:

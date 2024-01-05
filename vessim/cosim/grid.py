@@ -1,6 +1,6 @@
 import mosaik_api
 
-from vessim import DefaultStoragePolicy
+from vessim.cosim import DefaultStoragePolicy
 
 
 class GridSim(mosaik_api.Simulator):
