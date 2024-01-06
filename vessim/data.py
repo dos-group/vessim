@@ -62,7 +62,7 @@ def load_dataset(
     if start_time is None:
         shift = None
     else:
-        shift = start_time - actual.index[0]
+        shift = pd.to_datetime(start_time) - actual.index[0]
         # TODO shift is already in read_data_from_csv. There is probably a better way to
         # shift both dataframes by the exact same amount given the start_time
         actual.index += shift
@@ -102,10 +102,17 @@ def read_data_from_csv(
     Returns:
         Scaled and shifted dataframe retrieved from csv file.
     """
-    data = convert_to_datetime(pd.read_csv(path, index_col=index_cols))
+    df = convert_to_datetime(pd.read_csv(path, index_col=index_cols))
     if shift is not None:
-        data.index += shift
-    return (data * scale).astype(float)
+        if isinstance(df.index, pd.MultiIndex):
+            index: pd.MultiIndex = df.index
+            for i, level in enumerate(index.levels):
+                index = index.set_levels(level + shift, level=i)
+            df.index = index
+        else:
+            df.index += shift
+
+    return (df * scale).astype(float)
 
 
 def convert_to_datetime(df: PandasObject) -> PandasObject:
