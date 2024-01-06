@@ -12,7 +12,7 @@ class GeneratorSim(VessimSimulator):
         "models": {
             "Generator": {
                 "public": True,
-                "params": ["generator"],
+                "params": ["generator", "zone"],
                 "attrs": ["p"],
             },
         },
@@ -32,17 +32,18 @@ class GeneratorSim(VessimSimulator):
 
     def next_step(self, time: int) -> int:
         dt = self.clock.to_datetime(time)
-        next_dt = min(e.generator.next_update(dt)   # type: ignore
+        next_dt = min(e.generator.next_update(dt, e.zone)   # type: ignore
                       for e in self.entities.values())
         return self.clock.to_simtime(next_dt)
 
 
 class _GeneratorModel(VessimModel):
-    def __init__(self, generator: TimeSeriesApi, clock: Clock):
+    def __init__(self, generator: TimeSeriesApi, clock: Clock, zone: Optional[str]):
         self.generator = generator
         self.clock = clock
+        self.zone = zone
         self.p: Optional[float] = None
 
     def step(self, time: int, inputs: dict) -> None:
         dt = self.clock.to_datetime(time)
-        self.p = self.generator.actual(dt)
+        self.p = self.generator.actual(dt, self.zone)

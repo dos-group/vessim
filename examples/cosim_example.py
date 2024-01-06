@@ -55,7 +55,7 @@ def run_simulation(carbon_aware: bool, result_csv: str):
 
     # Initialize solar generator
     solar_sim = world.start("Generator", sim_start=SIM_START)
-    solar = solar_sim.Generator(generator=get_solar_time_series_api())
+    solar = solar_sim.Generator(generator=get_solar_time_series_api(), zone="solar")
 
     # Initialize carbon intensity API
     carbon_api_sim = world.start(

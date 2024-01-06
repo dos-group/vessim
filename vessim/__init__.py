@@ -6,9 +6,7 @@ from typing import Union, List, Optional, Literal, Dict, Hashable
 
 import pandas as pd
 
-from vessim.datasets import load_dataset, read_data_from_csv
-
-DatetimeLike = Union[str, datetime]
+from vessim.data import load_dataset, convert_to_datetime, DatetimeLike
 
 
 class TimeSeriesApi:
@@ -77,8 +75,7 @@ class TimeSeriesApi:
         forecast: Optional[Union[pd.Series, pd.DataFrame]] = None,
         fill_method: Literal["ffill", "bfill"] = "ffill",
     ):
-        actual.index = pd.to_datetime(actual.index)
-        actual.sort_index(inplace=True)
+        actual = convert_to_datetime(actual)
         self._actual: Dict[Hashable, pd.Series]
         if isinstance(actual, pd.Series):
             self._actual = {actual.name: actual.dropna()}
@@ -88,16 +85,7 @@ class TimeSeriesApi:
             raise ValueError(f"Incompatible type {type(actual)} for 'actual'.")
 
         if isinstance(forecast, (pd.Series, pd.DataFrame)):
-            # Convert all indices (either one or two columns) to datetime
-            if isinstance(forecast.index, pd.MultiIndex):
-                index: pd.MultiIndex = forecast.index
-                for i, level in enumerate(index.levels):
-                    index = index.set_levels(pd.to_datetime(level), level=i)
-                forecast.index = index
-            else:
-                forecast.index = pd.to_datetime(forecast.index)
-
-            forecast.sort_index(inplace=True)
+            forecast = convert_to_datetime(forecast)
 
         self._forecast: Dict[Hashable, pd.Series]
         if isinstance(forecast, pd.Series):
@@ -117,35 +105,32 @@ class TimeSeriesApi:
     def from_dataset(
         cls,
         dataset: str,
-        data_dir: Optional[str] = None,
+        data_dir: Optional[Union[str, Path]] = None,
         scale: float = 1.0,
+        start_time: Optional[DatetimeLike] = None,
+        use_forecast: bool = True,
     ):
-        dir_path = Path(data_dir or "").expanduser().resolve()
-        files = load_dataset(dataset, dir_path)
+        """Downloads a dataset from the vessim repository, unpacks it and loads data.
 
-        # Currently specific for Solcast, needs change if more datasets are introduced
-        def _solcast_transform(df):
-            df = df.unstack(level=0)
-            df.columns = [col[1] for col in df.columns]
-            return df
+        If all files are already present in the directory, the download is skipped.
 
-        actual_path = dir_path / files["actual"]
-        actual = read_data_from_csv(
-            actual_path,
-            index_cols=[0, 1],
-            value_cols=["actual"],
-            scale=scale,
-            transform=_solcast_transform,
+        Args:
+            dataset: Name of the dataset to be downloaded.
+            data_dir: Optional absolute or relative path to directory where data should
+                be loaded into. Defaults to None.
+            scale: Multiplies all data point with a value. Defaults to 1.0.
+            start_time: Shifts the data so that it starts at this timestamp if specified.
+                Defaults to None.
+            use_forecast: Bool indicating if forecast should be loaded. Default is true.
+
+        Raises:
+            RuntimeError if dataset can not be loaded.
+        """
+        actual, forecast = load_dataset(
+            dataset, data_dir, scale, start_time, use_forecast
         )
 
-        forecast_path = dir_path / files["forecast"]
-        forecast = read_data_from_csv(
-            forecast_path,
-            index_cols=[0, 1, 2],
-            value_cols=["median"],
-            scale=scale,
-            transform=_solcast_transform,
-        )
+        # TODO bfill is currently hardcoded because it is used in Solcast
         return cls(actual, forecast, fill_method="bfill")
 
 
