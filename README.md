@@ -20,15 +20,13 @@ environment.add_microgrid(Microgrid(
     actors=[
         # Single server which always draws 100W
         ComputingSystem(
-            name="server",
             step_size=60,
-            power_meters=[MockPowerMeter(name="pm", p=100)]
+            power_meters=[MockPowerMeter(name="pm", p=100)],
         ),
         # Solar panel simulated according to real historical solar data provided by Solcast
         Generator(
-            name="solar",
             step_size=60,
-            time_series_api=TimeSeriesApi.from_dataset("solcast2022_global"))
+            time_series_api=TimeSeriesApi.from_dataset("solcast2022_global")),
         ),
     ],
     controllers=[monitor],

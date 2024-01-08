@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Dict, List
+from itertools import count
+from typing import Dict, List, Optional
 
 import mosaik_api
 
@@ -42,8 +43,17 @@ class ComputingSystem(Actor):
         power_meters: list of PowerMeters that constitute the computing system's demand.
         pue: The power usage effectiveness of the system.
     """
+    _ids = count(0)
 
-    def __init__(self, name: str, step_size: int, power_meters: List[PowerMeter], pue: float = 1):
+    def __init__(
+        self,
+        step_size: int,
+        power_meters: List[PowerMeter],
+        name: Optional[str] = None,
+        pue: float = 1
+    ):
+        if name is None:
+            name = f"ComputingSystem-{next(self._ids)}"
         super().__init__(name, step_size)
         self.power_meters = power_meters
         self.pue = pue
@@ -60,8 +70,11 @@ class ComputingSystem(Actor):
 
 
 class Generator(Actor):
+    _ids = count(0)
 
-    def __init__(self, name: str, step_size: int, time_series_api: TimeSeriesApi):
+    def __init__(self, step_size: int, time_series_api: TimeSeriesApi, name: Optional[str] = None):
+        if name is None:
+            name = f"Generator-{next(self._ids)}"
         super().__init__(name, step_size)
         self.time_series_api = time_series_api
 

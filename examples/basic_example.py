@@ -20,15 +20,13 @@ def main(result_csv: str):
     microgrid = Microgrid(
         actors=[
             ComputingSystem(
-                name="server",
                 step_size=60,
                 power_meters=[
-                    MockPowerMeter(name="mpm0", p=2.194),
-                    MockPowerMeter(name="mpm1", p=7.6)
+                    MockPowerMeter(p=2.194),
+                    MockPowerMeter(p=7.6)
                 ]
             ),
             Generator(
-                name="solar",
                 step_size=60,
                 time_series_api=TimeSeriesApi(load_solar_data(sqm=0.4 * 0.5))
             ),

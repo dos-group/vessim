@@ -51,12 +51,10 @@ def main(result_csv: str):
     microgrid = Microgrid(
         actors=[
             ComputingSystem(
-                name="server",
                 step_size=60,
                 power_meters=power_meters
             ),
             Generator(
-                name="solar",
                 step_size=60,
                 time_series_api=TimeSeriesApi(load_solar_data(sqm=0.4 * 0.5))
             ),
