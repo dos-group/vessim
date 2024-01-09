@@ -22,6 +22,7 @@ classifiers = [
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3 :: Only",
 ]
 
@@ -33,21 +34,25 @@ source = "git-tag"
 
 [tool.poetry.dependencies]
 python = "^3.8"
+
 # Mandatory dependencies
 pandas = "*"
 mosaik = "*"
 mosaik-api = "*"
 loguru = "*"
+matplotlib = "*"
+
 # Optional dependencies (software-in-the-loop)
 requests = {version = "*", optional = true}
 fastapi = {version = "*", optional = true}
 docker = {version = "*", optional = true}
 redis = {version = "*", optional = true}
 uvicorn = {version = "*", optional = true}
+
 # Optional dependencies (analysis)
 jupyterlab = {version = "*", optional = true}
-matplotlib = {version = "*", optional = true}
 seaborn = {version = "0.12.2", optional = true}
+
 # Optional dependencies (development)
 pytest = {version = "*", optional = true}
 mypy = {version = "*", optional = true}
@@ -56,13 +61,14 @@ pandas-stubs = {version = "*", optional = true}
 types-requests = {version = "*", optional = true}
 black = {version = "*", optional = true}
 ruff = {version = "*", optional = true}
+
 # Optional dependencies (documentation)
 furo = {version = "*", optional = true}
 sphinx-copybutton = {version = "*", optional = true}
 
 [tool.poetry.extras]
 sil = ["requests", "fastapi", "docker", "redis", "uvicorn"]
-analysis = ["jupyterlab", "matplotlib", "seaborn"]
+analysis = ["jupyterlab", "seaborn"]
 dev = ["pytest", "mypy", "types-psutil", "pandas-stubs", "types-requests", "black", "ruff"]
 docs = ["furo", "sphinx-copybutton"]
 
