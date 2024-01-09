@@ -3,7 +3,7 @@
 import vessim.analysis
 import vessim.core
 import vessim.cosim
-import vessim.sil
+import vessim.sil  # noqa: F401
 
 __all__ = [
     "analysis",

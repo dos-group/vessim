@@ -2,7 +2,7 @@ import pickle
 from copy import copy
 from typing import List, Optional, Dict, Union, Literal
 
-import mosaik
+import mosaik  # type: ignore
 
 from vessim._util import Clock
 from vessim.core import TimeSeriesApi
@@ -25,12 +25,9 @@ class Microgrid:
         self.zone = zone
 
     def initialize(
-        self,
-        world: mosaik.World,
-        clock: Clock,
-        grid_signals: Dict[str, TimeSeriesApi]
+        self, world: mosaik.World, clock: Clock, grid_signals: Dict[str, TimeSeriesApi]
     ):
-        """Create co-simulation entities and connect them to world"""
+        """Create co-simulation entities and connect them to world."""
         grid_sim = world.start("Grid")
         grid_entity = grid_sim.Grid(storage=self.storage, policy=self.storage_policy)
 
@@ -48,8 +45,12 @@ class Microgrid:
             world.connect(actor_entity, grid_entity, "p")
 
             for controller_entity in controller_entities:
-                world.connect(actor_entity, controller_entity, ("p", f"actor.{actor.name}.p"))
-                world.connect(actor_entity, controller_entity, ("info", f"actor.{actor.name}.info"))
+                world.connect(
+                    actor_entity, controller_entity, ("p", f"actor.{actor.name}.p")
+                )
+                world.connect(
+                    actor_entity, controller_entity, ("info", f"actor.{actor.name}.info")
+                )
 
     def pickle(self) -> bytes:
         """Returns a Dict with the current state of the microgrid for monitoring."""
@@ -75,9 +76,7 @@ class Environment:
         "Controller": {
             "python": "vessim.cosim.controller:ControllerSim",
         },
-        "Grid": {
-            "python": "vessim.cosim.grid:GridSim"
-        },
+        "Grid": {"python": "vessim.cosim.grid:GridSim"},
     }
 
     def __init__(self, sim_start):
@@ -103,7 +102,9 @@ class Environment:
         try:
             for microgrid in self.microgrids:
                 microgrid.initialize(self.world, self.clock, self.grid_signals)
-            self.world.run(until=until, rt_factor=rt_factor, print_progress=print_progress)
+            self.world.run(
+                until=until, rt_factor=rt_factor, print_progress=print_progress
+            )
         except Exception as e:
             if str(e).startswith("Simulation too slow for real-time factor"):
                 return

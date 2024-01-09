@@ -3,9 +3,12 @@ name: Build
 # event that triggers workflow
 # runs on every pull request
 on: 
-  pull_request:
+  push:
     branches:
-      - main
+       - pipeline_adjustments
+  #pull_request:
+  #  branches:
+  #    - main
 
 jobs:
   integration-tests:
@@ -13,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.11]
+        python-version: [3.8, 3.12]
     steps:
     # downloads the repository code to the runner's file system for workflow access
     - uses: actions/checkout@v2
@@ -38,7 +41,7 @@ jobs:
 
     - name: Run example scenario and compare result
       run: |
-        python examples/cosim_example.py --out result.csv
+        python examples/basic_example.py --out result.csv
         if diff result.csv examples/data/base_result.csv; then
           echo "Files are identical"
         else

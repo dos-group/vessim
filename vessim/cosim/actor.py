@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Dict, List
 
-import mosaik_api
+import mosaik_api  # type: ignore
 
 from vessim.core import TimeSeriesApi
 from vessim.cosim.power_meter import PowerMeter
@@ -43,7 +43,9 @@ class ComputingSystem(Actor):
         pue: The power usage effectiveness of the system.
     """
 
-    def __init__(self, name: str, step_size: int, power_meters: List[PowerMeter], pue: float = 1):
+    def __init__(
+        self, name: str, step_size: int, power_meters: List[PowerMeter], pue: float = 1
+    ):
         super().__init__(name, step_size)
         self.power_meters = power_meters
         self.pue = pue
@@ -60,13 +62,14 @@ class ComputingSystem(Actor):
 
 
 class Generator(Actor):
-
     def __init__(self, name: str, step_size: int, time_series_api: TimeSeriesApi):
         super().__init__(name, step_size)
         self.time_series_api = time_series_api
 
     def p(self, now: datetime) -> float:
-        return self.time_series_api.actual(now)  # TODO TimeSeriesApi must be for a single region
+        return self.time_series_api.actual(
+            now
+        )  # TODO TimeSeriesApi must be for a single region
 
 
 class ActorSim(mosaik_api.Simulator):
@@ -90,7 +93,7 @@ class ActorSim(mosaik_api.Simulator):
         self.p = 0
         self.info = {}
 
-    def init(self, sid, time_resolution=1., **sim_params):
+    def init(self, sid, time_resolution=1.0, **sim_params):
         self.step_size = sim_params["step_size"]
         self.clock = sim_params["clock"]
         return self.meta

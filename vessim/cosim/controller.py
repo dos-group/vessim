@@ -26,7 +26,7 @@ class Controller(ABC):
         self.grid_signals = grid_signals
 
     def custom_init(self):
-        """TODO document"""
+        """TODO document."""
 
     @abstractmethod
     def step(self, time: int, p_delta: float, actors: Dict) -> None:

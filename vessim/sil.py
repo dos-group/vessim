@@ -13,10 +13,10 @@ from threading import Thread
 from time import sleep
 from typing import Dict, Callable, Optional, List, Any
 
-import docker
+import docker # type: ignore
 import redis
 import uvicorn
-from docker.models.containers import Container
+from docker.models.containers import Container # type: ignore
 from fastapi import FastAPI
 
 from vessim._util import HttpClient
@@ -178,7 +178,7 @@ def _redis_docker_container(
             raise RuntimeError("Could not connect to Docker.") from e
     container = docker_client.containers.run(
         "redis:latest",
-        ports={f"6379/tcp": port},
+        ports={"6379/tcp": port},
         detach=True,  # run in background
     )
 
