@@ -15,6 +15,8 @@ jobs:
     steps:
     # downloads the repository code to the runner's file system for workflow access
     - uses: actions/checkout@v2
+      with:
+        ref: 'pipeline_adjustments'
        
     # sets up python environment with specified versions 
     - name: Set up Python ${{ matrix.python-version }}
