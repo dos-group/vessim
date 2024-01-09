@@ -1,99 +1,135 @@
 """Co-simulation example with software-in-the-loop.
 
-This scenario builds on `cosim_example.py` but connects to a real computing system
+This scenario builds on `controller_example.py` but connects to a real computing system
 through software-in-the-loop integration as described in our paper:
 - 'Software-in-the-loop simulation for developing and testing carbon-aware applications'.
   [under review]
 
 This is example experimental and documentation is still in progress.
 """
+from datetime import datetime
+from typing import Optional, Dict
 
-import mosaik  # type: ignore
+import pandas as pd
+from fastapi import FastAPI
+from pydantic import BaseModel
 
-from _data import get_ci_time_series_api, get_solar_time_series_api
-from cosim_example import (
-    COSIM_CONFIG,
-    SIM_START,
-    STORAGE,
-    DURATION
-)
-from vessim.core.consumer import ComputingSystem
-from vessim.core.microgrid import SimpleMicrogrid
-from vessim.sil.node import Node
-from vessim.sil.power_meter import HttpPowerMeter
-from vessim.cosim._util import disable_mosaik_warnings
+from _data import load_carbon_data, load_solar_data
+from controller_example import SIM_START, STORAGE, DURATION, POLICY
+from vessim.core import TimeSeriesApi
+from vessim.cosim import Environment, Monitor, Microgrid, ComputingSystem, Generator
+from vessim.sil import SilController, ComputeNode, Broker, get_latest_event, \
+    HttpPowerMeter
 
-
-COSIM_SIL_CONFIG = {
-    **COSIM_CONFIG,
-    "SilInterface": {
-        "python": "vessim.sil.sil_interface:SilInterfaceSim",
-    },
-}
-RT_FACTOR = 1/60  # 1 wall-clock second ^= 60 sim seconds
-
+RT_FACTOR = 1  # 1 wall-clock second ^= 60 sim seconds
 GCP_ADDRESS = "http://35.198.148.144"
 RASPI_ADDRESS = "http://192.168.207.71"
 
-disable_mosaik_warnings(behind_threshold=0.01)
 
+def main(result_csv: str):
+    environment = Environment(sim_start=SIM_START)
+    environment.add_grid_signal("carbon_intensity", TimeSeriesApi(load_carbon_data()))
 
-def run_simulation():
-    world = mosaik.World(COSIM_SIL_CONFIG)
-
-    # Initialize nodes
-    nodes = [
-        Node(address=GCP_ADDRESS, id="gcp"),
-        # Node(address=RASPI_ADDRESS, name="raspi")
+    power_meters = [
+        HttpPowerMeter(name="gcp", address=GCP_ADDRESS),
+        HttpPowerMeter(name="raspi", address=RASPI_ADDRESS)
     ]
-
-    # Initialize computing system
-    consumer_sim = world.start("Consumer", step_size=60)
-    computing_system = consumer_sim.Consumer(
-        consumer=ComputingSystem(power_meters=[
-            HttpPowerMeter(name="mpm0", interval=1, server_address=GCP_ADDRESS),
-            # HttpPowerMeter(name="mpm1", interval=1, server_address=RASPI_ADDRESS)
-        ])
+    monitor = Monitor(step_size=60)
+    carbon_aware_controller = SilController(
+        step_size=60,
+        api_routes=api_routes,
+        request_collectors={
+            "battery_min_soc": battery_min_soc_collector,
+            "battery_grid_charge": grid_charge_collector,
+            "nodes_power_mode": node_power_mode_collector,
+        },
+        compute_nodes=[
+            ComputeNode(name="gcp", address=GCP_ADDRESS),
+            ComputeNode(name="raspi", address=RASPI_ADDRESS),
+        ],
+    )
+    microgrid = Microgrid(
+        actors=[
+            ComputingSystem(
+                name="server",
+                step_size=60,
+                power_meters=power_meters
+            ),
+            Generator(
+                name="solar",
+                step_size=60,
+                time_series_api=TimeSeriesApi(load_solar_data(sqm=0.4 * 0.5))
+            ),
+        ],
+        storage=STORAGE,
+        storage_policy=POLICY,
+        controllers=[monitor, carbon_aware_controller],  # first executes monitor, then controller
+        zone="DE",
     )
 
-    # Initialize solar generator
-    solar_sim = world.start("Generator", sim_start=SIM_START)
-    solar = solar_sim.Generator(generator=get_solar_time_series_api())
+    environment.add_microgrid(microgrid)
+    environment.run(until=DURATION, rt_factor=RT_FACTOR, print_progress=False)
+    monitor.monitor_log_to_csv(result_csv)
 
-    # Initialize carbon intensity API
-    carbon_api_sim = world.start(
-        "CarbonApi", sim_start=SIM_START, carbon_api=get_ci_time_series_api()
-    )
-    carbon_api_de = carbon_api_sim.CarbonApi(zone="DE")
 
-    # Connect consumers and producers to microgrid
-    microgrid_sim = world.start("Microgrid")
-    microgrid = microgrid_sim.Microgrid(microgrid=SimpleMicrogrid(storage=STORAGE))
-    world.connect(computing_system, microgrid, "p")
-    world.connect(solar, microgrid, "p")
+def api_routes(
+    app: FastAPI,
+    broker: Broker,
+    grid_signals: Dict[str, TimeSeriesApi],
+):
+    @app.get("/actors/{actor}/p")
+    async def get_solar(actor: str):
+        return broker.get_actor(actor)["p"]
 
-    # Software-in-the-loop integration
-    sil_interface_sim = world.start("SilInterface", step_size=60)
-    sil_interface = sil_interface_sim.SilInterface(
-        nodes=nodes, battery=STORAGE, collection_interval=1
-    )
-    world.connect(computing_system, sil_interface, ("p", "p_cons"))
-    world.connect(solar, sil_interface, ("p", "p_gen"))
-    world.connect(carbon_api_de, sil_interface, ("carbon_intensity", "ci"))
-    world.connect(microgrid, sil_interface, ("p_delta", "p_grid"))
+    @app.get("/battery/soc")
+    async def get_battery_soc():
+        return broker.get_microgrid().storage.soc()
 
-    # Connect all simulation entities and the battery to the monitor
-    monitor_sim = world.start("Monitor", sim_start=SIM_START, step_size=60)
-    monitor = monitor_sim.Monitor(out_path="data.csv",
-                                  fn=lambda: dict(battery_soc=STORAGE.soc(),
-                                                  battery_min_soc=STORAGE.min_soc))
-    world.connect(solar, monitor, ("p", "p_solar"))
-    world.connect(computing_system, monitor, ("p", "p_computing_system"))
-    world.connect(microgrid, monitor, ("p_delta", "p_grid"))
-    world.connect(carbon_api_de, monitor, "carbon_intensity")
+    @app.get("/grid-power")
+    async def get_grid_energy():
+        return broker.get_grid_power()
 
-    world.run(until=DURATION, rt_factor=RT_FACTOR)
+    @app.get("/carbon-intensity")
+    async def get_carbon_intensity(time: Optional[str]):
+        time = pd.to_datetime(time) if time is not None else datetime.now()
+        return grid_signals["carbon_intensity"].actual(time)
+
+    class BatteryModel(BaseModel):
+        min_soc: Optional[float]
+        grid_charge: Optional[float]
+
+    @app.put("/battery")
+    async def put_battery(battery_model: BatteryModel):
+        broker.set_event("battery_min_soc", battery_model.min_soc)
+        broker.set_event("battery_grid_charge", battery_model.grid_charge)
+
+    class NodeModel(BaseModel):
+        power_mode: str
+
+    @app.put("/nodes/{node_name}")
+    async def put_nodes(node: NodeModel, node_name: str):
+        broker.set_event("nodes_power_mode", {node_name: node.power_mode})
+
+
+# curl -X PUT -d '{"min_soc": 0.5,"grid_charge": 1}' http://localhost:8000/battery -H 'Content-Type: application/json'
+def battery_min_soc_collector(events: Dict, microgrid: Microgrid, compute_nodes: Dict):
+    print(f"Received battery.min_soc events: {events}")
+    microgrid.storage.min_soc = get_latest_event(events)
+
+
+def grid_charge_collector(events: Dict, microgrid: Microgrid, compute_nodes: Dict):
+    print(f"Received grid_charge events: {events}")
+    microgrid.storage_policy.grid_power = get_latest_event(events)
+
+
+# curl -X PUT -d '{"power_mode": "normal"}' http://localhost:8000/nodes/gcp -H 'Content-Type: application/json'
+def node_power_mode_collector(events: Dict, microgrid: Microgrid, compute_nodes: Dict):
+    print(f"Received nodes_power_mode events: {events}")
+    latest = get_latest_event(events)
+    for node_name, power_mode in latest.items():
+        compute_node: ComputeNode = compute_nodes[node_name]
+        compute_node.set_power_mode(power_mode)
 
 
 if __name__ == "__main__":
-    run_simulation()
+    main(result_csv="result.csv")

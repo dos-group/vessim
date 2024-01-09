@@ -11,7 +11,7 @@ import re
 class VirtualNodeApiServer(FastApiServer):
     """This class is a virtual node API server, extending FastApiServer.
 
-    The server continuosely runs a sysbench instance that puts load on the CPU.
+    The server continuously runs a sysbench instance that puts load on the CPU.
     Depending on the `power_mode`, the sysbench instance claims different CPU
     utilisation.
 

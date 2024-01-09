@@ -1,8 +1,8 @@
 import pytest
 from typing import Dict
 
-from vessim.core.microgrid import SimpleMicrogrid
-from vessim.core.storage import SimpleBattery
+from vessim._core.microgrid import SimpleMicrogrid
+from vessim.cosim.storage import SimpleBattery
 
 
 class TestSimpleMicrogrid:

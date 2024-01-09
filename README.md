@@ -5,46 +5,52 @@
 [![License](https://img.shields.io/pypi/l/vessim.svg)](https://pypi.org/project/vessim/)
 [![Supported versions](https://img.shields.io/pypi/pyversions/vessim.svg)](https://pypi.org/project/vessim/)
 
-Vessim is a versatile **co-simulation testbed for carbon-aware applications and systems**.
-It lets users connect domain-specific simulators for energy system components like renewable power generation, 
-energy storage, and power flow analysis with real software and hardware.
+Vessim is a versatile **co-simulation testbed for carbon-aware applications and systems** which connects domain-specific simulators for renewable power generation and energy storage with real software and hardware.
 
-Vessim is in alpha stage and under active development.
-Functionality and documentation will improve in the next weeks and months.
+## What can I do with it?
+
+Vessim allows you to simulate energy systems next to real or simulated computing systems:
+
+```python
+environment = Environment(sim_start="15-06-2022")
+environment.add_grid_signal("carbon_intensity", TimeSeriesApi.from_dataset("carbon_data1"))
+
+monitor = Monitor(step_size=60)  # stores simulation state every 60s
+environment.add_microgrid(Microgrid(
+    actors=[
+        # Single server which always draws 100W
+        ComputingSystem(
+            name="server",
+            step_size=60,
+            power_meters=[MockPowerMeter(name="pm", p=100)]
+        ),
+        # Solar panel simulated according to real historical solar data provided by Solcast
+        Generator(
+            name="solar",
+            step_size=60,
+            time_series_api=TimeSeriesApi.from_dataset("solcast2022_global"))
+        ),
+    ],
+    controllers=[monitor],
+    storage=SimpleBattery(capacity=500000, charge_level=200000, min_soc=.6),
+    zone="DE",
+))
+
+environment.run(until=24*3600)  # 24h
+monitor.monitor_log_to_csv(result_csv)
+```
 
 
 ## Installation
 
-If you are using Vessim for the first time, we recommend to clone and install this repository, so you have all
-code and examples at hand:
-
-```
-pip install -e .
-```
-
-Alternatively, you can also install our [latest release](https://pypi.org/project/vessim/) 
+You can install the [latest release](https://pypi.org/project/vessim/) of Vessim 
 via [pip](https://pip.pypa.io/en/stable/quickstart/):
 
 ```
 pip install vessim
 ```
 
-
-## Getting started
-
-To execute our exemplary co-simulation scenario, run:
-
-```
-python examples/cosim_example.py
-```
-
-Software-in-the-Loop (SiL) simulation allows real computing systems to interact with Vessim at runtime.
-We're currently working on better documentation on how to set up a full SiL scenario, but you can experiment with the existing
-functionality by installing the "sil" extension (`pip install vessim[sil]`) and running:
-
-```
-python examples/sil_example.py
-```
+For more complex scenarios that involve custom co-simulation actors we recomend cloning this depository directly.
 
 
 ## Work in progress
@@ -53,8 +59,7 @@ Our team at the [Distributed and Operating Systems](https://distributedsystems.b
 We are currently working on the following aspects and features:
 
 - **Better documentation**: You can find the current WiP documentation [here](https://vessim.readthedocs.io/en/latest/)
-- **Improving the scenario API**: We currently heavily rely on [Mosaik](https://mosaik.offis.de/)'s scenario interface for defining experiment, but want to offer a more opinionated, high-level API to improve usability.
-- **Software-in-the-loop (SiL) capabilities**: The current SiL implementation is focussed around our exemplary use case presented in our [journal paper](https://doi.org/10.1002/spe.3275). We want this to become more general purpose, so users can implement custom interfaces for the communication of computing and energy systems.
+- **Software-in-the-loop (SiL) capabilities**: The current SiL implementation is focussed around our exemplary use case presented in our [journal paper](https://doi.org/10.1002/spe.3275). We are working on a SiL interface for users to implement custom interfaces for the communication of computing and energy systems.
 - **Prodiving access to relevant datasets**: We're currently collectig relevant datasets for carbon-aware test cases such as solar production or carbon intensity traces to simplify the setup of test cases.
 - **Integrating the SAM**: NREL's [System Advisor Model (SAM)](https://sam.nrel.gov/) will soon be available as a subsystem in Vessim.
 
