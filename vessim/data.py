@@ -86,8 +86,8 @@ def load_dataset(
             raise RuntimeError("Data files could not be found.")
 
         print("Required data files not present. Try downloading...")
-        if not dir_path.is_dir():
-            os.makedirs(dir_path)
+        os.makedirs(dir_path, exist_ok=True)
+
         try:
             urllib.request.urlretrieve(dataset_dict["url"], dir_path / "dataset.zip")
         except Exception:
@@ -104,13 +104,6 @@ def load_dataset(
         dir_path / dataset_dict["actual"], index_cols=[0], scale=scale
     )
 
-    if start_time is None:
-        shift: timedelta = timedelta(days=0)
-    else:
-        shift = pd.to_datetime(start_time) - actual.index[0]
-
-    actual.index += shift
-
     forecast: Optional[PandasObject] = None
     if use_forecast:
         if dataset_dict.get("static_forecast", False):
@@ -123,7 +116,12 @@ def load_dataset(
         forecast = _read_data_from_csv(
             dir_path / dataset_dict["forecast"], index_cols=index_cols, scale=scale
         )
-        forecast = _shift_dataframe(forecast, shift)
+
+    if start_time is not None:
+        shift = pd.to_datetime(start_time) - actual.index[0]
+        actual.index += shift
+        if use_forecast:
+            forecast = _shift_dataframe(forecast, shift) # type: ignore
 
     return actual, forecast, dataset_dict.get("fill_method", "bfill")
 
