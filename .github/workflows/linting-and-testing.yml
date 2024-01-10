@@ -37,8 +37,11 @@ jobs:
       with:
         virtualenvs-create: false
      
+    # installs setuptools because it is needed for python 3.12 virtual environment
     - name: Install dependencies
-      run: poetry install --extras "dev"
+      run: |
+        pip install setuptools
+        poetry install --extras "dev"
 
     - name: Run type checker
       run: mypy vessim
