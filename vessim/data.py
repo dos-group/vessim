@@ -35,8 +35,8 @@ def load_dataset(
     data_dir: Path,
     scale: float = 1.0,
     start_time: Optional[DatetimeLike] = None,
-    use_forecast: bool = True,
-) -> Tuple[PandasObject, Optional[PandasObject], Literal["ffill", "bfill"]]:
+    use_forecast: bool = False,
+) -> Dict:
     """Downloads a dataset from the vessim repository, unpacks it and loads data.
 
     If all files are already present in the directory, the download is skipped.
@@ -123,7 +123,15 @@ def load_dataset(
         if use_forecast:
             forecast = _shift_dataframe(forecast, shift) # type: ignore
 
-    return actual, forecast, dataset_dict.get("fill_method", "bfill")
+    result = dict(
+        actual=actual,
+        fill_method=dataset_dict.get("fill_method", "bfill")
+    )
+
+    if use_forecast:
+        result["forecast"] = forecast
+
+    return result
 
 
 def _check_files(files: List[str], base_dir: Path) -> bool:

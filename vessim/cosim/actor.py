@@ -4,7 +4,7 @@ from typing import Dict, List
 
 import mosaik_api
 
-from vessim.core import TimeSeriesApi
+from vessim.core import Api
 from vessim.cosim.power_meter import PowerMeter
 
 
@@ -63,15 +63,13 @@ class ComputingSystem(Actor):
 
 class Generator(Actor):
 
-    def __init__(
-        self, name: str, step_size: int, time_series_api: TimeSeriesApi, zone: str
-    ):
+    def __init__(self, name: str, step_size: int, api: Api, zone: str):
         super().__init__(name, step_size)
-        self.time_series_api = time_series_api
+        self.api = api
         self.zone = zone
 
     def p(self, now: datetime) -> float:
-        return self.time_series_api.actual(now, self.zone)
+        return self.api.actual(now, zone=self.zone)
 
 
 class ActorSim(mosaik_api.Simulator):

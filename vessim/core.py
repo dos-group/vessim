@@ -1,4 +1,4 @@
-import inspect
+from abc import ABC, abstractmethod
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Union, List, Optional, Literal, Dict, Hashable
@@ -8,68 +8,26 @@ import pandas as pd
 from vessim.data import load_dataset, convert_to_datetime, DatetimeLike
 
 
-class TimeSeriesApi:
-    """Simulates an API for time series data like solar irradiance or carbon intensity.
+class Api(ABC):
+    """Abstract base class for APIs."""
 
-    Args:
-        actual: The actual time-series data to be used. It should contain a datetime-like
-            index marking the time, and each column should represent a different zone
-            containing the data. The name of the zone is equal to the column name.
-            Note that while interpolation is possible when retrieving forecasts, the
-            actual data between timestamps is computed using either `ffill` or `bfill`.
-            If you wish a different behavior, you have to change your actual data
-            beforehand (e.g. by resampling into a different frequency).
+    @abstractmethod
+    def actual(self, now: DatetimeLike, **kwargs):
+        """Retrieves actual data point at given time."""
 
-        forecast: An optional time-series dataset representing forecasted values. The
-            data should contain two datetime-like indices. One is the
-            `Request Timestamp`, marking the time when the forecast was made. One is the
-            `Forecast Timestamp`, indicating the time the forecast is made for.
 
-            - If data does not include a `Request Timestamp`, it is treated as a static
-              forecast that does not change over time.
+class ForecastMixin(ABC):
 
-            - If `forecast` is not provided, predictions are derived from the actual
-              data when requesting forecasts (actual data is treated as static forecast).
+    @abstractmethod
+    def forecast(self, start_time: DatetimeLike, **kwargs) -> pd.Series:
+        """Retrieves forecasted data points."""
 
-            - When using a non-static forecast, you have to be aware that all the
-              zones/column names also have to appear in the actual dataframe because some
-              actual values are used for interpolation.
 
-        fill_method: Either `ffill` or `bfill`. Determines how actual data is acquired in
-            between timestamps. Default is `bfill`.
-
-    Example:
-        >>> actual_data = [
-        ...    ["2020-01-01T00:00:00", 100, 800],
-        ...    ["2020-01-01T00:30:00", 110, 850],
-        ...    ["2020-01-01T01:00:00", 105, 820],
-        ...    ["2020-01-01T01:30:00", 108, 840],
-        ... ]
-        >>> actual = pd.DataFrame(
-        ...    actual_data, columns=["timestamp", "zone_a", "zone_b"]
-        ... )
-        >>> actual.set_index(["timestamp"], inplace=True)
-
-        >>> forecast_data = [
-        ...    ["2020-01-01T00:00:00", "2020-01-01T00:30:00", 115, 850],
-        ...    ["2020-01-01T00:00:00", "2020-01-01T01:00:00", 110, 870],
-        ...    ["2020-01-01T00:00:00", "2020-01-01T01:30:00", 110, 860],
-        ...    ["2020-01-01T00:00:00", "2020-01-01T02:00:00", 120, 830],
-        ...    ["2020-01-01T01:00:00", "2020-01-01T01:30:00", 115, 840],
-        ...    ["2020-01-01T01:00:00", "2020-01-01T02:00:00", 110, 830],
-        ... ]
-        >>> forecast = pd.DataFrame(
-        ...    forecast_data, columns=["req_time", "forecast_time", "zone_a", "zone_b"]
-        ... )
-        >>> forecast.set_index(["req_time", "forecast_time"], inplace=True)
-
-        >>> time_series = TimeSeriesApi(actual, forecast)
-    """
+class HistoricalApi(Api):
 
     def __init__(
         self,
         actual: Union[pd.Series, pd.DataFrame],
-        forecast: Optional[Union[pd.Series, pd.DataFrame]] = None,
         fill_method: Literal["ffill", "bfill"] = "bfill",
     ):
         actual = convert_to_datetime(actual)
@@ -80,22 +38,6 @@ class TimeSeriesApi:
             self._actual = {col: actual[col].dropna() for col in actual.columns}
         else:
             raise ValueError(f"Incompatible type {type(actual)} for 'actual'.")
-
-        if isinstance(forecast, (pd.Series, pd.DataFrame)):
-            forecast = convert_to_datetime(forecast)
-
-        self._forecast: Dict[Hashable, pd.Series]
-        if isinstance(forecast, pd.Series):
-            self._forecast = {forecast.name: forecast.dropna()}
-        elif isinstance(forecast, pd.DataFrame):
-            self._forecast = {col: forecast[col].dropna() for col in forecast.columns}
-        elif forecast is None:
-            self._forecast = {
-                key: data.copy(deep=True) for key, data in self._actual.items()
-            }
-        else:
-            raise ValueError(f"Incompatible type {type(forecast)} for 'forecast'.")
-
         self._fill_method = fill_method
 
     @classmethod
@@ -105,171 +47,80 @@ class TimeSeriesApi:
         data_dir: Union[str, Path] = ".",
         scale: float = 1.0,
         start_time: Optional[DatetimeLike] = None,
-        use_forecast: bool = True,
     ):
-        """Retrieves a TimeSeriesApi from a dataset.
+        return cls(**load_dataset(dataset, _abs_path(data_dir), scale, start_time))
 
-        Args:
-            dataset: If a string is provided, the TimeSeriesApi is loaded from one of the
-                vessim datasets. Currently available datasets are:
-                    `solcast2022_germany` and `solcast2022_global`
-                Otherwise, it should be a Dictionary containing info about the dataset
-                with following entries:
-                    `actual`: Name of the file containing the actual data.
-                    `forecast`: Name of the file containing the forecasted data. This is
-                        not needed if use_forecast is set to False.
-                    `fill_method`: The fill_method of the TimeSeriesApi. If not specified,
-                        `bfill` is used.
-                    `static_forecast`: Bool indicating if the forecast is static. If set
-                        to True, the forecast does not contain a `Request Timestamp`, but
-                        if not specified, the forecast is treated as non-static forecast.
-                        This is not needed if use_forecast is set to False.
-                    `url`: String with a URL to a zip-file if data not locally available.
-            data_dir: Absolute or relative path to directory where data is
-                located or where it should be loaded into. Defaults to the directory of
-                the calling file.
-            scale: Multiplies all data points with a value. Defaults to 1.0.
-            start_time: Shifts the data so that it starts at this timestamp if specified.
-                Defaults to None.
-            use_forecast: Bool indicating if forecast should be loaded. Default is true.
-
-        Raises:
-            RuntimeError if dataset can not be loaded.
-        """
-        data_path = Path(data_dir)
-        if data_path.is_absolute():
-            abs_path = Path(data_dir)
-        else:
-            abs_path = Path(inspect.stack()[1].filename).resolve().parent / data_path
-        return cls(*load_dataset(dataset, abs_path, scale, start_time, use_forecast))
-
-
-    def zones(self) -> List:
-        """Returns a list of all zones, where actual data is available."""
+    def endpoints(self) -> List:
+        """Returns a list of all endpoints, where actual data is available."""
         return list(self._actual.keys())
 
-    def actual(self, dt: DatetimeLike, zone: Optional[str] = None):
-        """Retrieves actual data point of zone at given time.
-
-        If queried timestamp is not available in the `actual` dataframe, the fill_method
-        is used to determine the data point.
-
-        Args:
-            dt: Timestamp, at which the data is needed.
-            zone: Optional zone for the data. Has to be provided if there is more than one
-                zone specified in the data. Defaults to None.
-
-        Raises:
-            ValueError: If there is no available data at specified zone or time.
-        """
-        dt = pd.to_datetime(dt)
-        zone_data = self._get_zone_data(self._actual, zone)
+    def actual(self, now: DatetimeLike, endpoint: Optional[str] = None):
+        dt = pd.to_datetime(now)
+        endpoint_data = _get_endpoint_data(self._actual, endpoint)
 
         # Mypy somehow has trouble with indexing in a dataframe with DatetimeIndex
         # <https://github.com/python/mypy/issues/2410>
         if self._fill_method == "ffill":
             # searchsorted with 'side' specified in sorted df always returns an int
-            time_index: int = zone_data.index.searchsorted(dt, side="right") # type: ignore
+            time_index: int = endpoint_data.index.searchsorted(dt, side="right")  # type: ignore
             if time_index > 0:
-                return zone_data.iloc[time_index - 1] # type: ignore
+                return endpoint_data.iloc[time_index - 1]  # type: ignore
             else:
-                raise ValueError(f"'{dt}' is too early to get data in zone '{zone}'.")
+                raise ValueError(f"'{dt}' is too early to get data in endpoint '{endpoint}'.")
         else:
-            time_index = zone_data.index.searchsorted(dt, side="left") # type: ignore
+            time_index = endpoint_data.index.searchsorted(dt, side="left")  # type: ignore
             try:
-                return zone_data.iloc[time_index] # type: ignore
+                return endpoint_data.iloc[time_index]  # type: ignore
             except IndexError:
-                raise ValueError(f"'{dt}' is too late to get data in zone '{zone}'.")
+                raise ValueError(f"'{dt}' is too late to get data in endpoint '{endpoint}'.")
+
+
+class HistoricalForecastApi(HistoricalApi, ForecastMixin):
+
+    def __init__(
+        self,
+        actual: Union[pd.Series, pd.DataFrame],
+        forecast: Optional[Union[pd.Series, pd.DataFrame]] = None,
+        fill_method: Literal["ffill", "bfill"] = "bfill",
+    ):
+        super().__init__(actual=actual, fill_method=fill_method)
+
+        self._forecast: Dict[Hashable, pd.Series]
+        if isinstance(forecast, pd.Series):
+            forecast = convert_to_datetime(forecast)
+            self._forecast = {forecast.name: forecast.dropna()}
+        elif isinstance(forecast, pd.DataFrame):
+            forecast = convert_to_datetime(forecast)
+            self._forecast = {col: forecast[col].dropna() for col in forecast.columns}
+        elif forecast is None:
+            self._forecast = {
+                key: data.copy(deep=True) for key, data in self._actual.items()
+            }
+        else:
+            raise ValueError(f"Incompatible type {type(forecast)} for 'forecast'.")
+
+    @classmethod
+    def from_dataset(
+        cls,
+        dataset: Union[str, Dict],
+        data_dir: Union[str, Path] = ".",
+        scale: float = 1.0,
+        start_time: Optional[DatetimeLike] = None,
+    ):
+        return cls(**load_dataset(dataset, _abs_path(data_dir), scale, start_time,
+                                  use_forecast=True))
 
     def forecast(
         self,
         start_time: DatetimeLike,
         end_time: DatetimeLike,
-        zone: Optional[str] = None,
+        endpoint: Optional[str] = None,
         frequency: Optional[Union[str, pd.DateOffset, timedelta]] = None,
         resample_method: Optional[str] = None,
     ) -> pd.Series:
-        """Retrieves of forecasted data points within window at a frequency.
-
-        - If no forecast time-series data is provided, actual data is used.
-        - If frequency is not specified, all existing data in the window will be returned.
-          If data is already in the right frequency, it is advised that the frequency is
-          not specified as that causes some performance overhead due to resampling.
-        - For various resampling methods, the actual value valid at `start_time` is used.
-          So you have to make sure that there is a valid actual value.
-        - If there is more than one zone present in the data, zone has to be specified.
-          (Note that zone name must also appear in actual data.)
-        - The forecast does not include the value at `start_time` (see example).
-
-        Args:
-            start_time: Starting time of the window.
-            end_time: End time of the window.
-            zone: Optional geographical zone of the forecast. Defaults to None.
-            frequency: Optional interval, in which the forecast data is to be provided.
-                Defaults to None.
-            resample_method: Optional method, to deal with holes in resampled data.
-                Can be either `bfill`, `ffill` or an interpolation method.
-                For more information on interpolation methods, see the
-                `pandas documentation <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.interpolate.html>`_.
-
-        Returns:
-            pd.Series of forecasted data with timestamps of forecast as index.
-
-        Raises:
-            ValueError: If no data is available for the specified zone or time, or if
-                insufficient data exists for the frequency, without `resample_method`
-                specified.
-
-        Example:
-            >>> index = pd.date_range(
-            ...    "2020-01-01T00:00:00", "2020-01-01T03:00:00", freq="1H"
-            ... )
-            >>> actual = pd.DataFrame({"zone_a": [4, 6, 2, 8]}, index=index)
-
-            >>> forecast_data = [
-            ...    ["2020-01-01T00:00:00", "2020-01-01T01:00:00", 5],
-            ...    ["2020-01-01T00:00:00", "2020-01-01T02:00:00", 2],
-            ...    ["2020-01-01T00:00:00", "2020-01-01T03:00:00", 6],
-            ... ]
-            >>> forecast = pd.DataFrame(
-            ...    forecast_data, columns=["req_time", "forecast_time", "zone_a"]
-            ... )
-            >>> forecast.set_index(["req_time", "forecast_time"], inplace=True)
-
-            >>> time_series = TimeSeriesApi(actual, forecast)
-
-            Forward-fill resampling between 2020-01-01T00:00:00 (actual value = 4.0) and
-            forecasted values between 2020-01-01T01:00:00 and 2020-01-01T02:00:00:
-
-            >>> time_series.forecast(
-            ...    start_time="2020-01-01T00:00:00",
-            ...    end_time="2020-01-01T02:00:00",
-            ...    frequency="30T",
-            ...    resample_method="ffill",
-            ... )
-            2020-01-01 00:30:00    4.0
-            2020-01-01 01:00:00    5.0
-            2020-01-01 01:30:00    5.0
-            2020-01-01 02:00:00    2.0
-            Freq: 30T, Name: zone_a, dtype: float64
-
-            Time interpolation between 2020-01-01T01:10:00 (actual value = 6.0) and
-            2020-01-01T02:00:00 (forecasted value = 2.0):
-
-            >>> time_series.forecast(
-            ...    start_time="2020-01-01T01:10:00",
-            ...    end_time="2020-01-01T01:55:00",
-            ...    zone="zone_a",
-            ...    frequency=timedelta(minutes=20),
-            ...    resample_method="time",
-            ... )
-            2020-01-01 01:30:00    4.4
-            2020-01-01 01:50:00    2.8
-            Freq: 20T, Name: zone_a, dtype: float64
-        """
         start_time = pd.to_datetime(start_time)
         end_time = pd.to_datetime(end_time)
-        forecast: pd.Series = self._get_forecast_data_source(start_time, zone)
+        forecast: pd.Series = self._get_forecast_data_source(start_time, endpoint)
 
         # Resample the data to get the data to specified frequency
         if frequency is not None:
@@ -277,7 +128,7 @@ class TimeSeriesApi:
             if frequency is None:
                 raise ValueError(f"Frequency '{frequency}' invalid.")
 
-            forecast_in_freq: pd.Series = self._resample_to_frequency(
+            forecast_in_freq = self._resample_to_frequency(
                 forecast, start_time, end_time, frequency, resample_method
             )
 
@@ -289,48 +140,25 @@ class TimeSeriesApi:
                 )
             return forecast_in_freq
 
-        start_index = forecast.index.searchsorted(start_time, side='right')
-        return forecast.loc[forecast.index[start_index]:end_time] # type: ignore
+        start_index = forecast.index.searchsorted(start_time, side="right")
+        return forecast.loc[forecast.index[start_index] : end_time]  # type: ignore
 
     def _get_forecast_data_source(
-        self, start_time: datetime, zone: Optional[str]
+        self, start_time: datetime, endpoint: Optional[str]
     ) -> pd.Series:
-        """Returns series of zone data used to derive forecast prediction."""
-        data_src = self._get_zone_data(self._forecast, zone)
+        """Returns series of endpoint data used to derive forecast prediction."""
+        data_src = _get_endpoint_data(self._forecast, endpoint)
 
         if data_src.index.nlevels > 1:
             # Forecast does include request timestamp
             try:
                 # Get forecasts of the nearest existing timestamp lower than start time
-                req_time = data_src[:start_time].index.get_level_values(0)[-1] # type: ignore
+                req_time = data_src[:start_time].index.get_level_values(0)[-1]  # type: ignore
             except IndexError:
                 raise ValueError(f"No forecasts available at time {start_time}.")
             data_src = data_src.loc[req_time]
 
         return data_src
-
-    def _get_zone_data(
-        self, data: Dict[Hashable, pd.Series], zone: Optional[str]
-    ) -> pd.Series:
-        """Return data of zone to be used.
-
-        If zone is not specified, but there is only one zone available, the
-        data of that zone is returned.
-
-        Raises:
-            ValueError: If zone can not be determined.
-        """
-        if zone is None:
-            if len(data.keys()) == 1:
-                zone_name = next(iter(data))
-            else:
-                raise ValueError("Zone needs to be specified.")
-        elif zone in data.keys():
-            zone_name = zone
-        else:
-            raise ValueError(f"Cannot retrieve data for zone '{zone}'.")
-
-        return data[zone_name]
 
     def _resample_to_frequency(
         self,
@@ -346,10 +174,10 @@ class TimeSeriesApi:
         if resample_method is not None:
             # Cutoff data for performance
             try:
-                cutoff_time = df.index[df.index.searchsorted(end_time, side='right')]
-                df = df.loc[start_time:cutoff_time] # type: ignore
+                cutoff_time = df.index[df.index.searchsorted(end_time, side="right")]
+                df = df.loc[start_time:cutoff_time]  # type: ignore
             except IndexError:
-                df = df.loc[start_time:] # type: ignore
+                df = df.loc[start_time:]  # type: ignore
             # Add NaN values in the specified frequency
             combined_index = df.index.union(new_index, sort=True)
             df = df.reindex(combined_index)
@@ -359,21 +187,39 @@ class TimeSeriesApi:
                 df.bfill(inplace=True)
             elif resample_method is not None:
                 # Add actual value to front of series because needed for interpolation
-                df[start_time] = self.actual(start_time, zone=str(df.name))
+                df[start_time] = self.actual(start_time, endpoint=str(df.name))
                 if resample_method == "ffill":
                     df.ffill(inplace=True)
                 else:
-                    df.interpolate(method=resample_method, inplace=True) # type: ignore
+                    df.interpolate(method=resample_method, inplace=True)  # type: ignore
 
         # Get the data to the desired frequency after interpolation
-        return df.reindex(new_index[1:]) # type: ignore
+        return df.reindex(new_index[1:])  # type: ignore
 
-    def next_update(self, dt: DatetimeLike, zone: Optional[str] = None) -> datetime:
-        """Returns the next time of when the actual trace will change.
 
-        This method is being called in the time-based simulation model for Mosaik.
-        """
-        zone_data = self._get_zone_data(self._actual, zone)
-        current_index = zone_data.index.asof(dt)
-        next_iloc = zone_data.index.get_loc(current_index) + 1
-        return zone_data.index[next_iloc]
+class WatttimeApi(Api, ForecastMixin):
+
+    def actual(self, dt: DatetimeLike, params: Optional[Dict] = None):
+        pass
+
+    def forecast(self, dt: DatetimeLike, params: Optional[Dict] = None):
+        pass
+
+
+def _get_endpoint_data(data: Dict[str, pd.Series], endpoint: Optional[str]) -> pd.Series:
+    if endpoint is None:
+        if len(data) == 1:
+            return next(iter(data.values()))
+        else:
+            raise ValueError("Endpoint needs to be specified.")
+    try:
+        return data[endpoint]
+    except KeyError:
+        raise ValueError(f"Cannot retrieve data for endpoint '{endpoint}'.")
+
+
+def _abs_path(data_dir: str):
+    data_dir = Path(data_dir)
+    if data_dir.is_absolute():
+        return data_dir
+    return Path(__file__).parent / data_dir

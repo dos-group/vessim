@@ -2,12 +2,12 @@ import pytest
 import pandas as pd
 from datetime import timedelta
 
-from vessim.core import TimeSeriesApi
+from vessim.core import HistoricalApi
 
 
 class TestTraceSimulator:
     @pytest.fixture
-    def time_series(self) -> TimeSeriesApi:
+    def time_series(self) -> HistoricalApi:
         index = [
             "2023-01-01T00:00:00",
             "2023-01-01T00:30:00",
@@ -16,16 +16,16 @@ class TestTraceSimulator:
         actual = pd.DataFrame(
             {"a": [1, 2, 3], "b": [0, 3, 0], "c":[None, 4, None]}, index=index
         )
-        return TimeSeriesApi(actual)
+        return HistoricalApi(actual)
 
     @pytest.fixture
-    def time_series_single(self) -> TimeSeriesApi:
+    def time_series_single(self) -> HistoricalApi:
         index = ["2023-01-01T00:00:00", "2023-01-01T00:30:00", "2023-01-01T01:00:00"]
         actual = pd.Series([1, 2, 3], index=index)
-        return TimeSeriesApi(actual, fill_method="bfill")
+        return HistoricalApi(actual, fill_method="bfill")
 
     @pytest.fixture
-    def time_series_forecast(self) -> TimeSeriesApi:
+    def time_series_forecast(self) -> HistoricalApi:
         index = pd.date_range("2023-01-01T00:00:00", "2023-01-01T01:00:00", freq="20T")
         actual = pd.DataFrame(
             {"a": [1, 5, 3, 2], "b": [0, 1, 2, 3], "c": [4, 3, 2, 7]}, index=index
@@ -43,23 +43,23 @@ class TestTraceSimulator:
             forecast_data, columns=["request_time", "forecast_time", "a", "b"]
         )
         forecast.set_index(["request_time", "forecast_time"], inplace=True)
-        return TimeSeriesApi(actual, forecast)
+        return HistoricalApi(actual, forecast)
 
     @pytest.fixture
-    def time_series_static_forecast(self) -> TimeSeriesApi:
+    def time_series_static_forecast(self) -> HistoricalApi:
         index = pd.date_range("2023-01-01T00:00:00", "2023-01-01T03:00:00", freq="1H")
         actual = pd.Series([3, 2, 4, 0], index=index)
         forecast = pd.Series([4, 2, 4, 1], index=index)
-        return TimeSeriesApi(actual, forecast)
+        return HistoricalApi(actual, forecast)
 
     def test_zones(self, time_series):
-        assert time_series.zones() == ["a", "b", "c"]
+        assert time_series.endpoints() == ["a", "b", "c"]
 
     def test_actual_single_zone(self, time_series_single):
         assert time_series_single.actual("2023-01-01T00:45:00") == 3
 
     def test_actual_none_values(self, time_series):
-        assert time_series.actual("2023-01-01T01:20:00", zone="c") == 4
+        assert time_series.actual("2023-01-01T01:20:00", endpoint="c") == 4
 
     @pytest.mark.parametrize(
         "dt, zone, expected",

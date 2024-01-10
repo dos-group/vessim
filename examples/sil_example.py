@@ -57,7 +57,7 @@ def main(result_csv: str):
             Generator(
                 name="solar",
                 step_size=60,
-                time_series_api=get_solar_time_series_api(),
+                api=get_solar_time_series_api(),
                 zone="solar"
             ),
         ],
