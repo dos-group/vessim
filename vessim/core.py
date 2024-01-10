@@ -1,9 +1,11 @@
-from datetime import timedelta, datetime
-from typing import Union, Optional, Literal, Dict, Hashable, List, Any
+import inspect
+from pathlib import Path
+from datetime import datetime, timedelta
+from typing import Union, List, Optional, Literal, Dict, Hashable
 
 import pandas as pd
 
-from vessim._util import DatetimeLike
+from vessim.data import load_dataset, convert_to_datetime, DatetimeLike
 
 
 class TimeSeriesApi:
@@ -34,9 +36,7 @@ class TimeSeriesApi:
               actual values are used for interpolation.
 
         fill_method: Either `ffill` or `bfill`. Determines how actual data is acquired in
-            between timestamps. Some data providers like `Solcast` index their data with a
-            timestamp marking the end of the time-period that the data is valid for.
-            In those cases, `bfill` should be chosen, but the default is `ffill`.
+            between timestamps. Default is `bfill`.
 
     Example:
         >>> actual_data = [
@@ -70,10 +70,9 @@ class TimeSeriesApi:
         self,
         actual: Union[pd.Series, pd.DataFrame],
         forecast: Optional[Union[pd.Series, pd.DataFrame]] = None,
-        fill_method: Literal["ffill", "bfill"] = "ffill",
+        fill_method: Literal["ffill", "bfill"] = "bfill",
     ):
-        actual.index = pd.to_datetime(actual.index)
-        actual.sort_index(inplace=True)
+        actual = convert_to_datetime(actual)
         self._actual: Dict[Hashable, pd.Series]
         if isinstance(actual, pd.Series):
             self._actual = {actual.name: actual.dropna()}
@@ -83,16 +82,7 @@ class TimeSeriesApi:
             raise ValueError(f"Incompatible type {type(actual)} for 'actual'.")
 
         if isinstance(forecast, (pd.Series, pd.DataFrame)):
-            # Convert all indices (either one or two columns) to datetime
-            if isinstance(forecast.index, pd.MultiIndex):
-                index: pd.MultiIndex = forecast.index
-                for i, level in enumerate(index.levels):
-                    index = index.set_levels(pd.to_datetime(level), level=i)
-                forecast.index = index
-            else:
-                forecast.index = pd.to_datetime(forecast.index)
-
-            forecast.sort_index(inplace=True)
+            forecast = convert_to_datetime(forecast)
 
         self._forecast: Dict[Hashable, pd.Series]
         if isinstance(forecast, pd.Series):
@@ -108,11 +98,57 @@ class TimeSeriesApi:
 
         self._fill_method = fill_method
 
+    @classmethod
+    def from_dataset(
+        cls,
+        dataset: Union[str, Dict],
+        data_dir: Union[str, Path] = ".",
+        scale: float = 1.0,
+        start_time: Optional[DatetimeLike] = None,
+        use_forecast: bool = True,
+    ):
+        """Retrieves a TimeSeriesApi from a dataset.
+
+        Args:
+            dataset: If a string is provided, the TimeSeriesApi is loaded from one of the
+                vessim datasets. Currently available datasets are:
+                    `solcast2022_germany` and `solcast2022_global`
+                Otherwise, it should be a Dictionary containing info about the dataset
+                with following entries:
+                    `actual`: Name of the file containing the actual data.
+                    `forecast`: Name of the file containing the forecasted data. This is
+                        not needed if use_forecast is set to False.
+                    `fill_method`: The fill_method of the TimeSeriesApi. If not specified,
+                        `bfill` is used.
+                    `static_forecast`: Bool indicating if the forecast is static. If set
+                        to True, the forecast does not contain a `Request Timestamp`, but
+                        if not specified, the forecast is treated as non-static forecast.
+                        This is not needed if use_forecast is set to False.
+                    `url`: String with a URL to a zip-file if data not locally available.
+            data_dir: Absolute or relative path to directory where data is
+                located or where it should be loaded into. Defaults to the directory of
+                the calling file.
+            scale: Multiplies all data points with a value. Defaults to 1.0.
+            start_time: Shifts the data so that it starts at this timestamp if specified.
+                Defaults to None.
+            use_forecast: Bool indicating if forecast should be loaded. Default is true.
+
+        Raises:
+            RuntimeError if dataset can not be loaded.
+        """
+        data_path = Path(data_dir)
+        if data_path.is_absolute():
+            abs_path = Path(data_dir)
+        else:
+            abs_path = Path(inspect.stack()[1].filename).resolve().parent / data_path
+        return cls(*load_dataset(dataset, abs_path, scale, start_time, use_forecast))
+
+
     def zones(self) -> List:
         """Returns a list of all zones, where actual data is available."""
         return list(self._actual.keys())
 
-    def actual(self, dt: DatetimeLike, zone: Optional[str] = None) -> Any:
+    def actual(self, dt: DatetimeLike, zone: Optional[str] = None):
         """Retrieves actual data point of zone at given time.
 
         If queried timestamp is not available in the `actual` dataframe, the fill_method

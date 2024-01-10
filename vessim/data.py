@@ -2,78 +2,130 @@ import os
 import urllib.request
 from pathlib import Path
 from zipfile import ZipFile
-from typing import Optional, List, Union, Tuple
+from typing import Optional, List, Union, Tuple, Dict, Literal
 from datetime import datetime, timedelta
 
 import pandas as pd
 
 
-Column = Union[int, str]
 DatetimeLike = Union[str, datetime]
 PandasObject = Union[pd.Series, pd.DataFrame]
 
 
+Datasets: Dict[str, Dict] = {
+    "solcast2022_germany": {
+        "actual": "solcast2022_germany_actual.csv",
+        "forecast": "solcast2022_germany_forecast.csv",
+        "fill_method": "bfill",
+        "static_forecast": False,
+        "url": "https://raw.githubusercontent.com/dos-group/vessim/solcast_data/datasets/solcast2022_germany.zip",
+    },
+    "solcast2022_global": {
+        "actual": "solcast2022_global_actual.csv",
+        "forecast": "solcast2022_global_forecast.csv",
+        "fill_method": "bfill",
+        "static_forecast": False,
+        "url": "https://raw.githubusercontent.com/dos-group/vessim/solcast_data/datasets/solcast2022_global.zip",
+    },
+}
+
+
 def load_dataset(
-    dataset: str,
-    data_dir: Optional[Union[str, Path]] = None,
+    dataset: Union[str, Dict],
+    data_dir: Path,
     scale: float = 1.0,
     start_time: Optional[DatetimeLike] = None,
     use_forecast: bool = True,
-) -> Tuple[PandasObject, Optional[PandasObject]]:
+) -> Tuple[PandasObject, Optional[PandasObject], Literal["ffill", "bfill"]]:
     """Downloads a dataset from the vessim repository, unpacks it and loads data.
 
     If all files are already present in the directory, the download is skipped.
 
     Args:
-        dataset: Name of the dataset to be downloaded.
-        data_dir: Optional absolute or relative path to the directory where data should
-            be loaded into. Defaults to None.
-        scale: Multiplies all data point with a value. Defaults to 1.0.
+        dataset: If a string is provided, the TimeSeriesApi is loaded from one of the
+            vessim datasets. Currently available datasets are:
+                `solcast2022_germany` and `solcast2022_global`
+            Otherwise, it should be a Dictionary containing info about the dataset
+            with following entries:
+                `actual`: Name of the file containing the actual data.
+                `forecast`: Name of the file containing the forecasted data. This is
+                    not needed if use_forecast is set to False.
+                `fill_method`: The fill_method of the TimeSeriesApi. If not specified,
+                    `bfill` is used.
+                `static_forecast`: Bool indicating if the forecast is static. If set
+                    to True, the forecast does not contain a `Request Timestamp`, but
+                    if not specified, the forecast is treated as non-static forecast.
+                    This is not needed if use_forecast is set to False.
+                `url`: String with a URL to a zip-file if data not locally available.
+        data_dir: Absolute path to the directory where the data is/should be located.
+        scale: Multiplies all data points with a value. Defaults to 1.0.
         start_time: Shifts the data so that it starts at this timestamp if specified.
             Defaults to None.
-        use_forecast: Boolean indicating if forecast should be loaded. Default is true.
+        use_forecast: Bool indicating if forecast should be loaded. Default is true.
 
     Returns:
-        Dataframes containing actual and forecasted data to be fed into a TimeSeriesAPI.
+        The dataframe of actual data, the optional dataframe of forecast data and the
+        fill_method to be fed into a TimeSeriesApi.
 
     Raises:
         RuntimeError if dataset can not be loaded.
     """
-    files = [f"{dataset}_actual.csv", f"{dataset}_forecast.csv"]
+    if isinstance(dataset, str):
+        dataset_dict: Dict = Datasets[dataset]
+    else:
+        dataset_dict = dataset
+
+    required_files = [dataset_dict["actual"]]
+    if use_forecast:
+        required_files.append(dataset_dict["forecast"])
+
     dir_path = Path(data_dir or "").expanduser().resolve()
 
-    if _check_files(files, dir_path):
-        print("Files already downloaded")
-    else:
+    if not _check_files(required_files, dir_path):
+        if "url" not in dataset_dict.keys():
+            raise RuntimeError("Data files could not be found.")
+
+        print("Required data files not present. Try downloading...")
         if not dir_path.is_dir():
             os.makedirs(dir_path)
         try:
-            url = f"https://raw.githubusercontent.com/dos-group/vessim/solcast_data/datasets/{dataset}.zip"
-            urllib.request.urlretrieve(url, dir_path / f"{dataset}.zip")
+            urllib.request.urlretrieve(dataset_dict["url"], dir_path / "dataset.zip")
         except Exception:
-            raise RuntimeError(f"Dataset '{dataset}' could not be retrieved")
+            raise RuntimeError(
+                f"Dataset could not be retrieved from url: {dataset_dict['url']}"
+            )
 
-        with ZipFile(dir_path / f"{dataset}.zip", "r") as zip_ref:
+        with ZipFile(dir_path / "dataset.zip", "r") as zip_ref:
             zip_ref.extractall(path=dir_path)
-        os.remove(dir_path / f"{dataset}.zip")
+        os.remove(dir_path / "dataset.zip")
+        print("Successfully downloaded and unpacked data files.")
 
-    actual = read_data_from_csv(dir_path / files[0], index_cols=[0], scale=scale)
+    actual = _read_data_from_csv(
+        dir_path / dataset_dict["actual"], index_cols=[0], scale=scale
+    )
 
     if start_time is None:
-        shift = None
+        shift: timedelta = timedelta(days=0)
     else:
         shift = pd.to_datetime(start_time) - actual.index[0]
-        # TODO shift is already in read_data_from_csv. There is probably a better way to
-        # shift both dataframes by the exact same amount given the start_time
-        actual.index += shift
+
+    actual.index += shift
 
     forecast: Optional[PandasObject] = None
     if use_forecast:
-        forecast = read_data_from_csv(
-            dir_path / files[1], index_cols=[0, 1], scale=scale, shift=shift
-        )
+        if dataset_dict.get("static_forecast", False):
+            # There is only one timestamp present in the forecast (static forecast)
+            index_cols: List[int] = [0]
+        else:
+            # There are two timestamps present in the forecast (non-static forecast)
+            index_cols = [0, 1]
 
-    return actual, forecast
+        forecast = _read_data_from_csv(
+            dir_path / dataset_dict["forecast"], index_cols=index_cols, scale=scale
+        )
+        forecast = _shift_dataframe(forecast, shift)
+
+    return actual, forecast, dataset_dict.get("fill_method", "bfill")
 
 
 def _check_files(files: List[str], base_dir: Path) -> bool:
@@ -85,33 +137,11 @@ def _check_files(files: List[str], base_dir: Path) -> bool:
     return True
 
 
-def read_data_from_csv(
-    path: Path,
-    index_cols: Union[Column, List[Column]],
-    scale: float = 1.0,
-    shift: Optional[Union[str, pd.DateOffset, timedelta]] = None,
+def _read_data_from_csv(
+    path: Path, index_cols: List[int], scale: float = 1.0
 ) -> PandasObject:
-    """Retrieves a dataframe from a csv file and transforms it.
-
-    Args:
-        path: Path to the csv file containing the data.
-        index_cols: Name or index of the columns containing the timestamps in data file.
-        scale: Multiplies all data point with a value. Defaults to 1.0.
-        shift: Shifts the indices by a specific offset.
-
-    Returns:
-        Scaled and shifted dataframe retrieved from csv file.
-    """
+    """Retrieves a dataframe from a csv file and transforms it."""
     df = convert_to_datetime(pd.read_csv(path, index_col=index_cols))
-    if shift is not None:
-        if isinstance(df.index, pd.MultiIndex):
-            index: pd.MultiIndex = df.index
-            for i, level in enumerate(index.levels):
-                index = index.set_levels(level + shift, level=i)
-            df.index = index
-        else:
-            df.index += shift
-
     return (df * scale).astype(float)
 
 
@@ -126,4 +156,16 @@ def convert_to_datetime(df: PandasObject) -> PandasObject:
         df.index = pd.to_datetime(df.index)
 
     df.sort_index(inplace=True)
+    return df
+
+
+def _shift_dataframe(df: PandasObject, shift: timedelta) -> PandasObject:
+    """Shifts indices of the given DataFrame by a timedelta."""
+    if isinstance(df.index, pd.MultiIndex):
+        index: pd.MultiIndex = df.index
+        for i, level in enumerate(index.levels):
+            index = index.set_levels(level + shift, level=i)
+        df.index = index
+    else:
+        df.index += shift
     return df
