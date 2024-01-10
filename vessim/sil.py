@@ -126,7 +126,8 @@ class SilController(Controller):
         pipe.set("time", time)
         pipe.set("p_delta", p_delta)
         pipe.set("actors", json.dumps(actors))
-        pipe.set("microgrid", self.microgrid.pickle())
+        if self.microgrid is not None:
+            pipe.set("microgrid", self.microgrid.pickle())
         pipe.execute()
 
     def finalize(self) -> None:

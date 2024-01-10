@@ -41,13 +41,11 @@ mosaik = "*"
 mosaik-api = "*"
 loguru = "*"
 matplotlib = "*"
-
-# Optional dependencies (software-in-the-loop)
-requests = {version = "*", optional = true}
-fastapi = {version = "*", optional = true}
-docker = {version = "*", optional = true}
-redis = {version = "*", optional = true}
-uvicorn = {version = "*", optional = true}
+requests = "*"
+docker = "*"
+redis = "*"
+uvicorn = "*"
+fastapi = "*"
 
 # Optional dependencies (analysis)
 jupyterlab = {version = "*", optional = true}
@@ -67,7 +65,6 @@ furo = {version = "*", optional = true}
 sphinx-copybutton = {version = "*", optional = true}
 
 [tool.poetry.extras]
-sil = ["requests", "fastapi", "docker", "redis", "uvicorn"]
 analysis = ["jupyterlab", "seaborn"]
 dev = ["pytest", "mypy", "types-psutil", "pandas-stubs", "types-requests", "black", "ruff"]
 docs = ["furo", "sphinx-copybutton"]
