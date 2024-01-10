@@ -43,7 +43,9 @@ class ComputingSystem(Actor):
         pue: The power usage effectiveness of the system.
     """
 
-    def __init__(self, name: str, step_size: int, power_meters: List[PowerMeter], pue: float = 1):
+    def __init__(
+        self, name: str, step_size: int, power_meters: List[PowerMeter], pue: float = 1
+    ):
         super().__init__(name, step_size)
         self.power_meters = power_meters
         self.pue = pue
@@ -61,12 +63,15 @@ class ComputingSystem(Actor):
 
 class Generator(Actor):
 
-    def __init__(self, name: str, step_size: int, time_series_api: TimeSeriesApi):
+    def __init__(
+        self, name: str, step_size: int, time_series_api: TimeSeriesApi, zone: str
+    ):
         super().__init__(name, step_size)
         self.time_series_api = time_series_api
+        self.zone = zone
 
     def p(self, now: datetime) -> float:
-        return self.time_series_api.actual(now)  # TODO TimeSeriesApi must be for a single region
+        return self.time_series_api.actual(now, self.zone)
 
 
 class ActorSim(mosaik_api.Simulator):

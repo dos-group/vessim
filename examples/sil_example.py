@@ -14,9 +14,8 @@ import pandas as pd
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from _data import load_carbon_data, load_solar_data
+from examples._data import get_solar_time_series_api, get_ci_time_series_api
 from controller_example import SIM_START, STORAGE, DURATION, POLICY
-from vessim.core import TimeSeriesApi
 from vessim.cosim import Environment, Monitor, Microgrid, ComputingSystem, Generator
 from vessim.sil import SilController, ComputeNode, Broker, get_latest_event, \
     HttpPowerMeter
@@ -28,7 +27,7 @@ RASPI_ADDRESS = "http://192.168.207.71"
 
 def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
-    environment.add_grid_signal("carbon_intensity", TimeSeriesApi(load_carbon_data()))
+    environment.add_grid_signal("carbon_intensity", get_ci_time_series_api())
 
     power_meters = [
         HttpPowerMeter(name="gcp", address=GCP_ADDRESS),
@@ -58,7 +57,8 @@ def main(result_csv: str):
             Generator(
                 name="solar",
                 step_size=60,
-                time_series_api=TimeSeriesApi(load_solar_data(sqm=0.4 * 0.5))
+                time_series_api=get_solar_time_series_api(),
+                zone="solar"
             ),
         ],
         storage=STORAGE,

@@ -1,8 +1,7 @@
 from typing import Dict, List
 
-from examples._data import load_solar_data, load_carbon_data
+from examples._data import get_ci_time_series_api, get_solar_time_series_api
 from examples.basic_example import SIM_START, STORAGE, DURATION
-from vessim.core import TimeSeriesApi
 from vessim.cosim import ComputingSystem, Generator, Monitor, Controller, Microgrid, \
     Environment, DefaultStoragePolicy, MockPowerMeter
 
@@ -23,7 +22,7 @@ POWER_MODES = {  # according to paper
 
 def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
-    environment.add_grid_signal("carbon_intensity", TimeSeriesApi(load_carbon_data()))
+    environment.add_grid_signal("carbon_intensity", get_ci_time_series_api())
 
     power_meters = [
         MockPowerMeter(name="mpm0", p=2.194),
@@ -46,7 +45,8 @@ def main(result_csv: str):
             Generator(
                 name="solar",
                 step_size=60,
-                time_series_api=TimeSeriesApi(load_solar_data(sqm=0.4 * 0.5))
+                time_series_api=get_solar_time_series_api(),
+                zone="solar"
             ),
         ],
         storage=STORAGE,
