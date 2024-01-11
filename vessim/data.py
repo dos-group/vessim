@@ -3,13 +3,11 @@ import urllib.request
 from pathlib import Path
 from zipfile import ZipFile
 from typing import Optional, List, Union, Tuple, Dict, Literal
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pandas as pd
 
-
-DatetimeLike = Union[str, datetime]
-PandasObject = Union[pd.Series, pd.DataFrame]
+from vessim._util import DatetimeLike, PandasObject
 
 
 Datasets: Dict[str, Dict] = {
@@ -30,46 +28,14 @@ Datasets: Dict[str, Dict] = {
 }
 
 
-def load_dataset(
+def _load_dataset(
     dataset: Union[str, Dict],
     data_dir: Path,
     scale: float = 1.0,
     start_time: Optional[DatetimeLike] = None,
     use_forecast: bool = True,
 ) -> Tuple[PandasObject, Optional[PandasObject], Literal["ffill", "bfill"]]:
-    """Downloads a dataset from the vessim repository, unpacks it and loads data.
-
-    If all files are already present in the directory, the download is skipped.
-
-    Args:
-        dataset: If a string is provided, the TimeSeriesApi is loaded from one of the
-            vessim datasets. Currently available datasets are:
-                `solcast2022_germany` and `solcast2022_global`
-            Otherwise, it should be a Dictionary containing info about the dataset
-            with following entries:
-                `actual`: Name of the file containing the actual data.
-                `forecast`: Name of the file containing the forecasted data. This is
-                    not needed if use_forecast is set to False.
-                `fill_method`: The fill_method of the TimeSeriesApi. If not specified,
-                    `bfill` is used.
-                `static_forecast`: Bool indicating if the forecast is static. If set
-                    to True, the forecast does not contain a `Request Timestamp`, but
-                    if not specified, the forecast is treated as non-static forecast.
-                    This is not needed if use_forecast is set to False.
-                `url`: String with a URL to a zip-file if data not locally available.
-        data_dir: Absolute path to the directory where the data is/should be located.
-        scale: Multiplies all data points with a value. Defaults to 1.0.
-        start_time: Shifts the data so that it starts at this timestamp if specified.
-            Defaults to None.
-        use_forecast: Bool indicating if forecast should be loaded. Default is true.
-
-    Returns:
-        The dataframe of actual data, the optional dataframe of forecast data and the
-        fill_method to be fed into a TimeSeriesApi.
-
-    Raises:
-        RuntimeError if dataset can not be loaded.
-    """
+    """Downloads a dataset from the vessim repository, unpacks it and loads data."""
     if isinstance(dataset, str):
         dataset_dict: Dict = Datasets[dataset]
     else:
@@ -83,7 +49,7 @@ def load_dataset(
 
     if not _check_files(required_files, dir_path):
         if "url" not in dataset_dict.keys():
-            raise RuntimeError("Data files could not be found.")
+            raise RuntimeError("Data files could not be found locally.")
 
         print("Required data files not present. Try downloading...")
         os.makedirs(dir_path, exist_ok=True)
@@ -119,11 +85,12 @@ def load_dataset(
 
     if start_time is not None:
         shift = pd.to_datetime(start_time) - actual.index[0]
+        print(f"Data is being shifted by {shift}")
         actual.index += shift
         if use_forecast:
             forecast = _shift_dataframe(forecast, shift) # type: ignore
 
-    return actual, forecast, dataset_dict.get("fill_method", "bfill")
+    return actual, forecast, dataset_dict.get("fill_method", "ffill")
 
 
 def _check_files(files: List[str], base_dir: Path) -> bool:
@@ -139,11 +106,11 @@ def _read_data_from_csv(
     path: Path, index_cols: List[int], scale: float = 1.0
 ) -> PandasObject:
     """Retrieves a dataframe from a csv file and transforms it."""
-    df = convert_to_datetime(pd.read_csv(path, index_col=index_cols))
+    df = _convert_to_datetime(pd.read_csv(path, index_col=index_cols))
     return (df * scale).astype(float)
 
 
-def convert_to_datetime(df: PandasObject) -> PandasObject:
+def _convert_to_datetime(df: PandasObject) -> PandasObject:
     """Converts the indices of a dataframe to datetime indices."""
     if isinstance(df.index, pd.MultiIndex):
         index: pd.MultiIndex = df.index

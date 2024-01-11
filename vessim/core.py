@@ -5,7 +5,8 @@ from typing import Union, List, Optional, Literal, Dict, Hashable
 
 import pandas as pd
 
-from vessim.data import load_dataset, convert_to_datetime, DatetimeLike
+from vessim.data import _load_dataset, _convert_to_datetime
+from vessim._util import DatetimeLike, PandasObject
 
 
 class TimeSeriesApi:
@@ -36,7 +37,7 @@ class TimeSeriesApi:
               actual values are used for interpolation.
 
         fill_method: Either `ffill` or `bfill`. Determines how actual data is acquired in
-            between timestamps. Default is `bfill`.
+            between timestamps. Default is `ffill`.
 
     Example:
         >>> actual_data = [
@@ -68,11 +69,11 @@ class TimeSeriesApi:
 
     def __init__(
         self,
-        actual: Union[pd.Series, pd.DataFrame],
-        forecast: Optional[Union[pd.Series, pd.DataFrame]] = None,
-        fill_method: Literal["ffill", "bfill"] = "bfill",
+        actual: PandasObject,
+        forecast: Optional[PandasObject] = None,
+        fill_method: Literal["ffill", "bfill"] = "ffill",
     ):
-        actual = convert_to_datetime(actual)
+        actual = _convert_to_datetime(actual)
         self._actual: Dict[Hashable, pd.Series]
         if isinstance(actual, pd.Series):
             self._actual = {actual.name: actual.dropna()}
@@ -81,8 +82,8 @@ class TimeSeriesApi:
         else:
             raise ValueError(f"Incompatible type {type(actual)} for 'actual'.")
 
-        if isinstance(forecast, (pd.Series, pd.DataFrame)):
-            forecast = convert_to_datetime(forecast)
+        if forecast is not None:
+            forecast = _convert_to_datetime(forecast)
 
         self._forecast: Dict[Hashable, pd.Series]
         if isinstance(forecast, pd.Series):
@@ -119,7 +120,7 @@ class TimeSeriesApi:
                     `forecast`: Name of the file containing the forecasted data. This is
                         not needed if use_forecast is set to False.
                     `fill_method`: The fill_method of the TimeSeriesApi. If not specified,
-                        `bfill` is used.
+                        `ffill` is used.
                     `static_forecast`: Bool indicating if the forecast is static. If set
                         to True, the forecast does not contain a `Request Timestamp`, but
                         if not specified, the forecast is treated as non-static forecast.
@@ -141,7 +142,7 @@ class TimeSeriesApi:
             abs_path = Path(data_dir)
         else:
             abs_path = Path(inspect.stack()[1].filename).resolve().parent / data_path
-        return cls(*load_dataset(dataset, abs_path, scale, start_time, use_forecast))
+        return cls(*_load_dataset(dataset, abs_path, scale, start_time, use_forecast))
 
 
     def zones(self) -> List:

@@ -6,6 +6,7 @@ import pandas as pd
 import requests
 
 DatetimeLike = Union[str, datetime]
+PandasObject = Union[pd.Series, pd.DataFrame]
 
 
 class Clock:

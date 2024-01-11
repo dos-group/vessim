@@ -63,15 +63,12 @@ class ComputingSystem(Actor):
 
 class Generator(Actor):
 
-    def __init__(
-        self, name: str, step_size: int, time_series_api: TimeSeriesApi, zone: str
-    ):
+    def __init__(self, name: str, step_size: int, time_series_api: TimeSeriesApi):
         super().__init__(name, step_size)
         self.time_series_api = time_series_api
-        self.zone = zone
 
     def p(self, now: datetime) -> float:
-        return self.time_series_api.actual(now, self.zone)
+        return self.time_series_api.actual(now)
 
 
 class ActorSim(mosaik_api.Simulator):
