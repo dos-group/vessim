@@ -30,7 +30,7 @@ def main(result_csv: str):
                 name="solar",
                 step_size=60,
                 api=get_solar_time_series_api(),
-                zone="solar",
+                api_params={"zone": "solar"},
             ),
         ],
         controllers=[monitor],

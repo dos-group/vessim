@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from examples._data import get_solar_time_series_api, get_ci_time_series_api
 from controller_example import SIM_START, STORAGE, DURATION, POLICY
+from vessim.core import Api
 from vessim.cosim import Environment, Monitor, Microgrid, ComputingSystem, Generator
 from vessim.sil import SilController, ComputeNode, Broker, get_latest_event, \
     HttpPowerMeter
@@ -75,7 +76,7 @@ def main(result_csv: str):
 def api_routes(
     app: FastAPI,
     broker: Broker,
-    grid_signals: Dict[str, TimeSeriesApi],
+    grid_signals: Dict[str, Api],
 ):
     @app.get("/actors/{actor}/p")
     async def get_solar(actor: str):

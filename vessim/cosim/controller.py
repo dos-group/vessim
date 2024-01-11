@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, Callable, Any, Tuple, TYPE_CHECKING, MutableMapping
+from typing import Dict, Callable, Any, Tuple, TYPE_CHECKING, MutableMapping, Optional
 
 import mosaik_api
 import pandas as pd
@@ -20,10 +20,11 @@ class Controller(ABC):
         self.grid_signals = None
         self.clock = None
 
-    def start(self, microgrid: "Microgrid", clock: Clock, grid_signals: Dict):
+    def init(self, microgrid: "Microgrid", clock: Clock, grid_signals: Dict):
         self.microgrid = microgrid
         self.clock = clock
         self.grid_signals = grid_signals
+        self.custom_init()
 
     def custom_init(self):
         """TODO document"""
@@ -104,7 +105,7 @@ class ControllerSim(mosaik_api.Simulator):
         super().__init__(self.META)
         self.eid = "Controller"
         self.step_size = None
-        self.controller = None
+        self.controller: Controller = Optional[None]
 
     def init(self, sid, time_resolution=1., **sim_params):
         self.step_size = sim_params["step_size"]
@@ -116,7 +117,10 @@ class ControllerSim(mosaik_api.Simulator):
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
-        self.controller.step(time, *_parse_controller_inputs(inputs[self.eid]))
+        try:
+            self.controller.step(time, *_parse_controller_inputs(inputs[self.eid]))
+        except KeyError:
+            self.controller.step(time, p_delta=0, actors={})
         return time + self.step_size
 
     def get_data(self, outputs):

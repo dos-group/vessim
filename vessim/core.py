@@ -5,8 +5,10 @@ from typing import Union, List, Optional, Literal, Dict, Hashable
 
 import pandas as pd
 
-from vessim.data import load_dataset, convert_to_datetime, DatetimeLike
+from vessim.data import load_dataset, convert_to_datetime, DatetimeLike, TimezoneLike
 
+import requests
+from requests.auth import HTTPBasicAuth
 
 class Api(ABC):
     """Abstract base class for APIs."""
@@ -14,13 +16,6 @@ class Api(ABC):
     @abstractmethod
     def actual(self, now: DatetimeLike, **kwargs):
         """Retrieves actual data point at given time."""
-
-
-class ForecastMixin(ABC):
-
-    @abstractmethod
-    def forecast(self, start_time: DatetimeLike, **kwargs) -> pd.Series:
-        """Retrieves forecasted data points."""
 
 
 class HistoricalApi(Api):
@@ -55,27 +50,27 @@ class HistoricalApi(Api):
         return list(self._actual.keys())
 
     def actual(self, now: DatetimeLike, endpoint: Optional[str] = None):
-        dt = pd.to_datetime(now)
+        now = pd.to_datetime(now)
         endpoint_data = _get_endpoint_data(self._actual, endpoint)
 
         # Mypy somehow has trouble with indexing in a dataframe with DatetimeIndex
         # <https://github.com/python/mypy/issues/2410>
         if self._fill_method == "ffill":
             # searchsorted with 'side' specified in sorted df always returns an int
-            time_index: int = endpoint_data.index.searchsorted(dt, side="right")  # type: ignore
+            time_index: int = endpoint_data.index.searchsorted(now, side="right")  # type: ignore
             if time_index > 0:
                 return endpoint_data.iloc[time_index - 1]  # type: ignore
             else:
-                raise ValueError(f"'{dt}' is too early to get data in endpoint '{endpoint}'.")
+                raise ValueError(f"'{now}' is too early to get data in endpoint '{endpoint}'.")
         else:
-            time_index = endpoint_data.index.searchsorted(dt, side="left")  # type: ignore
+            time_index = endpoint_data.index.searchsorted(now, side="left")  # type: ignore
             try:
                 return endpoint_data.iloc[time_index]  # type: ignore
             except IndexError:
-                raise ValueError(f"'{dt}' is too late to get data in endpoint '{endpoint}'.")
+                raise ValueError(f"'{now}' is too late to get data in endpoint '{endpoint}'.")
 
 
-class HistoricalForecastApi(HistoricalApi, ForecastMixin):
+class HistoricalForecastApi(HistoricalApi):
 
     def __init__(
         self,
@@ -197,13 +192,42 @@ class HistoricalForecastApi(HistoricalApi, ForecastMixin):
         return df.reindex(new_index[1:])  # type: ignore
 
 
-class WatttimeApi(Api, ForecastMixin):
+class WatttimeApi(Api):
+    _URL = "https://api.watttime.org"
 
-    def actual(self, dt: DatetimeLike, params: Optional[Dict] = None):
-        pass
+    def __init__(self, username: str, password: str):
+        self.username = username
+        self.password = password
+        self.headers = {"Authorization": f"Bearer {self._login()}"}
 
-    def forecast(self, dt: DatetimeLike, params: Optional[Dict] = None):
-        pass
+    def actual(self, now: DatetimeLike, region: str = None, signal_type: str = "co2_moer"):
+        if region is None:
+            raise ValueError("Region needs to be specified.")
+        now = pd.to_datetime(now)
+        rsp = self._request("/historical", params={
+            "region": region,
+            "start": (now - timedelta(minutes=5)).isoformat(),
+            "end": now.isoformat(),
+            "signal_type": signal_type,
+        })
+        return rsp
+
+    def _request(self, endpoint: str, params: Dict):
+        while True:
+            rsp = requests.get(f"{self._URL}/v3{endpoint}", headers=self.headers, params=params)
+            if rsp.status_code == 200:
+                return rsp.json()["data"][0]["value"]
+            if rsp.status_code == 400:
+                return f"Error {rsp.status_code}: {rsp.json()}"
+            elif rsp.status_code in [401, 403]:
+                self.headers["Authorization"] = f"Bearer {self._login()}"
+            else:
+                raise ValueError(f"Error {rsp.status_code}: {rsp}")
+
+    def _login(self) -> str:
+        # TODO reconnect if token is expired
+        rsp = requests.get(f"{self._URL}/login", auth=HTTPBasicAuth(self.username, self.password))
+        return rsp.json()['token']
 
 
 def _get_endpoint_data(data: Dict[str, pd.Series], endpoint: Optional[str]) -> pd.Series:

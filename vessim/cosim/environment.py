@@ -12,14 +12,14 @@ from vessim.cosim import Actor, Controller, Storage, StoragePolicy
 class Microgrid:
     def __init__(
         self,
-        actors: List[Actor],
-        controllers: List[Controller],
+        actors: List[Actor] = None,
+        controllers: List[Controller] = None,
         storage: Optional[Storage] = None,
         storage_policy: Optional[StoragePolicy] = None,
         zone: Optional[str] = None,
     ):
-        self.actors = actors
-        self.controllers = controllers
+        self.actors = actors if actors is not None else []
+        self.controllers = controllers if controllers is not None else []
         self.storage = storage
         self.storage_policy = storage_policy
         self.zone = zone
@@ -36,7 +36,7 @@ class Microgrid:
 
         controller_entities = []
         for controller in self.controllers:
-            controller.start(self, clock, grid_signals)
+            controller.init(self, clock, grid_signals)
             controller_sim = world.start("Controller", step_size=controller.step_size)
             controller_entity = controller_sim.Controller(controller=controller)
             world.connect(grid_entity, controller_entity, "p_delta")
@@ -96,13 +96,15 @@ class Environment:
 
     def run(
         self,
-        until: int,
+        until: Optional[int] = None,
         rt_factor: Optional[float] = None,
         print_progress: Union[bool, Literal["individual"]] = True,
     ):
         try:
             for microgrid in self.microgrids:
                 microgrid.initialize(self.world, self.clock, self.grid_signals)
+            if until is None:
+                until = float("inf")
             self.world.run(until=until, rt_factor=rt_factor, print_progress=print_progress)
         except Exception as e:
             if str(e).startswith("Simulation too slow for real-time factor"):

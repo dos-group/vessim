@@ -5,10 +5,12 @@ from zipfile import ZipFile
 from typing import Optional, List, Union, Tuple, Dict, Literal
 from datetime import datetime, timedelta
 
+import dateutil
 import pandas as pd
-
+import pytz
 
 DatetimeLike = Union[str, datetime]
+TimezoneLike = Union[str, pytz.timezone, dateutil.tz.tzfile]
 PandasObject = Union[pd.Series, pd.DataFrame]
 
 
