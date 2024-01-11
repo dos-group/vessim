@@ -5,7 +5,7 @@ from typing import Union, List, Optional, Literal, Dict, Hashable
 
 import pandas as pd
 
-from vessim.data import load_dataset, convert_to_datetime, DatetimeLike, TimezoneLike
+from vessim.data import _load_dataset, _convert_to_datetime, DatetimeLike
 
 import requests
 from requests.auth import HTTPBasicAuth
@@ -23,9 +23,9 @@ class HistoricalApi(Api):
     def __init__(
         self,
         actual: Union[pd.Series, pd.DataFrame],
-        fill_method: Literal["ffill", "bfill"] = "bfill",
+        fill_method: Literal["ffill", "bfill"] = "ffill",
     ):
-        actual = convert_to_datetime(actual)
+        actual = _convert_to_datetime(actual)
         self._actual: Dict[Hashable, pd.Series]
         if isinstance(actual, pd.Series):
             self._actual = {actual.name: actual.dropna()}
@@ -43,7 +43,7 @@ class HistoricalApi(Api):
         scale: float = 1.0,
         start_time: Optional[DatetimeLike] = None,
     ):
-        return cls(**load_dataset(dataset, _abs_path(data_dir), scale, start_time))
+        return cls(**_load_dataset(dataset, _abs_path(data_dir), scale, start_time))
 
     def endpoints(self) -> List:
         """Returns a list of all endpoints, where actual data is available."""
@@ -76,16 +76,16 @@ class HistoricalForecastApi(HistoricalApi):
         self,
         actual: Union[pd.Series, pd.DataFrame],
         forecast: Optional[Union[pd.Series, pd.DataFrame]] = None,
-        fill_method: Literal["ffill", "bfill"] = "bfill",
+        fill_method: Literal["ffill", "bfill"] = "ffill",
     ):
         super().__init__(actual=actual, fill_method=fill_method)
 
         self._forecast: Dict[Hashable, pd.Series]
         if isinstance(forecast, pd.Series):
-            forecast = convert_to_datetime(forecast)
+            forecast = _convert_to_datetime(forecast)
             self._forecast = {forecast.name: forecast.dropna()}
         elif isinstance(forecast, pd.DataFrame):
-            forecast = convert_to_datetime(forecast)
+            forecast = _convert_to_datetime(forecast)
             self._forecast = {col: forecast[col].dropna() for col in forecast.columns}
         elif forecast is None:
             self._forecast = {
@@ -102,7 +102,7 @@ class HistoricalForecastApi(HistoricalApi):
         scale: float = 1.0,
         start_time: Optional[DatetimeLike] = None,
     ):
-        return cls(**load_dataset(dataset, _abs_path(data_dir), scale, start_time,
+        return cls(**_load_dataset(dataset, _abs_path(data_dir), scale, start_time,
                                   use_forecast=True))
 
     def forecast(

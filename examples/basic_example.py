@@ -1,4 +1,4 @@
-from examples._data import get_ci_time_series_api, get_solar_time_series_api
+from vessim.core import HistoricalApi
 from vessim.cosim import Microgrid, Environment, ComputingSystem, Generator, Monitor, \
     MockPowerMeter, SimpleBattery
 
@@ -9,11 +9,23 @@ STORAGE = SimpleBattery(
     charge_level=32 * 5 * 3600 * .6,
     min_soc=.6
 )
+SOLAR_DATASET = {"actual": "solar_berlin_2021-06.csv", "fill_method": "ffill"}
+CARBON_DATASET = {"actual": "carbon_intensity.csv", "fill_method": "ffill"}
 
 
 def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
-    environment.add_grid_signal("carbon_intensity", get_ci_time_series_api())
+
+    solar_api = HistoricalApi.from_dataset(
+        SOLAR_DATASET,
+        "./data",
+        scale=0.4 * 0.5 * .17,
+        start_time="2020-06-01 00:00:00"
+    )
+
+    carbon_api = HistoricalApi.from_dataset(CARBON_DATASET, "./data")
+
+    environment.add_grid_signal("carbon_intensity", carbon_api)
 
     monitor = Monitor(step_size=60)
     microgrid = Microgrid(
@@ -26,12 +38,7 @@ def main(result_csv: str):
                     MockPowerMeter(name="mpm1", p=7.6)
                 ]
             ),
-            Generator(
-                name="solar",
-                step_size=60,
-                api=get_solar_time_series_api(),
-                api_params={"zone": "solar"},
-            ),
+            Generator(name="solar", step_size=60, api=solar_api),
         ],
         controllers=[monitor],
         storage=STORAGE,

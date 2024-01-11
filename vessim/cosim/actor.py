@@ -63,13 +63,12 @@ class ComputingSystem(Actor):
 
 class Generator(Actor):
 
-    def __init__(self, name: str, step_size: int, api: Api, api_params: Dict):
+    def __init__(self, name: str, step_size: int, api: Api):
         super().__init__(name, step_size)
-        self.api = api
-        self.api_params = api_params
+        self.api = api  # TODO make sure that api is single column?
 
     def p(self, now: datetime) -> float:
-        return self.api.actual(now, **self.api_params)
+        return self.api.actual(now)
 
 
 class ActorSim(mosaik_api.Simulator):
