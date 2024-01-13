@@ -1,6 +1,6 @@
 import sys
 
-sys.path.append("..")
+sys.path.append("/app")
 from linear_power_model import LinearPowerModel  # noqa: E402
 from node_api_server import FastApiServer  # noqa: E402
 import subprocess  # noqa: E402
