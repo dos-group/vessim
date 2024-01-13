@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 
 
 class PowerMeter(ABC):
-
     def __init__(self, name: str):
         self.name = name
 
@@ -15,7 +14,6 @@ class PowerMeter(ABC):
 
 
 class MockPowerMeter(PowerMeter):
-
     def __init__(self, name: str, p: float):
         super().__init__(name)
         self._p = p

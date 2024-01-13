@@ -87,7 +87,7 @@ def _load_dataset(
         print(f"Data is being shifted by {shift}")
         actual.index += shift
         if use_forecast:
-            forecast = _shift_dataframe(forecast, shift) # type: ignore
+            forecast = _shift_dataframe(forecast, shift)  # type: ignore
 
     result = dict(
         actual=actual,

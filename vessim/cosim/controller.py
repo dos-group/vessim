@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 
 
 class Controller(ABC):
-
     def __init__(self, step_size: int):
         self.step_size = step_size
         self.microgrid = None
@@ -38,7 +37,6 @@ class Controller(ABC):
 
 
 class Monitor(Controller):
-
     def __init__(self, step_size: int, monitor_storage=True, monitor_grid_signals=True):
         super().__init__(step_size=step_size)
         self.monitor_storage = monitor_storage
@@ -51,8 +49,10 @@ class Monitor(Controller):
             self.add_monitor_fn(lambda _: {"storage": self.microgrid.storage.state()})
         if self.monitor_grid_signals:
             for signal_name, signal_api in self.grid_signals.items():
+
                 def fn(time):
                     return {signal_name: signal_api.at(self.clock.to_datetime(time))}
+
                 self.add_monitor_fn(fn)
 
     def add_monitor_fn(self, fn: Callable[[float], Dict[str, Any]]):
@@ -75,7 +75,7 @@ class Monitor(Controller):
         df.to_csv(out_path)
 
 
-def flatten_dict(d: MutableMapping, parent_key: str = '') -> MutableMapping:
+def flatten_dict(d: MutableMapping, parent_key: str = "") -> MutableMapping:
     items = []
     for k, v in d.items():
         new_key = parent_key + "." + k if parent_key else k
@@ -103,9 +103,9 @@ class ControllerSim(mosaik_api.Simulator):
         super().__init__(self.META)
         self.eid = "Controller"
         self.step_size = None
-        self.controller: Controller = Optional[None]
+        self.controller: Optional[Controller] = None
 
-    def init(self, sid, time_resolution=1., **sim_params):
+    def init(self, sid, time_resolution=1.0, **sim_params):
         self.step_size = sim_params["step_size"]
         return self.meta
 

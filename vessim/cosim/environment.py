@@ -25,10 +25,7 @@ class Microgrid:
         self.zone = zone
 
     def initialize(
-        self,
-        world: mosaik.World,
-        clock: Clock,
-        grid_signals: Dict[str, Signal]
+        self, world: mosaik.World, clock: Clock, grid_signals: Dict[str, Signal]
     ):
         """Create co-simulation entities and connect them to world"""
         grid_sim = world.start("Grid")

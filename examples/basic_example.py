@@ -20,7 +20,7 @@ def main(result_csv: str):
         SOLAR_DATASET,
         "./data",
         scale=0.4 * 0.5 * .17,
-        start_time="2020-06-01 00:00:00"
+        start_time="2020-06-01 00:00:00",
     )
 
     carbon_signal = HistoricalSignal.from_dataset(CARBON_DATASET, "./data")
@@ -38,7 +38,7 @@ def main(result_csv: str):
                     MockPowerMeter(name="mpm1", p=7.6)
                 ]
             ),
-            Generator(name="solar", step_size=60, signal=solar_signal),
+            Generator(name="solar", step_size=60, signal=solar_signal),  # TODO signal should return next step
         ],
         controllers=[monitor],
         storage=STORAGE,

@@ -19,7 +19,6 @@ __all__ = [
     "Signal",
     "HistoricalSignal",
     "WatttimeSignal",
-
     "analysis",
     "cosim",
     "sil",
@@ -35,7 +34,6 @@ class Signal(ABC):
 
 
 class HistoricalSignal(Signal):
-
     def __init__(
         self,
         actual: Union[pd.Series, pd.DataFrame],
@@ -92,7 +90,9 @@ class HistoricalSignal(Signal):
             if time_index > 0:
                 return endpoint_data.iloc[time_index - 1]  # type: ignore
             else:
-                raise ValueError(f"'{dt}' is too early to get data in endpoint '{endpoint}'.")
+                raise ValueError(
+                    f"'{dt}' is too early to get data in endpoint '{endpoint}'."
+                )
         else:
             time_index = endpoint_data.index.searchsorted(dt, side="left")  # type: ignore
             try:

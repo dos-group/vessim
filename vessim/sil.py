@@ -54,6 +54,7 @@ class ComputeNode:  # TODO we could soon replace this agent-based implementation
 
         def update_power_model():
             self.http_client.put("/power_mode", {"power_mode": power_mode})
+
         Thread(target=update_power_model).start()
         self.power_mode = power_mode
 
@@ -80,7 +81,6 @@ class Broker:
 
 
 class SilController(Controller):
-
     def __init__(
         self,
         step_size: int,
@@ -116,7 +116,7 @@ class SilController(Controller):
                 api_host=self.api_host,
                 api_port=self.api_port,
                 grid_signals=self.grid_signals,
-            )
+            ),
         )
         self.api_server_process.start()
         Thread(target=self._collect_set_requests_loop, daemon=True).start()
@@ -167,8 +167,7 @@ def _serve_api(
 
 
 def _redis_docker_container(
-    docker_client: Optional[docker.DockerClient] = None,
-    port: int = 6379
+    docker_client: Optional[docker.DockerClient] = None, port: int = 6379
 ) -> Container:
     """Initializes Docker client and starts Docker container with Redis."""
     if docker_client is None:
@@ -179,7 +178,7 @@ def _redis_docker_container(
     try:
         container = docker_client.containers.run(
             "redis:latest",
-            ports={f"6379/tcp": port},
+            ports={"6379/tcp": port},
             detach=True,  # run in background
         )
     except docker.errors.APIError as e:
@@ -205,7 +204,6 @@ def get_latest_event(events: Dict[datetime, Any]) -> Any:
 
 
 class HttpPowerMeter(PowerMeter):
-
     def __init__(
         self,
         name: str,
