@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from threading import Thread
 from time import sleep
 from typing import Dict, Callable, Optional, List, Any
+from loguru import logger
 
 import docker
 import pandas as pd
@@ -110,9 +111,10 @@ class SilController(Controller):
         self.api_server_process = None
 
     def custom_init(self):
-        self.api_server_process = multiprocessing.Process(  # TODO logging
+        api_name = "Vessim API"
+        self.api_server_process = multiprocessing.Process(
             target=_serve_api,
-            name="Vessim API",
+            name=api_name,
             daemon=True,
             kwargs=dict(
                 api_routes=self.api_routes,
@@ -122,6 +124,7 @@ class SilController(Controller):
             ),
         )
         self.api_server_process.start()
+        logger.info(f"Started SiL Controller API server process '{api_name}'")
         Thread(target=self._collect_set_requests_loop, daemon=True).start()
 
     def step(self, time: int, p_delta: float, actors: Dict) -> None:
@@ -133,9 +136,9 @@ class SilController(Controller):
         pipe.execute()
 
     def finalize(self) -> None:
-        print("Shutting down Redis...")  # TODO logging
         if self.redis_docker_container is not None:
             self.redis_docker_container.stop()
+        logger.info("Shut down Redis docker container")
 
     def _collect_set_requests_loop(self):
         while True:
@@ -161,7 +164,6 @@ def _serve_api(
     api_port: int,
     grid_signals: Dict[str, Signal],
 ):
-    print("Starting API server...")
     app = FastAPI()
     api_routes(app, Broker(), grid_signals)
     config = uvicorn.Config(app=app, host=api_host, port=api_port, access_log=False)
