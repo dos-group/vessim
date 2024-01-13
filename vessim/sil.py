@@ -12,6 +12,7 @@ from datetime import datetime
 from threading import Thread
 from time import sleep
 from typing import Dict, Callable, Optional, List, Any
+from loguru import logger
 
 import docker
 import redis
@@ -175,9 +176,10 @@ class SilController(Controller):
         initializes a thread to handle incoming 'set' requests, and sets up any
         necessary infrastructure for the simulation to run.
         """
-        self.api_server_process = multiprocessing.Process(  # TODO logging
+        api_name = "Vessim API"
+        self.api_server_process = multiprocessing.Process(
             target=_serve_api,
-            name="Vessim API",
+            name=api_name,
             daemon=True,
             kwargs=dict(
                 api_routes=self.api_routes,
@@ -187,6 +189,7 @@ class SilController(Controller):
             )
         )
         self.api_server_process.start()
+        logger.info(f"Started SiL Controller API server process '{api_name}'")
         Thread(target=self._collect_set_requests_loop, daemon=True).start()
 
     def step(self, time: int, p_delta: float, actors: Dict) -> None:
@@ -214,9 +217,9 @@ class SilController(Controller):
         This method handles the graceful shutdown of the Redis service and stops
         any related Docker containers that were started by this controller.
         """
-        print("Shutting down Redis...")  # TODO logging
         if self.redis_docker_container is not None:
             self.redis_docker_container.stop()
+        logger.info("Shut down Redis docker container")
 
     def _collect_set_requests_loop(self):
         """Continuously collects and processes 'set' requests from Redis queue.
@@ -261,7 +264,6 @@ def _serve_api(
         grid_signals: A dictionary containing time series APIs for grid signal
             handling.
     """
-    print("Starting API server...")
     app = FastAPI()
     api_routes(app, Broker(), grid_signals)
     config = uvicorn.Config(app=app, host=api_host, port=api_port, access_log=False)
