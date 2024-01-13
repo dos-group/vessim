@@ -51,11 +51,9 @@ class Monitor(Controller):
             self.add_monitor_fn(lambda _: {"storage": self.microgrid.storage.state()})
         if self.monitor_grid_signals:
             for signal_name, signal_api in self.grid_signals.items():
-                self.add_monitor_fn(lambda time: {
-                    signal_name: self.grid_signals[signal_name].actual(
-                        self.clock.to_datetime(time)
-                    )
-                })
+                def fn(time):
+                    return {signal_name: signal_api.at(self.clock.to_datetime(time))}
+                self.add_monitor_fn(fn)
 
     def add_monitor_fn(self, fn: Callable[[float], Dict[str, Any]]):
         self.custom_monitor_fns.append(fn)

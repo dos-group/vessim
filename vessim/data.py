@@ -9,7 +9,7 @@ import pandas as pd
 
 from vessim._util import DatetimeLike, PandasObject
 
-Datasets: Dict[str, Dict] = {
+DATASETS = {
     "solcast2022_germany": {
         "actual": "solcast2022_germany_actual.csv",
         "forecast": "solcast2022_germany_forecast.csv",
@@ -36,7 +36,7 @@ def _load_dataset(
 ) -> Dict:
     """Downloads a dataset from the vessim repository, unpacks it and loads data."""
     if isinstance(dataset, str):
-        dataset_dict: Dict = Datasets[dataset]
+        dataset_dict: Dict = DATASETS[dataset]
     else:
         dataset_dict = dataset
 

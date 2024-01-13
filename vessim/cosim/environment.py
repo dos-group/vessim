@@ -5,7 +5,7 @@ from typing import List, Optional, Dict, Union, Literal
 import mosaik
 
 from vessim._util import Clock
-from vessim.core import Api
+from vessim import Signal
 from vessim.cosim import Actor, Controller, Storage, StoragePolicy
 
 
@@ -28,7 +28,7 @@ class Microgrid:
         self,
         world: mosaik.World,
         clock: Clock,
-        grid_signals: Dict[str, Api]
+        grid_signals: Dict[str, Signal]
     ):
         """Create co-simulation entities and connect them to world"""
         grid_sim = world.start("Grid")
@@ -89,7 +89,7 @@ class Environment:
     def add_microgrid(self, microgrid: Microgrid):
         self.microgrids.append(microgrid)
 
-    def add_grid_signal(self, name: str, grid_signal: Api):
+    def add_grid_signal(self, name: str, grid_signal: Signal):
         if len(self.microgrids) > 0:
             raise RuntimeError("Add all grid signals before adding microgrids.")
         self.grid_signals[name] = grid_signal

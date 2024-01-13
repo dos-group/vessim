@@ -20,7 +20,7 @@ from docker.models.containers import Container
 from fastapi import FastAPI
 
 from vessim._util import HttpClient
-from vessim.core import Api
+from vessim import Signal
 from vessim.cosim import Controller, PowerMeter
 from vessim.cosim.environment import Microgrid
 
@@ -156,7 +156,7 @@ def _serve_api(
     api_routes: Callable,
     api_host: str,
     api_port: int,
-    grid_signals: Dict[str, Api],
+    grid_signals: Dict[str, Signal],
 ):
     print("Starting API server...")
     app = FastAPI()
