@@ -1,7 +1,7 @@
+from __future__ import annotations
 import threading
 import time
 from threading import Thread
-from typing import Optional, Callable
 
 from examples.controller_example import cacu_scenario
 from vessim._util import HttpClient
@@ -22,7 +22,7 @@ class LoopThread(threading.Thread):
         exc: Variable that is set to propagate an exception to the main thread.
     """
 
-    def __init__(self, target_function: Callable[[], None], interval: float):
+    def __init__(self, target_function: callable[[], None], interval: float):
         super().__init__()
         self.target_function = target_function
         self.stop_signal = threading.Event()
@@ -99,7 +99,7 @@ class CarbonAwareControlUnit:
         self,
         rt_factor: float,
         step_size: int,
-        update_interval: Optional[float]
+        update_interval: float = None
     ):
         if update_interval is None:
             update_interval = rt_factor * step_size

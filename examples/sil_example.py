@@ -7,8 +7,8 @@ through software-in-the-loop integration as described in our paper:
 
 This is example experimental and documentation is still in progress.
 """
+from __future__ import annotations
 from datetime import datetime
-from typing import Optional, Dict
 
 import pandas as pd
 from fastapi import FastAPI
@@ -75,7 +75,7 @@ def main(result_csv: str):
 def api_routes(
     app: FastAPI,
     broker: Broker,
-    grid_signals: Dict[str, TimeSeriesApi],
+    grid_signals: dict[str, TimeSeriesApi],
 ):
     @app.get("/actors/{actor}/p")
     async def get_solar(actor: str):
@@ -90,13 +90,13 @@ def api_routes(
         return broker.get_grid_power()
 
     @app.get("/carbon-intensity")
-    async def get_carbon_intensity(time: Optional[str]):
+    async def get_carbon_intensity(time: str = None):
         time = pd.to_datetime(time) if time is not None else datetime.now()
         return grid_signals["carbon_intensity"].actual(time)
 
     class BatteryModel(BaseModel):
-        min_soc: Optional[float]
-        grid_charge: Optional[float]
+        min_soc: float = None
+        grid_charge: float = None
 
     @app.put("/battery")
     async def put_battery(battery_model: BatteryModel):
@@ -112,18 +112,18 @@ def api_routes(
 
 
 # curl -X PUT -d '{"min_soc": 0.5,"grid_charge": 1}' http://localhost:8000/battery -H 'Content-Type: application/json'
-def battery_min_soc_collector(events: Dict, microgrid: Microgrid, compute_nodes: Dict):
+def battery_min_soc_collector(events: dict, microgrid: Microgrid, compute_nodes: dict):
     print(f"Received battery.min_soc events: {events}")
     microgrid.storage.min_soc = get_latest_event(events)
 
 
-def grid_charge_collector(events: Dict, microgrid: Microgrid, compute_nodes: Dict):
+def grid_charge_collector(events: dict, microgrid: Microgrid, compute_nodes: dict):
     print(f"Received grid_charge events: {events}")
     microgrid.storage_policy.grid_power = get_latest_event(events)
 
 
 # curl -X PUT -d '{"power_mode": "normal"}' http://localhost:8000/nodes/gcp -H 'Content-Type: application/json'
-def node_power_mode_collector(events: Dict, microgrid: Microgrid, compute_nodes: Dict):
+def node_power_mode_collector(events: dict, microgrid: Microgrid, compute_nodes: dict):
     print(f"Received nodes_power_mode events: {events}")
     latest = get_latest_event(events)
     for node_name, power_mode in latest.items():

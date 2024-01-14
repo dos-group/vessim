@@ -1,6 +1,6 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Dict, List
 
 import mosaik_api
 
@@ -19,7 +19,7 @@ class Actor(ABC):
     def p(self, now: datetime) -> float:
         """Return the power consumption/production of the actor."""
 
-    def info(self, now: datetime) -> Dict:
+    def info(self, now: datetime) -> dict:
         """Return additional information about the state of the actor."""
         return {}
 
@@ -43,7 +43,7 @@ class ComputingSystem(Actor):
         pue: The power usage effectiveness of the system.
     """
 
-    def __init__(self, name: str, step_size: int, power_meters: List[PowerMeter], pue: float = 1):
+    def __init__(self, name: str, step_size: int, power_meters: list[PowerMeter], pue: float = 1):
         super().__init__(name, step_size)
         self.power_meters = power_meters
         self.pue = pue
@@ -51,7 +51,7 @@ class ComputingSystem(Actor):
     def p(self, now: datetime) -> float:
         return self.pue * sum(-pm.measure() for pm in self.power_meters)
 
-    def info(self, now: datetime) -> Dict:
+    def info(self, now: datetime) -> dict:
         return {pm.name: -pm.measure() for pm in self.power_meters}
 
     def finalize(self) -> None:

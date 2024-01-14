@@ -1,6 +1,7 @@
+from __future__ import annotations
 import pickle
 from copy import copy
-from typing import List, Optional, Dict, Union, Literal
+from typing import Literal
 
 import mosaik
 
@@ -12,11 +13,11 @@ from vessim.cosim import Actor, Controller, Storage, StoragePolicy
 class Microgrid:
     def __init__(
         self,
-        actors: List[Actor],
-        controllers: List[Controller],
-        storage: Optional[Storage] = None,
-        storage_policy: Optional[StoragePolicy] = None,
-        zone: Optional[str] = None,
+        actors: list[Actor],
+        controllers: list[Controller],
+        storage: Storage = None,
+        storage_policy: StoragePolicy = None,
+        zone: str = None,
     ):
         self.actors = actors
         self.controllers = controllers
@@ -28,7 +29,7 @@ class Microgrid:
         self,
         world: mosaik.World,
         clock: Clock,
-        grid_signals: Dict[str, TimeSeriesApi]
+        grid_signals: dict[str, TimeSeriesApi]
     ):
         """Create co-simulation entities and connect them to world"""
         grid_sim = world.start("Grid")
@@ -97,8 +98,8 @@ class Environment:
     def run(
         self,
         until: int,
-        rt_factor: Optional[float] = None,
-        print_progress: Union[bool, Literal["individual"]] = True,
+        rt_factor: float = None,
+        print_progress: bool | Literal["individual"] = True,
     ):
         try:
             for microgrid in self.microgrids:

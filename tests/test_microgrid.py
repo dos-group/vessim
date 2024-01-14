@@ -1,5 +1,5 @@
+from __future__ import annotations
 import pytest
-from typing import Dict
 
 from vessim._core.microgrid import SimpleMicrogrid
 from vessim.cosim.storage import SimpleBattery
@@ -17,7 +17,7 @@ class TestSimpleMicrogrid:
         )
 
     @pytest.fixture
-    def power_values(self) -> Dict:
+    def power_values(self) -> dict:
         return {
             "Consumer_0": -15,
             "Consumer_1": -10,

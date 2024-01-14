@@ -3,6 +3,7 @@
 This module is still experimental, the public API might change at any time.
 """
 
+from __future__ import annotations
 import json
 import multiprocessing
 import pickle
@@ -11,7 +12,7 @@ from collections import defaultdict
 from datetime import datetime
 from threading import Thread
 from time import sleep
-from typing import Dict, Callable, Optional, List, Any
+from typing import Any
 
 import docker
 import redis
@@ -65,7 +66,7 @@ class Broker:
     def get_microgrid(self) -> Microgrid:
         return pickle.loads(self.redis_db.get("microgrid"))
 
-    def get_actor(self, actor: str) -> Dict:
+    def get_actor(self, actor: str) -> dict:
         return json.loads(self.redis_db.get("actors"))[actor]
 
     def get_grid_power(self) -> float:
@@ -84,9 +85,9 @@ class SilController(Controller):
     def __init__(
         self,
         step_size: int,
-        api_routes: Callable,
-        request_collectors: Dict[str, Callable],
-        compute_nodes: List[ComputeNode],
+        api_routes: callable,
+        request_collectors: dict[str, callable],
+        compute_nodes: list[ComputeNode],
         api_host: str = "127.0.0.1",
         api_port: int = 8000,
         request_collector_interval: float = 1,
@@ -121,7 +122,7 @@ class SilController(Controller):
         self.api_server_process.start()
         Thread(target=self._collect_set_requests_loop, daemon=True).start()
 
-    def step(self, time: int, p_delta: float, actors: Dict) -> None:
+    def step(self, time: int, p_delta: float, actors: dict) -> None:
         pipe = self.redis_db.pipeline()
         pipe.set("time", time)
         pipe.set("p_delta", p_delta)
@@ -153,10 +154,10 @@ class SilController(Controller):
 
 
 def _serve_api(
-    api_routes: Callable,
+    api_routes: callable,
     api_host: str,
     api_port: int,
-    grid_signals: Dict[str, TimeSeriesApi],
+    grid_signals: dict[str, TimeSeriesApi],
 ):
     print("Starting API server...")
     app = FastAPI()
@@ -167,7 +168,7 @@ def _serve_api(
 
 
 def _redis_docker_container(
-    docker_client: Optional[docker.DockerClient] = None,
+    docker_client: docker.DockerClient = None,
     port: int = 6379
 ) -> Container:
     """Initializes Docker client and starts Docker container with Redis."""
@@ -192,7 +193,7 @@ def _redis_docker_container(
     return container
 
 
-def get_latest_event(events: Dict[datetime, Any]) -> Any:
+def get_latest_event(events: dict[datetime, Any]) -> Any:
     return events[max(events.keys())]
 
 

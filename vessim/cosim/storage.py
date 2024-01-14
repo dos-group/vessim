@@ -1,5 +1,5 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Optional, Dict
 
 from loguru import logger
 
@@ -25,7 +25,7 @@ class Storage(ABC):
         """Returns the current State of Charge (SoC)."""
 
     @abstractmethod
-    def state(self) -> Dict:
+    def state(self) -> dict:
         """Returns information about the current state of the storage."""
 
 
@@ -45,7 +45,7 @@ class SimpleBattery(Storage):
         capacity: float,
         charge_level: float = 0,
         min_soc: float = 0,
-        c_rate: Optional[float] = None,
+        c_rate: float = None,
     ):
         self.capacity = capacity
         assert 0 <= charge_level <= self.capacity
@@ -96,7 +96,7 @@ class SimpleBattery(Storage):
     def soc(self) -> float:
         return self.charge_level / self.capacity
 
-    def state(self) -> Dict:
+    def state(self) -> dict:
         return {
             "charge_level": self.charge_level,
             "capacity": self.capacity,
@@ -111,7 +111,7 @@ class StoragePolicy(ABC):
         """(Dis)charge the storage according to the policy."""
 
     @abstractmethod
-    def state(self) -> Dict:
+    def state(self) -> dict:
         """Returns information about the current state of the storage policy."""
 
 
@@ -137,7 +137,7 @@ class DefaultStoragePolicy(StoragePolicy):
             real_charge_power = self.grid_power - excess_energy
             return p_delta - real_charge_power
 
-    def state(self) -> Dict:
+    def state(self) -> dict:
         return {
             "grid_power": self.grid_power,
         }

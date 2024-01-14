@@ -1,5 +1,6 @@
+from __future__ import annotations
 from datetime import timedelta, datetime
-from typing import Union, Optional, Literal, Dict, Hashable, List, Any
+from typing import Literal, Hashable, Any
 
 import pandas as pd
 
@@ -68,13 +69,13 @@ class TimeSeriesApi:
 
     def __init__(
         self,
-        actual: Union[pd.Series, pd.DataFrame],
-        forecast: Optional[Union[pd.Series, pd.DataFrame]] = None,
+        actual: pd.Series | pd.DataFrame,
+        forecast: pd.Series | pd.DataFrame = None,
         fill_method: Literal["ffill", "bfill"] = "ffill",
     ):
         actual.index = pd.to_datetime(actual.index)
         actual.sort_index(inplace=True)
-        self._actual: Dict[Hashable, pd.Series]
+        self._actual: dict[Hashable, pd.Series]
         if isinstance(actual, pd.Series):
             self._actual = {actual.name: actual.dropna()}
         elif isinstance(actual, pd.DataFrame):
@@ -94,7 +95,7 @@ class TimeSeriesApi:
 
             forecast.sort_index(inplace=True)
 
-        self._forecast: Dict[Hashable, pd.Series]
+        self._forecast: dict[Hashable, pd.Series]
         if isinstance(forecast, pd.Series):
             self._forecast = {forecast.name: forecast.dropna()}
         elif isinstance(forecast, pd.DataFrame):
@@ -108,11 +109,11 @@ class TimeSeriesApi:
 
         self._fill_method = fill_method
 
-    def zones(self) -> List:
+    def zones(self) -> list:
         """Returns a list of all zones, where actual data is available."""
         return list(self._actual.keys())
 
-    def actual(self, dt: DatetimeLike, zone: Optional[str] = None) -> Any:
+    def actual(self, dt: DatetimeLike, zone: str = None) -> Any:
         """Retrieves actual data point of zone at given time.
 
         If queried timestamp is not available in the `actual` dataframe, the fill_method
@@ -149,9 +150,9 @@ class TimeSeriesApi:
         self,
         start_time: DatetimeLike,
         end_time: DatetimeLike,
-        zone: Optional[str] = None,
-        frequency: Optional[Union[str, pd.DateOffset, timedelta]] = None,
-        resample_method: Optional[str] = None,
+        zone: str = None,
+        frequency: str | pd.DateOffset | timedelta = None,
+        resample_method: str = None,
     ) -> pd.Series:
         """Retrieves of forecasted data points within window at a frequency.
 
@@ -257,7 +258,7 @@ class TimeSeriesApi:
         return forecast.loc[forecast.index[start_index]:end_time] # type: ignore
 
     def _get_forecast_data_source(
-        self, start_time: datetime, zone: Optional[str]
+        self, start_time: datetime, zone: str | None
     ) -> pd.Series:
         """Returns series of zone data used to derive forecast prediction."""
         data_src = self._get_zone_data(self._forecast, zone)
@@ -274,7 +275,7 @@ class TimeSeriesApi:
         return data_src
 
     def _get_zone_data(
-        self, data: Dict[Hashable, pd.Series], zone: Optional[str]
+        self, data: dict[Hashable, pd.Series], zone: str | None
     ) -> pd.Series:
         """Return data of zone to be used.
 
@@ -302,7 +303,7 @@ class TimeSeriesApi:
         start_time: datetime,
         end_time: datetime,
         frequency: pd.DateOffset,
-        resample_method: Optional[str] = None,
+        resample_method: str = None,
     ) -> pd.Series:
         """Transform frame into the desired frequency between start and end time."""
         new_index = pd.date_range(start=start_time, end=end_time, freq=frequency)
@@ -332,7 +333,7 @@ class TimeSeriesApi:
         # Get the data to the desired frequency after interpolation
         return df.reindex(new_index[1:]) # type: ignore
 
-    def next_update(self, dt: DatetimeLike, zone: Optional[str] = None) -> datetime:
+    def next_update(self, dt: DatetimeLike, zone: str = None) -> datetime:
         """Returns the next time of when the actual trace will change.
 
         This method is being called in the time-based simulation model for Mosaik.

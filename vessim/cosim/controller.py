@@ -1,7 +1,8 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, Callable, Any, Tuple, TYPE_CHECKING, MutableMapping
+from typing import Any, TYPE_CHECKING, MutableMapping
 
 import mosaik_api
 import pandas as pd
@@ -20,7 +21,7 @@ class Controller(ABC):
         self.grid_signals = None
         self.clock = None
 
-    def start(self, microgrid: "Microgrid", clock: Clock, grid_signals: Dict):
+    def start(self, microgrid: "Microgrid", clock: Clock, grid_signals: dict):
         self.microgrid = microgrid
         self.clock = clock
         self.grid_signals = grid_signals
@@ -29,7 +30,7 @@ class Controller(ABC):
         """TODO document"""
 
     @abstractmethod
-    def step(self, time: int, p_delta: float, actors: Dict) -> None:
+    def step(self, time: int, p_delta: float, actors: dict) -> None:
         pass  # TODO document
 
     def finalize(self) -> None:
@@ -42,7 +43,7 @@ class Monitor(Controller):
         super().__init__(step_size=step_size)
         self.monitor_storage = monitor_storage
         self.monitor_grid_signals = monitor_grid_signals
-        self.monitor_log: Dict[datetime, Dict] = defaultdict(dict)
+        self.monitor_log: dict[datetime, dict] = defaultdict(dict)
         self.custom_monitor_fns = []
 
     def custom_init(self):
@@ -56,13 +57,13 @@ class Monitor(Controller):
                     )
                 })
 
-    def add_monitor_fn(self, fn: Callable[[float], Dict[str, Any]]):
+    def add_monitor_fn(self, fn: callable[[float], dict[str, Any]]):
         self.custom_monitor_fns.append(fn)
 
-    def step(self, time: int, p_delta: float, actors: Dict) -> None:
+    def step(self, time: int, p_delta: float, actors: dict) -> None:
         self.monitor(time, p_delta, actors)
 
-    def monitor(self, time: int, p_delta: float, actors: Dict) -> None:
+    def monitor(self, time: int, p_delta: float, actors: dict) -> None:
         log_entry = dict(
             p_delta=p_delta,
             actors=actors,
@@ -127,7 +128,7 @@ class ControllerSim(mosaik_api.Simulator):
         self.controller.finalize()
 
 
-def _parse_controller_inputs(inputs: Dict[str, Dict[str, Any]]) -> Tuple[float, Dict]:
+def _parse_controller_inputs(inputs: dict[str, dict[str, Any]]) -> tuple[float, dict]:
     try:
         p_delta = _get_val(inputs, "p_delta")
     except KeyError:
@@ -140,5 +141,5 @@ def _parse_controller_inputs(inputs: Dict[str, Dict[str, Any]]) -> Tuple[float, 
     return p_delta, dict(actors)
 
 
-def _get_val(inputs: Dict, key: str) -> Any:
+def _get_val(inputs: dict, key: str) -> Any:
     return list(inputs[key].values())[0]

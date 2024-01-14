@@ -1,5 +1,4 @@
-from typing import Dict, List
-
+from __future__ import annotations
 from examples._data import load_solar_data, load_carbon_data
 from examples.basic_example import SIM_START, STORAGE, DURATION
 from vessim.core import TimeSeriesApi
@@ -67,7 +66,7 @@ class CarbonAwareController(Controller):
         self.battery = battery
         self.policy = policy
 
-    def step(self, time: int, p_delta: float, actors: Dict):
+    def step(self, time: int, p_delta: float, actors: dict):
         """Performs a time step in the model."""
         new_state = cacu_scenario(
             time=time,
@@ -86,7 +85,7 @@ def cacu_scenario(
     time: int,
     battery_soc: float,
     ci: float,
-    node_names: List[str]
+    node_names: list[str]
 ) -> dict:
     """Calculate the power mode settings for nodes based on a scenario.
 
