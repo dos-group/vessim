@@ -14,4 +14,5 @@ COPY ./virtual_node ./virtual_node
 RUN pip install --no-cache-dir -r virtual_node/requirements.txt
 
 # Run command to start app when container launches with HOST_POST var
-CMD python ./virtual_node/v_node_api_server.py $HOST_PORT
+# Also use exec so ctrl+c works
+CMD exec python ./virtual_node/v_node_api_server.py $HOST_PORT
