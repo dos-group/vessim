@@ -33,7 +33,11 @@ source = "git-tag"
 "Bug Reports" = "https://github.com/dos-group/vessim/issues"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.8,<3.13"
+numpy = [
+    { version = "^1.22", python = "<3.12" },
+    { version = "^1.26", python = ">=3.12" }
+]
 
 # Mandatory dependencies
 pandas = "*"
@@ -46,8 +50,6 @@ docker = "*"
 redis = "*"
 uvicorn = "*"
 fastapi = "*"
-setuptools = "*"
-distutils = "*"
 
 # Optional dependencies (analysis)
 jupyterlab = {version = "*", optional = true}
@@ -72,7 +74,7 @@ dev = ["pytest", "mypy", "types-psutil", "pandas-stubs", "types-requests", "blac
 docs = ["furo", "sphinx-copybutton"]
 
 [build-system]
-requires = ["poetry-core>=1.1.0"]
+requires = ["setuptools", "poetry-core>=1.1.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.black]
