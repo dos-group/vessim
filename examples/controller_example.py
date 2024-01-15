@@ -1,7 +1,8 @@
 from typing import Dict, List
 
-from examples.basic_example import SIM_START, STORAGE, DURATION, SOLAR_DATASET, CARBON_DATASET
-from vessim.core import TimeSeriesApi
+from examples.basic_example import SIM_START, STORAGE, DURATION, SOLAR_DATASET, \
+    CARBON_DATASET
+from vessim import HistoricalSignal
 from vessim.cosim import ComputingSystem, Generator, Monitor, Controller, Microgrid, \
     Environment, DefaultStoragePolicy, MockPowerMeter
 
@@ -23,17 +24,16 @@ POWER_MODES = {  # according to paper
 def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
 
-    solar_api = TimeSeriesApi.from_dataset(
+    solar_signal = HistoricalSignal.from_dataset(
         SOLAR_DATASET,
         "./data",
         scale=0.4 * 0.5 * .17,
         start_time="2020-06-01 00:00:00",
-        use_forecast=False,
     )
 
-    carbon_api = TimeSeriesApi.from_dataset(CARBON_DATASET, "./data", use_forecast=False)
+    carbon_signal = HistoricalSignal.from_dataset(CARBON_DATASET, "./data")
 
-    environment.add_grid_signal("carbon_intensity", carbon_api)
+    environment.add_grid_signal("carbon_intensity", carbon_signal)
 
     power_meters = [
         MockPowerMeter(name="mpm0", p=2.194),
@@ -53,7 +53,7 @@ def main(result_csv: str):
                 step_size=60,
                 power_meters=power_meters
             ),
-            Generator(name="solar", step_size=60, time_series_api=solar_api),
+            Generator(name="solar", step_size=60, signal=solar_signal),
         ],
         storage=STORAGE,
         storage_policy=POLICY,
@@ -78,7 +78,7 @@ class CarbonAwareController(Controller):
         new_state = cacu_scenario(
             time=time,
             battery_soc=self.battery.soc(),
-            ci=self.grid_signals["carbon_intensity"].actual(self.clock.to_datetime(time), self.microgrid.zone),
+            ci=self.grid_signals["carbon_intensity"].at(self.clock.to_datetime(time), self.microgrid.zone),
             node_names=[node.name for node in self.power_meters],
         )
         self.policy.grid_power = new_state["grid_power"]
