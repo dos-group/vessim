@@ -79,8 +79,8 @@ class Monitor(Controller):
         )
         for monitor_fn in self.custom_monitor_fns:
             log_entry.update(monitor_fn(time))
-        if self.clock is not None:
-            self.monitor_log[self.clock.to_datetime(time)] = log_entry
+        self.clock: Clock  # clock is initialized at this point
+        self.monitor_log[self.clock.to_datetime(time)] = log_entry
 
     def monitor_log_to_csv(self, out_path: str):
         df = pd.DataFrame({k: flatten_dict(v) for k, v in self.monitor_log.items()}).T
