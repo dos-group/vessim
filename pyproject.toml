@@ -47,6 +47,7 @@ redis = "*"
 uvicorn = "*"
 fastapi = "*"
 setuptools = "*"
+distutils = "*"
 
 # Optional dependencies (analysis)
 jupyterlab = {version = "*", optional = true}
