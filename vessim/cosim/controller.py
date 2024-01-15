@@ -51,7 +51,7 @@ class Monitor(Controller):
         self.monitor_storage = monitor_storage
         self.monitor_grid_signals = monitor_grid_signals
         self.monitor_log: Dict[datetime, Dict] = defaultdict(dict)
-        self.custom_monitor_fns: List[Callable[..., Any]] = []
+        self.custom_monitor_fns: List[Callable] = []
 
     def custom_init(self):
         if self.monitor_storage:
