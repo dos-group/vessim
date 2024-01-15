@@ -40,8 +40,7 @@ jobs:
     # installs setuptools because it is needed for python 3.12 virtual environment
     - name: Install dependencies
       run: |
-        pip install setuptools
-        pip wheel --no-cache-dir --use-pep517 "numpy (==1.24.4)"
+        pip install --upgrade numpy
         poetry install --extras "dev"
 
     - name: Run type checker
