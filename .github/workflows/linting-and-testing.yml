@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.12]
+        python-version: ["3.8", "3.12-dev"]
     steps:
     # downloads the repository code to the runner's file system for workflow access
     - uses: actions/checkout@v2
@@ -40,7 +40,6 @@ jobs:
     # installs setuptools because it is needed for python 3.12 virtual environment
     - name: Install dependencies
       run: |
-        pip install --upgrade numpy
         poetry install --extras "dev"
 
     - name: Run type checker
