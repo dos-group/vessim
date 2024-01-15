@@ -3,12 +3,9 @@ name: Build
 # event that triggers workflow
 # runs on every pull request
 on: 
-  push:
+  pull_request:
     branches:
-       - pipeline_adjustments
-  #pull_request:
-  #  branches:
-  #    - main
+      - main
 
 jobs:
   integration-tests:
