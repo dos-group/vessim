@@ -5,9 +5,9 @@ from datetime import timedelta
 from vessim import HistoricalSignal
 
 
-class TestTraceSimulator:
+class TestHistoricalSignal:
     @pytest.fixture
-    def time_series(self) -> HistoricalSignal:
+    def hist_signal(self) -> HistoricalSignal:
         index = [
             "2023-01-01T00:00:00",
             "2023-01-01T00:30:00",
@@ -19,13 +19,13 @@ class TestTraceSimulator:
         return HistoricalSignal(actual)
 
     @pytest.fixture
-    def time_series_single(self) -> HistoricalSignal:
+    def hist_signal_single(self) -> HistoricalSignal:
         index = ["2023-01-01T00:00:00", "2023-01-01T00:30:00", "2023-01-01T01:00:00"]
         actual = pd.Series([1, 2, 3], index=index)
         return HistoricalSignal(actual, fill_method="bfill")
 
     @pytest.fixture
-    def time_series_forecast(self) -> HistoricalSignal:
+    def hist_signal_forecast(self) -> HistoricalSignal:
         index = pd.date_range("2023-01-01T00:00:00", "2023-01-01T01:00:00", freq="20T")
         actual = pd.DataFrame(
             {"a": [1, 5, 3, 2], "b": [0, 1, 2, 3], "c": [4, 3, 2, 7]}, index=index
@@ -46,23 +46,23 @@ class TestTraceSimulator:
         return HistoricalSignal(actual, forecast)
 
     @pytest.fixture
-    def time_series_static_forecast(self) -> HistoricalSignal:
+    def hist_signal_static_forecast(self) -> HistoricalSignal:
         index = pd.date_range("2023-01-01T00:00:00", "2023-01-01T03:00:00", freq="1H")
         actual = pd.Series([3, 2, 4, 0], index=index)
         forecast = pd.Series([4, 2, 4, 1], index=index)
         return HistoricalSignal(actual, forecast)
 
-    def test_zones(self, time_series):
-        assert time_series.endpoints() == ["a", "b", "c"]
+    def test_endpoints(self, hist_signal):
+        assert hist_signal.endpoints() == ["a", "b", "c"]
 
-    def test_actual_single_zone(self, time_series_single):
-        assert time_series_single.at("2023-01-01T00:45:00") == 3
+    def test_actual_single_endpoint(self, hist_signal_single):
+        assert hist_signal_single.at("2023-01-01T00:45:00") == 3
 
-    def test_actual_none_values(self, time_series):
-        assert time_series.at("2023-01-01T01:20:00", endpoint="c") == 4
+    def test_actual_none_values(self, hist_signal):
+        assert hist_signal.at("2023-01-01T01:20:00", endpoint="c") == 4
 
     @pytest.mark.parametrize(
-        "dt, zone, expected",
+        "dt, endpoint, expected",
         [
             (pd.to_datetime("2023-01-01T00:00:00"), "a", 1),
             (pd.to_datetime("2023-01-01T00:00:10"), "a", 1),
@@ -72,27 +72,27 @@ class TestTraceSimulator:
             (pd.to_datetime("2023-01-01T00:30:00"), "b", 3),
         ],
     )
-    def test_actual(self, time_series, dt, zone, expected):
-        assert time_series.at(dt, zone) == expected
+    def test_actual(self, hist_signal, dt, endpoint, expected):
+        assert hist_signal.at(dt, endpoint) == expected
 
-    def test_actual_fails_if_zone_not_specified(self, time_series):
+    def test_actual_fails_if_endpoint_not_specified(self, hist_signal):
         with pytest.raises(ValueError):
-            time_series.at(pd.to_datetime("2023-01-01T00:00:00"))
+            hist_signal.at(pd.to_datetime("2023-01-01T00:00:00"))
 
-    def test_actual_fails_if_zone_does_not_exist(self, time_series):
+    def test_actual_fails_if_endpoint_does_not_exist(self, hist_signal):
         with pytest.raises(ValueError):
-            time_series.at(pd.to_datetime("2023-01-01T00:00:00"), "d")
+            hist_signal.at(pd.to_datetime("2023-01-01T00:00:00"), "d")
 
-    def test_actual_fails_if_now_too_early(self, time_series):
+    def test_actual_fails_if_now_too_early(self, hist_signal):
         with pytest.raises(ValueError):
-            time_series.at(pd.to_datetime("2022-12-30T23:59:59"), "a")
+            hist_signal.at(pd.to_datetime("2022-12-30T23:59:59"), "a")
 
-    def test_actual_fails_if_now_too_late(self, time_series_single):
+    def test_actual_fails_if_now_too_late(self, hist_signal_single):
         with pytest.raises(ValueError):
-            time_series_single.at(pd.to_datetime("2023-01-01T01:00:01"))
+            hist_signal_single.at(pd.to_datetime("2023-01-01T01:00:01"))
 
-    def test_forecast_single_zone(self, time_series_single):
-        assert time_series_single.forecast(
+    def test_forecast_single_endpoint(self, hist_signal_single):
+        assert hist_signal_single.forecast(
             start_time="2023-01-01T00:00:00",
             end_time="2023-01-01T01:00:00",
         ).equals(
@@ -105,8 +105,8 @@ class TestTraceSimulator:
             )
         )
 
-    def test_forecast_static(self, time_series_static_forecast):
-        assert time_series_static_forecast.forecast(
+    def test_forecast_static(self, hist_signal_static_forecast):
+        assert hist_signal_static_forecast.forecast(
             start_time="2023-01-01T00:00:00",
             end_time="2023-01-01T02:00:00",
         ).equals(
@@ -120,7 +120,7 @@ class TestTraceSimulator:
         )
 
     @pytest.mark.parametrize(
-        "start, end, zone, expected",
+        "start, end, endpoint, expected",
         [
             (
                 "2023-01-01T00:00:00",
@@ -179,11 +179,11 @@ class TestTraceSimulator:
             ),
         ],
     )
-    def test_forecast(self, time_series_forecast, start, end, zone, expected):
-        assert time_series_forecast.forecast(start, end, zone=zone).equals(expected)
+    def test_forecast(self, hist_signal_forecast, start, end, endpoint, expected):
+        assert hist_signal_forecast.forecast(start, end, endpoint).equals(expected)
 
     @pytest.mark.parametrize(
-        "start, end, zone, frequency, method, expected",
+        "start, end, endpoint, frequency, method, expected",
         [
             (
                 "2023-01-01T00:00:00",
@@ -273,79 +273,55 @@ class TestTraceSimulator:
         ],
     )
     def test_forecast_with_frequency(
-        self, time_series_forecast, start, end, zone, frequency, method, expected
+        self, hist_signal_forecast, start, end, endpoint, frequency, method, expected
     ):
-        assert time_series_forecast.forecast(
+        assert hist_signal_forecast.forecast(
             start,
             end,
-            zone=zone,
+            endpoint=endpoint,
             frequency=frequency,
             resample_method=method,
         ).equals(expected)
 
-    def test_forecast_fails_if_zone_not_specified(self, time_series):
+    def test_forecast_fails_if_endpoint_not_specified(self, hist_signal):
         with pytest.raises(ValueError):
-            time_series.forecast(
+            hist_signal.forecast(
                 pd.to_datetime("2023-01-01T00:00:00"),
                 pd.to_datetime("2023-01-01T01:00:00"),
             )
 
-    def test_forecast_fails_if_zone_does_not_exist(self, time_series):
+    def test_forecast_fails_if_endpoint_does_not_exist(self, hist_signal):
         with pytest.raises(ValueError):
-            time_series.forecast(
+            hist_signal.forecast(
                 pd.to_datetime("2023-01-01T00:00:00"),
                 pd.to_datetime("2023-01-01T01:00:00"),
-                zone="d",
+                endpoint="d",
             )
 
-    def test_forecast_fails_if_start_too_early(self, time_series_forecast):
+    def test_forecast_fails_if_start_too_early(self, hist_signal_forecast):
         with pytest.raises(ValueError):
-            time_series_forecast.forecast(
+            hist_signal_forecast.forecast(
                 pd.to_datetime("2022-12-31T23:59:59"),
                 pd.to_datetime("2023-01-01T01:00:00"),
-                zone="a",
+                endpoint="a",
             )
 
-    def test_forecast_fails_with_invalid_frequency(self, time_series):
+    def test_forecast_fails_with_invalid_frequency(self, hist_signal):
         with pytest.raises(ValueError):
-            time_series.forecast(
-                time_series.forecast(
+            hist_signal.forecast(
+                hist_signal.forecast(
                     pd.to_datetime("2023-01-01T00:00:00"),
                     pd.to_datetime("2023-01-01T01:00:00"),
-                    zone="a",
+                    endpoint="a",
                     frequency="invalid",
                 )
             )
 
-    def test_forecast_fails_if_not_enough_data_for_frequency(self, time_series):
+    def test_forecast_fails_if_not_enough_data_for_frequency(self, hist_signal):
         with pytest.raises(ValueError):
-            time_series.forecast(
+            hist_signal.forecast(
                 pd.to_datetime("2023-01-01T00:00:00"),
                 pd.to_datetime("2023-01-01T01:00:00"),
-                zone="a",
+                endpoint="a",
                 frequency="15T",
             )
-
-    @pytest.mark.parametrize(
-        "dt, expected",
-        [
-            (
-                pd.to_datetime("2023-01-01T00:00:00"),
-                pd.to_datetime("2023-01-01T00:30:00"),
-            ),
-            (
-                pd.to_datetime("2023-01-01T00:10:00"),
-                pd.to_datetime("2023-01-01T00:30:00"),
-            ),
-            (
-                pd.to_datetime("2023-01-01T00:29:59"),
-                pd.to_datetime("2023-01-01T00:30:00"),
-            ),
-            (
-                pd.to_datetime("2023-01-01T00:40:00"),
-                pd.to_datetime("2023-01-01T01:00:00"),
-            ),
-        ],
-    )
-    def test_next_update(self, time_series, dt, expected):
-        assert time_series.next_update(dt, "a") == expected
