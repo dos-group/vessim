@@ -16,11 +16,13 @@ from typing import Dict, Callable, Optional, List, Any
 import docker
 import redis
 import uvicorn
+import requests
+from requests.auth import HTTPBasicAuth
 from docker.models.containers import Container
 from fastapi import FastAPI
 
-from vessim._util import HttpClient
-from vessim import Signal
+from vessim._util import HttpClient, DatetimeLike
+from vessim._core import Signal
 from vessim.cosim import Controller, PowerMeter
 from vessim.cosim.environment import Microgrid
 
@@ -225,3 +227,46 @@ class HttpPowerMeter(PowerMeter):
         while True:
             self._p = float(self.http_client.get("/power")["power"])
             time.sleep(self.collect_interval)
+
+
+class WatttimeSignal(Signal):
+    _URL = "https://api.watttime.org"
+
+    def __init__(self, username: str, password: str):
+        self.username = username
+        self.password = password
+        self.headers = {"Authorization": f"Bearer {self._login()}"}
+
+    def at(self, dt: DatetimeLike, region: str = None, signal_type: str = "co2_moer"):
+        if region is None:
+            raise ValueError("Region needs to be specified.")
+        dt = pd.to_datetime(dt)
+        rsp = self._request("/historical", params={
+            "region": region,
+            "start": (dt - timedelta(minutes=5)).isoformat(),
+            "end": dt.isoformat(),
+            "signal_type": signal_type,
+        })
+        return rsp
+
+    def _request(self, endpoint: str, params: Dict):
+        while True:
+            rsp = requests.get(
+                f"{self._URL}/v3{endpoint}", headers=self.headers, params=params
+            )
+            if rsp.status_code == 200:
+                return rsp.json()["data"][0]["value"]
+            if rsp.status_code == 400:
+                return f"Error {rsp.status_code}: {rsp.json()}"
+            elif rsp.status_code in [401, 403]:
+                print("Renewing authorization with Watttime API.")
+                self.headers["Authorization"] = f"Bearer {self._login()}"
+            else:
+                raise ValueError(f"Error {rsp.status_code}: {rsp}")
+
+    def _login(self) -> str:
+        # TODO reconnect if token is expired
+        rsp = requests.get(
+            f"{self._URL}/login", auth=HTTPBasicAuth(self.username, self.password)
+        )
+        return rsp.json()['token']

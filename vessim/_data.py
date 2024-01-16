@@ -2,48 +2,43 @@ import os
 import urllib.request
 from datetime import timedelta
 from pathlib import Path
-from typing import Optional, List, Union, Dict
+from typing import Optional, List, Dict
 from zipfile import ZipFile
 
 import pandas as pd
 
-from vessim._util import DatetimeLike, PandasObject
+from vessim._util import PandasObject
 
-VESSIM_DATASETS = {
+VESSIM_DATASETS: Dict[str, Dict[str, str]] = {
     "solcast2022_germany": {
         "actual": "solcast2022_germany_actual.csv",
         "forecast": "solcast2022_germany_forecast.csv",
         "fill_method": "bfill",
-        "static_forecast": False,
         "url": "https://raw.githubusercontent.com/dos-group/vessim/solcast_data/datasets/solcast2022_germany.zip",
     },
     "solcast2022_global": {
         "actual": "solcast2022_global_actual.csv",
         "forecast": "solcast2022_global_forecast.csv",
         "fill_method": "bfill",
-        "static_forecast": False,
         "url": "https://raw.githubusercontent.com/dos-group/vessim/solcast_data/datasets/solcast2022_global.zip",
     },
 }
 
 
-def _load_dataset(
-    dataset: str,
-    scale: float = 1.0,
-    start_time: Optional[DatetimeLike] = None,
-    use_forecast: bool = False,
-) -> Dict:
+def load_dataset(dataset: str, dir_path: Path, params: Dict = {}) -> Dict:
     """Downloads a dataset from the vessim repository, unpacks it and loads data."""
     if dataset not in VESSIM_DATASETS:
         raise ValueError(f"Dataset '{dataset}' not found. Available datasets are: "
                          f"{', '.join(list(VESSIM_DATASETS.keys()))}")
 
+    scale = params.get("scale", 1.0)
+    start_time = params.get("start_time", None)
+    use_forecast = params.get("use_forecast", True)
+
     dataset_config = VESSIM_DATASETS[dataset]
     required_files = [dataset_config["actual"]]
     if use_forecast:
         required_files.append(dataset_config["forecast"])
-
-    dir_path = Path().expanduser().resolve()
 
     if not _check_files(required_files, dir_path):
         print("Required data files not present locally. Try downloading...")
@@ -66,15 +61,8 @@ def _load_dataset(
 
     forecast: Optional[PandasObject] = None
     if use_forecast:
-        if dataset_config.get("static_forecast", False):
-            # There is only one timestamp present in the forecast (static forecast)
-            index_cols: List[int] = [0]
-        else:
-            # There are two timestamps present in the forecast (non-static forecast)
-            index_cols = [0, 1]
-
         forecast = _read_data_from_csv(
-            dir_path / dataset_config["forecast"], index_cols=index_cols, scale=scale
+            dir_path / dataset_config["forecast"], index_cols=[0, 1], scale=scale
         )
 
     if start_time is not None:
@@ -104,11 +92,11 @@ def _read_data_from_csv(
     path: Path, index_cols: List[int], scale: float = 1.0
 ) -> PandasObject:
     """Retrieves a dataframe from a csv file and transforms it."""
-    df = _convert_to_datetime(pd.read_csv(path, index_col=index_cols))
+    df = convert_to_datetime(pd.read_csv(path, index_col=index_cols))
     return (df * scale).astype(float)
 
 
-def _convert_to_datetime(df: PandasObject) -> PandasObject:
+def convert_to_datetime(df: PandasObject) -> PandasObject:
     """Converts the indices of a dataframe to datetime indices."""
     if isinstance(df.index, pd.MultiIndex):
         index: pd.MultiIndex = df.index
