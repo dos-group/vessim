@@ -15,14 +15,14 @@ from typing import Dict, Callable, Optional, List, Any
 
 import docker
 import redis
-import uvicorn
 import requests
-from requests.auth import HTTPBasicAuth
+import uvicorn
 from docker.models.containers import Container
 from fastapi import FastAPI
+from requests.auth import HTTPBasicAuth
 
-from vessim._util import HttpClient, DatetimeLike
 from vessim._signal import Signal
+from vessim._util import HttpClient, DatetimeLike
 from vessim.cosim import Controller, PowerMeter
 from vessim.cosim.environment import Microgrid
 

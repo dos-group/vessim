@@ -16,7 +16,7 @@ def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
     environment.add_grid_signal("carbon_intensity", HistoricalSignal(load_carbon_data()))
 
-    monitor = Monitor(step_size=60)
+    monitor = Monitor(step_size=60)  # stores simulation result every 60s
     microgrid = Microgrid(
         actors=[
             ComputingSystem(
@@ -35,8 +35,8 @@ def main(result_csv: str):
         storage=STORAGE,
         zone="DE",
     )
-
     environment.add_microgrid(microgrid)
+
     environment.run(until=DURATION)
     monitor.monitor_log_to_csv(result_csv)
 

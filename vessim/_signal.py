@@ -5,8 +5,9 @@ from typing import Union, Optional, Literal, Dict, Hashable, List
 
 import pandas as pd
 
-from vessim._util import DatetimeLike
 from vessim._data import convert_to_datetime, load_dataset
+from vessim._util import DatetimeLike
+
 
 class Signal(ABC):
     """Abstract base class for APIs."""

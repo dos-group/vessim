@@ -29,7 +29,7 @@ def main(result_csv: str):
         MockPowerMeter(p=2.194),
         MockPowerMeter(p=7.6)
     ]
-    monitor = Monitor(step_size=60)
+    monitor = Monitor(step_size=60)  # stores simulation result every 60s
     carbon_aware_controller = CarbonAwareController(
         step_size=60,
         power_meters=power_meters,
@@ -53,8 +53,8 @@ def main(result_csv: str):
         controllers=[monitor, carbon_aware_controller],
         zone="DE",
     )
-
     environment.add_microgrid(microgrid)
+
     environment.run(until=DURATION)
     monitor.monitor_log_to_csv(result_csv)
 
