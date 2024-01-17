@@ -10,8 +10,6 @@ STORAGE = SimpleBattery(
     charge_level=32 * 5 * 3600 * .6,
     min_soc=.6
 )
-SOLAR_DATASET = {"actual": "solar_berlin_2021-06.csv", "fill_method": "ffill"}
-CARBON_DATASET = {"actual": "carbon_intensity.csv", "fill_method": "ffill"}
 
 
 def main(result_csv: str):

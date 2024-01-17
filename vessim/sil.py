@@ -22,7 +22,7 @@ from docker.models.containers import Container
 from fastapi import FastAPI
 
 from vessim._util import HttpClient, DatetimeLike
-from vessim._core import Signal
+from vessim._signal import Signal
 from vessim.cosim import Controller, PowerMeter
 from vessim.cosim.environment import Microgrid
 

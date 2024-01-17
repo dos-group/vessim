@@ -14,8 +14,7 @@ import pandas as pd
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from controller_example import SIM_START, STORAGE, DURATION, POLICY, SOLAR_DATASET, \
-    CARBON_DATASET
+from controller_example import SIM_START, STORAGE, DURATION, POLICY
 from examples._data import load_carbon_data, load_solar_data
 from vessim import Signal, HistoricalSignal
 from vessim.cosim import Environment, Monitor, Microgrid, ComputingSystem, Generator
@@ -54,9 +53,13 @@ def main(result_csv: str):
             ComputingSystem(
                 name="server",
                 step_size=60,
-                power_meters=power_meters
+                power_meters=power_meters,
             ),
-            Generator(name="solar", step_size=60, signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5))),
+            Generator(
+                name="solar",
+                step_size=60,
+                signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5)),
+            ),
         ],
         storage=STORAGE,
         storage_policy=POLICY,

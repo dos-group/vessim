@@ -4,7 +4,7 @@ from typing import Dict, List
 
 import mosaik_api
 
-from vessim._core import Signal
+from vessim._signal import Signal
 from vessim.cosim.power_meter import PowerMeter
 
 

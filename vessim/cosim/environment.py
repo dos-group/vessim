@@ -5,7 +5,7 @@ from typing import List, Optional, Dict, Union, Literal
 import mosaik
 
 from vessim._util import Clock
-from vessim._core import Signal
+from vessim._signal import Signal
 from vessim.cosim import Actor, Controller, Storage, StoragePolicy
 
 

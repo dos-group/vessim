@@ -25,15 +25,22 @@ VESSIM_DATASETS: Dict[str, Dict[str, str]] = {
 }
 
 
-def load_dataset(dataset: str, dir_path: Path, params: Dict = {}) -> Dict:
+def load_dataset(dataset: str, dir_path: Path, params: Optional[Dict] = None) -> Dict:
     """Downloads a dataset from the vessim repository, unpacks it and loads data."""
     if dataset not in VESSIM_DATASETS:
         raise ValueError(f"Dataset '{dataset}' not found. Available datasets are: "
                          f"{', '.join(list(VESSIM_DATASETS.keys()))}")
 
-    scale = params.get("scale", 1.0)
-    start_time = params.get("start_time", None)
-    use_forecast = params.get("use_forecast", True)
+    if params is not None:
+        allowed_parameters = ["scale", "start_time", "use_forecast"]
+        for key in params.keys():
+            if key not in allowed_parameters:
+                raise ValueError(f"Parameter '{key}' not allowed. "
+                                 f"Allowed parameters are: {allowed_parameters}.")
+
+    scale = _get_parameter(params, "scale", default=1.0)
+    start_time = _get_parameter(params, "start_time", default=None)
+    use_forecast = _get_parameter(params, "use_forecast", default=True)
 
     dataset_config = VESSIM_DATASETS[dataset]
     required_files = [dataset_config["actual"]]
@@ -77,6 +84,12 @@ def load_dataset(dataset: str, dir_path: Path, params: Dict = {}) -> Dict:
         forecast=None if not use_forecast else forecast,
         fill_method=dataset_config.get("fill_method", "ffill"),
     )
+
+
+def _get_parameter(params: Optional[Dict], key: str, default):
+    if params is None:
+        return default
+    return params.get(key, default)
 
 
 def _check_files(files: List[str], base_dir: Path) -> bool:
