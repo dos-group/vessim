@@ -1,5 +1,6 @@
 from typing import Dict, List
 
+from examples._data import load_carbon_data, load_solar_data
 from examples.basic_example import SIM_START, STORAGE, DURATION, SOLAR_DATASET, \
     CARBON_DATASET
 from vessim import HistoricalSignal
@@ -23,17 +24,7 @@ POWER_MODES = {  # according to paper
 
 def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
-
-    solar_signal = HistoricalSignal.from_dataset(
-        SOLAR_DATASET,
-        "./data",
-        scale=0.4 * 0.5 * .17,
-        start_time="2020-06-01 00:00:00",
-    )
-
-    carbon_signal = HistoricalSignal.from_dataset(CARBON_DATASET, "./data")
-
-    environment.add_grid_signal("carbon_intensity", carbon_signal)
+    environment.add_grid_signal("carbon_intensity", HistoricalSignal(load_carbon_data()))
 
     power_meters = [
         MockPowerMeter(name="mpm0", p=2.194),
@@ -53,11 +44,16 @@ def main(result_csv: str):
                 step_size=60,
                 power_meters=power_meters
             ),
-            Generator(name="solar", step_size=60, signal=solar_signal),
+            Generator(
+                name="solar",
+                step_size=60,
+                signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5)),
+            ),
         ],
         storage=STORAGE,
         storage_policy=POLICY,
-        controllers=[monitor, carbon_aware_controller],  # first executes monitor, then controller
+        # first executes monitor, then controller
+        controllers=[monitor, carbon_aware_controller],
         zone="DE",
     )
 

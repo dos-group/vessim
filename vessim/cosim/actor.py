@@ -62,6 +62,8 @@ class ComputingSystem(Actor):
 
 
 class Generator(Actor):
+    # TODO signal should return next step
+
     def __init__(self, name: str, step_size: int, signal: Signal):
         super().__init__(name, step_size)
         self.signal = signal  # TODO make sure that signal is single column?

@@ -1,3 +1,4 @@
+from examples._data import load_carbon_data, load_solar_data
 from vessim import HistoricalSignal
 from vessim.cosim import Microgrid, Environment, ComputingSystem, Generator, Monitor, \
     MockPowerMeter, SimpleBattery
@@ -15,17 +16,7 @@ CARBON_DATASET = {"actual": "carbon_intensity.csv", "fill_method": "ffill"}
 
 def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
-
-    solar_signal = HistoricalSignal.from_dataset(
-        SOLAR_DATASET,
-        "./data",
-        scale=0.4 * 0.5 * .17,
-        start_time="2020-06-01 00:00:00",
-    )
-
-    carbon_signal = HistoricalSignal.from_dataset(CARBON_DATASET, "./data")
-
-    environment.add_grid_signal("carbon_intensity", carbon_signal)
+    environment.add_grid_signal("carbon_intensity", HistoricalSignal(load_carbon_data()))
 
     monitor = Monitor(step_size=60)
     microgrid = Microgrid(
@@ -38,7 +29,11 @@ def main(result_csv: str):
                     MockPowerMeter(name="mpm1", p=7.6)
                 ]
             ),
-            Generator(name="solar", step_size=60, signal=solar_signal),  # TODO signal should return next step
+            Generator(
+                name="solar",
+                step_size=60,
+                signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5)),
+            ),
         ],
         controllers=[monitor],
         storage=STORAGE,

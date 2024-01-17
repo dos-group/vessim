@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from controller_example import SIM_START, STORAGE, DURATION, POLICY, SOLAR_DATASET, \
     CARBON_DATASET
+from examples._data import load_carbon_data, load_solar_data
 from vessim import Signal, HistoricalSignal
 from vessim.cosim import Environment, Monitor, Microgrid, ComputingSystem, Generator
 from vessim.sil import SilController, ComputeNode, Broker, get_latest_event, \
@@ -28,17 +29,7 @@ RASPI_ADDRESS = "http://192.168.207.71"
 
 def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
-
-    solar_signal = HistoricalSignal.from_dataset(
-        SOLAR_DATASET,
-        "./data",
-        scale=0.4 * 0.5 * .17,
-        start_time="2020-06-01 00:00:00",
-    )
-
-    carbon_signal = HistoricalSignal.from_dataset(CARBON_DATASET, "./data")
-
-    environment.add_grid_signal("carbon_intensity", carbon_signal)
+    environment.add_grid_signal("carbon_intensity", HistoricalSignal(load_carbon_data()))
 
     power_meters = [
         HttpPowerMeter(name="gcp", address=GCP_ADDRESS),
@@ -65,7 +56,7 @@ def main(result_csv: str):
                 step_size=60,
                 power_meters=power_meters
             ),
-            Generator(name="solar", step_size=60, signal=solar_signal),
+            Generator(name="solar", step_size=60, signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5))),
         ],
         storage=STORAGE,
         storage_policy=POLICY,
