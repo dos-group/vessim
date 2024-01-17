@@ -17,12 +17,14 @@ class Microgrid:
         storage: Optional[Storage] = None,
         storage_policy: Optional[StoragePolicy] = None,
         zone: Optional[str] = None,
+        step_size: int = 1,  # global default
     ):
         self.actors = actors if actors is not None else []
         self.controllers = controllers if controllers is not None else []
         self.storage = storage
         self.storage_policy = storage_policy
         self.zone = zone
+        self.step_size = step_size
 
     def initialize(
         self, world: mosaik.World, clock: Clock, grid_signals: Dict[str, Signal]
@@ -31,22 +33,23 @@ class Microgrid:
         grid_sim = world.start("Grid")
         grid_entity = grid_sim.Grid(storage=self.storage, policy=self.storage_policy)
 
-        controller_entities = []
-        for controller in self.controllers:
-            controller.init(self, clock, grid_signals)
-            controller_sim = world.start("Controller", step_size=controller.step_size)
-            controller_entity = controller_sim.Controller(controller=controller)
-            world.connect(grid_entity, controller_entity, "p_delta")
-            controller_entities.append(controller_entity)
-
+        actor_names_and_entities = []
         for actor in self.actors:
-            actor_sim = world.start("Actor", clock=clock, step_size=actor.step_size)
+            step_size = actor.step_size if actor.step_size else self.step_size
+            actor_sim = world.start("Actor", clock=clock, step_size=step_size)
             actor_entity = actor_sim.Actor(actor=actor)
             world.connect(actor_entity, grid_entity, "p")
+            actor_names_and_entities.append((actor.name, actor_entity))
 
-            for controller_entity in controller_entities:
-                world.connect(actor_entity, controller_entity, ("p", f"actor.{actor.name}.p"))
-                world.connect(actor_entity, controller_entity, ("info", f"actor.{actor.name}.info"))
+        for controller in self.controllers:
+            controller.init(self, clock, grid_signals)
+            step_size = controller.step_size if controller.step_size else self.step_size
+            controller_sim = world.start("Controller", step_size=step_size)
+            controller_entity = controller_sim.Controller(controller=controller)
+            world.connect(grid_entity, controller_entity, "p_delta")
+            for actor_name, actor_entity in actor_names_and_entities:
+                world.connect(actor_entity, controller_entity, ("p", f"actor.{actor_name}.p"))
+                world.connect(actor_entity, controller_entity, ("info", f"actor.{actor_name}.info"))
 
     def pickle(self) -> bytes:
         """Returns a Dict with the current state of the microgrid for monitoring."""

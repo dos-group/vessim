@@ -37,7 +37,12 @@ class Controller(ABC):
 
 
 class Monitor(Controller):
-    def __init__(self, step_size: int, monitor_storage=True, monitor_grid_signals=True):
+    def __init__(
+        self,
+        step_size: Optional[int] = None,
+        monitor_storage=True,
+        monitor_grid_signals=True
+    ):
         super().__init__(step_size=step_size)
         self.monitor_storage = monitor_storage
         self.monitor_grid_signals = monitor_grid_signals
