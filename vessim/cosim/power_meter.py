@@ -1,7 +1,11 @@
 from abc import ABC, abstractmethod
+from itertools import count
+from typing import Optional
 
 
 class PowerMeter(ABC):
+    _ids = count(0)
+
     def __init__(self, name: str):
         self.name = name
 
@@ -14,7 +18,10 @@ class PowerMeter(ABC):
 
 
 class MockPowerMeter(PowerMeter):
-    def __init__(self, name: str, p: float):
+
+    def __init__(self, p: float, name: Optional[str] = None):
+        if name is None:
+            name = f"MockPowerMeter-{next(self._ids)}"
         super().__init__(name)
         if p < 0:
             raise ValueError("p must not be less than 0")
