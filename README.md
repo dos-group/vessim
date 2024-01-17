@@ -12,30 +12,27 @@ Vessim is a versatile **co-simulation testbed for carbon-aware applications and 
 Vessim allows you to simulate energy systems next to real or simulated computing systems:
 
 ```python
-environment = Environment(sim_start="15-06-2022")
-environment.add_grid_signal("carbon_intensity", TimeSeriesApi.from_dataset("carbon_data1"))
+from vessim import Environment, Microgrid, ComputingSystem, MockPowerMeter, Generator, Monitor, SimpleBattery, HistoricalSignal
 
-monitor = Monitor(step_size=60)  # stores simulation state every 60s
-environment.add_microgrid(Microgrid(
+environment = Environment(sim_start="15-06-2022")
+environment.add_grid_signal("carbon_intensity", HistoricalSignal.from_dataset("carbon_data1"))
+
+microgrid = Microgrid(
     actors=[
         # Single server which always draws 100W
-        ComputingSystem(
-            step_size=60,
-            power_meters=[MockPowerMeter(name="pm", p=100)],
-        ),
+        ComputingSystem(power_meters=[MockPowerMeter(name="pm", p=100)]),
         # Solar panel simulated according to real historical solar data provided by Solcast
-        Generator(
-            step_size=60,
-            time_series_api=TimeSeriesApi.from_dataset("solcast2022_global")),
-        ),
+        Generator(signal=HistoricalSignal.from_dataset("solcast2022_global")),
     ],
-    controllers=[monitor],
-    storage=SimpleBattery(capacity=500000, charge_level=200000, min_soc=.6),
+    controllers=[Monitor()],  # stores simulation result on each step
+    storage=SimpleBattery(capacity=5e5, charge_level=20e5),
     zone="DE",
-))
+    step_size=60,  # global step size (can be overridden by actors or controllers)
+)
+environment.add_microgrid(microgrid)
 
 environment.run(until=24*3600)  # 24h
-monitor.monitor_log_to_csv(result_csv)
+microgrid.controllers[0].monitor_log_to_csv(result_csv)
 ```
 
 

@@ -34,7 +34,7 @@ def main(result_csv: str):
         HttpPowerMeter(name="gcp", address=GCP_ADDRESS),
         HttpPowerMeter(name="raspi", address=RASPI_ADDRESS)
     ]
-    monitor = Monitor()  # stores simulation result every 60s
+    monitor = Monitor()  # stores simulation result on each step
     carbon_aware_controller = SilController(  # executes software-in-the-loop controller
         api_routes=api_routes,
         request_collectors={
