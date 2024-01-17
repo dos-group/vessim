@@ -72,7 +72,7 @@ class ComputingSystem(Actor):
 class Generator(Actor):  # TODO signal should return next step
     _ids = count(0)
 
-    def __init__(self, step_size: int, time_series_api: TimeSeriesApi, name: Optional[str] = None):
+    def __init__(self, step_size: int, signal: Signal, name: Optional[str] = None):
         if name is None:
             name = f"Generator-{next(self._ids)}"
         super().__init__(name, step_size)

@@ -5,8 +5,9 @@ from typing import Union, Optional, Literal, Dict, Hashable, List
 
 import pandas as pd
 
-from vessim._util import DatetimeLike
 from vessim._data import convert_to_datetime, load_dataset
+from vessim._util import DatetimeLike
+
 
 class Signal(ABC):
     """Abstract base class for APIs."""
@@ -54,49 +55,50 @@ class HistoricalSignal(Signal):
         cls,
         dataset: str,
         data_dir: Optional[Union[str, Path]] = None,
-        params: Dict = {},
+        params: Dict = None,
     ):
+        if params is None:
+            params = {}
         return cls(**load_dataset(dataset, _abs_path(data_dir), params))
 
-    def endpoints(self) -> List:
-        """Returns a list of all endpoints, where actual data is available."""
+    def columns(self) -> List:
+        """Returns a list of all columns where actual data is available."""
         return list(self._actual.keys())
 
-    def at(self, dt: DatetimeLike, endpoint: Optional[str] = None):
+    def at(self, dt: DatetimeLike, column: str = None, **kwargs):
         dt = pd.to_datetime(dt)
-        endpoint_data = _get_endpoint_data(self._actual, endpoint)
+        column_data = _get_column_data(self._actual, column)
 
         # Mypy somehow has trouble with indexing in a dataframe with DatetimeIndex
         # <https://github.com/python/mypy/issues/2410>
         if self._fill_method == "ffill":
             # searchsorted with 'side' specified in sorted df always returns an int
-            time_index: int = endpoint_data.index.searchsorted(dt, side="right")  # type: ignore
+            time_index: int = column_data.index.searchsorted(dt, side="right")  # type: ignore
             if time_index > 0:
-                return endpoint_data.iloc[time_index - 1]  # type: ignore
+                return column_data.iloc[time_index - 1]  # type: ignore
             else:
-                raise ValueError(
-                    f"'{dt}' is too early to get data in endpoint '{endpoint}'."
-                )
+                raise ValueError(f"'{dt}' is too early to get data in column "
+                                 f"'{column}'.")
         else:
-            time_index = endpoint_data.index.searchsorted(dt, side="left")  # type: ignore
+            time_index = column_data.index.searchsorted(dt, side="left")  # type: ignore
             try:
-                return endpoint_data.iloc[time_index]  # type: ignore
+                return column_data.iloc[time_index]  # type: ignore
             except IndexError:
                 raise ValueError(
-                    f"'{dt}' is too late to get data in endpoint '{endpoint}'."
+                    f"'{dt}' is too late to get data in column '{column}'."
                 )
 
     def forecast(
         self,
         start_time: DatetimeLike,
         end_time: DatetimeLike,
-        endpoint: Optional[str] = None,
+        column: Optional[str] = None,
         frequency: Optional[Union[str, pd.DateOffset, timedelta]] = None,
         resample_method: Optional[str] = None,
     ) -> pd.Series:
         start_time = pd.to_datetime(start_time)
         end_time = pd.to_datetime(end_time)
-        forecast: pd.Series = self._get_forecast_data_source(start_time, endpoint)
+        forecast: pd.Series = self._get_forecast_data_source(start_time, column)
 
         # Resample the data to get the data to specified frequency
         if frequency is not None:
@@ -120,10 +122,10 @@ class HistoricalSignal(Signal):
         return forecast.loc[forecast.index[start_index] : end_time]  # type: ignore
 
     def _get_forecast_data_source(
-        self, start_time: datetime, endpoint: Optional[str]
+        self, start_time: datetime, column: Optional[str]
     ) -> pd.Series:
-        """Returns series of endpoint data used to derive forecast prediction."""
-        data_src = _get_endpoint_data(self._forecast, endpoint)
+        """Returns series of column data used to derive forecast prediction."""
+        data_src = _get_column_data(self._forecast, column)
 
         if data_src.index.nlevels > 1:
             # Forecast does include request timestamp
@@ -163,7 +165,7 @@ class HistoricalSignal(Signal):
                 df.bfill(inplace=True)
             elif resample_method is not None:
                 # Add actual value to front of series because needed for interpolation
-                df[start_time] = self.at(start_time, endpoint=str(df.name))
+                df[start_time] = self.at(start_time, column=str(df.name))
                 if resample_method == "ffill":
                     df.ffill(inplace=True)
                 else:
@@ -173,16 +175,16 @@ class HistoricalSignal(Signal):
         return df.reindex(new_index[1:])  # type: ignore
 
 
-def _get_endpoint_data(data: Dict[str, pd.Series], endpoint: Optional[str]) -> pd.Series:
-    if endpoint is None:
+def _get_column_data(data: Dict[str, pd.Series], column: Optional[str]) -> pd.Series:
+    if column is None:
         if len(data) == 1:
             return next(iter(data.values()))
         else:
-            raise ValueError("Endpoint needs to be specified.")
+            raise ValueError("Column needs to be specified.")
     try:
-        return data[endpoint]
+        return data[column]
     except KeyError:
-        raise ValueError(f"Cannot retrieve data for endpoint '{endpoint}'.")
+        raise ValueError(f"Cannot retrieve data for column '{column}'.")
 
 
 def _abs_path(data_dir: Optional[Union[str, Path]]):

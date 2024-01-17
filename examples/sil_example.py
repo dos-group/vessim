@@ -34,8 +34,8 @@ def main(result_csv: str):
         HttpPowerMeter(name="gcp", address=GCP_ADDRESS),
         HttpPowerMeter(name="raspi", address=RASPI_ADDRESS)
     ]
-    monitor = Monitor(step_size=60)
-    carbon_aware_controller = SilController(
+    monitor = Monitor(step_size=60)  # stores simulation result every 60s
+    carbon_aware_controller = SilController(  # executes software-in-the-loop controller
         step_size=60,
         api_routes=api_routes,
         request_collectors={
@@ -61,11 +61,12 @@ def main(result_csv: str):
         ],
         storage=STORAGE,
         storage_policy=POLICY,
-        controllers=[monitor, carbon_aware_controller],  # first executes monitor, then controller
+        # first executes monitor, then controller
+        controllers=[monitor, carbon_aware_controller],
         zone="DE",
     )
-
     environment.add_microgrid(microgrid)
+    
     environment.run(until=DURATION, rt_factor=RT_FACTOR, print_progress=False)
     monitor.monitor_log_to_csv(result_csv)
 
