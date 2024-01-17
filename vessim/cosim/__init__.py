@@ -1,3 +1,4 @@
+"""Vessim components for co-simulation."""
 from .storage import Storage, SimpleBattery, StoragePolicy, DefaultStoragePolicy
 from .actor import Actor, Generator, ComputingSystem
 from .controller import Controller, Monitor

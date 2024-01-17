@@ -1,13 +1,21 @@
 """A simulator for carbon-aware applications and systems."""
-
-import vessim.analysis
-import vessim.core
 import vessim.cosim
-import vessim.sil
+from vessim._signal import Signal, HistoricalSignal
 
 __all__ = [
-    "analysis",
-    "core",
+    "Signal",
+    "HistoricalSignal",
     "cosim",
-    "sil",
 ]
+
+try:
+    import vessim.analysis
+    __all__.append("analysis")
+except ImportError:
+    pass
+
+try:
+    import vessim.sil  # noqa: F401
+    __all__.append("sil")
+except ImportError:
+    pass
