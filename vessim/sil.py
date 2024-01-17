@@ -8,12 +8,13 @@ import multiprocessing
 import pickle
 import time
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from threading import Thread
 from time import sleep
 from typing import Dict, Callable, Optional, List, Any
 
 import docker
+import pandas as pd
 import redis
 import requests
 import uvicorn
@@ -237,7 +238,13 @@ class WatttimeSignal(Signal):
         self.password = password
         self.headers = {"Authorization": f"Bearer {self._login()}"}
 
-    def at(self, dt: DatetimeLike, region: str = None, signal_type: str = "co2_moer"):
+    def at(
+        self,
+        dt: DatetimeLike,
+        region: Optional[str] = None,
+        signal_type: str = "co2_moer",
+        **kwargs,
+    ):
         if region is None:
             raise ValueError("Region needs to be specified.")
         dt = pd.to_datetime(dt)

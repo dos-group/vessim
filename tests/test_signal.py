@@ -52,17 +52,17 @@ class TestHistoricalSignal:
         forecast = pd.Series([4, 2, 4, 1], index=index)
         return HistoricalSignal(actual, forecast)
 
-    def test_endpoints(self, hist_signal):
-        assert hist_signal.endpoints() == ["a", "b", "c"]
+    def test_columns(self, hist_signal):
+        assert hist_signal.columns() == ["a", "b", "c"]
 
-    def test_actual_single_endpoint(self, hist_signal_single):
+    def test_actual_single_column(self, hist_signal_single):
         assert hist_signal_single.at("2023-01-01T00:45:00") == 3
 
     def test_actual_none_values(self, hist_signal):
-        assert hist_signal.at("2023-01-01T01:20:00", endpoint="c") == 4
+        assert hist_signal.at("2023-01-01T01:20:00", column="c") == 4
 
     @pytest.mark.parametrize(
-        "dt, endpoint, expected",
+        "dt, column, expected",
         [
             (pd.to_datetime("2023-01-01T00:00:00"), "a", 1),
             (pd.to_datetime("2023-01-01T00:00:10"), "a", 1),
@@ -72,14 +72,14 @@ class TestHistoricalSignal:
             (pd.to_datetime("2023-01-01T00:30:00"), "b", 3),
         ],
     )
-    def test_actual(self, hist_signal, dt, endpoint, expected):
-        assert hist_signal.at(dt, endpoint) == expected
+    def test_actual(self, hist_signal, dt, column, expected):
+        assert hist_signal.at(dt, column) == expected
 
-    def test_actual_fails_if_endpoint_not_specified(self, hist_signal):
+    def test_actual_fails_if_column_not_specified(self, hist_signal):
         with pytest.raises(ValueError):
             hist_signal.at(pd.to_datetime("2023-01-01T00:00:00"))
 
-    def test_actual_fails_if_endpoint_does_not_exist(self, hist_signal):
+    def test_actual_fails_if_column_does_not_exist(self, hist_signal):
         with pytest.raises(ValueError):
             hist_signal.at(pd.to_datetime("2023-01-01T00:00:00"), "d")
 
@@ -91,7 +91,7 @@ class TestHistoricalSignal:
         with pytest.raises(ValueError):
             hist_signal_single.at(pd.to_datetime("2023-01-01T01:00:01"))
 
-    def test_forecast_single_endpoint(self, hist_signal_single):
+    def test_forecast_single_column(self, hist_signal_single):
         assert hist_signal_single.forecast(
             start_time="2023-01-01T00:00:00",
             end_time="2023-01-01T01:00:00",
@@ -120,7 +120,7 @@ class TestHistoricalSignal:
         )
 
     @pytest.mark.parametrize(
-        "start, end, endpoint, expected",
+        "start, end, column, expected",
         [
             (
                 "2023-01-01T00:00:00",
@@ -179,11 +179,11 @@ class TestHistoricalSignal:
             ),
         ],
     )
-    def test_forecast(self, hist_signal_forecast, start, end, endpoint, expected):
-        assert hist_signal_forecast.forecast(start, end, endpoint).equals(expected)
+    def test_forecast(self, hist_signal_forecast, start, end, column, expected):
+        assert hist_signal_forecast.forecast(start, end, column).equals(expected)
 
     @pytest.mark.parametrize(
-        "start, end, endpoint, frequency, method, expected",
+        "start, end, column, frequency, method, expected",
         [
             (
                 "2023-01-01T00:00:00",
@@ -273,29 +273,29 @@ class TestHistoricalSignal:
         ],
     )
     def test_forecast_with_frequency(
-        self, hist_signal_forecast, start, end, endpoint, frequency, method, expected
+        self, hist_signal_forecast, start, end, column, frequency, method, expected
     ):
         assert hist_signal_forecast.forecast(
             start,
             end,
-            endpoint=endpoint,
+            column=column,
             frequency=frequency,
             resample_method=method,
         ).equals(expected)
 
-    def test_forecast_fails_if_endpoint_not_specified(self, hist_signal):
+    def test_forecast_fails_if_column_not_specified(self, hist_signal):
         with pytest.raises(ValueError):
             hist_signal.forecast(
                 pd.to_datetime("2023-01-01T00:00:00"),
                 pd.to_datetime("2023-01-01T01:00:00"),
             )
 
-    def test_forecast_fails_if_endpoint_does_not_exist(self, hist_signal):
+    def test_forecast_fails_if_column_does_not_exist(self, hist_signal):
         with pytest.raises(ValueError):
             hist_signal.forecast(
                 pd.to_datetime("2023-01-01T00:00:00"),
                 pd.to_datetime("2023-01-01T01:00:00"),
-                endpoint="d",
+                column="d",
             )
 
     def test_forecast_fails_if_start_too_early(self, hist_signal_forecast):
@@ -303,7 +303,7 @@ class TestHistoricalSignal:
             hist_signal_forecast.forecast(
                 pd.to_datetime("2022-12-31T23:59:59"),
                 pd.to_datetime("2023-01-01T01:00:00"),
-                endpoint="a",
+                column="a",
             )
 
     def test_forecast_fails_with_invalid_frequency(self, hist_signal):
@@ -312,7 +312,7 @@ class TestHistoricalSignal:
                 hist_signal.forecast(
                     pd.to_datetime("2023-01-01T00:00:00"),
                     pd.to_datetime("2023-01-01T01:00:00"),
-                    endpoint="a",
+                    column="a",
                     frequency="invalid",
                 )
             )
@@ -322,6 +322,6 @@ class TestHistoricalSignal:
             hist_signal.forecast(
                 pd.to_datetime("2023-01-01T00:00:00"),
                 pd.to_datetime("2023-01-01T01:00:00"),
-                endpoint="a",
+                column="a",
                 frequency="15T",
             )
