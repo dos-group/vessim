@@ -23,6 +23,8 @@ class MockPowerMeter(PowerMeter):
         if name is None:
             name = f"MockPowerMeter-{next(self._ids)}"
         super().__init__(name)
+        if p < 0:
+            raise ValueError("p must not be less than 0")
         self._p = p
 
     def set_power(self, value):

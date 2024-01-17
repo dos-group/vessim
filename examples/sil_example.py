@@ -14,9 +14,9 @@ import pandas as pd
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from _data import load_carbon_data, load_solar_data
 from controller_example import SIM_START, STORAGE, DURATION, POLICY
-from vessim.core import TimeSeriesApi
+from examples._data import load_carbon_data, load_solar_data
+from vessim import Signal, HistoricalSignal
 from vessim.cosim import Environment, Monitor, Microgrid, ComputingSystem, Generator
 from vessim.sil import SilController, ComputeNode, Broker, get_latest_event, \
     HttpPowerMeter
@@ -28,7 +28,7 @@ RASPI_ADDRESS = "http://192.168.207.71"
 
 def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
-    environment.add_grid_signal("carbon_intensity", TimeSeriesApi(load_carbon_data()))
+    environment.add_grid_signal("carbon_intensity", HistoricalSignal(load_carbon_data()))
 
     power_meters = [
         HttpPowerMeter(name="gcp", address=GCP_ADDRESS),
@@ -52,11 +52,11 @@ def main(result_csv: str):
         actors=[
             ComputingSystem(
                 step_size=60,
-                power_meters=power_meters
+                power_meters=power_meters,
             ),
             Generator(
                 step_size=60,
-                time_series_api=TimeSeriesApi(load_solar_data(sqm=0.4 * 0.5))
+                signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5)),
             ),
         ],
         storage=STORAGE,
@@ -73,7 +73,7 @@ def main(result_csv: str):
 def api_routes(
     app: FastAPI,
     broker: Broker,
-    grid_signals: Dict[str, TimeSeriesApi],
+    grid_signals: Dict[str, Signal],
 ):
     @app.get("/actors/{actor}/p")
     async def get_solar(actor: str):
@@ -90,7 +90,7 @@ def api_routes(
     @app.get("/carbon-intensity")
     async def get_carbon_intensity(time: Optional[str]):
         time = pd.to_datetime(time) if time is not None else datetime.now()
-        return grid_signals["carbon_intensity"].actual(time)
+        return grid_signals["carbon_intensity"].at(time)
 
     class BatteryModel(BaseModel):
         min_soc: Optional[float]

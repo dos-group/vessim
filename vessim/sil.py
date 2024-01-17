@@ -16,11 +16,13 @@ from typing import Dict, Callable, Optional, List, Any
 import docker
 import redis
 import uvicorn
+import requests
+from requests.auth import HTTPBasicAuth
 from docker.models.containers import Container
 from fastapi import FastAPI
 
-from vessim._util import HttpClient
-from vessim.core import TimeSeriesApi
+from vessim._util import HttpClient, DatetimeLike
+from vessim._signal import Signal
 from vessim.cosim import Controller, PowerMeter
 from vessim.cosim.environment import Microgrid
 
@@ -54,6 +56,7 @@ class ComputeNode:  # TODO we could soon replace this agent-based implementation
 
         def update_power_model():
             self.http_client.put("/power_mode", {"power_mode": power_mode})
+
         Thread(target=update_power_model).start()
         self.power_mode = power_mode
 
@@ -80,21 +83,20 @@ class Broker:
 
 
 class SilController(Controller):
-
     def __init__(
         self,
         step_size: int,
         api_routes: Callable,
-        request_collectors: Dict[str, Callable],
-        compute_nodes: List[ComputeNode],
+        request_collectors: Optional[Dict[str, Callable]] = None,
+        compute_nodes: Optional[List[ComputeNode]] = None,
         api_host: str = "127.0.0.1",
         api_port: int = 8000,
         request_collector_interval: float = 1,
     ):
         super().__init__(step_size=step_size)
         self.api_routes = api_routes
-        self.request_collectors = request_collectors
-        self.compute_nodes_dict = {n.name: n for n in compute_nodes}
+        self.request_collectors = request_collectors if request_collectors is not None else {}
+        self.compute_nodes_dict = {n.name: n for n in compute_nodes} if compute_nodes is not None else {}
         self.api_host = api_host
         self.api_port = api_port
         self.request_collector_interval = request_collector_interval
@@ -116,7 +118,7 @@ class SilController(Controller):
                 api_host=self.api_host,
                 api_port=self.api_port,
                 grid_signals=self.grid_signals,
-            )
+            ),
         )
         self.api_server_process.start()
         Thread(target=self._collect_set_requests_loop, daemon=True).start()
@@ -156,7 +158,7 @@ def _serve_api(
     api_routes: Callable,
     api_host: str,
     api_port: int,
-    grid_signals: Dict[str, TimeSeriesApi],
+    grid_signals: Dict[str, Signal],
 ):
     print("Starting API server...")
     app = FastAPI()
@@ -167,8 +169,7 @@ def _serve_api(
 
 
 def _redis_docker_container(
-    docker_client: Optional[docker.DockerClient] = None,
-    port: int = 6379
+    docker_client: Optional[docker.DockerClient] = None, port: int = 6379
 ) -> Container:
     """Initializes Docker client and starts Docker container with Redis."""
     if docker_client is None:
@@ -176,11 +177,19 @@ def _redis_docker_container(
             docker_client = docker.from_env()
         except docker.errors.DockerException as e:
             raise RuntimeError("Could not connect to Docker.") from e
-    container = docker_client.containers.run(
-        "redis:latest",
-        ports={f"6379/tcp": port},
-        detach=True,  # run in background
-    )
+    try:
+        container = docker_client.containers.run(
+            "redis:latest",
+            ports={"6379/tcp": port},
+            detach=True,  # run in background
+        )
+    except docker.errors.APIError as e:
+        if e.status_code == 500 and "port is already allocated" in e.explanation:
+            # TODO prompt user to automatically kill container
+            raise RuntimeError(f"Could not start Redis container as port {port} is "
+                               f"already allocated. Probably a prevois execution was not "
+                               f"cleaned up properly by Vessim.") from e
+        raise
 
     # Check if the container has started
     while True:
@@ -197,7 +206,6 @@ def get_latest_event(events: Dict[datetime, Any]) -> Any:
 
 
 class HttpPowerMeter(PowerMeter):
-
     def __init__(
         self,
         name: str,
@@ -219,3 +227,46 @@ class HttpPowerMeter(PowerMeter):
         while True:
             self._p = float(self.http_client.get("/power")["power"])
             time.sleep(self.collect_interval)
+
+
+class WatttimeSignal(Signal):
+    _URL = "https://api.watttime.org"
+
+    def __init__(self, username: str, password: str):
+        self.username = username
+        self.password = password
+        self.headers = {"Authorization": f"Bearer {self._login()}"}
+
+    def at(self, dt: DatetimeLike, region: str = None, signal_type: str = "co2_moer"):
+        if region is None:
+            raise ValueError("Region needs to be specified.")
+        dt = pd.to_datetime(dt)
+        rsp = self._request("/historical", params={
+            "region": region,
+            "start": (dt - timedelta(minutes=5)).isoformat(),
+            "end": dt.isoformat(),
+            "signal_type": signal_type,
+        })
+        return rsp
+
+    def _request(self, endpoint: str, params: Dict):
+        while True:
+            rsp = requests.get(
+                f"{self._URL}/v3{endpoint}", headers=self.headers, params=params
+            )
+            if rsp.status_code == 200:
+                return rsp.json()["data"][0]["value"]
+            if rsp.status_code == 400:
+                return f"Error {rsp.status_code}: {rsp.json()}"
+            elif rsp.status_code in [401, 403]:
+                print("Renewing authorization with Watttime API.")
+                self.headers["Authorization"] = f"Bearer {self._login()}"
+            else:
+                raise ValueError(f"Error {rsp.status_code}: {rsp}")
+
+    def _login(self) -> str:
+        # TODO reconnect if token is expired
+        rsp = requests.get(
+            f"{self._URL}/login", auth=HTTPBasicAuth(self.username, self.password)
+        )
+        return rsp.json()['token']
