@@ -14,10 +14,11 @@ import pandas as pd
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from controller_example import SIM_START, STORAGE, DURATION, POLICY
+from controller_example import SIM_START, DURATION, POLICY
 from examples._data import load_carbon_data, load_solar_data
 from vessim import Signal, HistoricalSignal
-from vessim.cosim import Environment, Monitor, Microgrid, ComputingSystem, Generator
+from vessim.cosim import Environment, Monitor, Microgrid, ComputingSystem, Generator, \
+    SimpleBattery
 from vessim.sil import SilController, ComputeNode, Broker, get_latest_event, \
     HttpPowerMeter
 
@@ -52,8 +53,7 @@ def main(result_csv: str):
             ComputingSystem(power_meters=power_meters),
             Generator(signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5))),
         ],
-        storage=STORAGE,
-
+        storage=SimpleBattery(capacity=100),
         storage_policy=POLICY,
         controllers=[monitor, carbon_aware_controller],
         zone="DE",
@@ -62,7 +62,7 @@ def main(result_csv: str):
     environment.add_microgrid(microgrid)
 
     environment.run(until=DURATION, rt_factor=RT_FACTOR, print_progress=False)
-    monitor.monitor_log_to_csv(result_csv)
+    monitor.to_csv(result_csv)
 
 
 def api_routes(

@@ -75,7 +75,7 @@ class Monitor(Controller):
             log_entry.update(monitor_fn(time))
         self.monitor_log[self.clock.to_datetime(time)] = log_entry
 
-    def monitor_log_to_csv(self, out_path: str):
+    def to_csv(self, out_path: str):
         df = pd.DataFrame({k: flatten_dict(v) for k, v in self.monitor_log.items()}).T
         df.to_csv(out_path)
 

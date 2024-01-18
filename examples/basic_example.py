@@ -5,11 +5,6 @@ from vessim.cosim import Microgrid, Environment, ComputingSystem, Generator, Mon
 
 SIM_START = "2020-06-11 00:00:00"
 DURATION = 3600 * 24 * 2  # two days
-STORAGE = SimpleBattery(
-    capacity=32 * 5 * 3600,  # 10Ah * 5V * 3600 := Ws
-    charge_level=32 * 5 * 3600 * .6,
-    min_soc=.6
-)
 
 
 def main(result_csv: str):
@@ -26,14 +21,14 @@ def main(result_csv: str):
             Generator(signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5))),
         ],
         controllers=[monitor],
-        storage=STORAGE,
+        storage=SimpleBattery(capacity=100),
         zone="DE",
         step_size=60,  # global step size (can be overridden by actors or controllers)
     )
     environment.add_microgrid(microgrid)
 
     environment.run(until=DURATION)
-    monitor.monitor_log_to_csv(result_csv)
+    monitor.to_csv(result_csv)
 
 
 if __name__ == "__main__":

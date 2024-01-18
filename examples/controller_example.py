@@ -1,10 +1,10 @@
 from typing import Dict, List
 
 from examples._data import load_carbon_data, load_solar_data
-from examples.basic_example import SIM_START, STORAGE, DURATION
+from examples.basic_example import SIM_START, DURATION
 from vessim import HistoricalSignal
 from vessim.cosim import ComputingSystem, Generator, Monitor, Controller, Microgrid, \
-    Environment, DefaultStoragePolicy, MockPowerMeter
+    Environment, DefaultStoragePolicy, MockPowerMeter, SimpleBattery
 
 POLICY = DefaultStoragePolicy()
 POWER_MODES = {  # according to paper
@@ -29,10 +29,11 @@ def main(result_csv: str):
         MockPowerMeter(name="mpm0", p=2.194),
         MockPowerMeter(name="mpm1", p=7.6)
     ]
+    battery = SimpleBattery(capacity=100)
     monitor = Monitor()  # stores simulation result on each step
     carbon_aware_controller = CarbonAwareController(
         power_meters=power_meters,
-        battery=STORAGE,
+        battery=battery,
         policy=POLICY,
     )
     microgrid = Microgrid(
@@ -40,7 +41,7 @@ def main(result_csv: str):
             ComputingSystem(power_meters=power_meters),
             Generator(signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5))),
         ],
-        storage=STORAGE,
+        storage=battery,
         storage_policy=POLICY,
         controllers=[monitor, carbon_aware_controller],
         zone="DE",
@@ -49,7 +50,7 @@ def main(result_csv: str):
     environment.add_microgrid(microgrid)
 
     environment.run(until=DURATION)
-    monitor.monitor_log_to_csv(result_csv)
+    monitor.to_csv(result_csv)
 
 
 class CarbonAwareController(Controller):
