@@ -86,13 +86,13 @@ class Broker:
 class SilController(Controller):
     def __init__(
         self,
-        step_size: int,
         api_routes: Callable,
         request_collectors: Optional[Dict[str, Callable]] = None,
         compute_nodes: Optional[List[ComputeNode]] = None,
         api_host: str = "127.0.0.1",
         api_port: int = 8000,
         request_collector_interval: float = 1,
+        step_size: Optional[int] = None,
     ):
         super().__init__(step_size=step_size)
         self.api_routes = api_routes

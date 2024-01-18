@@ -12,7 +12,7 @@ from vessim.cosim.power_meter import PowerMeter
 class Actor(ABC):
     """Abstract base class representing a power consumer or producer."""
 
-    def __init__(self, name: str, step_size: int):
+    def __init__(self, name: str, step_size: Optional[int] = None):
         self.name = name
         self.step_size = step_size
 
@@ -47,10 +47,10 @@ class ComputingSystem(Actor):
 
     def __init__(
         self,
-        step_size: int,
         power_meters: List[PowerMeter],
         name: Optional[str] = None,
-        pue: float = 1
+        step_size: Optional[int] = None,
+        pue: float = 1,
     ):
         if name is None:
             name = f"ComputingSystem-{next(self._ids)}"
@@ -72,7 +72,12 @@ class ComputingSystem(Actor):
 class Generator(Actor):  # TODO signal should return next step
     _ids = count(0)
 
-    def __init__(self, step_size: int, signal: Signal, name: Optional[str] = None):
+    def __init__(
+        self,
+        signal: Signal,
+        step_size: Optional[int] = None,
+        name: Optional[str] = None
+    ):
         if name is None:
             name = f"Generator-{next(self._ids)}"
         super().__init__(name, step_size)

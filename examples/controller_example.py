@@ -26,32 +26,25 @@ def main(result_csv: str):
     environment.add_grid_signal("carbon_intensity", HistoricalSignal(load_carbon_data()))
 
     power_meters = [
-        MockPowerMeter(p=2.194),
-        MockPowerMeter(p=7.6)
+        MockPowerMeter(name="mpm0", p=2.194),
+        MockPowerMeter(name="mpm1", p=7.6)
     ]
-    monitor = Monitor(step_size=60)  # stores simulation result every 60s
+    monitor = Monitor()  # stores simulation result on each step
     carbon_aware_controller = CarbonAwareController(
-        step_size=60,
         power_meters=power_meters,
         battery=STORAGE,
         policy=POLICY,
     )
     microgrid = Microgrid(
         actors=[
-            ComputingSystem(
-                step_size=60,
-                power_meters=power_meters
-            ),
-            Generator(
-                step_size=60,
-                signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5)),
-            ),
+            ComputingSystem(power_meters=power_meters),
+            Generator(signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5))),
         ],
         storage=STORAGE,
         storage_policy=POLICY,
-        # first executes monitor, then controller
         controllers=[monitor, carbon_aware_controller],
         zone="DE",
+        step_size=60,  # global step size (can be overridden by actors or controllers)
     )
     environment.add_microgrid(microgrid)
 
@@ -60,7 +53,7 @@ def main(result_csv: str):
 
 
 class CarbonAwareController(Controller):
-    def __init__(self, step_size, power_meters, battery, policy):
+    def __init__(self, power_meters, battery, policy, step_size=None):
         super().__init__(step_size)
         self.power_meters = power_meters
         self.battery = battery

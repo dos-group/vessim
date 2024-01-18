@@ -16,24 +16,19 @@ def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
     environment.add_grid_signal("carbon_intensity", HistoricalSignal(load_carbon_data()))
 
-    monitor = Monitor(step_size=60)  # stores simulation result every 60s
+    monitor = Monitor()  # stores simulation result on each step
     microgrid = Microgrid(
         actors=[
-            ComputingSystem(
-                step_size=60,
-                power_meters=[
-                    MockPowerMeter(p=2.194),
-                    MockPowerMeter(p=7.6)
-                ]
-            ),
-            Generator(
-                step_size=60,
-                signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5)),
-            ),
+            ComputingSystem(power_meters=[
+                MockPowerMeter(p=2.194),
+                MockPowerMeter(p=7.6)
+            ]),
+            Generator(signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5))),
         ],
         controllers=[monitor],
         storage=STORAGE,
         zone="DE",
+        step_size=60,  # global step size (can be overridden by actors or controllers)
     )
     environment.add_microgrid(microgrid)
 
