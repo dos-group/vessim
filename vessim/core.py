@@ -1,6 +1,6 @@
 from __future__ import annotations
 from datetime import timedelta, datetime
-from typing import Literal, Hashable, Any
+from typing import Literal, Hashable, Any, Optional
 
 import pandas as pd
 
@@ -70,7 +70,7 @@ class TimeSeriesApi:
     def __init__(
         self,
         actual: pd.Series | pd.DataFrame,
-        forecast: pd.Series | pd.DataFrame = None,
+        forecast: Optional[pd.Series | pd.DataFrame] = None,
         fill_method: Literal["ffill", "bfill"] = "ffill",
     ):
         actual.index = pd.to_datetime(actual.index)
@@ -113,7 +113,7 @@ class TimeSeriesApi:
         """Returns a list of all zones, where actual data is available."""
         return list(self._actual.keys())
 
-    def actual(self, dt: DatetimeLike, zone: str = None) -> Any:
+    def actual(self, dt: DatetimeLike, zone: Optional[str] = None) -> Any:
         """Retrieves actual data point of zone at given time.
 
         If queried timestamp is not available in the `actual` dataframe, the fill_method
@@ -150,9 +150,9 @@ class TimeSeriesApi:
         self,
         start_time: DatetimeLike,
         end_time: DatetimeLike,
-        zone: str = None,
-        frequency: str | pd.DateOffset | timedelta = None,
-        resample_method: str = None,
+        zone: Optional[str] = None,
+        frequency: Optional[str | pd.DateOffset | timedelta] = None,
+        resample_method: Optional[str] = None,
     ) -> pd.Series:
         """Retrieves of forecasted data points within window at a frequency.
 
@@ -258,7 +258,7 @@ class TimeSeriesApi:
         return forecast.loc[forecast.index[start_index]:end_time] # type: ignore
 
     def _get_forecast_data_source(
-        self, start_time: datetime, zone: str | None
+        self, start_time: datetime, zone: Optional[str]
     ) -> pd.Series:
         """Returns series of zone data used to derive forecast prediction."""
         data_src = self._get_zone_data(self._forecast, zone)
@@ -303,7 +303,7 @@ class TimeSeriesApi:
         start_time: datetime,
         end_time: datetime,
         frequency: pd.DateOffset,
-        resample_method: str = None,
+        resample_method: Optional[str] = None,
     ) -> pd.Series:
         """Transform frame into the desired frequency between start and end time."""
         new_index = pd.date_range(start=start_time, end=end_time, freq=frequency)
@@ -333,7 +333,7 @@ class TimeSeriesApi:
         # Get the data to the desired frequency after interpolation
         return df.reindex(new_index[1:]) # type: ignore
 
-    def next_update(self, dt: DatetimeLike, zone: str = None) -> datetime:
+    def next_update(self, dt: DatetimeLike, zone: Optional[str] = None) -> datetime:
         """Returns the next time of when the actual trace will change.
 
         This method is being called in the time-based simulation model for Mosaik.

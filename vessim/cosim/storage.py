@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Optional
 from abc import ABC, abstractmethod
 
 from loguru import logger
@@ -45,7 +46,7 @@ class SimpleBattery(Storage):
         capacity: float,
         charge_level: float = 0,
         min_soc: float = 0,
-        c_rate: float = None,
+        c_rate: Optional[float] = None,
     ):
         self.capacity = capacity
         assert 0 <= charge_level <= self.capacity

@@ -1,7 +1,7 @@
 from __future__ import annotations
 import pickle
 from copy import copy
-from typing import Literal
+from typing import Literal, Optional
 
 import mosaik
 
@@ -15,9 +15,9 @@ class Microgrid:
         self,
         actors: list[Actor],
         controllers: list[Controller],
-        storage: Storage = None,
-        storage_policy: StoragePolicy = None,
-        zone: str = None,
+        storage: Optional[Storage] = None,
+        storage_policy: Optional[StoragePolicy] = None,
+        zone: Optional[str] = None,
     ):
         self.actors = actors
         self.controllers = controllers
@@ -98,7 +98,7 @@ class Environment:
     def run(
         self,
         until: int,
-        rt_factor: float = None,
+        rt_factor: Optional[float] = None,
         print_progress: bool | Literal["individual"] = True,
     ):
         try:

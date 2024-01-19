@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Optional
 import threading
 import time
 from threading import Thread
@@ -99,7 +100,7 @@ class CarbonAwareControlUnit:
         self,
         rt_factor: float,
         step_size: int,
-        update_interval: float = None
+        update_interval: Optional[float]
     ):
         if update_interval is None:
             update_interval = rt_factor * step_size

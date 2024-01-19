@@ -12,7 +12,7 @@ from collections import defaultdict
 from datetime import datetime
 from threading import Thread
 from time import sleep
-from typing import Any
+from typing import Any, Optional
 
 import docker
 import redis
@@ -168,7 +168,7 @@ def _serve_api(
 
 
 def _redis_docker_container(
-    docker_client: docker.DockerClient = None,
+    docker_client: Optional[docker.DockerClient] = None,
     port: int = 6379
 ) -> Container:
     """Initializes Docker client and starts Docker container with Redis."""

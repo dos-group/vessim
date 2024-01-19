@@ -8,6 +8,7 @@ through software-in-the-loop integration as described in our paper:
 This is example experimental and documentation is still in progress.
 """
 from __future__ import annotations
+from typing import Optional
 from datetime import datetime
 
 import pandas as pd
@@ -90,13 +91,13 @@ def api_routes(
         return broker.get_grid_power()
 
     @app.get("/carbon-intensity")
-    async def get_carbon_intensity(time: str = None):
+    async def get_carbon_intensity(time: Optional[str]):
         time = pd.to_datetime(time) if time is not None else datetime.now()
         return grid_signals["carbon_intensity"].actual(time)
 
     class BatteryModel(BaseModel):
-        min_soc: float = None
-        grid_charge: float = None
+        min_soc: Optional[float]
+        grid_charge: Optional[float]
 
     @app.put("/battery")
     async def put_battery(battery_model: BatteryModel):
