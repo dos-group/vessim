@@ -34,8 +34,8 @@ class SimpleBattery(Storage):
     """(Way too) simple battery.
 
     Args:
-        capacity: Battery capacity in watt-seconds (Ws).
-        charge_level: Initial charge level in watt-seconds (Ws).
+        capacity: Battery capacity in watt-hours (Wh).
+        charge_level: Initial charge level in watt-hours (Wh).
         min_soc: Minimum allowed state of charge (SoC) for the battery.
         c_rate: C-rate, which defines the charge and discharge rate of the battery.
             For more information on C-rate, see `C-rate explanation <https://www.batterydesign.net/electrical/c-rate/>`_.

@@ -7,6 +7,7 @@ import pandas as pd
 import requests
 
 DatetimeLike = str | datetime
+PandasObject = pd.Series | pd.DataFrame
 
 
 class Clock:
