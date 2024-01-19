@@ -1,12 +1,11 @@
 """Co-simulation example with software-in-the-loop.
 
-This scenario builds on `controller_example.py` but connects to a real computing
-system, composed of two local docker containers, through software-in-the-loop
-integration as described in our paper:
+This scenario builds on `controller_example.py` but connects to a real computing system
+through software-in-the-loop integration as described in our paper:
 - 'Software-in-the-loop simulation for developing and testing carbon-aware applications'.
   [under review]
 
-This example is experimental and documentation is still in progress.
+This is example experimental and documentation is still in progress.
 """
 from datetime import datetime
 from typing import Optional, Dict
@@ -19,15 +18,12 @@ from _data import load_carbon_data, load_solar_data
 from controller_example import SIM_START, STORAGE, DURATION, POLICY
 from vessim.core import TimeSeriesApi
 from vessim.cosim import Environment, Monitor, Microgrid, ComputingSystem, Generator
-from vessim.sil import (
-    SilController,
-    ComputeNode,
-    Broker,
-    get_latest_event,
-    HttpPowerMeter,
-)
+from vessim.sil import SilController, ComputeNode, Broker, get_latest_event, \
+    HttpPowerMeter
 
 RT_FACTOR = 1  # 1 wall-clock second ^= 60 sim seconds
+GCP_ADDRESS = "http://35.198.148.144"
+RASPI_ADDRESS = "http://192.168.207.71"
 
 
 def main(result_csv: str):
@@ -35,8 +31,8 @@ def main(result_csv: str):
     environment.add_grid_signal("carbon_intensity", TimeSeriesApi(load_carbon_data()))
 
     power_meters = [
-        HttpPowerMeter(name="docker1", port=8001),
-        HttpPowerMeter(name="docker2", port=8002),
+        HttpPowerMeter(name="gcp", address=GCP_ADDRESS),
+        HttpPowerMeter(name="raspi", address=RASPI_ADDRESS)
     ]
     monitor = Monitor(step_size=60)
     carbon_aware_controller = SilController(
@@ -48,25 +44,26 @@ def main(result_csv: str):
             "nodes_power_mode": node_power_mode_collector,
         },
         compute_nodes=[
-            ComputeNode(name="docker1", port=8001),
-            ComputeNode(name="docker2", port=8002),
+            ComputeNode(name="gcp", address=GCP_ADDRESS),
+            ComputeNode(name="raspi", address=RASPI_ADDRESS),
         ],
     )
     microgrid = Microgrid(
         actors=[
-            ComputingSystem(name="server", step_size=60, power_meters=power_meters),
+            ComputingSystem(
+                name="server",
+                step_size=60,
+                power_meters=power_meters
+            ),
             Generator(
                 name="solar",
                 step_size=60,
-                time_series_api=TimeSeriesApi(load_solar_data(sqm=0.4 * 0.5)),
+                time_series_api=TimeSeriesApi(load_solar_data(sqm=0.4 * 0.5))
             ),
         ],
         storage=STORAGE,
         storage_policy=POLICY,
-        controllers=[
-            monitor,
-            carbon_aware_controller,
-        ],  # first executes monitor, then controller
+        controllers=[monitor, carbon_aware_controller],  # first executes monitor, then controller
         zone="DE",
     )
 
