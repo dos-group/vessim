@@ -15,6 +15,8 @@ jobs:
     steps:
     # downloads the repository code to the runner's file system for workflow access
     - uses: actions/checkout@v4
+      with:
+        ref: 'pipeline_adjustments'
 
     # installs poetry without automatic creation of a virtual environment
     - name: Install poetry
