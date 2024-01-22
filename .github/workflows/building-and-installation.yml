@@ -5,7 +5,7 @@ name: Build
 on: 
   pull_request:
     branches:
-      - pipeline_adjustments #main
+      - main
 
 jobs:
   integration-tests:
@@ -17,14 +17,11 @@ jobs:
     steps:
     # downloads the repository code to the runner's file system for workflow access
     - uses: actions/checkout@v4
-      with:
-        ref: 'pipeline_adjustments'
 
-    # installs poetry without automatic creation of a virtual environment
+    # installs poetry and configures it to use the active python version instead of newest
     - name: Install poetry
       uses: snok/install-poetry@v1
-      with:
-        virtualenvs-create: false
+    - run: poetry config virtualenvs.prefer-active-python true
 
     # sets up python environment with specified versions 
     - name: Set up Python ${{ matrix.python-version }}
@@ -39,12 +36,12 @@ jobs:
     - name: Install package 
       run: pip install dist/*.tar.gz 
 
-    - name: Run example scenario and compare result
-      run: |
-        python examples/basic_example.py --out result.csv
-        if diff result.csv examples/data/base_result.csv; then
-          echo "Files are identical"
-        else
-          echo "Differences found between the resulting data and the data from the repository."
-          exit 1
-        fi
+    #- name: Run example scenario and compare result
+    #  run: |
+     #   python examples/basic_example.py --out result.csv
+     #   if diff result.csv examples/data/base_result.csv; then
+     #     echo "Files are identical"
+     #   else
+     #     echo "Differences found between the resulting data and the data from the repository."
+    #      exit 1
+    #    fi

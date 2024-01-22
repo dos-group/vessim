@@ -15,10 +15,8 @@ jobs:
     steps:
     # downloads the repository code to the runner's file system for workflow access
     - uses: actions/checkout@v4
-      with:
-        ref: 'pipeline_adjustments'
 
-    # installs poetry without automatic creation of a virtual environment
+    # installs poetry and configures it to use the active python version instead of newest
     - name: Install poetry
       uses: snok/install-poetry@v1
     - run: poetry config virtualenvs.prefer-active-python true
@@ -26,13 +24,10 @@ jobs:
     # sets up python environment with specified versions 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
-      id: cp312
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'poetry'   
     
-    - run: echo '${{ steps.cp312.outputs.cache-hit }}' # true if cache-hit occurred on the primary key
-
     # get rid of DeprecationWarning related to Jupyter paths when running pytest
     - name: Set JUPYTER_PLATFORM_DIRS environment variable
       env:
@@ -46,8 +41,8 @@ jobs:
     - name: Run type checker
       run: poetry run mypy vessim
 
-    #- name: Run linter
-    #  run: poetry run ruff vessim
+    - name: Run linter
+      run: poetry run ruff vessim
 
     #- name: Run tests
     #  run: python -m pytest
