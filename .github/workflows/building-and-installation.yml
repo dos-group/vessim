@@ -5,7 +5,7 @@ name: Build
 on: 
   pull_request:
     branches:
-      - main
+      - pipeline_adjustments #main
 
 jobs:
   integration-tests:
@@ -17,26 +17,25 @@ jobs:
     steps:
     # downloads the repository code to the runner's file system for workflow access
     - uses: actions/checkout@v4
-      with:
-        ref: 'pipeline_adjustments'
-       
-    # sets up python environment with specified versions 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}    
-    
+
     # installs poetry without automatic creation of a virtual environment
     - name: Install poetry
       uses: snok/install-poetry@v1
       with:
         virtualenvs-create: false
 
+    # sets up python environment with specified versions 
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'poetry'    
+
     - name: Build package out of local poject
       run: poetry build
 
     - name: Install package 
-      run: pip install dist/*.tar.gz
+      run: pip install dist/*.tar.gz 
 
     - name: Run example scenario and compare result
       run: |

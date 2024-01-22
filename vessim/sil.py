@@ -13,7 +13,7 @@ from threading import Thread
 from time import sleep
 from typing import Dict, Callable, Optional, List, Any
 
-import docker
+import docker # type: ignore
 import pandas as pd
 import redis
 import requests

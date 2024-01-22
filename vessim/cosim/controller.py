@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, Callable, Any, Tuple, TYPE_CHECKING, MutableMapping, Optional
+from typing import DefaultDict, Dict, List, Callable, Any, Tuple, TYPE_CHECKING, MutableMapping, Optional
 
 import mosaik_api  # type: ignore
 import pandas as pd
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 class Controller(ABC):
-    def __init__(self, step_size: int):
+    def __init__(self, step_size: Optional[int] = None):
         self.step_size = step_size
         self.microgrid: Optional["Microgrid"] = None
         self.clock: Optional[Clock] = None
@@ -82,7 +82,7 @@ class Monitor(Controller):
 
 
 def flatten_dict(d: MutableMapping, parent_key: str = "") -> MutableMapping:
-    items = []
+    items: List[Tuple[str, Any]] = []
     for k, v in d.items():
         new_key = parent_key + "." + k if parent_key else k
         if isinstance(v, MutableMapping):
@@ -109,7 +109,7 @@ class ControllerSim(mosaik_api.Simulator):
         super().__init__(self.META)
         self.eid = "Controller"
         self.step_size = None
-        self.controller: Optional[Controller] = None
+        self.controller = None
 
     def init(self, sid, time_resolution=1.0, **sim_params):
         self.step_size = sim_params["step_size"]

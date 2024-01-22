@@ -1,7 +1,7 @@
 from typing import Dict, List
 
-from examples._data import load_carbon_data, load_solar_data
-from examples.basic_example import SIM_START, DURATION
+from _data import load_carbon_data, load_solar_data
+from basic_example import SIM_START, DURATION
 from vessim import HistoricalSignal
 from vessim.cosim import ComputingSystem, Generator, Monitor, Controller, Microgrid, \
     Environment, DefaultStoragePolicy, MockPowerMeter, SimpleBattery

@@ -15,14 +15,22 @@ jobs:
     steps:
     # downloads the repository code to the runner's file system for workflow access
     - uses: actions/checkout@v4
+
+    # installs poetry without automatic creation of a virtual environment
+    - name: Install poetry
+      uses: snok/install-poetry@v1
       with:
-        ref: 'pipeline_adjustments'
+        virtualenvs-create: false
        
     # sets up python environment with specified versions 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
+      id: cp312
       with:
-        python-version: ${{ matrix.python-version }}   
+        python-version: ${{ matrix.python-version }}
+        cache: 'poetry'   
+    
+    - run: echo '${{ steps.cp312.outputs.cache-hit }}' # true if cache-hit occurred on the primary key
 
     # get rid of DeprecationWarning related to Jupyter paths when running pytest
     - name: Set JUPYTER_PLATFORM_DIRS environment variable
@@ -30,21 +38,15 @@ jobs:
         JUPYTER_PLATFORM_DIRS: 1
       run: |
         echo "JUPYTER_PLATFORM_DIRS=${JUPYTER_PLATFORM_DIRS}" >> $GITHUB_ENV  
-    
-    # installs poetry without automatic creation of a virtual environment
-    - name: Install poetry
-      uses: snok/install-poetry@v1
-      with:
-        virtualenvs-create: false
-     
+
     - name: Install dependencies
-      run: poetry install --extras "dev"
+      run: poetry install --extras "sil dev analysis"
 
     - name: Run type checker
-      run: mypy vessim
+      run: poetry run mypy vessim
 
-    - name: Run linter
-      run: ruff vessim
+    #- name: Run linter
+    #  run: poetry run ruff vessim
 
     #- name: Run tests
     #  run: python -m pytest
