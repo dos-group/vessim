@@ -21,6 +21,7 @@ jobs:
     # installs poetry without automatic creation of a virtual environment
     - name: Install poetry
       uses: snok/install-poetry@v1
+    - run: poetry config virtualenvs.prefer-active-python true
        
     # sets up python environment with specified versions 
     - name: Set up Python ${{ matrix.python-version }}
