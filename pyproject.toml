@@ -54,8 +54,8 @@ uvicorn = {version = "*", optional = true}
 
 # Optional dependencies (analysis)
 jupyterlab = {version = "*", optional = true}
-seaborn = {version = "0.12.2", optional = true}
 matplotlib = {version = "*", optional = true}
+seaborn = {version = "0.12.2", optional = true}
 
 # Optional dependencies (development)
 pytest = {version = "*", optional = true}
