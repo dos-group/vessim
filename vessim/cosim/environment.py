@@ -48,8 +48,12 @@ class Microgrid:
             controller_entity = controller_sim.Controller(controller=controller)
             world.connect(grid_entity, controller_entity, "p_delta")
             for actor_name, actor_entity in actor_names_and_entities:
-                world.connect(actor_entity, controller_entity, ("p", f"actor.{actor_name}.p"))
-                world.connect(actor_entity, controller_entity, ("info", f"actor.{actor_name}.info"))
+                world.connect(
+                    actor_entity, controller_entity, ("p", f"actor.{actor_name}.p")
+                )
+                world.connect(
+                    actor_entity, controller_entity, ("info", f"actor.{actor_name}.info")
+                )
 
     def pickle(self) -> bytes:
         """Returns a Dict with the current state of the microgrid for monitoring."""
@@ -103,7 +107,9 @@ class Environment:
                 microgrid.initialize(self.world, self.clock, self.grid_signals)
             if until is None:
                 until = int("inf")
-            self.world.run(until=until, rt_factor=rt_factor, print_progress=print_progress)
+            self.world.run(
+                until=until, rt_factor=rt_factor, print_progress=print_progress
+            )
         except Exception as e:
             if str(e).startswith("Simulation too slow for real-time factor"):
                 return

@@ -1,7 +1,17 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime
-from typing import DefaultDict, Dict, List, Callable, Any, Tuple, TYPE_CHECKING, MutableMapping, Optional
+from typing import (
+    DefaultDict,
+    Dict,
+    List,
+    Callable,
+    Any,
+    Tuple,
+    TYPE_CHECKING,
+    MutableMapping,
+    Optional,
+)
 
 import mosaik_api  # type: ignore
 import pandas as pd
@@ -41,7 +51,7 @@ class Monitor(Controller):
         self,
         step_size: Optional[int] = None,
         monitor_storage=True,
-        monitor_grid_signals=True
+        monitor_grid_signals=True,
     ):
         super().__init__(step_size=step_size)
         self.monitor_storage = monitor_storage

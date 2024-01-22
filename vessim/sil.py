@@ -13,12 +13,12 @@ from threading import Thread
 from time import sleep
 from typing import Dict, Callable, Optional, List, Any
 
-import docker # type: ignore
+import docker  # type: ignore
 import pandas as pd
 import redis
 import requests
 import uvicorn
-from docker.models.containers import Container # type: ignore
+from docker.models.containers import Container  # type: ignore
 from fastapi import FastAPI
 from requests.auth import HTTPBasicAuth
 
@@ -76,11 +76,16 @@ class Broker:
         return float(self.redis_db.get("p_delta"))
 
     def set_event(self, category: str, value: Any) -> None:
-        self.redis_db.lpush("set_events", pickle.dumps(dict(
-            category=category,
-            time=datetime.now(),
-            value=value,
-        )))
+        self.redis_db.lpush(
+            "set_events",
+            pickle.dumps(
+                dict(
+                    category=category,
+                    time=datetime.now(),
+                    value=value,
+                )
+            ),
+        )
 
 
 class SilController(Controller):
@@ -96,8 +101,12 @@ class SilController(Controller):
     ):
         super().__init__(step_size=step_size)
         self.api_routes = api_routes
-        self.request_collectors = request_collectors if request_collectors is not None else {}
-        self.compute_nodes_dict = {n.name: n for n in compute_nodes} if compute_nodes is not None else {}
+        self.request_collectors = (
+            request_collectors if request_collectors is not None else {}
+        )
+        self.compute_nodes_dict = (
+            {n.name: n for n in compute_nodes} if compute_nodes is not None else {}
+        )
         self.api_host = api_host
         self.api_port = api_port
         self.request_collector_interval = request_collector_interval
@@ -188,9 +197,11 @@ def _redis_docker_container(
     except docker.errors.APIError as e:
         if e.status_code == 500 and "port is already allocated" in e.explanation:
             # TODO prompt user to automatically kill container
-            raise RuntimeError(f"Could not start Redis container as port {port} is "
-                               f"already allocated. Probably a prevois execution was not "
-                               f"cleaned up properly by Vessim.") from e
+            raise RuntimeError(
+                f"Could not start Redis container as port {port} is "
+                f"already allocated. Probably a prevois execution was not "
+                f"cleaned up properly by Vessim."
+            ) from e
         raise
 
     # Check if the container has started
@@ -249,12 +260,15 @@ class WatttimeSignal(Signal):
         if region is None:
             raise ValueError("Region needs to be specified.")
         dt = pd.to_datetime(dt)
-        rsp = self._request("/historical", params={
-            "region": region,
-            "start": (dt - timedelta(minutes=5)).isoformat(),
-            "end": dt.isoformat(),
-            "signal_type": signal_type,
-        })
+        rsp = self._request(
+            "/historical",
+            params={
+                "region": region,
+                "start": (dt - timedelta(minutes=5)).isoformat(),
+                "end": dt.isoformat(),
+                "signal_type": signal_type,
+            },
+        )
         return rsp
 
     def _request(self, endpoint: str, params: Dict):
@@ -277,4 +291,4 @@ class WatttimeSignal(Signal):
         rsp = requests.get(
             f"{self._URL}/login", auth=HTTPBasicAuth(self.username, self.password)
         )
-        return rsp.json()['token']
+        return rsp.json()["token"]
