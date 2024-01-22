@@ -1,9 +1,19 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, Callable, Any, Tuple, TYPE_CHECKING, MutableMapping, Optional
+from typing import (
+    DefaultDict,
+    Dict,
+    List,
+    Callable,
+    Any,
+    Tuple,
+    TYPE_CHECKING,
+    MutableMapping,
+    Optional,
+)
 
-import mosaik_api
+import mosaik_api  # type: ignore
 import pandas as pd
 
 from vessim._util import Clock
@@ -13,11 +23,11 @@ if TYPE_CHECKING:
 
 
 class Controller(ABC):
-    def __init__(self, step_size: int):
+    def __init__(self, step_size: Optional[int] = None):
         self.step_size = step_size
-        self.microgrid = None
-        self.grid_signals = None
-        self.clock = None
+        self.microgrid: Optional["Microgrid"] = None
+        self.clock: Optional[Clock] = None
+        self.grid_signals: Optional[Dict] = None
 
     def init(self, microgrid: "Microgrid", clock: Clock, grid_signals: Dict):
         self.microgrid = microgrid
@@ -26,7 +36,7 @@ class Controller(ABC):
         self.custom_init()
 
     def custom_init(self):
-        """TODO document"""
+        """TODO document."""
 
     @abstractmethod
     def step(self, time: int, p_delta: float, actors: Dict) -> None:
@@ -47,7 +57,7 @@ class Monitor(Controller):
         self.monitor_storage = monitor_storage
         self.monitor_grid_signals = monitor_grid_signals
         self.monitor_log: Dict[datetime, Dict] = defaultdict(dict)
-        self.custom_monitor_fns = []
+        self.custom_monitor_fns: List[Callable] = []
 
     def custom_init(self):
         if self.monitor_storage:
@@ -73,6 +83,7 @@ class Monitor(Controller):
         )
         for monitor_fn in self.custom_monitor_fns:
             log_entry.update(monitor_fn(time))
+        self.clock: Clock  # clock is initialized at this point
         self.monitor_log[self.clock.to_datetime(time)] = log_entry
 
     def to_csv(self, out_path: str):
@@ -81,7 +92,7 @@ class Monitor(Controller):
 
 
 def flatten_dict(d: MutableMapping, parent_key: str = "") -> MutableMapping:
-    items = []
+    items: List[Tuple[str, Any]] = []
     for k, v in d.items():
         new_key = parent_key + "." + k if parent_key else k
         if isinstance(v, MutableMapping):
@@ -108,7 +119,7 @@ class ControllerSim(mosaik_api.Simulator):
         super().__init__(self.META)
         self.eid = "Controller"
         self.step_size = None
-        self.controller: Optional[Controller] = None
+        self.controller = None
 
     def init(self, sid, time_resolution=1.0, **sim_params):
         self.step_size = sim_params["step_size"]
@@ -140,7 +151,7 @@ def _parse_controller_inputs(inputs: Dict[str, Dict[str, Any]]) -> Tuple[float, 
     except KeyError:
         p_delta = None  # in case there has not yet been any power reported by actors
     actor_keys = [k for k in inputs.keys() if k.startswith("actor")]
-    actors = defaultdict(dict)
+    actors: DefaultDict[str, Dict[str, Any]] = defaultdict(dict)
     for k in actor_keys:
         _, actor_name, attr = k.split(".")
         actors[actor_name][attr] = _get_val(inputs, k)

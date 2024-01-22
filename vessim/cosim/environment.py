@@ -2,7 +2,7 @@ import pickle
 from copy import copy
 from typing import List, Optional, Dict, Union, Literal
 
-import mosaik
+import mosaik  # type: ignore
 
 from vessim._signal import Signal
 from vessim._util import Clock
@@ -12,8 +12,8 @@ from vessim.cosim import Actor, Controller, Storage, StoragePolicy
 class Microgrid:
     def __init__(
         self,
-        actors: List[Actor] = None,
-        controllers: List[Controller] = None,
+        actors: Optional[List[Actor]] = None,
+        controllers: Optional[List[Controller]] = None,
         storage: Optional[Storage] = None,
         storage_policy: Optional[StoragePolicy] = None,
         zone: Optional[str] = None,
@@ -29,7 +29,7 @@ class Microgrid:
     def initialize(
         self, world: mosaik.World, clock: Clock, grid_signals: Dict[str, Signal]
     ):
-        """Create co-simulation entities and connect them to world"""
+        """Create co-simulation entities and connect them to world."""
         grid_sim = world.start("Grid")
         grid_entity = grid_sim.Grid(storage=self.storage, policy=self.storage_policy)
 
@@ -48,8 +48,12 @@ class Microgrid:
             controller_entity = controller_sim.Controller(controller=controller)
             world.connect(grid_entity, controller_entity, "p_delta")
             for actor_name, actor_entity in actor_names_and_entities:
-                world.connect(actor_entity, controller_entity, ("p", f"actor.{actor_name}.p"))
-                world.connect(actor_entity, controller_entity, ("info", f"actor.{actor_name}.info"))
+                world.connect(
+                    actor_entity, controller_entity, ("p", f"actor.{actor_name}.p")
+                )
+                world.connect(
+                    actor_entity, controller_entity, ("info", f"actor.{actor_name}.info")
+                )
 
     def pickle(self) -> bytes:
         """Returns a Dict with the current state of the microgrid for monitoring."""
@@ -75,9 +79,7 @@ class Environment:
         "Controller": {
             "python": "vessim.cosim.controller:ControllerSim",
         },
-        "Grid": {
-            "python": "vessim.cosim.grid:GridSim"
-        },
+        "Grid": {"python": "vessim.cosim.grid:GridSim"},
     }
 
     def __init__(self, sim_start):
@@ -104,8 +106,10 @@ class Environment:
             for microgrid in self.microgrids:
                 microgrid.initialize(self.world, self.clock, self.grid_signals)
             if until is None:
-                until = float("inf")
-            self.world.run(until=until, rt_factor=rt_factor, print_progress=print_progress)
+                until = int("inf")
+            self.world.run(
+                until=until, rt_factor=rt_factor, print_progress=print_progress
+            )
         except Exception as e:
             if str(e).startswith("Simulation too slow for real-time factor"):
                 return

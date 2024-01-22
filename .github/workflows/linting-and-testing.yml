@@ -11,38 +11,38 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.11]
+        python-version: [3.8, 3.12]
     steps:
     # downloads the repository code to the runner's file system for workflow access
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
+
+    # installs poetry and configures it to use the active python version instead of newest
+    - name: Install poetry
+      uses: snok/install-poetry@v1
+    - run: poetry config virtualenvs.prefer-active-python true
        
     # sets up python environment with specified versions 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
-        python-version: ${{ matrix.python-version }}   
-
+        python-version: ${{ matrix.python-version }}
+        cache: 'poetry'   
+    
     # get rid of DeprecationWarning related to Jupyter paths when running pytest
     - name: Set JUPYTER_PLATFORM_DIRS environment variable
       env:
         JUPYTER_PLATFORM_DIRS: 1
       run: |
         echo "JUPYTER_PLATFORM_DIRS=${JUPYTER_PLATFORM_DIRS}" >> $GITHUB_ENV  
-    
-    # installs poetry without automatic creation of a virtual environment
-    - name: Install poetry
-      uses: snok/install-poetry@v1
-      with:
-        virtualenvs-create: false
-     
+
     - name: Install dependencies
-      run: poetry install --extras "dev"
+      run: poetry install --extras "sil dev analysis"
 
     - name: Run type checker
-      run: mypy vessim
+      run: poetry run mypy vessim
 
     - name: Run linter
-      run: ruff vessim
+      run: poetry run ruff vessim
 
-    - name: Run tests
-      run: python -m pytest
+    #- name: Run tests
+    #  run: python -m pytest

@@ -9,7 +9,7 @@ build:
       - pip install poetry
       - poetry config virtualenvs.create false
     post_install:
-      - poetry install --extras "sil analysis docs"
+      - poetry install --extras "dev sil analysis docs"
 
 sphinx:
   configuration: docs/conf.py

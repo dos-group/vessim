@@ -26,9 +26,6 @@ example_node/dataset
 # result.csv that is printed after each sim
 result.csv
 
-# poetry dependencies
-poetry.lock
-
 # Terraform files
 *.tfstate
 *.tfstate.backup

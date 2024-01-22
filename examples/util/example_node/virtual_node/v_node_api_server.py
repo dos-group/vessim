@@ -1,5 +1,4 @@
 import sys
-from typing import Union
 sys.path.append("../")
 from linear_power_model import LinearPowerModel
 from node_api_server import FastApiServer
