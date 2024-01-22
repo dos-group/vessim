@@ -1,10 +1,10 @@
 from typing import Dict, List
 
-from _data import load_solar_data, load_carbon_data
-from basic_example import SIM_START, STORAGE, DURATION
-from vessim.core import TimeSeriesApi
+from examples._data import load_carbon_data, load_solar_data
+from examples.basic_example import SIM_START, DURATION
+from vessim import HistoricalSignal
 from vessim.cosim import ComputingSystem, Generator, Monitor, Controller, Microgrid, \
-    Environment, DefaultStoragePolicy, MockPowerMeter
+    Environment, DefaultStoragePolicy, MockPowerMeter, SimpleBattery
 
 POLICY = DefaultStoragePolicy()
 POWER_MODES = {  # according to paper
@@ -23,45 +23,38 @@ POWER_MODES = {  # according to paper
 
 def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
-    environment.add_grid_signal("carbon_intensity", TimeSeriesApi(load_carbon_data()))
+    environment.add_grid_signal("carbon_intensity", HistoricalSignal(load_carbon_data()))
 
     power_meters = [
         MockPowerMeter(name="mpm0", p=2.194),
         MockPowerMeter(name="mpm1", p=7.6)
     ]
-    monitor = Monitor(step_size=60)
+    battery = SimpleBattery(capacity=100)
+    monitor = Monitor()  # stores simulation result on each step
     carbon_aware_controller = CarbonAwareController(
-        step_size=60,
         power_meters=power_meters,
-        battery=STORAGE,
+        battery=battery,
         policy=POLICY,
     )
     microgrid = Microgrid(
         actors=[
-            ComputingSystem(
-                name="server",
-                step_size=60,
-                power_meters=power_meters
-            ),
-            Generator(
-                name="solar",
-                step_size=60,
-                time_series_api=TimeSeriesApi(load_solar_data(sqm=0.4 * 0.5))
-            ),
+            ComputingSystem(power_meters=power_meters),
+            Generator(signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5))),
         ],
-        storage=STORAGE,
+        storage=battery,
         storage_policy=POLICY,
-        controllers=[monitor, carbon_aware_controller],  # first executes monitor, then controller
+        controllers=[monitor, carbon_aware_controller],
         zone="DE",
+        step_size=60,  # global step size (can be overridden by actors or controllers)
     )
-
     environment.add_microgrid(microgrid)
+
     environment.run(until=DURATION)
-    monitor.monitor_log_to_csv(result_csv)
+    monitor.to_csv(result_csv)
 
 
 class CarbonAwareController(Controller):
-    def __init__(self, step_size, power_meters, battery, policy):
+    def __init__(self, power_meters, battery, policy, step_size=None):
         super().__init__(step_size)
         self.power_meters = power_meters
         self.battery = battery
@@ -72,7 +65,7 @@ class CarbonAwareController(Controller):
         new_state = cacu_scenario(
             time=time,
             battery_soc=self.battery.soc(),
-            ci=self.grid_signals["carbon_intensity"].actual(self.clock.to_datetime(time), self.microgrid.zone),
+            ci=self.grid_signals["carbon_intensity"].at(self.clock.to_datetime(time), self.microgrid.zone),
             node_names=[node.name for node in self.power_meters],
         )
         self.policy.grid_power = new_state["grid_power"]

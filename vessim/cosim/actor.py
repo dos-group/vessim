@@ -1,17 +1,18 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Dict, List
+from itertools import count
+from typing import Dict, List, Optional
 
 import mosaik_api  # type: ignore
 
-from vessim.core import TimeSeriesApi
+from vessim._signal import Signal
 from vessim.cosim.power_meter import PowerMeter
 
 
 class Actor(ABC):
     """Abstract base class representing a power consumer or producer."""
 
-    def __init__(self, name: str, step_size: int):
+    def __init__(self, name: str, step_size: Optional[int] = None):
         self.name = name
         self.step_size = step_size
 
@@ -42,10 +43,17 @@ class ComputingSystem(Actor):
         power_meters: list of PowerMeters that constitute the computing system's demand.
         pue: The power usage effectiveness of the system.
     """
+    _ids = count(0)
 
     def __init__(
-        self, name: str, step_size: int, power_meters: List[PowerMeter], pue: float = 1
+        self,
+        power_meters: List[PowerMeter],
+        name: Optional[str] = None,
+        step_size: Optional[int] = None,
+        pue: float = 1,
     ):
+        if name is None:
+            name = f"ComputingSystem-{next(self._ids)}"
         super().__init__(name, step_size)
         self.power_meters = power_meters
         self.pue = pue
@@ -61,15 +69,22 @@ class ComputingSystem(Actor):
             power_meter.finalize()
 
 
-class Generator(Actor):
-    def __init__(self, name: str, step_size: int, time_series_api: TimeSeriesApi):
+class Generator(Actor):  # TODO signal should return next step
+    _ids = count(0)
+
+    def __init__(
+        self,
+        signal: Signal,
+        step_size: Optional[int] = None,
+        name: Optional[str] = None
+    ):
+        if name is None:
+            name = f"Generator-{next(self._ids)}"
         super().__init__(name, step_size)
-        self.time_series_api = time_series_api
+        self.signal = signal  # TODO make sure that signal is single column?
 
     def p(self, now: datetime) -> float:
-        return self.time_series_api.actual(
-            now
-        )  # TODO TimeSeriesApi must be for a single region
+        return self.signal.at(now)
 
 
 class ActorSim(mosaik_api.Simulator):
