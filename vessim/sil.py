@@ -113,7 +113,7 @@ class SilController(Controller):
         self.redis_docker_container = _redis_docker_container()
         self.redis_db = redis.Redis()
 
-        self.microgrid = None
+        self.microgrid: Microgrid
         self.clock = None
         self.grid_signals = None
         self.api_server_process = None
@@ -138,8 +138,7 @@ class SilController(Controller):
         pipe.set("time", time)
         pipe.set("p_delta", p_delta)
         pipe.set("actors", json.dumps(actors))
-        if self.microgrid is not None:
-            pipe.set("microgrid", self.microgrid.pickle())
+        pipe.set("microgrid", self.microgrid.pickle())
         pipe.execute()
 
     def finalize(self) -> None:
