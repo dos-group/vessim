@@ -14,13 +14,13 @@ VESSIM_DATASETS: Dict[str, Dict[str, str]] = {
         "actual": "solcast2022_germany_actual.csv",
         "forecast": "solcast2022_germany_forecast.csv",
         "fill_method": "bfill",
-        "url": "https://raw.githubusercontent.com/dos-group/vessim/solcast_data/datasets/solcast2022_germany.zip",
+        "url": "https://raw.githubusercontent.com/dos-group/vessim/main/datasets/solcast2022_germany.zip",
     },
     "solcast2022_global": {
         "actual": "solcast2022_global_actual.csv",
         "forecast": "solcast2022_global_forecast.csv",
         "fill_method": "bfill",
-        "url": "https://raw.githubusercontent.com/dos-group/vessim/solcast_data/datasets/solcast2022_global.zip",
+        "url": "https://raw.githubusercontent.com/dos-group/vessim/main/datasets/solcast2022_global.zip",
     },
 }
 
