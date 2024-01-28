@@ -12,7 +12,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from threading import Thread
 from time import sleep
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 from loguru import logger
 
 import docker  # type: ignore
@@ -93,8 +93,8 @@ class Broker:
 class SilController(Controller):
     def __init__(
         self,
-        api_routes: callable,
-        request_collectors: Optional[dict[str, callable]] = None,
+        api_routes: Callable,
+        request_collectors: Optional[dict[str, Callable]] = None,
         compute_nodes: Optional[list[ComputeNode]] = None,
         api_host: str = "127.0.0.1",
         api_port: int = 8000,
@@ -169,7 +169,7 @@ class SilController(Controller):
 
 
 def _serve_api(
-    api_routes: callable,
+    api_routes: Callable,
     api_host: str,
     api_port: int,
     grid_signals: dict[str, Signal],

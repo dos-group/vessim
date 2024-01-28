@@ -2,7 +2,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, TYPE_CHECKING, MutableMapping, Optional
+from typing import Any, TYPE_CHECKING, MutableMapping, Optional, Callable
 
 import mosaik_api  # type: ignore
 import pandas as pd
@@ -48,7 +48,7 @@ class Monitor(Controller):
         self.monitor_storage = monitor_storage
         self.monitor_grid_signals = monitor_grid_signals
         self.monitor_log: dict[datetime, dict] = defaultdict(dict)
-        self.custom_monitor_fns: list[callable] = []
+        self.custom_monitor_fns: list[Callable] = []
 
     def custom_init(self):
         if self.monitor_storage:
@@ -61,7 +61,7 @@ class Monitor(Controller):
 
                 self.add_monitor_fn(fn)
 
-    def add_monitor_fn(self, fn: callable[[float], dict[str, Any]]):
+    def add_monitor_fn(self, fn: Callable[[float], dict[str, Any]]):
         self.custom_monitor_fns.append(fn)
 
     def step(self, time: int, p_delta: float, actors: dict) -> None:
