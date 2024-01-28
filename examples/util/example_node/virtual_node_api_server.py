@@ -73,7 +73,7 @@ class VirtualNodeApiServer(FastApiServer):
         # Start the new sysbench process
         self.sysbench = subprocess.Popen(
             command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-        )  # type: ignore
+        )
 
     def _run_benchmark(self) -> None:
         """Run a sysbench benchmark.
