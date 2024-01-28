@@ -1,9 +1,19 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, Callable, Any, Tuple, TYPE_CHECKING, MutableMapping
+from typing import (
+    DefaultDict,
+    Dict,
+    List,
+    Callable,
+    Any,
+    Tuple,
+    TYPE_CHECKING,
+    MutableMapping,
+    Optional,
+)
 
-import mosaik_api
+import mosaik_api  # type: ignore
 import pandas as pd
 
 from vessim._util import Clock
@@ -13,20 +23,20 @@ if TYPE_CHECKING:
 
 
 class Controller(ABC):
-
-    def __init__(self, step_size: int):
+    def __init__(self, step_size: Optional[int] = None):
         self.step_size = step_size
-        self.microgrid = None
-        self.grid_signals = None
-        self.clock = None
+        self.microgrid: Optional["Microgrid"] = None
+        self.clock: Optional[Clock] = None
+        self.grid_signals: Optional[Dict] = None
 
-    def start(self, microgrid: "Microgrid", clock: Clock, grid_signals: Dict):
+    def init(self, microgrid: "Microgrid", clock: Clock, grid_signals: Dict):
         self.microgrid = microgrid
         self.clock = clock
         self.grid_signals = grid_signals
+        self.custom_init()
 
     def custom_init(self):
-        """TODO document"""
+        """TODO document."""
 
     @abstractmethod
     def step(self, time: int, p_delta: float, actors: Dict) -> None:
@@ -37,24 +47,28 @@ class Controller(ABC):
 
 
 class Monitor(Controller):
-
-    def __init__(self, step_size: int, monitor_storage=True, monitor_grid_signals=True):
+    def __init__(
+        self,
+        step_size: Optional[int] = None,
+        monitor_storage=True,
+        monitor_grid_signals=True
+    ):
         super().__init__(step_size=step_size)
         self.monitor_storage = monitor_storage
         self.monitor_grid_signals = monitor_grid_signals
         self.monitor_log: Dict[datetime, Dict] = defaultdict(dict)
-        self.custom_monitor_fns = []
+        self.custom_monitor_fns: List[Callable] = []
 
     def custom_init(self):
         if self.monitor_storage:
             self.add_monitor_fn(lambda _: {"storage": self.microgrid.storage.state()})
         if self.monitor_grid_signals:
             for signal_name, signal_api in self.grid_signals.items():
-                self.add_monitor_fn(lambda time: {
-                    signal_name: self.grid_signals[signal_name].actual(
-                        self.clock.to_datetime(time)
-                    )
-                })
+
+                def fn(time):
+                    return {signal_name: signal_api.at(self.clock.to_datetime(time))}
+
+                self.add_monitor_fn(fn)
 
     def add_monitor_fn(self, fn: Callable[[float], Dict[str, Any]]):
         self.custom_monitor_fns.append(fn)
@@ -69,15 +83,16 @@ class Monitor(Controller):
         )
         for monitor_fn in self.custom_monitor_fns:
             log_entry.update(monitor_fn(time))
+        self.clock: Clock  # clock is initialized at this point
         self.monitor_log[self.clock.to_datetime(time)] = log_entry
 
-    def monitor_log_to_csv(self, out_path: str):
+    def to_csv(self, out_path: str):
         df = pd.DataFrame({k: flatten_dict(v) for k, v in self.monitor_log.items()}).T
         df.to_csv(out_path)
 
 
-def flatten_dict(d: MutableMapping, parent_key: str = '') -> MutableMapping:
-    items = []
+def flatten_dict(d: MutableMapping, parent_key: str = "") -> MutableMapping:
+    items: List[Tuple[str, Any]] = []
     for k, v in d.items():
         new_key = parent_key + "." + k if parent_key else k
         if isinstance(v, MutableMapping):
@@ -106,7 +121,7 @@ class ControllerSim(mosaik_api.Simulator):
         self.step_size = None
         self.controller = None
 
-    def init(self, sid, time_resolution=1., **sim_params):
+    def init(self, sid, time_resolution=1.0, **sim_params):
         self.step_size = sim_params["step_size"]
         return self.meta
 
@@ -116,7 +131,10 @@ class ControllerSim(mosaik_api.Simulator):
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
-        self.controller.step(time, *_parse_controller_inputs(inputs[self.eid]))
+        try:
+            self.controller.step(time, *_parse_controller_inputs(inputs[self.eid]))
+        except KeyError:
+            self.controller.step(time, p_delta=0, actors={})
         return time + self.step_size
 
     def get_data(self, outputs):
@@ -133,7 +151,7 @@ def _parse_controller_inputs(inputs: Dict[str, Dict[str, Any]]) -> Tuple[float, 
     except KeyError:
         p_delta = None  # in case there has not yet been any power reported by actors
     actor_keys = [k for k in inputs.keys() if k.startswith("actor")]
-    actors = defaultdict(dict)
+    actors: DefaultDict[str, Dict[str, Any]] = defaultdict(dict)
     for k in actor_keys:
         _, actor_name, attr = k.split(".")
         actors[actor_name][attr] = _get_val(inputs, k)

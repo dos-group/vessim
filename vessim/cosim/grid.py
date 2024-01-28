@@ -1,4 +1,4 @@
-import mosaik_api
+import mosaik_api # type: ignore
 
 from vessim.cosim import DefaultStoragePolicy
 

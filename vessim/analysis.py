@@ -40,11 +40,11 @@ def plot_basic_evaluation(data: pd.DataFrame, title: str = "Evaluation"):
 
 
 def plot_production_and_consumption(
-        ax, p_prod, p_cons, prod_color="#6B9A6E", cons_color="#D65D62"
+    ax, p_prod, p_cons, prod_color="#6B9A6E", cons_color="#D65D62"
 ) -> None:
     """Create plot for showing production and consumption."""
     p_prod.plot(ax=ax, color=prod_color, label="production")
-    (- p_cons).plot(ax=ax, color=cons_color, label="consumption", linestyle=":")
+    (-p_cons).plot(ax=ax, color=cons_color, label="consumption", linestyle=":")
     ax.set_ylabel("power (W)")
     ax.legend(loc="best", frameon=False)
 
@@ -75,7 +75,7 @@ def plot_battery_soc(
         linestyle="--",
         linewidth=.8,
         color=min_soc_color,
-        label="minimum state of charge"
+        label="minimum state of charge",
     )
     handles, lables = ax.get_legend_handles_labels()
     ax.legend(handles[1:], lables[1:], frameon=False)
