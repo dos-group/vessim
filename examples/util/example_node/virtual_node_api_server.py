@@ -1,12 +1,10 @@
 import sys
-
-sys.path.append("/app")
-from linear_power_model import LinearPowerModel  # noqa: E402
-from node_api_server import FastApiServer  # noqa: E402
-import subprocess  # noqa: E402
-import multiprocessing  # noqa: E402
-import psutil  # noqa: E402
-import re  # noqa: E402
+from linear_power_model import LinearPowerModel
+from node_api_server import FastApiServer
+import subprocess
+import multiprocessing
+import psutil
+import re
 
 
 class VirtualNodeApiServer(FastApiServer):
