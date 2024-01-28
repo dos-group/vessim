@@ -15,8 +15,6 @@ jobs:
     steps:
     # downloads the repository code to the runner's file system for workflow access
     - uses: actions/checkout@v4
-      with:
-        ref: 'type_annotation_migration'
 
     # installs poetry and configures it to use the active python version instead of newest
     - name: Install poetry
