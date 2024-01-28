@@ -41,7 +41,7 @@ class HistoricalSignal(Signal):
         elif isinstance(forecast, pd.DataFrame):
             forecast = convert_to_datetime(forecast)
             self._forecast = {
-                str(col): forecast[col].dropna() for col in forecast.columns
+                str(col): forecast[col].dropna() for col in forecast.columns # type: ignore
             }
         elif forecast is None:
             self._forecast = {

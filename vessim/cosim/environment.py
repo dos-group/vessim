@@ -43,7 +43,7 @@ class Microgrid:
             actor_names_and_entities.append((actor.name, actor_entity))
 
         for controller in self.controllers:
-            controller.init(self, clock, grid_signals)
+            controller.start(self, clock, grid_signals)
             step_size = controller.step_size if controller.step_size else self.step_size
             controller_sim = world.start("Controller", step_size=step_size)
             controller_entity = controller_sim.Controller(controller=controller)
@@ -87,7 +87,7 @@ class Environment:
         self.clock = Clock(sim_start)
         self.microgrids = []
         self.grid_signals = {}
-        self.world = mosaik.World(self.COSIM_CONFIG)
+        self.world = mosaik.World(self.COSIM_CONFIG) # type: ignore
 
     def add_microgrid(self, microgrid: Microgrid):
         self.microgrids.append(microgrid)

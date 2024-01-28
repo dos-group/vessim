@@ -1,13 +1,13 @@
 from __future__ import annotations
 import json
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Union
 
 import pandas as pd
 import requests
 
-DatetimeLike = str | datetime
-PandasObject = pd.Series | pd.DataFrame
+DatetimeLike = Union[str, datetime]
+PandasObject = Union[pd.Series, pd.DataFrame]
 
 
 class Clock:
