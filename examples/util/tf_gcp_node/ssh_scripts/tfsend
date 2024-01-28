@@ -1,6 +1,0 @@
-#!/bin/bash
-
-cd ..
-username=$(terraform output -raw gcp_user_name)
-address=$(terraform output -raw external_ip)
-scp -r -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i .ssh/google_compute_engine $1 $username@$address:/home/$username/
