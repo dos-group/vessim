@@ -19,7 +19,7 @@ class FastApiServer(ABC):
         self.setup_routes()
 
     def setup_routes(self) -> None:
-        """Setup the routes for the FastAPI application. """
+        """Setup the routes for the FastAPI application."""
 
         class PowerModeModel(BaseModel):
             power_mode: str

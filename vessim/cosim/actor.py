@@ -4,7 +4,7 @@ from datetime import datetime
 from itertools import count
 from typing import Optional
 
-import mosaik_api
+import mosaik_api  # type: ignore
 
 from vessim._signal import Signal
 from vessim.cosim.power_meter import PowerMeter

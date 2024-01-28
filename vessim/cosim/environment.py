@@ -3,7 +3,7 @@ import pickle
 from copy import copy
 from typing import Literal, Optional
 
-import mosaik
+import mosaik  # type: ignore
 
 from vessim._signal import Signal
 from vessim._util import Clock
@@ -107,7 +107,7 @@ class Environment:
             for microgrid in self.microgrids:
                 microgrid.initialize(self.world, self.clock, self.grid_signals)
             if until is None:
-                until = float("inf")
+                until = int("inf")
             self.world.run(
                 until=until, rt_factor=rt_factor, print_progress=print_progress
             )

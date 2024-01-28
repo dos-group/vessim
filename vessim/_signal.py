@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from datetime import timedelta, datetime
 from pathlib import Path
-from typing import Union, Optional, Literal, Dict, Hashable, List
+from typing import Any, Union, Optional, Literal, Dict, List
 
 import pandas as pd
 
@@ -25,9 +25,9 @@ class HistoricalSignal(Signal):
         fill_method: Literal["ffill", "bfill"] = "ffill",
     ):
         actual = convert_to_datetime(actual)
-        self._actual: Dict[Hashable, pd.Series]
+        self._actual: Dict[str, pd.Series]
         if isinstance(actual, pd.Series):
-            self._actual = {actual.name: actual.dropna()}
+            self._actual = {str(actual.name): actual.dropna()}
         elif isinstance(actual, pd.DataFrame):
             self._actual = {col: actual[col].dropna() for col in actual.columns}
         else:
@@ -55,7 +55,7 @@ class HistoricalSignal(Signal):
         cls,
         dataset: str,
         data_dir: Optional[Union[str, Path]] = None,
-        params: Dict = None,
+        params: Optional[Dict[Any, Any]] = None,
     ):
         if params is None:
             params = {}
@@ -65,7 +65,7 @@ class HistoricalSignal(Signal):
         """Returns a list of all columns where actual data is available."""
         return list(self._actual.keys())
 
-    def at(self, dt: DatetimeLike, column: str = None, **kwargs):
+    def at(self, dt: DatetimeLike, column: Optional[str] = None, **kwargs):
         dt = pd.to_datetime(dt)
         column_data = _get_column_data(self._actual, column)
 
@@ -87,6 +87,7 @@ class HistoricalSignal(Signal):
                 raise ValueError(
                     f"'{dt}' is too late to get data in column '{column}'."
                 )
+
 
     def forecast(
         self,

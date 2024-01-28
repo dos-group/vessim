@@ -1,4 +1,4 @@
-from examples._data import load_carbon_data, load_solar_data
+from _data import load_carbon_data, load_solar_data
 from vessim import HistoricalSignal
 from vessim.cosim import Microgrid, Environment, ComputingSystem, Generator, Monitor, \
     MockPowerMeter, SimpleBattery
