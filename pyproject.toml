@@ -118,3 +118,14 @@ convention = "google"
 # Configure mypy to ignore missing imports
 [mypy]
 ignore_missing_imports = true
+
+[tool.mypy]
+python_version = "3.8"
+disallow_untyped_defs = true
+show_error_codes = true
+
+[tool.mypy.plugins]
+mypy_extensions = "typing_extensions"
+
+[tool.mypy.overrides]
+allow_future_annotations = true
