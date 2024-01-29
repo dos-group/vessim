@@ -1,6 +1,0 @@
-#!/bin/bash
-
-cd ..
-username="ubuntu"
-address=$(terraform output -raw public_ip)
-scp -r -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i .ssh/aws_ec2 $1 $username@$address:/home/$username/

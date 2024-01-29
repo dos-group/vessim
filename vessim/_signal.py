@@ -1,7 +1,8 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from datetime import timedelta, datetime
 from pathlib import Path
-from typing import Any, Union, Optional, Literal, Dict, List
+from typing import Any, Optional, Literal
 
 import pandas as pd
 
@@ -20,12 +21,12 @@ class Signal(ABC):
 class HistoricalSignal(Signal):
     def __init__(
         self,
-        actual: Union[pd.Series, pd.DataFrame],
-        forecast: Optional[Union[pd.Series, pd.DataFrame]] = None,
+        actual: pd.Series | pd.DataFrame,
+        forecast: Optional[pd.Series | pd.DataFrame] = None,
         fill_method: Literal["ffill", "bfill"] = "ffill",
     ):
         actual = convert_to_datetime(actual)
-        self._actual: Dict[str, pd.Series]
+        self._actual: dict[str, pd.Series]
         if isinstance(actual, pd.Series):
             self._actual = {str(actual.name): actual.dropna()}
         elif isinstance(actual, pd.DataFrame):
@@ -34,14 +35,14 @@ class HistoricalSignal(Signal):
             raise ValueError(f"Incompatible type {type(actual)} for 'actual'.")
         self._fill_method = fill_method
 
-        self._forecast: Dict[str, pd.Series]
+        self._forecast: dict[str, pd.Series]
         if isinstance(forecast, pd.Series):
             forecast = convert_to_datetime(forecast)
             self._forecast = {str(forecast.name): forecast.dropna()} # type: ignore
         elif isinstance(forecast, pd.DataFrame):
             forecast = convert_to_datetime(forecast)
             self._forecast = {
-                str(col): forecast[col].dropna() for col in forecast.columns
+                str(col): forecast[col].dropna() for col in forecast.columns # type: ignore
             }
         elif forecast is None:
             self._forecast = {
@@ -54,14 +55,14 @@ class HistoricalSignal(Signal):
     def from_dataset(
         cls,
         dataset: str,
-        data_dir: Optional[Union[str, Path]] = None,
-        params: Optional[Dict[Any, Any]] = None,
+        data_dir: Optional[str | Path] = None,
+        params: Optional[dict[Any, Any]] = None,
     ):
         if params is None:
             params = {}
         return cls(**load_dataset(dataset, _abs_path(data_dir), params))
 
-    def columns(self) -> List:
+    def columns(self) -> list:
         """Returns a list of all columns where actual data is available."""
         return list(self._actual.keys())
 
@@ -94,7 +95,7 @@ class HistoricalSignal(Signal):
         start_time: DatetimeLike,
         end_time: DatetimeLike,
         column: Optional[str] = None,
-        frequency: Optional[Union[str, pd.DateOffset, timedelta]] = None,
+        frequency: Optional[str | pd.DateOffset | timedelta] = None,
         resample_method: Optional[str] = None,
     ) -> pd.Series:
         start_time = pd.to_datetime(start_time)
@@ -176,7 +177,7 @@ class HistoricalSignal(Signal):
         return df.reindex(new_index[1:])  # type: ignore
 
 
-def _get_column_data(data: Dict[str, pd.Series], column: Optional[str]) -> pd.Series:
+def _get_column_data(data: dict[str, pd.Series], column: Optional[str]) -> pd.Series:
     if column is None:
         if len(data) == 1:
             return next(iter(data.values()))
@@ -188,7 +189,7 @@ def _get_column_data(data: Dict[str, pd.Series], column: Optional[str]) -> pd.Se
         raise ValueError(f"Cannot retrieve data for column '{column}'.")
 
 
-def _abs_path(data_dir: Optional[Union[str, Path]]):
+def _abs_path(data_dir: Optional[str | Path]):
     if data_dir is None:
         return Path.home() / ".cache" / "vessim"
 

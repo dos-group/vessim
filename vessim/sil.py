@@ -3,6 +3,7 @@
 This module is still experimental, the public API might change at any time.
 """
 
+from __future__ import annotations
 import json
 import multiprocessing
 import pickle
@@ -11,7 +12,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from threading import Thread
 from time import sleep
-from typing import Dict, Callable, Optional, List, Any
+from typing import Any, Optional, Callable
 from loguru import logger
 
 import docker  # type: ignore
@@ -70,7 +71,7 @@ class Broker:
     def get_microgrid(self) -> Microgrid:
         return pickle.loads(self.redis_db.get("microgrid"))
 
-    def get_actor(self, actor: str) -> Dict:
+    def get_actor(self, actor: str) -> dict:
         return json.loads(self.redis_db.get("actors"))[actor]
 
     def get_grid_power(self) -> float:
@@ -93,8 +94,8 @@ class SilController(Controller):
     def __init__(
         self,
         api_routes: Callable,
-        request_collectors: Optional[Dict[str, Callable]] = None,
-        compute_nodes: Optional[List[ComputeNode]] = None,
+        request_collectors: Optional[dict[str, Callable]] = None,
+        compute_nodes: Optional[list[ComputeNode]] = None,
         api_host: str = "127.0.0.1",
         api_port: int = 8000,
         request_collector_interval: float = 1,
@@ -136,7 +137,7 @@ class SilController(Controller):
         logger.info(f"Started SiL Controller API server process '{api_name}'")
         Thread(target=self._collect_set_requests_loop, daemon=True).start()
 
-    def step(self, time: int, p_delta: float, actors: Dict) -> None:
+    def step(self, time: int, p_delta: float, actors: dict) -> None:
         pipe = self.redis_db.pipeline()
         pipe.set("time", time)
         pipe.set("p_delta", p_delta)
@@ -171,7 +172,7 @@ def _serve_api(
     api_routes: Callable,
     api_host: str,
     api_port: int,
-    grid_signals: Dict[str, Signal],
+    grid_signals: dict[str, Signal],
 ):
     app = FastAPI()
     api_routes(app, Broker(), grid_signals)
@@ -215,7 +216,7 @@ def _redis_docker_container(
     return container
 
 
-def get_latest_event(events: Dict[datetime, Any]) -> Any:
+def get_latest_event(events: dict[datetime, Any]) -> Any:
     return events[max(events.keys())]
 
 
@@ -272,7 +273,7 @@ class WatttimeSignal(Signal):
         )
         return rsp
 
-    def _request(self, endpoint: str, params: Dict):
+    def _request(self, endpoint: str, params: dict):
         while True:
             rsp = requests.get(
                 f"{self._URL}/v3{endpoint}", headers=self.headers, params=params
