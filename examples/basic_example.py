@@ -21,9 +21,7 @@ def main(result_csv: str):
     monitor = Monitor()  # stores simulation result on each step
     microgrid = Microgrid(
         actors=[
-            ComputingSystem(
-                power_meters=[MockPowerMeter(p=2.194), MockPowerMeter(p=7.6)]
-            ),
+            ComputingSystem(power_meters=[MockPowerMeter(p=3), MockPowerMeter(p=7)]),
             Generator(signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5))),
         ],
         controllers=[monitor],
