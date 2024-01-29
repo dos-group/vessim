@@ -4,8 +4,8 @@ from typing import Optional
 
 from _data import load_carbon_data, load_solar_data
 from basic_example import SIM_START, DURATION
-from vessim import HistoricalSignal
-from vessim._util import Clock
+from vessim.signal import HistoricalSignal
+from vessim.util import Clock
 from vessim.cosim import (
     ComputingSystem,
     Generator,

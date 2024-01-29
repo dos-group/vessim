@@ -5,7 +5,7 @@ import time
 from threading import Thread
 
 from examples.controller_example import cacu_scenario
-from vessim._util import HttpClient
+from vessim.sil import HttpClient
 
 
 class LoopThread(threading.Thread):

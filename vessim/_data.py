@@ -8,8 +8,6 @@ from zipfile import ZipFile
 
 import pandas as pd
 
-from vessim._util import PandasObject
-
 VESSIM_DATASETS: dict[str, dict[str, str]] = {
     "solcast2022_germany": {
         "actual": "solcast2022_germany_actual.csv",
@@ -67,7 +65,7 @@ def load_dataset(dataset: str, dir_path: Path, params: Optional[dict] = None) ->
         dir_path / dataset_config["actual"], index_cols=[0], scale=scale
     )
 
-    forecast: Optional[PandasObject] = None
+    forecast: Optional[pd.Series | pd.DataFrame] = None
     if use_forecast:
         forecast = _read_data_from_csv(
             dir_path / dataset_config["forecast"], index_cols=[0, 1], scale=scale
@@ -78,7 +76,7 @@ def load_dataset(dataset: str, dir_path: Path, params: Optional[dict] = None) ->
         print(f"Data is being shifted by {shift}")
         actual.index += shift
         if use_forecast:
-            forecast = _shift_dataframe(forecast, shift)  # type: ignore
+            forecast = _shift(forecast, shift)  # type: ignore
 
     return dict(
         actual=actual,
@@ -104,13 +102,13 @@ def _check_files(files: list[str], base_dir: Path) -> bool:
 
 def _read_data_from_csv(
     path: Path, index_cols: list[int], scale: float = 1.0
-) -> PandasObject:
+) -> pd.Series | pd.DataFrame:
     """Retrieves a dataframe from a csv file and transforms it."""
     df = convert_to_datetime(pd.read_csv(path, index_col=index_cols))
     return (df * scale).astype(float)
 
 
-def convert_to_datetime(df: PandasObject) -> PandasObject:
+def convert_to_datetime(df: pd.Series | pd.DataFrame) -> pd.Series | pd.DataFrame:
     """Converts the indices of a dataframe to datetime indices."""
     if isinstance(df.index, pd.MultiIndex):
         index: pd.MultiIndex = df.index
@@ -124,7 +122,7 @@ def convert_to_datetime(df: PandasObject) -> PandasObject:
     return df
 
 
-def _shift_dataframe(df: PandasObject, shift: timedelta) -> PandasObject:
+def _shift(df: pd.Series | pd.DataFrame, shift: timedelta) -> pd.Series | pd.DataFrame:
     """Shifts indices of the given DataFrame by a timedelta."""
     if isinstance(df.index, pd.MultiIndex):
         index: pd.MultiIndex = df.index

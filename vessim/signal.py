@@ -7,7 +7,7 @@ from typing import Any, Optional, Literal
 import pandas as pd
 
 from vessim._data import convert_to_datetime, load_dataset
-from vessim._util import DatetimeLike
+from vessim.util import DatetimeLike
 
 
 class Signal(ABC):

@@ -1,11 +1,12 @@
 """A simulator for carbon-aware applications and systems."""
+from vessim import util
+from vessim import signal
 from vessim import cosim
-from vessim._signal import Signal, HistoricalSignal
 
 __all__ = [
-    "Signal",
-    "HistoricalSignal",
+    "signal",
     "cosim",
+    "util",
 ]
 
 try:

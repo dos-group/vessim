@@ -7,7 +7,6 @@ from __future__ import annotations
 import json
 import multiprocessing
 import pickle
-import time
 from collections import defaultdict
 from datetime import datetime, timedelta
 from threading import Thread
@@ -24,10 +23,10 @@ from docker.models.containers import Container  # type: ignore
 from fastapi import FastAPI
 from requests.auth import HTTPBasicAuth
 
-from vessim._signal import Signal
-from vessim._util import HttpClient, DatetimeLike, Clock
-from vessim.cosim import Controller, PowerMeter
-from vessim.cosim.environment import Microgrid
+from vessim.signal import Signal
+from vessim.util import DatetimeLike, Clock
+from vessim.cosim import Controller
+from vessim.cosim._environment import Microgrid
 
 
 class ComputeNode:  # TODO we could soon replace this agent-based implementation with k8s
@@ -225,30 +224,6 @@ def get_latest_event(events: dict[datetime, Any]) -> Any:
     return events[max(events.keys())]
 
 
-class HttpPowerMeter(PowerMeter):
-    def __init__(
-        self,
-        name: str,
-        address: str,
-        port: int = 8000,
-        collect_interval: float = 1,
-    ) -> None:
-        super().__init__(name)
-        self.http_client = HttpClient(f"{address}:{port}")
-        self.collect_interval = collect_interval
-        self._p = 0.0
-        Thread(target=self._collect_loop, daemon=True).start()
-
-    def measure(self) -> float:
-        return self._p
-
-    def _collect_loop(self) -> None:
-        """Gets the power demand every `interval` seconds from the API server."""
-        while True:
-            self._p = float(self.http_client.get("/power")["power"])
-            time.sleep(self.collect_interval)
-
-
 class WatttimeSignal(Signal):
     _URL = "https://api.watttime.org"
 
@@ -299,3 +274,54 @@ class WatttimeSignal(Signal):
             f"{self._URL}/login", auth=HTTPBasicAuth(self.username, self.password)
         )
         return rsp.json()["token"]
+
+
+class HttpClient:
+    """Class for making HTTP requests to the Vessim API server.
+
+    Args:
+        server_address: The address of the server to connect to.
+            e.g. http://localhost
+    """
+
+    def __init__(self, server_address: str, timeout: float = 5) -> None:
+        self.server_address = server_address
+        self.timeout = timeout
+
+    def get(self, route: str) -> dict:
+        """Sends a GET request to the server and retrieves data.
+
+        Args:
+            route: The path of the endpoint to send the request to.
+
+        Raises:
+            HTTPError: If response code is != 200.
+
+        Returns:
+            A dictionary containing the response.
+        """
+        response = requests.get(self.server_address + route, timeout=self.timeout)
+        if response.status_code != 200:
+            response.raise_for_status()
+        data = response.json()  # assuming the response data is in JSON format
+        return data
+
+    def put(self, route: str, data: dict[str, Any] = {}) -> None:
+        """Sends a PUT request to the server to update data.
+
+        Args:
+            route: The path of the endpoint to send the request to.
+            data: The data to be updated, in dictionary format.
+
+        Raises:
+            HTTPError: If response code is != 200.
+        """
+        headers = {"Content-type": "application/json"}
+        response = requests.put(
+            self.server_address + route,
+            data=json.dumps(data),
+            headers=headers,
+            timeout=self.timeout,
+        )
+        if response.status_code != 200:
+            response.raise_for_status()

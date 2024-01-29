@@ -17,7 +17,7 @@ from pydantic import BaseModel
 
 from controller_example import SIM_START, DURATION, POLICY
 from examples._data import load_carbon_data, load_solar_data
-from vessim import Signal, HistoricalSignal
+from vessim.signal import Signal, HistoricalSignal
 from vessim.cosim import (
     Environment,
     Monitor,
@@ -25,13 +25,13 @@ from vessim.cosim import (
     ComputingSystem,
     Generator,
     SimpleBattery,
+    HttpPowerMeter,
 )
 from vessim.sil import (
     SilController,
     ComputeNode,
     Broker,
     get_latest_event,
-    HttpPowerMeter,
 )
 
 RT_FACTOR = 1  # 1 wall-clock second ^= 60 sim seconds

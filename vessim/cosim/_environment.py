@@ -5,9 +5,11 @@ from typing import Literal, Optional
 
 import mosaik  # type: ignore
 
-from vessim._signal import Signal
-from vessim._util import Clock
-from vessim.cosim import Actor, Controller, Storage, StoragePolicy
+from vessim.util import Clock
+from vessim.signal import Signal
+from vessim.cosim._actor import Actor
+from vessim.cosim._controller import Controller
+from vessim.cosim._storage import Storage, StoragePolicy
 
 
 class Microgrid:
@@ -50,7 +52,7 @@ class Microgrid:
             world.connect(grid_entity, controller_entity, "p_delta")
             for actor_name, actor_entity in actor_names_and_entities:
                 world.connect(
-                    actor_entity, controller_entity, ("info", f"actor.{actor_name}")
+                    actor_entity, controller_entity, ("state", f"actor.{actor_name}")
                 )
 
     def pickle(self) -> bytes:
@@ -72,12 +74,12 @@ class Microgrid:
 class Environment:
     COSIM_CONFIG = {
         "Actor": {
-            "python": "vessim.cosim.actor:ActorSim",
+            "python": "vessim.cosim._actor:ActorSim",
         },
         "Controller": {
-            "python": "vessim.cosim.controller:ControllerSim",
+            "python": "vessim.cosim._controller:ControllerSim",
         },
-        "Grid": {"python": "vessim.cosim.grid:GridSim"},
+        "Grid": {"python": "vessim.cosim._grid:GridSim"},
     }
 
     def __init__(self, sim_start):

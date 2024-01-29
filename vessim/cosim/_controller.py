@@ -7,10 +7,10 @@ from typing import Any, TYPE_CHECKING, MutableMapping, Optional, Callable
 import mosaik_api  # type: ignore
 import pandas as pd
 
-from vessim._util import Clock
+from vessim.util import Clock
 
 if TYPE_CHECKING:
-    from vessim.cosim.environment import Microgrid
+    from vessim.cosim import Microgrid
 
 
 class Controller(ABC):
