@@ -25,7 +25,7 @@ from fastapi import FastAPI
 from requests.auth import HTTPBasicAuth
 
 from vessim._signal import Signal
-from vessim._util import HttpClient, DatetimeLike
+from vessim._util import HttpClient, DatetimeLike, Clock
 from vessim.cosim import Controller, PowerMeter
 from vessim.cosim.environment import Microgrid
 
@@ -120,11 +120,13 @@ class SilController(Controller):
         self.grid_signals = None
         self.api_server_process = None
 
-    def custom_init(self):
-        api_name = "Vessim API"
+    def start(self, microgrid: "Microgrid", clock: Clock, grid_signals: dict) -> None:
+        self.microgrid = microgrid
+        self.clock = clock
+        self.grid_signals = grid_signals
         self.api_server_process = multiprocessing.Process(
             target=_serve_api,
-            name=api_name,
+            name="Vessim API",
             daemon=True,
             kwargs=dict(
                 api_routes=self.api_routes,
@@ -134,14 +136,14 @@ class SilController(Controller):
             ),
         )
         self.api_server_process.start()
-        logger.info(f"Started SiL Controller API server process '{api_name}'")
+        logger.info(f"Started SiL Controller API server process 'Vessim API'")
         Thread(target=self._collect_set_requests_loop, daemon=True).start()
 
-    def step(self, time: int, p_delta: float, actors: dict) -> None:
+    def step(self, time: int, p_delta: float, actor_infos: dict) -> None:
         pipe = self.redis_db.pipeline()
         pipe.set("time", time)
         pipe.set("p_delta", p_delta)
-        pipe.set("actors", json.dumps(actors))
+        pipe.set("actors", json.dumps(actor_infos))
         pipe.set("microgrid", self.microgrid.pickle())
         pipe.execute()
 

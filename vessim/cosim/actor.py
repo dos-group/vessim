@@ -19,10 +19,10 @@ class Actor(ABC):
 
     @abstractmethod
     def p(self, now: datetime) -> float:
-        """Return the power consumption/production of the actor."""
+        """Power consumption/production of the actor to be used in the grid simulation."""
 
     def info(self, now: datetime) -> dict:
-        """Return additional information about the state of the actor."""
+        """Information about the current state of the actor to be used in controllers."""
         return {}
 
     def finalize(self) -> None:
@@ -64,7 +64,10 @@ class ComputingSystem(Actor):
         return self.pue * sum(-pm.measure() for pm in self.power_meters)
 
     def info(self, now: datetime) -> dict:
-        return {pm.name: -pm.measure() for pm in self.power_meters}
+        return {
+            "p": self.p(now),
+            "power_meters": {pm.name: -pm.measure() for pm in self.power_meters},
+        }
 
     def finalize(self) -> None:
         for power_meter in self.power_meters:
@@ -84,6 +87,11 @@ class Generator(Actor):  # TODO signal should return next step
 
     def p(self, now: datetime) -> float:
         return self.signal.at(now)
+
+    def info(self, now: datetime) -> dict:
+        return {
+            "p": self.p(now),
+        }
 
 
 class ActorSim(mosaik_api.Simulator):

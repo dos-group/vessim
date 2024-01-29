@@ -1,7 +1,11 @@
 from __future__ import annotations
+
+from typing import Optional
+
 from _data import load_carbon_data, load_solar_data
 from basic_example import SIM_START, DURATION
 from vessim import HistoricalSignal
+from vessim._util import Clock
 from vessim.cosim import (
     ComputingSystem,
     Generator,
@@ -60,7 +64,11 @@ class CarbonAwareController(Controller):
         self.battery = battery
         self.policy = policy
 
-    def step(self, time: int, p_delta: float, actors: dict):
+        self.microgrid: Optional["Microgrid"] = None
+        self.clock: Optional[Clock] = None
+        self.grid_signals: Optional[dict] = None
+
+    def step(self, time: int, p_delta: float, actor_infos: dict):
         """Performs a time step in the model."""
         new_state = cacu_scenario(
             time=time,
@@ -77,6 +85,11 @@ class CarbonAwareController(Controller):
             node.set_power(
                 POWER_MODES[node.name][new_state["nodes_power_mode"][node.name]]
             )
+
+    def start(self, microgrid: Microgrid, clock: Clock, grid_signals: dict) -> None:
+        self.microgrid = microgrid
+        self.clock = clock
+        self.grid_signals = grid_signals
 
 
 def cacu_scenario(

@@ -50,10 +50,7 @@ class Microgrid:
             world.connect(grid_entity, controller_entity, "p_delta")
             for actor_name, actor_entity in actor_names_and_entities:
                 world.connect(
-                    actor_entity, controller_entity, ("p", f"actor.{actor_name}.p")
-                )
-                world.connect(
-                    actor_entity, controller_entity, ("info", f"actor.{actor_name}.info")
+                    actor_entity, controller_entity, ("info", f"actor.{actor_name}")
                 )
 
     def pickle(self) -> bytes:
