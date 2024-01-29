@@ -5,11 +5,8 @@ build:
   tools:
     python: "3.8"
   jobs:
-    post_create_environment:
-      - pip install poetry
-      - poetry config virtualenvs.prefer-active-python true
     post_install:
-      - poetry install --extras "sil docs"
+      - pip install -e ".[sil,docs]"
 
 sphinx:
   configuration: docs/conf.py
