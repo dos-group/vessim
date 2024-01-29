@@ -1,11 +1,11 @@
 import sys
-sys.path.append("../")
 from linear_power_model import LinearPowerModel
 from node_api_server import FastApiServer
 import subprocess
 import multiprocessing
 import psutil
 import re
+
 
 class VirtualNodeApiServer(FastApiServer):
     """This class is a virtual node API server, extending FastApiServer.
@@ -62,15 +62,18 @@ class VirtualNodeApiServer(FastApiServer):
         max_threads = multiprocessing.cpu_count()
         command = ["sysbench", "cpu", "run", f"--threads={max_threads}"]
         if self.power_config:
-            power_mode = (self.power_mode if self.power_mode
-                         else list(self.power_config.keys())[0])
+            power_mode = (
+                self.power_mode if self.power_mode else list(self.power_config.keys())[0]
+            )
             command.append(f"--rate={self.power_config[power_mode]}")
         if run_forever:
             # 1 year
             command.append("--time=31622400")
 
         # Start the new sysbench process
-        self.sysbench = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) # type: ignore
+        self.sysbench = subprocess.Popen(
+            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
 
     def _run_benchmark(self) -> None:
         """Run a sysbench benchmark.
@@ -94,10 +97,10 @@ class VirtualNodeApiServer(FastApiServer):
 
         self.power_config = {
             "high performance": int(max_rate),
-            "normal": int(max_rate * .7),
-            "power-saving": int(max_rate * .5)
+            "normal": int(max_rate * 0.7),
+            "power-saving": int(max_rate * 0.5),
         }
 
 
 if __name__ == "__main__":
-    server = VirtualNodeApiServer()
+    server = VirtualNodeApiServer(port=sys.argv[1])

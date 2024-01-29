@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException
 import uvicorn
 
+
 class FastApiServer(ABC):
     """An abstract base class that represents a FastAPI server.
 
@@ -52,7 +53,7 @@ class FastApiServer(ABC):
             raise HTTPException(
                 status_code=400,
                 detail=f"{power_mode} is not a valid power mode. "
-                       f"Available power modes: {power_modes}"
+                f"Available power modes: {power_modes}",
             )
         self.power_mode = power_mode
 

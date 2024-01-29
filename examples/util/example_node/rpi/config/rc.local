@@ -1,6 +1,0 @@
-#!/bin/sh -e
-
-# echo '1-1' | tee /sys/bus/usb/drivers/usb/unbind    # disable usb
-# tvservice -o                                        # disable hdmi
-
-exit 0
