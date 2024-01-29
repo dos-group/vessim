@@ -1,7 +1,14 @@
 from _data import load_carbon_data, load_solar_data
 from vessim import HistoricalSignal
-from vessim.cosim import Microgrid, Environment, ComputingSystem, Generator, Monitor, \
-    MockPowerMeter, SimpleBattery
+from vessim.cosim import (
+    Microgrid,
+    Environment,
+    ComputingSystem,
+    Generator,
+    Monitor,
+    MockPowerMeter,
+    SimpleBattery,
+)
 
 SIM_START = "2020-06-11 00:00:00"
 DURATION = 3600 * 24 * 2  # two days
@@ -14,10 +21,9 @@ def main(result_csv: str):
     monitor = Monitor()  # stores simulation result on each step
     microgrid = Microgrid(
         actors=[
-            ComputingSystem(power_meters=[
-                MockPowerMeter(p=2.194),
-                MockPowerMeter(p=7.6)
-            ]),
+            ComputingSystem(
+                power_meters=[MockPowerMeter(p=2.194), MockPowerMeter(p=7.6)]
+            ),
             Generator(signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5))),
         ],
         controllers=[monitor],
