@@ -72,8 +72,8 @@ class Monitor(Controller):
     def add_monitor_fn(self, fn: Callable[[float], dict[str, Any]]):
         self.custom_monitor_fns.append(fn)
 
-    def step(self, time: int, p_delta: float, actor_infos: dict) -> None:
-        self.monitor(time, p_delta, actor_infos)
+    def step(self, time: int, p_delta: float, actor_states: dict) -> None:
+        self.monitor(time, p_delta, actor_states)
 
     def monitor(self, time: int, p_delta: float, actors: dict) -> None:
         log_entry = dict(
@@ -133,7 +133,7 @@ class ControllerSim(mosaik_api.Simulator):
         try:
             self.controller.step(time, *_parse_controller_inputs(inputs[self.eid]))
         except KeyError:
-            self.controller.step(time, p_delta=0, actor_infos={})
+            self.controller.step(time, p_delta=0, actor_states={})
         return time + self.step_size
 
     def get_data(self, outputs):

@@ -19,10 +19,10 @@ class Actor(ABC):
 
     @abstractmethod
     def p(self, now: datetime) -> float:
-        """Power consumption/production of the actor to be used in the grid simulation."""
+        """Current power consumption/production to be used in the grid simulation."""
 
-    def info(self, now: datetime) -> dict:
-        """Information about the current state of the actor to be used in controllers."""
+    def state(self, now: datetime) -> dict:
+        """Current state of the actor to be used in controllers."""
         return {}
 
     def finalize(self) -> None:
@@ -63,7 +63,7 @@ class ComputingSystem(Actor):
     def p(self, now: datetime) -> float:
         return self.pue * sum(-pm.measure() for pm in self.power_meters)
 
-    def info(self, now: datetime) -> dict:
+    def state(self, now: datetime) -> dict:
         return {
             "p": self.p(now),
             "power_meters": {pm.name: -pm.measure() for pm in self.power_meters},
@@ -88,7 +88,7 @@ class Generator(Actor):  # TODO signal should return next step
     def p(self, now: datetime) -> float:
         return self.signal.at(now)
 
-    def info(self, now: datetime) -> dict:
+    def state(self, now: datetime) -> dict:
         return {
             "p": self.p(now),
         }
@@ -101,7 +101,7 @@ class ActorSim(mosaik_api.Simulator):
             "Actor": {
                 "public": True,
                 "params": ["actor"],
-                "attrs": ["p", "info"],
+                "attrs": ["p", "state"],
             },
         },
     }
@@ -113,7 +113,7 @@ class ActorSim(mosaik_api.Simulator):
         self.clock = None
         self.actor = None
         self.p = 0
-        self.info = {}
+        self.state = {}
 
     def init(self, sid, time_resolution=1.0, **sim_params):
         self.step_size = sim_params["step_size"]
@@ -129,8 +129,8 @@ class ActorSim(mosaik_api.Simulator):
     def step(self, time, inputs, max_advance):
         now = self.clock.to_datetime(time)
         self.p = self.actor.p(now)
-        self.info = self.actor.info(now)
+        self.state = self.actor.state(now)
         return time + self.step_size
 
     def get_data(self, outputs):
-        return {self.eid: {"p": self.p, "info": self.info}}
+        return {self.eid: {"p": self.p, "state": self.state}}
