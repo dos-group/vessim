@@ -7,8 +7,9 @@ through software-in-the-loop integration as described in our paper:
 
 This is example experimental and documentation is still in progress.
 """
+from __future__ import annotations
+from typing import Optional
 from datetime import datetime
-from typing import Optional, Dict
 
 import pandas as pd
 from fastapi import FastAPI
@@ -17,10 +18,21 @@ from pydantic import BaseModel
 from controller_example import SIM_START, DURATION, POLICY
 from examples._data import load_carbon_data, load_solar_data
 from vessim import Signal, HistoricalSignal
-from vessim.cosim import Environment, Monitor, Microgrid, ComputingSystem, Generator, \
-    SimpleBattery
-from vessim.sil import SilController, ComputeNode, Broker, get_latest_event, \
-    HttpPowerMeter
+from vessim.cosim import (
+    Environment,
+    Monitor,
+    Microgrid,
+    ComputingSystem,
+    Generator,
+    SimpleBattery,
+)
+from vessim.sil import (
+    SilController,
+    ComputeNode,
+    Broker,
+    get_latest_event,
+    HttpPowerMeter,
+)
 
 RT_FACTOR = 1  # 1 wall-clock second ^= 60 sim seconds
 GCP_ADDRESS = "http://35.198.148.144"
@@ -33,7 +45,7 @@ def main(result_csv: str):
 
     power_meters = [
         HttpPowerMeter(name="gcp", address=GCP_ADDRESS),
-        HttpPowerMeter(name="raspi", address=RASPI_ADDRESS)
+        HttpPowerMeter(name="raspi", address=RASPI_ADDRESS),
     ]
     monitor = Monitor()  # stores simulation result on each step
     carbon_aware_controller = SilController(  # executes software-in-the-loop controller
@@ -68,7 +80,7 @@ def main(result_csv: str):
 def api_routes(
     app: FastAPI,
     broker: Broker,
-    grid_signals: Dict[str, Signal],
+    grid_signals: dict[str, Signal],
 ):
     @app.get("/actors/{actor}/p")
     async def get_solar(actor: str):
@@ -105,18 +117,18 @@ def api_routes(
 
 
 # curl -X PUT -d '{"min_soc": 0.5,"grid_charge": 1}' http://localhost:8000/battery -H 'Content-Type: application/json'
-def battery_min_soc_collector(events: Dict, microgrid: Microgrid, compute_nodes: Dict):
+def battery_min_soc_collector(events: dict, microgrid: Microgrid, compute_nodes: dict):
     print(f"Received battery.min_soc events: {events}")
     microgrid.storage.min_soc = get_latest_event(events)
 
 
-def grid_charge_collector(events: Dict, microgrid: Microgrid, compute_nodes: Dict):
+def grid_charge_collector(events: dict, microgrid: Microgrid, compute_nodes: dict):
     print(f"Received grid_charge events: {events}")
     microgrid.storage_policy.grid_power = get_latest_event(events)
 
 
 # curl -X PUT -d '{"power_mode": "normal"}' http://localhost:8000/nodes/gcp -H 'Content-Type: application/json'
-def node_power_mode_collector(events: Dict, microgrid: Microgrid, compute_nodes: Dict):
+def node_power_mode_collector(events: dict, microgrid: Microgrid, compute_nodes: dict):
     print(f"Received nodes_power_mode events: {events}")
     latest = get_latest_event(events)
     for node_name, power_mode in latest.items():

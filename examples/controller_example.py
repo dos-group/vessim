@@ -1,23 +1,23 @@
-from typing import Dict, List
-
+from __future__ import annotations
 from _data import load_carbon_data, load_solar_data
 from basic_example import SIM_START, DURATION
 from vessim import HistoricalSignal
-from vessim.cosim import ComputingSystem, Generator, Monitor, Controller, Microgrid, \
-    Environment, DefaultStoragePolicy, MockPowerMeter, SimpleBattery
+from vessim.cosim import (
+    ComputingSystem,
+    Generator,
+    Monitor,
+    Controller,
+    Microgrid,
+    Environment,
+    DefaultStoragePolicy,
+    MockPowerMeter,
+    SimpleBattery,
+)
 
 POLICY = DefaultStoragePolicy()
 POWER_MODES = {  # according to paper
-    "mpm0": {
-        "high performance": 2.964,
-        "normal": 2.194,
-        "power-saving": 1.781
-    },
-    "mpm1": {
-        "high performance": 8.8,
-        "normal": 7.6,
-        "power-saving": 6.8
-    }
+    "mpm0": {"high performance": 2.964, "normal": 2.194, "power-saving": 1.781},
+    "mpm1": {"high performance": 8.8, "normal": 7.6, "power-saving": 6.8},
 }
 
 
@@ -27,7 +27,7 @@ def main(result_csv: str):
 
     power_meters = [
         MockPowerMeter(name="mpm0", p=2.194),
-        MockPowerMeter(name="mpm1", p=7.6)
+        MockPowerMeter(name="mpm1", p=7.6),
     ]
     battery = SimpleBattery(capacity=100)
     monitor = Monitor()  # stores simulation result on each step
@@ -60,26 +60,27 @@ class CarbonAwareController(Controller):
         self.battery = battery
         self.policy = policy
 
-    def step(self, time: int, p_delta: float, actors: Dict):
+    def step(self, time: int, p_delta: float, actors: dict):
         """Performs a time step in the model."""
         new_state = cacu_scenario(
             time=time,
             battery_soc=self.battery.soc(),
-            ci=self.grid_signals["carbon_intensity"].at(self.clock.to_datetime(time), self.microgrid.zone),
+            ci=self.grid_signals["carbon_intensity"].at(
+                self.clock.to_datetime(time), self.microgrid.zone
+            ),
             node_names=[node.name for node in self.power_meters],
         )
         self.policy.grid_power = new_state["grid_power"]
         self.battery.min_soc = new_state["battery_min_soc"]
         assert {"mpm0", "mpm1"}.issubset({mpm.name for mpm in self.power_meters})
         for node in self.power_meters:
-            node.set_power(POWER_MODES[node.name][new_state["nodes_power_mode"][node.name]])
+            node.set_power(
+                POWER_MODES[node.name][new_state["nodes_power_mode"][node.name]]
+            )
 
 
 def cacu_scenario(
-    time: int,
-    battery_soc: float,
-    ci: float,
-    node_names: List[str]
+    time: int, battery_soc: float, ci: float, node_names: list[str]
 ) -> dict:
     """Calculate the power mode settings for nodes based on a scenario.
 
@@ -106,16 +107,16 @@ def cacu_scenario(
     new_state = {}
     time_of_day = time % (3600 * 24)
     if 11 * 3600 <= time_of_day < 24 * 3600 and battery_soc >= 0.6:
-        new_state["battery_min_soc"] = .6
+        new_state["battery_min_soc"] = 0.6
     else:
-        new_state["battery_min_soc"] = .3
+        new_state["battery_min_soc"] = 0.3
 
-    new_state["grid_power"] = 20 if ci <= 200 and battery_soc < .6 else 0
+    new_state["grid_power"] = 20 if ci <= 200 and battery_soc < 0.6 else 0
     new_state["nodes_power_mode"] = {}
     for node_name in node_names:
-        if ci <= 200 or battery_soc > .8:
+        if ci <= 200 or battery_soc > 0.8:
             new_state["nodes_power_mode"][node_name] = "high performance"
-        elif ci >= 250 and battery_soc < .6:
+        elif ci >= 250 and battery_soc < 0.6:
             new_state["nodes_power_mode"][node_name] = "power-saving"
         else:
             new_state["nodes_power_mode"][node_name] = "normal"

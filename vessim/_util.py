@@ -1,6 +1,7 @@
+from __future__ import annotations
 import json
 from datetime import datetime, timedelta
-from typing import Union, Dict, Any
+from typing import Any, Union
 
 import pandas as pd
 import requests
@@ -10,7 +11,7 @@ PandasObject = Union[pd.Series, pd.DataFrame]
 
 
 class Clock:
-    def __init__(self, sim_start: Union[str, datetime]):
+    def __init__(self, sim_start: str | datetime):
         self.sim_start = pd.to_datetime(sim_start)
 
     def to_datetime(self, simtime: int) -> datetime:
@@ -50,7 +51,7 @@ class HttpClient:
         data = response.json()  # assuming the response data is in JSON format
         return data
 
-    def put(self, route: str, data: Dict[str, Any] = {}) -> None:
+    def put(self, route: str, data: dict[str, Any] = {}) -> None:
         """Sends a PUT request to the server to update data.
 
         Args:

@@ -1,7 +1,8 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from datetime import datetime
 from itertools import count
-from typing import Dict, List, Optional
+from typing import Optional
 
 import mosaik_api  # type: ignore
 
@@ -20,7 +21,7 @@ class Actor(ABC):
     def p(self, now: datetime) -> float:
         """Return the power consumption/production of the actor."""
 
-    def info(self, now: datetime) -> Dict:
+    def info(self, now: datetime) -> dict:
         """Return additional information about the state of the actor."""
         return {}
 
@@ -43,11 +44,12 @@ class ComputingSystem(Actor):
         power_meters: list of PowerMeters that constitute the computing system's demand.
         pue: The power usage effectiveness of the system.
     """
+
     _ids = count(0)
 
     def __init__(
         self,
-        power_meters: List[PowerMeter],
+        power_meters: list[PowerMeter],
         name: Optional[str] = None,
         step_size: Optional[int] = None,
         pue: float = 1,
@@ -61,7 +63,7 @@ class ComputingSystem(Actor):
     def p(self, now: datetime) -> float:
         return self.pue * sum(-pm.measure() for pm in self.power_meters)
 
-    def info(self, now: datetime) -> Dict:
+    def info(self, now: datetime) -> dict:
         return {pm.name: -pm.measure() for pm in self.power_meters}
 
     def finalize(self) -> None:
@@ -73,10 +75,7 @@ class Generator(Actor):  # TODO signal should return next step
     _ids = count(0)
 
     def __init__(
-        self,
-        signal: Signal,
-        step_size: Optional[int] = None,
-        name: Optional[str] = None
+        self, signal: Signal, step_size: Optional[int] = None, name: Optional[str] = None
     ):
         if name is None:
             name = f"Generator-{next(self._ids)}"

@@ -1,6 +1,7 @@
+from __future__ import annotations
 import pickle
 from copy import copy
-from typing import List, Optional, Dict, Union, Literal
+from typing import Literal, Optional
 
 import mosaik  # type: ignore
 
@@ -12,8 +13,8 @@ from vessim.cosim import Actor, Controller, Storage, StoragePolicy
 class Microgrid:
     def __init__(
         self,
-        actors: Optional[List[Actor]] = None,
-        controllers: Optional[List[Controller]] = None,
+        actors: Optional[list[Actor]] = None,
+        controllers: Optional[list[Controller]] = None,
         storage: Optional[Storage] = None,
         storage_policy: Optional[StoragePolicy] = None,
         zone: Optional[str] = None,
@@ -27,7 +28,7 @@ class Microgrid:
         self.step_size = step_size
 
     def initialize(
-        self, world: mosaik.World, clock: Clock, grid_signals: Dict[str, Signal]
+        self, world: mosaik.World, clock: Clock, grid_signals: dict[str, Signal]
     ):
         """Create co-simulation entities and connect them to world."""
         grid_sim = world.start("Grid")
@@ -42,7 +43,7 @@ class Microgrid:
             actor_names_and_entities.append((actor.name, actor_entity))
 
         for controller in self.controllers:
-            controller.init(self, clock, grid_signals)
+            controller.start(self, clock, grid_signals)
             step_size = controller.step_size if controller.step_size else self.step_size
             controller_sim = world.start("Controller", step_size=step_size)
             controller_entity = controller_sim.Controller(controller=controller)
@@ -86,7 +87,7 @@ class Environment:
         self.clock = Clock(sim_start)
         self.microgrids = []
         self.grid_signals = {}
-        self.world = mosaik.World(self.COSIM_CONFIG)
+        self.world = mosaik.World(self.COSIM_CONFIG) # type: ignore
 
     def add_microgrid(self, microgrid: Microgrid):
         self.microgrids.append(microgrid)
@@ -100,7 +101,7 @@ class Environment:
         self,
         until: Optional[int] = None,
         rt_factor: Optional[float] = None,
-        print_progress: Union[bool, Literal["individual"]] = True,
+        print_progress: bool | Literal["individual"] = True,
     ):
         try:
             for microgrid in self.microgrids:

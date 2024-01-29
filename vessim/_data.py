@@ -1,15 +1,16 @@
+from __future__ import annotations
 import os
 import urllib.request
 from datetime import timedelta
 from pathlib import Path
-from typing import Optional, List, Dict
+from typing import Optional
 from zipfile import ZipFile
 
 import pandas as pd
 
 from vessim._util import PandasObject
 
-VESSIM_DATASETS: Dict[str, Dict[str, str]] = {
+VESSIM_DATASETS: dict[str, dict[str, str]] = {
     "solcast2022_germany": {
         "actual": "solcast2022_germany_actual.csv",
         "forecast": "solcast2022_germany_forecast.csv",
@@ -25,7 +26,7 @@ VESSIM_DATASETS: Dict[str, Dict[str, str]] = {
 }
 
 
-def load_dataset(dataset: str, dir_path: Path, params: Optional[Dict] = None) -> Dict:
+def load_dataset(dataset: str, dir_path: Path, params: Optional[dict] = None) -> dict:
     """Downloads a dataset from the vessim repository, unpacks it and loads data."""
     if dataset not in VESSIM_DATASETS:
         raise ValueError(f"Dataset '{dataset}' not found. Available datasets are: "
@@ -86,13 +87,13 @@ def load_dataset(dataset: str, dir_path: Path, params: Optional[Dict] = None) ->
     )
 
 
-def _get_parameter(params: Optional[Dict], key: str, default):
+def _get_parameter(params: Optional[dict], key: str, default):
     if params is None:
         return default
     return params.get(key, default)
 
 
-def _check_files(files: List[str], base_dir: Path) -> bool:
+def _check_files(files: list[str], base_dir: Path) -> bool:
     """Check whether files are present in specified base directory."""
     for file in files:
         path = os.path.join(base_dir, file)
@@ -102,7 +103,7 @@ def _check_files(files: List[str], base_dir: Path) -> bool:
 
 
 def _read_data_from_csv(
-    path: Path, index_cols: List[int], scale: float = 1.0
+    path: Path, index_cols: list[int], scale: float = 1.0
 ) -> PandasObject:
     """Retrieves a dataframe from a csv file and transforms it."""
     df = convert_to_datetime(pd.read_csv(path, index_col=index_cols))
