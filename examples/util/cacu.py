@@ -1,7 +1,8 @@
+from __future__ import annotations
+from typing import Optional
 import threading
 import time
 from threading import Thread
-from typing import Optional, Callable
 
 from examples.controller_example import cacu_scenario
 from vessim._util import HttpClient
@@ -22,7 +23,7 @@ class LoopThread(threading.Thread):
         exc: Variable that is set to propagate an exception to the main thread.
     """
 
-    def __init__(self, target_function: Callable[[], None], interval: float):
+    def __init__(self, target_function: callable[[], None], interval: float):
         super().__init__()
         self.target_function = target_function
         self.stop_signal = threading.Event()

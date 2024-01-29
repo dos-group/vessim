@@ -1,17 +1,8 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime
-from typing import (
-    DefaultDict,
-    Dict,
-    List,
-    Callable,
-    Any,
-    Tuple,
-    TYPE_CHECKING,
-    MutableMapping,
-    Optional,
-)
+from typing import Any, TYPE_CHECKING, MutableMapping, Optional, Callable
 
 import mosaik_api  # type: ignore
 import pandas as pd
@@ -27,19 +18,19 @@ class Controller(ABC):
         self.step_size = step_size
         self.microgrid: Optional["Microgrid"] = None
         self.clock: Optional[Clock] = None
-        self.grid_signals: Optional[Dict] = None
+        self.grid_signals: Optional[dict] = None
 
-    def init(self, microgrid: "Microgrid", clock: Clock, grid_signals: Dict):
+    def start(self, microgrid: "Microgrid", clock: Clock, grid_signals: dict):
         self.microgrid = microgrid
         self.clock = clock
         self.grid_signals = grid_signals
         self.custom_init()
 
     def custom_init(self):
-        """TODO document."""
+        pass  # TODO document
 
     @abstractmethod
-    def step(self, time: int, p_delta: float, actors: Dict) -> None:
+    def step(self, time: int, p_delta: float, actors: dict) -> None:
         pass  # TODO document
 
     def finalize(self) -> None:
@@ -56,8 +47,8 @@ class Monitor(Controller):
         super().__init__(step_size=step_size)
         self.monitor_storage = monitor_storage
         self.monitor_grid_signals = monitor_grid_signals
-        self.monitor_log: Dict[datetime, Dict] = defaultdict(dict)
-        self.custom_monitor_fns: List[Callable] = []
+        self.monitor_log: dict[datetime, dict] = defaultdict(dict)
+        self.custom_monitor_fns: list[Callable] = []
 
     def custom_init(self):
         if self.monitor_storage:
@@ -70,13 +61,13 @@ class Monitor(Controller):
 
                 self.add_monitor_fn(fn)
 
-    def add_monitor_fn(self, fn: Callable[[float], Dict[str, Any]]):
+    def add_monitor_fn(self, fn: Callable[[float], dict[str, Any]]):
         self.custom_monitor_fns.append(fn)
 
-    def step(self, time: int, p_delta: float, actors: Dict) -> None:
+    def step(self, time: int, p_delta: float, actors: dict) -> None:
         self.monitor(time, p_delta, actors)
 
-    def monitor(self, time: int, p_delta: float, actors: Dict) -> None:
+    def monitor(self, time: int, p_delta: float, actors: dict) -> None:
         log_entry = dict(
             p_delta=p_delta,
             actors=actors,
@@ -92,7 +83,7 @@ class Monitor(Controller):
 
 
 def flatten_dict(d: MutableMapping, parent_key: str = "") -> MutableMapping:
-    items: List[Tuple[str, Any]] = []
+    items: list[tuple[str, Any]] = []
     for k, v in d.items():
         new_key = parent_key + "." + k if parent_key else k
         if isinstance(v, MutableMapping):
@@ -145,18 +136,18 @@ class ControllerSim(mosaik_api.Simulator):
         self.controller.finalize()
 
 
-def _parse_controller_inputs(inputs: Dict[str, Dict[str, Any]]) -> Tuple[float, Dict]:
+def _parse_controller_inputs(inputs: dict[str, dict[str, Any]]) -> tuple[float, dict]:
     try:
         p_delta = _get_val(inputs, "p_delta")
     except KeyError:
         p_delta = None  # in case there has not yet been any power reported by actors
     actor_keys = [k for k in inputs.keys() if k.startswith("actor")]
-    actors: DefaultDict[str, Dict[str, Any]] = defaultdict(dict)
+    actors: defaultdict[str, dict[str, Any]] = defaultdict(dict)
     for k in actor_keys:
         _, actor_name, attr = k.split(".")
         actors[actor_name][attr] = _get_val(inputs, k)
     return p_delta, dict(actors)
 
 
-def _get_val(inputs: Dict, key: str) -> Any:
+def _get_val(inputs: dict, key: str) -> Any:
     return list(inputs[key].values())[0]
