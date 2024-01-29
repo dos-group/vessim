@@ -1,5 +1,5 @@
 """A simulator for carbon-aware applications and systems."""
-import vessim.cosim
+from vessim import cosim
 from vessim._signal import Signal, HistoricalSignal
 
 __all__ = [

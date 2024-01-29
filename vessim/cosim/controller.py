@@ -62,7 +62,10 @@ class Monitor(Controller):
     def start(self, microgrid: "Microgrid", clock: Clock, grid_signals: dict) -> None:
         self.clock = clock
         if self.monitor_storage:
+            if microgrid.storage is None:
+                raise ValueError("Cannot monitor storage if no storage is present.")
             self.add_monitor_fn(lambda _: {"storage": microgrid.storage.state()})
+
         if self.monitor_grid_signals:
             for signal_name, signal_api in grid_signals.items():
                 def fn(time):

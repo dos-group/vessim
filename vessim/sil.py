@@ -115,16 +115,16 @@ class SilController(Controller):
         self.redis_docker_container = _redis_docker_container()
         self.redis_db = redis.Redis()
 
-        self.microgrid: Microgrid
+        self.microgrid = None
         self.clock = None
         self.grid_signals = None
-        self.api_server_process = None
 
     def start(self, microgrid: "Microgrid", clock: Clock, grid_signals: dict) -> None:
         self.microgrid = microgrid
         self.clock = clock
         self.grid_signals = grid_signals
-        self.api_server_process = multiprocessing.Process(
+
+        multiprocessing.Process(
             target=_serve_api,
             name="Vessim API",
             daemon=True,
@@ -134,10 +134,13 @@ class SilController(Controller):
                 api_port=self.api_port,
                 grid_signals=self.grid_signals,
             ),
-        )
-        self.api_server_process.start()
+        ).start()
         logger.info(f"Started SiL Controller API server process 'Vessim API'")
-        Thread(target=self._collect_set_requests_loop, daemon=True).start()
+
+        Thread(
+            target=self._collect_set_requests_loop,
+            daemon=True
+        ).start()
 
     def step(self, time: int, p_delta: float, actor_infos: dict) -> None:
         pipe = self.redis_db.pipeline()
