@@ -7,7 +7,7 @@ build:
   jobs:
     post_create_environment:
       - pip install poetry
-      - poetry config virtualenvs.create false
+      - poetry config virtualenvs.prefer-active-python true
     post_install:
       - poetry install --extras "sil docs"
 
