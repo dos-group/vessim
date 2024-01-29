@@ -36,7 +36,7 @@ jobs:
         echo "JUPYTER_PLATFORM_DIRS=${JUPYTER_PLATFORM_DIRS}" >> $GITHUB_ENV  
 
     - name: Install dependencies
-      run: poetry install --extras "sil dev analysis"
+      run: poetry install --extras "sil dev"
 
     - name: Run type checker
       run: poetry run mypy vessim

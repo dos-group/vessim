@@ -52,11 +52,6 @@ docker = {version = "*", optional = true}
 redis = {version = "*", optional = true}
 uvicorn = {version = "*", optional = true}
 
-# Optional dependencies (analysis)
-jupyterlab = {version = "*", optional = true}
-matplotlib = {version = "*", optional = true}
-seaborn = {version = "0.12.2", optional = true}
-
 # Optional dependencies (development)
 pytest = {version = "*", optional = true}
 mypy = {version = "*", optional = true}
@@ -72,7 +67,6 @@ sphinx-copybutton = {version = "*", optional = true}
 
 [tool.poetry.extras]
 sil = ["requests", "fastapi", "docker", "redis", "uvicorn"]
-analysis = ["jupyterlab", "matplotlib", "seaborn"]
 dev = ["pytest", "mypy", "types-psutil", "pandas-stubs", "types-requests", "black", "ruff"]
 docs = ["furo", "sphinx-copybutton"]
 
