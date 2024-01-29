@@ -58,10 +58,10 @@ For complex scenarios that involve custom co-simulation actors we recommend clon
 Our team at the [Distributed and Operating Systems](https://distributedsystems.berlin/) group at TU Berlin is actively working to improve Vessim.
 We are currently working on the following aspects and features:
 
-- **Better documentation**: You can find the current WiP documentation [here](https://vessim.readthedocs.io/en/latest/)
-- **Prodiving access to relevant datasets**: We're currently collectig relevant datasets for carbon-aware test cases such as solar production or carbon intensity traces to simplify the setup of test cases.
-- **Software-in-the-loop (SiL) capabilities**: The current SiL implementation is focussed around our exemplary use case presented in our [journal paper](https://doi.org/10.1002/spe.3275). We are working on a SiL interface for users to implement custom interfaces for the communication of computing and energy systems.
-- **Integrating the SAM**: NREL's [System Advisor Model (SAM)](https://sam.nrel.gov/) will soon be available as a subsystem in Vessim.
+- **Website**: You can find the current WiP documentation [here](https://vessim.readthedocs.io/en/latest/)
+- **Datasets**: We're currently collectig relevant datasets for carbon-aware test cases such as solar production or carbon intensity traces to simplify the setup of test cases.
+- **Software-in-the-loop (SiL) examples**: We are working on more examples to explain our SiL interface.
+- **System Advisor Model (SAM)**: We're working on making NREL's [SAM](https://sam.nrel.gov/) available as a subsystem in Vessim.
 
 
 ## Publications
@@ -71,7 +71,7 @@ If you use Vessim in your research, please cite our vision paper:
 - Philipp Wiesner, Ilja Behnke and Odej Kao. "[A Testbed for Carbon-Aware Applications and Systems](https://arxiv.org/pdf/2306.09774.pdf)" arXiv:2302.08681 [cs.DC]. 2023.
 <details>
     <summary>Bibtex</summary>
-    ```
+    
     @misc{wiesner2023vessim,
         title={A Testbed for Carbon-Aware Applications and Systems}, 
         author={Wiesner, Philipp and Behnke, Ilja and Kao, Odej},
@@ -80,14 +80,13 @@ If you use Vessim in your research, please cite our vision paper:
         archivePrefix={arXiv},
         primaryClass={cs.DC}
     }
-    ```
 </details>
 
 Or our journal paper on software-in-the-loop similation for carbon-aware applications:
 - Philipp Wiesner, Marvin Steinke, Henrik Nickel, Yazan Kitana, and Odej Kao. "[Software-in-the-Loop Simulation for Developing and Testing Carbon-Aware Applications](https://doi.org/10.1002/spe.3275)" Software: Practice and Experience, 53 (12). 2023.
 <details>
     <summary>Bibtex</summary>
-    ```
+    
     @article{wiesner2023sil,
         author = {Wiesner, Philipp and Steinke, Marvin and Nickel, Henrik and Kitana, Yazan and Kao, Odej},
         title = {Software-in-the-loop simulation for developing and testing carbon-aware applications},
@@ -98,5 +97,5 @@ Or our journal paper on software-in-the-loop similation for carbon-aware applica
         pages = {2362-2376},
         doi = {https://doi.org/10.1002/spe.3275}
     }
-    ```
+    
 </details>
