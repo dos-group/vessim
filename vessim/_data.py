@@ -23,6 +23,12 @@ VESSIM_DATASETS: dict[str, dict[str, str]] = {
         "fill_method": "bfill",
         "url": "https://raw.githubusercontent.com/dos-group/vessim/main/datasets/solcast2022_global.zip",
     },
+    "watttime2023_casio-north": {
+        "actual": "watttime2023_casio-north_actual.csv",
+        "forecast": "watttime2023_casio-north_forecast.csv",
+        "fill_method": "ffill",
+        "url": "https://raw.githubusercontent.com/dos-group/vessim/main/datasets/watttime2023_casio-north.zip",
+    },
 }
 
 
