@@ -4,6 +4,7 @@ This module is still experimental, the public API might change at any time.
 """
 
 from __future__ import annotations
+
 import json
 import multiprocessing
 import pickle
@@ -12,7 +13,6 @@ from datetime import datetime, timedelta
 from threading import Thread
 from time import sleep
 from typing import Any, Optional, Callable
-from loguru import logger
 
 import docker  # type: ignore
 import pandas as pd
@@ -21,11 +21,12 @@ import requests
 import uvicorn
 from docker.models.containers import Container  # type: ignore
 from fastapi import FastAPI
+from loguru import logger
 from requests.auth import HTTPBasicAuth
 
+from vessim.cosim import Controller, Microgrid
 from vessim.signal import Signal
 from vessim.util import DatetimeLike, Clock
-from vessim.cosim import Controller, Microgrid
 
 
 class ComputeNode:  # TODO we could soon replace this agent-based implementation with k8s

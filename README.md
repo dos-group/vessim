@@ -12,8 +12,12 @@ Vessim is a versatile **co-simulation testbed for carbon-aware applications and 
 Vessim allows you to simulate energy systems next to real or simulated computing systems:
 
 ```python
+from vessim.actor import ComputingSystem, Generator
+from vessim.controller import Monitor
+from vessim.cosim import Environment, Microgrid
+from vessim.power_meter import MockPowerMeter
 from vessim.signal import HistoricalSignal
-from vessim.cosim import Environment, Monitor, Microgrid, ComputingSystem, MockPowerMeter, Generator, SimpleBattery
+from vessim.storage import SimpleBattery
 
 environment = Environment(sim_start="15-06-2022")
 environment.add_grid_signal("carbon_intensity", HistoricalSignal.from_dataset("carbon_data1"))
@@ -32,7 +36,7 @@ microgrid = Microgrid(
 environment.add_microgrid(microgrid)
 
 environment.run(until=24 * 3600)  # 24h
-monitor.to_csv(result_csv)
+monitor.to_csv("result.csv")
 ```
 
 

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from datetime import timedelta, datetime
 from pathlib import Path
@@ -42,7 +43,7 @@ class HistoricalSignal(Signal):
         elif isinstance(forecast, pd.DataFrame):
             forecast = convert_to_datetime(forecast)
             self._forecast = {
-                str(col): forecast[col].dropna() for col in forecast.columns # type: ignore
+                str(col): forecast[col].dropna() for col in forecast.columns  # type: ignore
             }
         elif forecast is None:
             self._forecast = {

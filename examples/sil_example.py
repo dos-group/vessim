@@ -8,8 +8,9 @@ through software-in-the-loop integration as described in our paper:
 This is example experimental and documentation is still in progress.
 """
 from __future__ import annotations
-from typing import Optional
+
 from datetime import datetime
+from typing import Optional
 
 import pandas as pd
 from fastapi import FastAPI
@@ -17,22 +18,13 @@ from pydantic import BaseModel
 
 from controller_example import SIM_START, DURATION, POLICY
 from examples._data import load_carbon_data, load_solar_data
+from vessim.actor import ComputingSystem, Generator
+from vessim.controller import Monitor
+from vessim.cosim import Environment, Microgrid
+from vessim.power_meter import HttpPowerMeter
 from vessim.signal import Signal, HistoricalSignal
-from vessim.cosim import (
-    Environment,
-    Monitor,
-    Microgrid,
-    ComputingSystem,
-    Generator,
-    SimpleBattery,
-    HttpPowerMeter,
-)
-from vessim.sil import (
-    SilController,
-    ComputeNode,
-    Broker,
-    get_latest_event,
-)
+from vessim.sil import SilController, ComputeNode, Broker, get_latest_event
+from vessim.storage import SimpleBattery
 
 RT_FACTOR = 1  # 1 wall-clock second ^= 60 sim seconds
 GCP_ADDRESS = "http://35.198.148.144"

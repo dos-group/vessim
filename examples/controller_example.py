@@ -4,19 +4,13 @@ from typing import Optional
 
 from _data import load_carbon_data, load_solar_data
 from basic_example import SIM_START, DURATION
+from vessim.actor import ComputingSystem, Generator
+from vessim.controller import Monitor
+from vessim.cosim import Controller, Microgrid, Environment, DefaultStoragePolicy
+from vessim.power_meter import MockPowerMeter
 from vessim.signal import HistoricalSignal
+from vessim.storage import SimpleBattery
 from vessim.util import Clock
-from vessim.cosim import (
-    ComputingSystem,
-    Generator,
-    Monitor,
-    Controller,
-    Microgrid,
-    Environment,
-    DefaultStoragePolicy,
-    MockPowerMeter,
-    SimpleBattery,
-)
 
 POLICY = DefaultStoragePolicy()
 POWER_MODES = {  # according to paper

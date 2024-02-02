@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from datetime import datetime
 from itertools import count
@@ -6,8 +7,8 @@ from typing import Optional
 
 import mosaik_api  # type: ignore
 
+from vessim.power_meter import PowerMeter
 from vessim.signal import Signal
-from vessim.cosim._power_meter import PowerMeter
 
 
 class Actor(ABC):
