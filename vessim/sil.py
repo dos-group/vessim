@@ -26,7 +26,7 @@ from requests.auth import HTTPBasicAuth
 from vessim.signal import Signal
 from vessim.util import DatetimeLike, Clock
 from vessim.cosim import Controller
-from vessim.cosim._environment import Microgrid
+from vessim.cosim import Controller, Microgrid
 
 
 class ComputeNode:  # TODO we could soon replace this agent-based implementation with k8s
