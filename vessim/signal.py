@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from datetime import timedelta, datetime
 from pathlib import Path
@@ -7,7 +8,7 @@ from typing import Any, Optional, Literal
 import pandas as pd
 
 from vessim._data import convert_to_datetime, load_dataset
-from vessim._util import DatetimeLike
+from vessim.util import DatetimeLike
 
 
 class Signal(ABC):
@@ -42,7 +43,7 @@ class HistoricalSignal(Signal):
         elif isinstance(forecast, pd.DataFrame):
             forecast = convert_to_datetime(forecast)
             self._forecast = {
-                str(col): forecast[col].dropna() for col in forecast.columns # type: ignore
+                str(col): forecast[col].dropna() for col in forecast.columns  # type: ignore
             }
         elif forecast is None:
             self._forecast = {

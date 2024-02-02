@@ -4,16 +4,15 @@ This module is still experimental, the public API might change at any time.
 """
 
 from __future__ import annotations
+
 import json
 import multiprocessing
 import pickle
-import time
 from collections import defaultdict
 from datetime import datetime, timedelta
 from threading import Thread
 from time import sleep
 from typing import Any, Optional, Callable
-from loguru import logger
 
 import docker  # type: ignore
 import pandas as pd
@@ -22,12 +21,12 @@ import requests
 import uvicorn
 from docker.models.containers import Container  # type: ignore
 from fastapi import FastAPI
+from loguru import logger
 from requests.auth import HTTPBasicAuth
 
-from vessim._signal import Signal
-from vessim._util import HttpClient, DatetimeLike
-from vessim.cosim import Controller, PowerMeter
-from vessim.cosim.environment import Microgrid
+from vessim.cosim import Controller, Microgrid
+from vessim.signal import Signal
+from vessim.util import DatetimeLike, Clock
 
 
 class ComputeNode:  # TODO we could soon replace this agent-based implementation with k8s
@@ -69,13 +68,13 @@ class Broker:
         self.redis_db = redis.Redis()
 
     def get_microgrid(self) -> Microgrid:
-        return pickle.loads(self.redis_db.get("microgrid"))
+        return pickle.loads(self.redis_db.get("microgrid"))  # type: ignore
 
     def get_actor(self, actor: str) -> dict:
-        return json.loads(self.redis_db.get("actors"))[actor]
+        return json.loads(self.redis_db.get("actors"))[actor]  # type: ignore
 
     def get_grid_power(self) -> float:
-        return float(self.redis_db.get("p_delta"))
+        return float(self.redis_db.get("p_delta"))  # type: ignore
 
     def set_event(self, category: str, value: Any) -> None:
         self.redis_db.lpush(
@@ -115,16 +114,18 @@ class SilController(Controller):
         self.redis_docker_container = _redis_docker_container()
         self.redis_db = redis.Redis()
 
-        self.microgrid: Microgrid
-        self.clock = None
-        self.grid_signals = None
-        self.api_server_process = None
+        self.microgrid: Optional[Microgrid] = None
+        self.clock: Optional[Clock] = None
+        self.grid_signals: Optional[dict] = None
 
-    def custom_init(self):
-        api_name = "Vessim API"
-        self.api_server_process = multiprocessing.Process(
+    def start(self, microgrid: Microgrid, clock: Clock, grid_signals: dict) -> None:
+        self.microgrid = microgrid
+        self.clock = clock
+        self.grid_signals = grid_signals
+
+        multiprocessing.Process(
             target=_serve_api,
-            name=api_name,
+            name="Vessim API",
             daemon=True,
             kwargs=dict(
                 api_routes=self.api_routes,
@@ -132,16 +133,17 @@ class SilController(Controller):
                 api_port=self.api_port,
                 grid_signals=self.grid_signals,
             ),
-        )
-        self.api_server_process.start()
-        logger.info(f"Started SiL Controller API server process '{api_name}'")
+        ).start()
+        logger.info("Started SiL Controller API server process 'Vessim API'")
+
         Thread(target=self._collect_set_requests_loop, daemon=True).start()
 
-    def step(self, time: int, p_delta: float, actors: dict) -> None:
+    def step(self, time: int, p_delta: float, actor_infos: dict) -> None:
         pipe = self.redis_db.pipeline()
         pipe.set("time", time)
         pipe.set("p_delta", p_delta)
-        pipe.set("actors", json.dumps(actors))
+        pipe.set("actors", json.dumps(actor_infos))
+        assert self.microgrid is not None
         pipe.set("microgrid", self.microgrid.pickle())
         pipe.execute()
 
@@ -153,8 +155,9 @@ class SilController(Controller):
     def _collect_set_requests_loop(self):
         while True:
             events = self.redis_db.lrange("set_events", start=0, end=-1)
-            if len(events) > 0:
-                events = [pickle.loads(e) for e in events]
+            assert events is not None
+            if len(events) > 0: # type: ignore
+                events = [pickle.loads(e) for e in events] # type: ignore
                 events_by_category = defaultdict(dict)
                 for event in events:
                     events_by_category[event["category"]][event["time"]] = event["value"]
@@ -188,7 +191,7 @@ def _redis_docker_container(
     if docker_client is None:
         try:
             docker_client = docker.from_env()
-        except docker.errors.DockerException as e:
+        except docker.errors.DockerException as e: # type: ignore
             raise RuntimeError("Could not connect to Docker.") from e
     try:
         container = docker_client.containers.run(
@@ -196,7 +199,7 @@ def _redis_docker_container(
             ports={"6379/tcp": port},
             detach=True,  # run in background
         )
-    except docker.errors.APIError as e:
+    except docker.errors.APIError as e: # type: ignore
         if e.status_code == 500 and "port is already allocated" in e.explanation:
             # TODO prompt user to automatically kill container
             raise RuntimeError(
@@ -208,40 +211,16 @@ def _redis_docker_container(
 
     # Check if the container has started
     while True:
-        container_info = docker_client.containers.get(container.name)
-        if container_info.status == "running":
+        container_info = docker_client.containers.get(container.name) # type: ignore
+        if container_info.status == "running": # type: ignore
             break
         sleep(1)
 
-    return container
+    return container # type: ignore
 
 
 def get_latest_event(events: dict[datetime, Any]) -> Any:
     return events[max(events.keys())]
-
-
-class HttpPowerMeter(PowerMeter):
-    def __init__(
-        self,
-        name: str,
-        address: str,
-        port: int = 8000,
-        collect_interval: float = 1,
-    ) -> None:
-        super().__init__(name)
-        self.http_client = HttpClient(f"{address}:{port}")
-        self.collect_interval = collect_interval
-        self._p = 0.0
-        Thread(target=self._collect_loop, daemon=True).start()
-
-    def measure(self) -> float:
-        return self._p
-
-    def _collect_loop(self) -> None:
-        """Gets the power demand every `interval` seconds from the API server."""
-        while True:
-            self._p = float(self.http_client.get("/power")["power"])
-            time.sleep(self.collect_interval)
 
 
 class WatttimeSignal(Signal):
@@ -294,3 +273,54 @@ class WatttimeSignal(Signal):
             f"{self._URL}/login", auth=HTTPBasicAuth(self.username, self.password)
         )
         return rsp.json()["token"]
+
+
+class HttpClient:
+    """Class for making HTTP requests to the Vessim API server.
+
+    Args:
+        server_address: The address of the server to connect to.
+            e.g. http://localhost
+    """
+
+    def __init__(self, server_address: str, timeout: float = 5) -> None:
+        self.server_address = server_address
+        self.timeout = timeout
+
+    def get(self, route: str) -> dict:
+        """Sends a GET request to the server and retrieves data.
+
+        Args:
+            route: The path of the endpoint to send the request to.
+
+        Raises:
+            HTTPError: If response code is != 200.
+
+        Returns:
+            A dictionary containing the response.
+        """
+        response = requests.get(self.server_address + route, timeout=self.timeout)
+        if response.status_code != 200:
+            response.raise_for_status()
+        data = response.json()  # assuming the response data is in JSON format
+        return data
+
+    def put(self, route: str, data: dict[str, Any] = {}) -> None:
+        """Sends a PUT request to the server to update data.
+
+        Args:
+            route: The path of the endpoint to send the request to.
+            data: The data to be updated, in dictionary format.
+
+        Raises:
+            HTTPError: If response code is != 200.
+        """
+        headers = {"Content-type": "application/json"}
+        response = requests.put(
+            self.server_address + route,
+            data=json.dumps(data),
+            headers=headers,
+            timeout=self.timeout,
+        )
+        if response.status_code != 200:
+            response.raise_for_status()

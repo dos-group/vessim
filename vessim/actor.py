@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from datetime import datetime
 from itertools import count
@@ -6,8 +7,8 @@ from typing import Optional
 
 import mosaik_api  # type: ignore
 
-from vessim._signal import Signal
-from vessim.cosim.power_meter import PowerMeter
+from vessim.power_meter import PowerMeter
+from vessim.signal import Signal
 
 
 class Actor(ABC):
@@ -19,10 +20,10 @@ class Actor(ABC):
 
     @abstractmethod
     def p(self, now: datetime) -> float:
-        """Return the power consumption/production of the actor."""
+        """Current power consumption/production to be used in the grid simulation."""
 
-    def info(self, now: datetime) -> dict:
-        """Return additional information about the state of the actor."""
+    def state(self, now: datetime) -> dict:
+        """Current state of the actor to be used in controllers."""
         return {}
 
     def finalize(self) -> None:
@@ -63,8 +64,11 @@ class ComputingSystem(Actor):
     def p(self, now: datetime) -> float:
         return self.pue * sum(-pm.measure() for pm in self.power_meters)
 
-    def info(self, now: datetime) -> dict:
-        return {pm.name: -pm.measure() for pm in self.power_meters}
+    def state(self, now: datetime) -> dict:
+        return {
+            "p": self.p(now),
+            "power_meters": {pm.name: -pm.measure() for pm in self.power_meters},
+        }
 
     def finalize(self) -> None:
         for power_meter in self.power_meters:
@@ -83,7 +87,14 @@ class Generator(Actor):  # TODO signal should return next step
         self.signal = signal  # TODO make sure that signal is single column?
 
     def p(self, now: datetime) -> float:
-        return self.signal.at(now)
+        data_point = self.signal.at(now)
+        assert data_point is not None
+        return data_point
+
+    def state(self, now: datetime) -> dict:
+        return {
+            "p": self.p(now),
+        }
 
 
 class ActorSim(mosaik_api.Simulator):
@@ -93,7 +104,7 @@ class ActorSim(mosaik_api.Simulator):
             "Actor": {
                 "public": True,
                 "params": ["actor"],
-                "attrs": ["p", "info"],
+                "attrs": ["p", "state"],
             },
         },
     }
@@ -105,7 +116,7 @@ class ActorSim(mosaik_api.Simulator):
         self.clock = None
         self.actor = None
         self.p = 0
-        self.info = {}
+        self.state = {}
 
     def init(self, sid, time_resolution=1.0, **sim_params):
         self.step_size = sim_params["step_size"]
@@ -119,10 +130,12 @@ class ActorSim(mosaik_api.Simulator):
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
+        assert self.clock is not None
         now = self.clock.to_datetime(time)
+        assert self.actor is not None
         self.p = self.actor.p(now)
-        self.info = self.actor.info(now)
+        self.state = self.actor.state(now)
         return time + self.step_size
 
     def get_data(self, outputs):
-        return {self.eid: {"p": self.p, "info": self.info}}
+        return {self.eid: {"p": self.p, "state": self.state}}

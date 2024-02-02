@@ -1,13 +1,17 @@
 from __future__ import annotations
+
 import pickle
 from copy import copy
-from typing import Literal, Optional
+from typing import Optional, Literal
 
 import mosaik  # type: ignore
+import mosaik_api  # type: ignore
 
-from vessim._signal import Signal
-from vessim._util import Clock
-from vessim.cosim import Actor, Controller, Storage, StoragePolicy
+from vessim.actor import Actor
+from vessim.controller import Controller
+from vessim.signal import Signal
+from vessim.storage import Storage, StoragePolicy, DefaultStoragePolicy
+from vessim.util import Clock
 
 
 class Microgrid:
@@ -50,10 +54,7 @@ class Microgrid:
             world.connect(grid_entity, controller_entity, "p_delta")
             for actor_name, actor_entity in actor_names_and_entities:
                 world.connect(
-                    actor_entity, controller_entity, ("p", f"actor.{actor_name}.p")
-                )
-                world.connect(
-                    actor_entity, controller_entity, ("info", f"actor.{actor_name}.info")
+                    actor_entity, controller_entity, ("state", f"actor.{actor_name}")
                 )
 
     def pickle(self) -> bytes:
@@ -75,12 +76,12 @@ class Microgrid:
 class Environment:
     COSIM_CONFIG = {
         "Actor": {
-            "python": "vessim.cosim.actor:ActorSim",
+            "python": "vessim.actor:ActorSim",
         },
         "Controller": {
-            "python": "vessim.cosim.controller:ControllerSim",
+            "python": "vessim.controller:ControllerSim",
         },
-        "Grid": {"python": "vessim.cosim.grid:GridSim"},
+        "Grid": {"python": "vessim.cosim:GridSim"},
     }
 
     def __init__(self, sim_start):
@@ -117,3 +118,47 @@ class Environment:
             for microgrid in self.microgrids:
                 microgrid.finalize()
             raise
+
+
+class GridSim(mosaik_api.Simulator):
+    META = {
+        "type": "event-based",
+        "models": {
+            "Grid": {
+                "public": True,
+                "params": ["storage", "policy"],
+                "attrs": ["p", "p_delta"],
+            },
+        },
+    }
+
+    def __init__(self):
+        super().__init__(self.META)
+        self.eid = "Grid"
+        self.storage = None
+        self.policy = None
+        self.p_delta = 0.0
+        self._last_step_time = 0
+
+    def create(self, num, model, **model_params):
+        assert num == 1, "Only one instance per simulation is supported"
+        self.storage = model_params["storage"]
+        self.policy = model_params["policy"]
+        if self.policy is None:
+            self.policy = DefaultStoragePolicy()
+        return [{"eid": self.eid, "type": model}]
+
+    def step(self, time, inputs, max_advance):
+        duration = time - self._last_step_time
+        self._last_step_time = time
+        if duration == 0:
+            return
+        p_delta = sum(inputs[self.eid]["p"].values())
+        if self.storage is None:
+            self.p_delta = p_delta
+        else:
+            assert self.policy is not None
+            self.p_delta = self.policy.apply(self.storage, p_delta, duration)
+
+    def get_data(self, outputs):
+        return {self.eid: {"p_delta": self.p_delta}}

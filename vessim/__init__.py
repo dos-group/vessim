@@ -1,11 +1,20 @@
 """A simulator for carbon-aware applications and systems."""
-import vessim.cosim
-from vessim._signal import Signal, HistoricalSignal
+from vessim import actor
+from vessim import controller
+from vessim import cosim
+from vessim import power_meter
+from vessim import signal
+from vessim import storage
+from vessim import util
 
 __all__ = [
-    "Signal",
-    "HistoricalSignal",
+    "signal",
     "cosim",
+    "actor",
+    "controller",
+    "storage",
+    "power_meter",
+    "util",
 ]
 
 try:
