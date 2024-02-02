@@ -8,7 +8,8 @@ from typing import Optional
 
 try:
     from vessim.sil import HttpClient
-     _has_sil = True
+
+    _has_sil = True
 except ImportError:
     _has_sil = False
 
@@ -28,7 +29,6 @@ class PowerMeter(ABC):
 
 
 class MockPowerMeter(PowerMeter):
-
     def __init__(self, p: float, name: Optional[str] = None):
         if name is None:
             name = f"MockPowerMeter-{next(self._ids)}"
