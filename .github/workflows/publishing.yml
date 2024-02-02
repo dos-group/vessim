@@ -23,11 +23,11 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: '3.8'
-        cache: 'poetry'
     
     - name: Install poetry
       uses: snok/install-poetry@v1
-    - run: poetry config virtualenvs.prefer-active-python true
+      with:
+        virtualenvs-create: false
         
     - name: Install poetry dynamic version plugin, extracts version number from git tag
       run: |
