@@ -15,19 +15,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     # downloads the repository code to the runner's file system for workflow access
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Fetch all history for all tags and branches
       run: git fetch --prune --unshallow
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.8'
+        cache: 'poetry'
     
     - name: Install poetry
       uses: snok/install-poetry@v1
-      with:
-        virtualenvs-create: false
+    - run: poetry config virtualenvs.prefer-active-python true
         
     - name: Install poetry dynamic version plugin, extracts version number from git tag
       run: |
