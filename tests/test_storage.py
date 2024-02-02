@@ -1,6 +1,6 @@
 import pytest
 
-from vessim.storage import SimpleBattery, DefaultStoragePolicy
+from vessim.cosim import SimpleBattery, DefaultStoragePolicy
 
 
 class TestSimpleBattery:
