@@ -8,10 +8,9 @@ from typing import Optional
 
 try:
     from vessim.sil import HttpClient
+     _has_sil = True
 except ImportError:
     _has_sil = False
-else:
-    _has_sil = True
 
 
 class PowerMeter(ABC):
