@@ -25,7 +25,6 @@ from requests.auth import HTTPBasicAuth
 
 from vessim.signal import Signal
 from vessim.util import DatetimeLike, Clock
-from vessim.cosim import Controller
 from vessim.cosim import Controller, Microgrid
 
 
@@ -68,13 +67,13 @@ class Broker:
         self.redis_db = redis.Redis()
 
     def get_microgrid(self) -> Microgrid:
-        return pickle.loads(self.redis_db.get("microgrid"))
+        return pickle.loads(self.redis_db.get("microgrid"))  # type: ignore
 
     def get_actor(self, actor: str) -> dict:
-        return json.loads(self.redis_db.get("actors"))[actor]
+        return json.loads(self.redis_db.get("actors"))[actor]  # type: ignore
 
     def get_grid_power(self) -> float:
-        return float(self.redis_db.get("p_delta"))
+        return float(self.redis_db.get("p_delta"))  # type: ignore
 
     def set_event(self, category: str, value: Any) -> None:
         self.redis_db.lpush(
@@ -114,11 +113,11 @@ class SilController(Controller):
         self.redis_docker_container = _redis_docker_container()
         self.redis_db = redis.Redis()
 
-        self.microgrid = None
-        self.clock = None
-        self.grid_signals = None
+        self.microgrid: Optional[Microgrid] = None
+        self.clock: Optional[Clock] = None
+        self.grid_signals: Optional[dict] = None
 
-    def start(self, microgrid: "Microgrid", clock: Clock, grid_signals: dict) -> None:
+    def start(self, microgrid: Microgrid, clock: Clock, grid_signals: dict) -> None:
         self.microgrid = microgrid
         self.clock = clock
         self.grid_signals = grid_signals
@@ -134,18 +133,16 @@ class SilController(Controller):
                 grid_signals=self.grid_signals,
             ),
         ).start()
-        logger.info(f"Started SiL Controller API server process 'Vessim API'")
+        logger.info("Started SiL Controller API server process 'Vessim API'")
 
-        Thread(
-            target=self._collect_set_requests_loop,
-            daemon=True
-        ).start()
+        Thread(target=self._collect_set_requests_loop, daemon=True).start()
 
     def step(self, time: int, p_delta: float, actor_infos: dict) -> None:
         pipe = self.redis_db.pipeline()
         pipe.set("time", time)
         pipe.set("p_delta", p_delta)
         pipe.set("actors", json.dumps(actor_infos))
+        assert self.microgrid is not None
         pipe.set("microgrid", self.microgrid.pickle())
         pipe.execute()
 
@@ -157,8 +154,9 @@ class SilController(Controller):
     def _collect_set_requests_loop(self):
         while True:
             events = self.redis_db.lrange("set_events", start=0, end=-1)
-            if len(events) > 0:
-                events = [pickle.loads(e) for e in events]
+            assert events is not None
+            if len(events) > 0: # type: ignore
+                events = [pickle.loads(e) for e in events] # type: ignore
                 events_by_category = defaultdict(dict)
                 for event in events:
                     events_by_category[event["category"]][event["time"]] = event["value"]
@@ -192,7 +190,7 @@ def _redis_docker_container(
     if docker_client is None:
         try:
             docker_client = docker.from_env()
-        except docker.errors.DockerException as e:
+        except docker.errors.DockerException as e: # type: ignore
             raise RuntimeError("Could not connect to Docker.") from e
     try:
         container = docker_client.containers.run(
@@ -200,7 +198,7 @@ def _redis_docker_container(
             ports={"6379/tcp": port},
             detach=True,  # run in background
         )
-    except docker.errors.APIError as e:
+    except docker.errors.APIError as e: # type: ignore
         if e.status_code == 500 and "port is already allocated" in e.explanation:
             # TODO prompt user to automatically kill container
             raise RuntimeError(
@@ -212,12 +210,12 @@ def _redis_docker_container(
 
     # Check if the container has started
     while True:
-        container_info = docker_client.containers.get(container.name)
-        if container_info.status == "running":
+        container_info = docker_client.containers.get(container.name) # type: ignore
+        if container_info.status == "running": # type: ignore
             break
         sleep(1)
 
-    return container
+    return container # type: ignore
 
 
 def get_latest_event(events: dict[datetime, Any]) -> Any:

@@ -40,6 +40,7 @@ class GridSim(mosaik_api.Simulator):
         if self.storage is None:
             self.p_delta = p_delta
         else:
+            assert self.policy is not None
             self.p_delta = self.policy.apply(self.storage, p_delta, duration)
 
     def get_data(self, outputs):

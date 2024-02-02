@@ -86,7 +86,9 @@ class Generator(Actor):  # TODO signal should return next step
         self.signal = signal  # TODO make sure that signal is single column?
 
     def p(self, now: datetime) -> float:
-        return self.signal.at(now)
+        data_point = self.signal.at(now)
+        assert data_point is not None
+        return data_point
 
     def state(self, now: datetime) -> dict:
         return {
@@ -127,7 +129,9 @@ class ActorSim(mosaik_api.Simulator):
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
+        assert self.clock is not None
         now = self.clock.to_datetime(time)
+        assert self.actor is not None
         self.p = self.actor.p(now)
         self.state = self.actor.state(now)
         return time + self.step_size
