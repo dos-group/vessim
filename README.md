@@ -58,15 +58,27 @@ pip install vessim[sil]
 For complex scenarios that involve custom co-simulation actors we recommend cloning and editing this depository directly.
 
 
+## Datasets
+
+Vessim comes with ready-to-user datasets for solar irradiance and average carbon intensity provided by
+
+<p float="left">
+  <img src="docs/_static/solcast_logo.png" width="150" />
+  <span> and </span>
+  <img src="docs/_static/watttime_logo.png" width="150" />
+</p>
+
+We're working on documentation on how to include custom datasets for your simulations.
+
+
 ## Work in progress
 
 Our team at the [Distributed and Operating Systems](https://distributedsystems.berlin/) group at TU Berlin is actively working to improve Vessim.
 We are currently working on the following aspects and features:
 
-- **Website**: You can find the current WiP documentation [here](https://vessim.readthedocs.io/en/latest/)
-- **Datasets**: We're currently collectig relevant datasets for carbon-aware test cases such as solar production or carbon intensity traces to simplify the setup of test cases.
-- **Software-in-the-loop (SiL) examples**: We are working on more examples to explain our SiL interface.
-- **System Advisor Model (SAM)**: We're working on making NREL's [SAM](https://sam.nrel.gov/) available as a subsystem in Vessim.
+- **Website**: We are currently working on better examples and documentation. You can find the current WiP documentation [here](https://vessim.readthedocs.io/en/latest/).
+- **Imroved Software-in-the-loop (SiL) API**: We will soon release a new API for SiL simulations with new examples and better documentation.
+- **System Advisor Model (SAM)**: We are working on making NREL's [SAM](https://sam.nrel.gov/) available as a subsystem in Vessim.
 
 
 ## Publications
