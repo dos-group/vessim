@@ -21,23 +21,26 @@ POWER_MODES = {  # according to paper
 
 def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
-    environment.add_grid_signal("carbon_intensity", HistoricalSignal(load_carbon_data()))
+
+    ci_signal = HistoricalSignal(load_carbon_data())
+    solar_signal = HistoricalSignal(load_solar_data(sqm=0.4 * 0.5))
 
     power_meters = [
         MockPowerMeter(name="mpm0", p=2.194),
         MockPowerMeter(name="mpm1", p=7.6),
     ]
     battery = SimpleBattery(capacity=100)
-    monitor = Monitor()  # stores simulation result on each step
+    monitor = Monitor(grid_signals={"carbon_intensity": ci_signal})  # stores simulation result on each step
     carbon_aware_controller = CarbonAwareController(
         power_meters=power_meters,
         battery=battery,
         policy=POLICY,
+        grid_signals={"carbon_intensity": ci_signal}
     )
     microgrid = Microgrid(
         actors=[
             ComputingSystem(power_meters=power_meters),
-            Generator(signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5))),
+            Generator(signal=solar_signal),
         ],
         storage=battery,
         storage_policy=POLICY,
@@ -52,15 +55,14 @@ def main(result_csv: str):
 
 
 class CarbonAwareController(Controller):
-    def __init__(self, power_meters, battery, policy, step_size=None):
-        super().__init__(step_size)
+    def __init__(self, power_meters, battery, policy, step_size=None, grid_signals=None):
+        super().__init__(step_size, grid_signals)
         self.power_meters = power_meters
         self.battery = battery
         self.policy = policy
 
         self.microgrid: Optional["Microgrid"] = None
         self.clock: Optional[Clock] = None
-        self.grid_signals: Optional[dict] = None
 
     def step(self, time: int, p_delta: float, actor_infos: dict):
         """Performs a time step in the model."""
@@ -80,10 +82,9 @@ class CarbonAwareController(Controller):
                 POWER_MODES[node.name][new_state["nodes_power_mode"][node.name]]
             )
 
-    def start(self, microgrid: Microgrid, clock: Clock, grid_signals: dict) -> None:
+    def start(self, microgrid: Microgrid, clock: Clock) -> None:
         self.microgrid = microgrid
         self.clock = clock
-        self.grid_signals = grid_signals
 
 
 def cacu_scenario(

@@ -9,23 +9,29 @@ import mosaik_api  # type: ignore
 import pandas as pd
 
 from vessim.util import Clock
+from vessim.signal import Signal
 
 if TYPE_CHECKING:
     from vessim.cosim import Microgrid
 
 
 class Controller(ABC):
-    def __init__(self, step_size: Optional[int] = None):
+
+    def __init__(
+        self,
+        step_size: Optional[int] = None,
+        grid_signals: Optional[dict[str, Signal]] = None,
+    ):
         self.step_size = step_size
+        self.grid_signals = grid_signals
 
     @abstractmethod
-    def start(self, microgrid: Microgrid, clock: Clock, grid_signals: dict) -> None:
+    def start(self, microgrid: Microgrid, clock: Clock) -> None:
         """Supplies the controller with objects available after simulation start.
 
         Args:
             microgrid: The microgrid under control.
             clock: The clock of the simulation environment.
-            grid_signals: All grid signals available in the simulation environment.
         """
 
     @abstractmethod
@@ -50,17 +56,16 @@ class Monitor(Controller):
     def __init__(
         self,
         step_size: Optional[int] = None,
-        monitor_storage=True,
-        monitor_grid_signals=True,
+        grid_signals: Optional[dict[str, Signal]] = None,
+        monitor_storage: bool = True,
     ):
-        super().__init__(step_size=step_size)
+        super().__init__(step_size=step_size, grid_signals=grid_signals)
         self.monitor_storage = monitor_storage
-        self.monitor_grid_signals = monitor_grid_signals
         self.monitor_log: dict[datetime, dict] = defaultdict(dict)
         self.custom_monitor_fns: list[Callable] = []
         self.clock: Optional[Clock] = None
 
-    def start(self, microgrid: Microgrid, clock: Clock, grid_signals: dict) -> None:
+    def start(self, microgrid: Microgrid, clock: Clock) -> None:
         self.clock = clock
         if self.monitor_storage:
             if microgrid.storage is None:
@@ -68,8 +73,8 @@ class Monitor(Controller):
             storage_state = microgrid.storage.state()
             self.add_monitor_fn(lambda _: {"storage": storage_state})
 
-        if self.monitor_grid_signals:
-            for signal_name, signal_api in grid_signals.items():
+        if self.grid_signals is not None:
+            for signal_name, signal_api in self.grid_signals.items():
 
                 def fn(time):
                     return {signal_name: signal_api.at(clock.to_datetime(time))}
