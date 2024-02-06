@@ -9,7 +9,6 @@ import mosaik_api  # type: ignore
 
 from vessim.actor import Actor
 from vessim.controller import Controller
-from vessim.signal import Signal
 from vessim.storage import Storage, StoragePolicy, DefaultStoragePolicy
 from vessim.util import Clock
 
