@@ -99,6 +99,7 @@ class SilController(Controller):
         api_port: int = 8000,
         request_collector_interval: float = 1,
         step_size: Optional[int] = None,
+        grid_signals: Optional[dict[str, Signal]] = None,
     ):
         super().__init__(step_size=step_size)
         self.api_routes = api_routes
@@ -116,12 +117,11 @@ class SilController(Controller):
 
         self.microgrid: Optional[Microgrid] = None
         self.clock: Optional[Clock] = None
-        self.grid_signals: Optional[dict] = None
+        self.grid_signals = grid_signals
 
-    def start(self, microgrid: Microgrid, clock: Clock, grid_signals: dict) -> None:
+    def start(self, microgrid: Microgrid, clock: Clock) -> None:
         self.microgrid = microgrid
         self.clock = clock
-        self.grid_signals = grid_signals
 
         multiprocessing.Process(
             target=_serve_api,
