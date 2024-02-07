@@ -12,8 +12,6 @@ DURATION = 3600 * 24 * 2  # two days
 
 def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
-    environment.add_grid_signal("carbon_intensity", HistoricalSignal(load_carbon_data()))
-
     monitor = Monitor()  # stores simulation result on each step
     microgrid = Microgrid(
         actors=[

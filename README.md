@@ -7,7 +7,7 @@
 
 Vessim is a versatile **co-simulation testbed for carbon-aware applications and systems** which connects domain-specific simulators for renewable power generation and energy storage with real software and hardware.
 
-## What can I do with it?
+## Simulated energy systems for computing systems
 
 Vessim allows you to simulate energy systems next to real or simulated computing systems:
 
@@ -20,7 +20,6 @@ from vessim.signal import HistoricalSignal
 from vessim.storage import SimpleBattery
 
 environment = Environment(sim_start="15-06-2022")
-environment.add_grid_signal("carbon_intensity", HistoricalSignal.from_dataset("carbon_data1"))
 
 monitor = Monitor()
 microgrid = Microgrid(
@@ -30,7 +29,6 @@ microgrid = Microgrid(
     ],
     controllers=[monitor],
     storage=SimpleBattery(capacity=100),
-    zone="DE",
     step_size=60,
 )
 environment.add_microgrid(microgrid)
@@ -85,34 +83,32 @@ We are currently working on the following aspects and features:
 
 If you use Vessim in your research, please cite our vision paper:
 
-- Philipp Wiesner, Ilja Behnke and Odej Kao. "[A Testbed for Carbon-Aware Applications and Systems](https://arxiv.org/pdf/2306.09774.pdf)" arXiv:2302.08681 [cs.DC]. 2023.
-<details>
-    <summary>Bibtex</summary>
-    
-    @misc{wiesner2023vessim,
-        title={A Testbed for Carbon-Aware Applications and Systems}, 
-        author={Wiesner, Philipp and Behnke, Ilja and Kao, Odej},
-        year={2023},
-        eprint={2306.09774},
-        archivePrefix={arXiv},
-        primaryClass={cs.DC}
-    }
-</details>
+Philipp Wiesner, Ilja Behnke and Odej Kao. "[A Testbed for Carbon-Aware Applications and Systems](https://arxiv.org/pdf/2306.09774.pdf)" arXiv:2302.08681 [cs.DC]. 2023.
+
+```
+@misc{wiesner2023vessim,
+    title={A Testbed for Carbon-Aware Applications and Systems}, 
+    author={Wiesner, Philipp and Behnke, Ilja and Kao, Odej},
+    year={2023},
+    eprint={2306.09774},
+    archivePrefix={arXiv},
+    primaryClass={cs.DC}
+}
+```
 
 Or our journal paper on software-in-the-loop similation for carbon-aware applications:
-- Philipp Wiesner, Marvin Steinke, Henrik Nickel, Yazan Kitana, and Odej Kao. "[Software-in-the-Loop Simulation for Developing and Testing Carbon-Aware Applications](https://doi.org/10.1002/spe.3275)" Software: Practice and Experience, 53 (12). 2023.
-<details>
-    <summary>Bibtex</summary>
-    
-    @article{wiesner2023sil,
-        author = {Wiesner, Philipp and Steinke, Marvin and Nickel, Henrik and Kitana, Yazan and Kao, Odej},
-        title = {Software-in-the-loop simulation for developing and testing carbon-aware applications},
-        journal = {Software: Practice and Experience},
-        year = {2023},
-        volume = {53},
-        number = {12},
-        pages = {2362-2376},
-        doi = {https://doi.org/10.1002/spe.3275}
-    }
-    
-</details>
+
+Philipp Wiesner, Marvin Steinke, Henrik Nickel, Yazan Kitana, and Odej Kao. "[Software-in-the-Loop Simulation for Developing and Testing Carbon-Aware Applications](https://doi.org/10.1002/spe.3275)" Software: Practice and Experience, 53 (12). 2023.
+
+```
+@article{wiesner2023sil,
+    author = {Wiesner, Philipp and Steinke, Marvin and Nickel, Henrik and Kitana, Yazan and Kao, Odej},
+    title = {Software-in-the-loop simulation for developing and testing carbon-aware applications},
+    journal = {Software: Practice and Experience},
+    year = {2023},
+    volume = {53},
+    number = {12},
+    pages = {2362-2376},
+    doi = {https://doi.org/10.1002/spe.3275}
+}
+```
