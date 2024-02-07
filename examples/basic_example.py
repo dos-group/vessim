@@ -12,18 +12,14 @@ DURATION = 3600 * 24 * 2  # two days
 
 def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
-
-    ci_signal = HistoricalSignal(load_carbon_data())
-    solar_signal = HistoricalSignal(load_solar_data(sqm=0.4 * 0.5))
-
-    monitor = Monitor(grid_signals={"carbon_intensity": ci_signal})  # stores simulation result on each step
+    monitor = Monitor()  # stores simulation result on each step
     microgrid = Microgrid(
         actors=[
             ComputingSystem(power_meters=[
                 MockPowerMeter(p=2.194),
                 MockPowerMeter(p=7.6)
             ]),
-            Generator(signal=solar_signal),
+            Generator(signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5))),
         ],
         controllers=[monitor],
         storage=SimpleBattery(capacity=100),

@@ -23,8 +23,7 @@ def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
 
     ci_signal = HistoricalSignal(load_carbon_data())
-    solar_signal = HistoricalSignal(load_solar_data(sqm=0.4 * 0.5))
-
+    
     power_meters = [
         MockPowerMeter(name="mpm0", p=2.194),
         MockPowerMeter(name="mpm1", p=7.6),
@@ -35,12 +34,12 @@ def main(result_csv: str):
         power_meters=power_meters,
         battery=battery,
         policy=POLICY,
-        grid_signals={"carbon_intensity": ci_signal}
+        carbon_signal=ci_signal,
     )
     microgrid = Microgrid(
         actors=[
             ComputingSystem(power_meters=power_meters),
-            Generator(signal=solar_signal),
+            Generator(signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5))),
         ],
         storage=battery,
         storage_policy=POLICY,
@@ -55,11 +54,12 @@ def main(result_csv: str):
 
 
 class CarbonAwareController(Controller):
-    def __init__(self, power_meters, battery, policy, step_size=None, grid_signals=None):
-        super().__init__(step_size, grid_signals)
+    def __init__(self, power_meters, battery, policy, carbon_signal, step_size=None):
+        super().__init__(step_size)
         self.power_meters = power_meters
         self.battery = battery
         self.policy = policy
+        self.carbon_signal = carbon_signal
 
         self.microgrid: Optional["Microgrid"] = None
         self.clock: Optional[Clock] = None
@@ -69,7 +69,7 @@ class CarbonAwareController(Controller):
         new_state = cacu_scenario(
             time=time,
             battery_soc=self.battery.soc(),
-            ci=self.grid_signals["carbon_intensity"].at(
+            ci=self.carbon_signal.at(
                 self.clock.to_datetime(time), self.microgrid.zone
             ),
             node_names=[node.name for node in self.power_meters],

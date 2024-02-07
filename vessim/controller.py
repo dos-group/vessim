@@ -17,13 +17,8 @@ if TYPE_CHECKING:
 
 class Controller(ABC):
 
-    def __init__(
-        self,
-        step_size: Optional[int] = None,
-        grid_signals: Optional[dict[str, Signal]] = None,
-    ):
+    def __init__(self, step_size: Optional[int] = None):
         self.step_size = step_size
-        self.grid_signals = grid_signals
 
     @abstractmethod
     def start(self, microgrid: Microgrid, clock: Clock) -> None:
@@ -59,7 +54,8 @@ class Monitor(Controller):
         grid_signals: Optional[dict[str, Signal]] = None,
         monitor_storage: bool = True,
     ):
-        super().__init__(step_size=step_size, grid_signals=grid_signals)
+        super().__init__(step_size=step_size)
+        self.grid_signals = grid_signals
         self.monitor_storage = monitor_storage
         self.monitor_log: dict[datetime, dict] = defaultdict(dict)
         self.custom_monitor_fns: list[Callable] = []
