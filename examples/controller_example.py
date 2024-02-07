@@ -23,19 +23,20 @@ def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
 
     ci_signal = HistoricalSignal(load_carbon_data())
-    
+    monitor = Monitor(grid_signals={"carbon_intensity": ci_signal})  # stores simulation result on each step
+
+    battery = SimpleBattery(capacity=100)
     power_meters = [
         MockPowerMeter(name="mpm0", p=2.194),
         MockPowerMeter(name="mpm1", p=7.6),
     ]
-    battery = SimpleBattery(capacity=100)
-    monitor = Monitor(grid_signals={"carbon_intensity": ci_signal})  # stores simulation result on each step
     carbon_aware_controller = CarbonAwareController(
         power_meters=power_meters,
         battery=battery,
         policy=POLICY,
         carbon_signal=ci_signal,
     )
+
     microgrid = Microgrid(
         actors=[
             ComputingSystem(power_meters=power_meters),
@@ -44,7 +45,6 @@ def main(result_csv: str):
         storage=battery,
         storage_policy=POLICY,
         controllers=[monitor, carbon_aware_controller],
-        zone="DE",
         step_size=60,  # global step size (can be overridden by actors or controllers)
     )
     environment.add_microgrid(microgrid)

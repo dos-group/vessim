@@ -20,14 +20,12 @@ class Microgrid:
         controllers: Optional[list[Controller]] = None,
         storage: Optional[Storage] = None,
         storage_policy: Optional[StoragePolicy] = None,
-        zone: Optional[str] = None,
         step_size: int = 1,  # global default
     ):
         self.actors = actors if actors is not None else []
         self.controllers = controllers if controllers is not None else []
         self.storage = storage
         self.storage_policy = storage_policy
-        self.zone = zone
         self.step_size = step_size
 
     def initialize(self, world: mosaik.World, clock: Clock):
