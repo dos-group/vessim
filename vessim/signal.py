@@ -90,7 +90,6 @@ class HistoricalSignal(Signal):
                     f"'{dt}' is too late to get data in column '{column}'."
                 )
 
-
     def forecast(
         self,
         start_time: DatetimeLike,
@@ -134,7 +133,7 @@ class HistoricalSignal(Signal):
             # Forecast does include request timestamp
             try:
                 # Get forecasts of the nearest existing timestamp lower than start time
-                req_time = data_src[:start_time].index.get_level_values(0)[-1]  # type: ignore
+                req_time = data_src.loc[:start_time].index.get_level_values(0)[-1]  # type: ignore
             except IndexError:
                 raise ValueError(f"No forecasts available at time {start_time}.")
             data_src = data_src.loc[req_time]
