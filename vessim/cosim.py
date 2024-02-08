@@ -9,7 +9,6 @@ import mosaik_api  # type: ignore
 
 from vessim.actor import Actor
 from vessim.controller import Controller
-from vessim.signal import Signal
 from vessim.storage import Storage, StoragePolicy, DefaultStoragePolicy
 from vessim.util import Clock
 
@@ -21,19 +20,15 @@ class Microgrid:
         controllers: Optional[list[Controller]] = None,
         storage: Optional[Storage] = None,
         storage_policy: Optional[StoragePolicy] = None,
-        zone: Optional[str] = None,
         step_size: int = 1,  # global default
     ):
         self.actors = actors if actors is not None else []
         self.controllers = controllers if controllers is not None else []
         self.storage = storage
         self.storage_policy = storage_policy
-        self.zone = zone
         self.step_size = step_size
 
-    def initialize(
-        self, world: mosaik.World, clock: Clock, grid_signals: dict[str, Signal]
-    ):
+    def initialize(self, world: mosaik.World, clock: Clock):
         """Create co-simulation entities and connect them to world."""
         grid_sim = world.start("Grid")
         grid_entity = grid_sim.Grid(storage=self.storage, policy=self.storage_policy)
@@ -47,7 +42,7 @@ class Microgrid:
             actor_names_and_entities.append((actor.name, actor_entity))
 
         for controller in self.controllers:
-            controller.start(self, clock, grid_signals)
+            controller.start(self, clock)
             step_size = controller.step_size if controller.step_size else self.step_size
             controller_sim = world.start("Controller", step_size=step_size)
             controller_entity = controller_sim.Controller(controller=controller)
@@ -87,16 +82,10 @@ class Environment:
     def __init__(self, sim_start):
         self.clock = Clock(sim_start)
         self.microgrids = []
-        self.grid_signals = {}
         self.world = mosaik.World(self.COSIM_CONFIG) # type: ignore
 
     def add_microgrid(self, microgrid: Microgrid):
         self.microgrids.append(microgrid)
-
-    def add_grid_signal(self, name: str, grid_signal: Signal):
-        if len(self.microgrids) > 0:
-            raise RuntimeError("Add all grid signals before adding microgrids.")
-        self.grid_signals[name] = grid_signal
 
     def run(
         self,
@@ -106,7 +95,7 @@ class Environment:
     ):
         try:
             for microgrid in self.microgrids:
-                microgrid.initialize(self.world, self.clock, self.grid_signals)
+                microgrid.initialize(self.world, self.clock)
             if until is None:
                 until = int("inf")
             self.world.run(

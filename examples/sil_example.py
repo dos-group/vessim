@@ -17,7 +17,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from controller_example import SIM_START, DURATION, POLICY
-from examples._data import load_carbon_data, load_solar_data
+from examples._data import load_solar_data
 from vessim.actor import ComputingSystem, Generator
 from vessim.controller import Monitor
 from vessim.cosim import Environment, Microgrid
@@ -33,7 +33,6 @@ RASPI_ADDRESS = "http://192.168.207.71"
 
 def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
-    environment.add_grid_signal("carbon_intensity", HistoricalSignal(load_carbon_data()))
 
     power_meters = [
         HttpPowerMeter(name="gcp", address=GCP_ADDRESS),
@@ -60,7 +59,6 @@ def main(result_csv: str):
         storage=SimpleBattery(capacity=100),
         storage_policy=POLICY,
         controllers=[monitor, carbon_aware_controller],
-        zone="DE",
         step_size=60,  # global step size (can be overridden by actors or controllers)
     )
     environment.add_microgrid(microgrid)
