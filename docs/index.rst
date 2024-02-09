@@ -10,7 +10,7 @@ analysis with real software and hardware.  It is based on `mosaik
 Mosaik connects simulators of any language and real systems via TCP and ensures
 their synchronization. It also offers an API for defining simulation scenarios. 
 
-.. image:: source/_static/CarbonAware_vessim_Aspects.png
+.. image:: _static/CarbonAware_vessim_Aspects.png
     :width: 480px
     :align: center
 
@@ -28,7 +28,7 @@ examples to get you started with it and an API reference.
    :hidden:
    :caption: Content:
  
-   source/overview/index
-   source/tutorials/index
-   source/api_reference/index
-   source/about_vessim/index
+   overview/index
+   tutorials/index
+   api_reference/index
+   about_vessim/index

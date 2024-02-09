@@ -42,8 +42,8 @@ extensions = [
     "nbsphinx",
 ]
 
-html_static_path = ["source/_static"]
-html_logo = "source/_static/logo.png"
+html_static_path = ["_static"]
+html_logo = "_static/logo.png"
 
 html_theme_options = {
     "top_of_page_button": None,
@@ -58,7 +58,7 @@ html_theme_options = {
 }
 
 html_title = f"Vessim Documentation v{version}"
-templates_path = ["source/_templates"]
+templates_path = ["_templates"]
 
 source_suffix = ".rst"
 
