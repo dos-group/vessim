@@ -3,7 +3,7 @@ import os
 import sys
 import subprocess
 
-sys.path.insert(0, os.path.abspath("../../"))
+sys.path.insert(0, os.path.abspath(".."))
 
 # Configuration file for the Sphinx documentation builder.
 #
@@ -42,8 +42,8 @@ extensions = [
     "nbsphinx",
 ]
 
-html_static_path = ["_static"]
-html_logo = "_static/logo.png"
+html_static_path = ["source/_static"]
+html_logo = "source/_static/logo.png"
 
 html_theme_options = {
     "top_of_page_button": None,
@@ -58,12 +58,12 @@ html_theme_options = {
 }
 
 html_title = f"Vessim Documentation v{version}"
-templates_path = ["_templates"]
+templates_path = ["source/_templates"]
 
 source_suffix = ".rst"
 
 # The master toctree document.
-master_doc = "index"
+master_doc = "source/index"
 
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
@@ -72,4 +72,3 @@ pygments_dark_style = "gruvbox-dark"
 
 # -- Options for HTML output ------
 html_theme = "furo"
-html_static_path = ["_static"]
