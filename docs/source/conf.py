@@ -42,7 +42,7 @@ extensions = [
 ]
 
 html_static_path = ["_static"]
-html_logo = "_static/logo_transparent.png"
+html_logo = "_static/logo.png"
 
 html_theme_options = {
     "top_of_page_button": None,
