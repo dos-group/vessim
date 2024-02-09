@@ -63,7 +63,7 @@ templates_path = ["source/_templates"]
 source_suffix = ".rst"
 
 # The master toctree document.
-master_doc = "source/index"
+master_doc = "index"
 
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
