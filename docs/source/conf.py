@@ -39,6 +39,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",
     "sphinx_copybutton",
+    "nbsphinx",
 ]
 
 html_static_path = ["_static"]

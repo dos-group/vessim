@@ -64,6 +64,8 @@ ruff = {version = "*", optional = true}
 # Optional dependencies (documentation)
 furo = {version = "*", optional = true}
 sphinx-copybutton = {version = "*", optional = true}
+nbsphinx = {version = "*", optional = true}
+pandoc = {version = "*", optional = true}
 
 [tool.poetry.extras]
 sil = ["requests", "fastapi", "docker", "redis", "uvicorn"]
