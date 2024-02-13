@@ -97,7 +97,8 @@ class Environment:
             for microgrid in self.microgrids:
                 microgrid.initialize(self.world, self.clock)
             if until is None:
-                until = int("inf")
+                # there is no integer representing infinity in python
+                until = float("inf") # type: ignore
             self.world.run(
                 until=until, rt_factor=rt_factor, print_progress=print_progress
             )
