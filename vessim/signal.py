@@ -6,8 +6,9 @@ from pathlib import Path
 from typing import Any, Optional, Literal
 
 import pandas as pd
+import numpy as np
 
-from vessim._data import convert_to_datetime, load_dataset
+from vessim._data import load_dataset
 from vessim.util import DatetimeLike
 
 
@@ -26,30 +27,50 @@ class HistoricalSignal(Signal):
         forecast: Optional[pd.Series | pd.DataFrame] = None,
         fill_method: Literal["ffill", "bfill"] = "ffill",
     ):
-        actual = convert_to_datetime(actual)
-        self._actual: dict[str, pd.Series]
-        if isinstance(actual, pd.Series):
-            self._actual = {str(actual.name): actual.dropna()}
-        elif isinstance(actual, pd.DataFrame):
-            self._actual = {col: actual[col].dropna() for col in actual.columns}
-        else:
-            raise ValueError(f"Incompatible type {type(actual)} for 'actual'.")
         self._fill_method = fill_method
 
-        self._forecast: dict[str, pd.Series]
-        if isinstance(forecast, pd.Series):
-            forecast = convert_to_datetime(forecast)
-            self._forecast = {str(forecast.name): forecast.dropna()} # type: ignore
-        elif isinstance(forecast, pd.DataFrame):
-            forecast = convert_to_datetime(forecast)
-            self._forecast = {
-                str(col): forecast[col].dropna() for col in forecast.columns  # type: ignore
-            }
-        elif forecast is None:
-            self._forecast = {
-                str(key): data.copy(deep=True) for key, data in self._actual.items()
-            }
+        self._actual_index = actual.index.to_numpy(dtype="datetime64[ns]")
+        actual_index_sorter = self._actual_index.argsort()
+        self._actual_index = self._actual_index[actual_index_sorter]
+
+        self._actual: dict[str, np.Array] = {}
+        if isinstance(actual, pd.Series):
+            if self._fill_method == "bfill":
+                self._actual[str(actual.name)] = _bfill(actual.to_numpy()[actual_index_sorter])
+            else:
+                self._actual[str(actual.name)] = _ffill(actual.to_numpy()[actual_index_sorter])
+        elif isinstance(actual, pd.DataFrame):
+            for col in actual.columns:
+                if self._fill_method == "bfill":
+                    self._actual[str(col)] = _bfill(actual[col].to_numpy()[actual_index_sorter])
+                else:
+                    self._actual[str(col)] = _ffill(actual[col].to_numpy()[actual_index_sorter])
         else:
+            raise ValueError(f"Incompatible type {type(actual)} for 'actual'.")
+
+        self._forecast_request_index: Optional[np.Array] = None
+        self._forecast_index: Optional[np.Array] = None
+        if isinstance(forecast, (pd.Series, pd.DataFrame)):
+            if isinstance(forecast.index, pd.MultiIndex):
+                self._forecast_request_index = forecast.index.get_level_values(0).to_numpy()
+                self._forecast_index = forecast.index.get_level_values(1).to_numpy()
+                forecast_index_sorter = np.lexsort(
+                    self._forecast_index, self._forecast_request_index
+                )
+                self._forecast_request_index = self._forecast_request_index[forecast_index_sorter]
+            else:
+                self._forecast_index = forecast.index.to_numpy()
+                forecast_index_sorter = np.argsort(self._forecast_index)
+            self._forecast_index = self._forecast_index[forecast_index_sorter]
+
+        self._forecast: Optional[dict[str, np.Array]] = None
+        if isinstance(forecast, pd.Series):
+            self._forecast = {str(forecast.name): forecast.to_numpy()[forecast_index_sorter]}
+        elif isinstance(forecast, pd.DataFrame):
+            self._forecast = {}
+            for col in forecast.columns:
+                self._forecast[str(col)] = forecast[col].to_numpy()[forecast_index_sorter]
+        elif forecast is not None:
             raise ValueError(f"Incompatible type {type(forecast)} for 'forecast'.")
 
     @classmethod
@@ -68,28 +89,21 @@ class HistoricalSignal(Signal):
         return list(self._actual.keys())
 
     def at(self, dt: DatetimeLike, column: Optional[str] = None, **kwargs):
-        dt = pd.to_datetime(dt)
-        column_data = _get_column_data(self._actual, column)
+        np_dt = np.datetime64(dt)
+        values = self._actual[_get_column_name(self._actual, column)]
 
-        # Mypy somehow has trouble with indexing in a dataframe with DatetimeIndex
-        # <https://github.com/python/mypy/issues/2410>
         if self._fill_method == "ffill":
-            # searchsorted with 'side' specified in sorted df always returns an int
-            time_index: int = column_data.index.searchsorted(dt, side="right")  # type: ignore
+            time_index = self._actual_index.searchsorted(np_dt, side="right")
             if time_index > 0:
-                return column_data.iloc[time_index - 1]  # type: ignore
+                return values[time_index - 1]
             else:
-                raise ValueError(f"'{dt}' is too early to get data in column "
-                                 f"'{column}'.")
+                raise ValueError(f"'{dt}' is too early to get data in column '{column}'.")
         else:
-            time_index = column_data.index.searchsorted(dt, side="left")  # type: ignore
+            time_index = self._actual_index.searchsorted(np_dt, side="left")
             try:
-                return column_data.iloc[time_index]  # type: ignore
+                return values[time_index]
             except IndexError:
-                raise ValueError(
-                    f"'{dt}' is too late to get data in column '{column}'."
-                )
-
+                raise ValueError(f"'{dt}' is too late to get data in column '{column}'.")
 
     def forecast(
         self,
@@ -99,8 +113,10 @@ class HistoricalSignal(Signal):
         frequency: Optional[str | pd.DateOffset | timedelta] = None,
         resample_method: Optional[str] = None,
     ) -> pd.Series:
-        start_time = pd.to_datetime(start_time)
-        end_time = pd.to_datetime(end_time)
+        if isinstance(start_time, str):
+            start_time = parser.parse(start_time)
+        if isinstance(end_time, str):
+            end_time = parser.parse(end_time)
         forecast: pd.Series = self._get_forecast_data_source(start_time, column)
 
         # Resample the data to get the data to specified frequency
@@ -124,17 +140,15 @@ class HistoricalSignal(Signal):
         start_index = forecast.index.searchsorted(start_time, side="right")
         return forecast.loc[forecast.index[start_index] : end_time]  # type: ignore
 
-    def _get_forecast_data_source(
-        self, start_time: datetime, column: Optional[str]
-    ) -> pd.Series:
+    def _get_forecast_data_source(self, start_time: datetime, column: Optional[str]) -> pd.Series:
         """Returns series of column data used to derive forecast prediction."""
-        data_src = _get_column_data(self._forecast, column)
+        data_src = self._forecast[_get_column_name(self._forecast, column)]
 
         if data_src.index.nlevels > 1:
             # Forecast does include request timestamp
             try:
                 # Get forecasts of the nearest existing timestamp lower than start time
-                req_time = data_src[:start_time].index.get_level_values(0)[-1]  # type: ignore
+                req_time = data_src.loc[:start_time].index.get_level_values(0)[-1]  # type: ignore
             except IndexError:
                 raise ValueError(f"No forecasts available at time {start_time}.")
             data_src = data_src.loc[req_time]
@@ -178,15 +192,15 @@ class HistoricalSignal(Signal):
         return df.reindex(new_index[1:])  # type: ignore
 
 
-def _get_column_data(data: dict[str, pd.Series], column: Optional[str]) -> pd.Series:
+def _get_column_name(data: dict[str, Any], column: Optional[str]) -> str:
     if column is None:
         if len(data) == 1:
-            return next(iter(data.values()))
+            return list(data.keys())[0]
         else:
             raise ValueError("Column needs to be specified.")
-    try:
-        return data[column]
-    except KeyError:
+    elif column in data.keys():
+        return column
+    else:
         raise ValueError(f"Cannot retrieve data for column '{column}'.")
 
 
@@ -199,3 +213,16 @@ def _abs_path(data_dir: Optional[str | Path]):
         return path
     else:
         raise ValueError(f"Path {data_dir} not valid. Has to be absolute or None.")
+
+
+def _ffill(arr: np.Array) -> np.Array:
+    """Performs forward-fill on a one-dimensional numpy array."""
+    mask = np.isnan(arr)
+    idx = np.where(~mask,np.arange(mask.size),0)
+    np.maximum.accumulate(idx, out=idx)
+    return arr[idx]
+
+
+def _bfill(arr: np.Array) -> np.Array:
+    """Performs backward-fill on a one-dimensional numpy array."""
+    return _ffill(arr[::-1])[::-1]

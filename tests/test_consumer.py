@@ -1,7 +1,8 @@
 import pytest
 from datetime import datetime
 
-from vessim.cosim import MockPowerMeter, ComputingSystem
+from vessim.power_meter import MockPowerMeter
+from vessim.actor import ComputingSystem
 
 
 class TestComputingSystem:
@@ -21,4 +22,7 @@ class TestComputingSystem:
         assert computing_system.p(datetime.now()) == -18.0
 
     def test_state(self, computing_system):
-        assert computing_system.state(datetime.now()) == {"test1": -5.0, "test2": -7.0}
+        assert computing_system.state(datetime.now()) == {
+            "p": -18.0,
+            "power_meters": {"test1": -5.0, "test2": -7.0},
+        }

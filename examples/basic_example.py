@@ -23,7 +23,6 @@ def main(result_csv: str):
         ],
         controllers=[monitor],
         storage=SimpleBattery(capacity=100),
-        zone="DE",
         step_size=60,  # global step size (can be overridden by actors or controllers)
     )
     environment.add_microgrid(microgrid)

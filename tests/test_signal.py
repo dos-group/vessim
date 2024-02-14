@@ -2,7 +2,7 @@ import pytest
 import pandas as pd
 from datetime import timedelta
 
-from vessim import HistoricalSignal
+from vessim.signal import HistoricalSignal
 
 
 class TestHistoricalSignal:
@@ -20,8 +20,8 @@ class TestHistoricalSignal:
 
     @pytest.fixture
     def hist_signal_single(self) -> HistoricalSignal:
-        index = ["2023-01-01T00:00:00", "2023-01-01T00:30:00", "2023-01-01T01:00:00"]
-        actual = pd.Series([1, 2, 3], index=index)
+        index = ["2023-01-01T01:00:00", "2023-01-01T00:30:00", "2023-01-01T00:00:00"]
+        actual = pd.Series([3, 2, 1], index=index)
         return HistoricalSignal(actual, fill_method="bfill")
 
     @pytest.fixture
