@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from datetime import timedelta, datetime
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Optional, Literal
 
@@ -33,7 +33,7 @@ class HistoricalSignal(Signal):
         actual_index_sorter = self._actual_index.argsort()
         self._actual_index = self._actual_index[actual_index_sorter]
 
-        self._actual: dict[str, np.Array] = {}
+        self._actual: dict[str, np.ndarray] = {}
         if isinstance(actual, pd.Series):
             if self._fill_method == "bfill":
                 self._actual[str(actual.name)] = _bfill(actual.to_numpy()[actual_index_sorter])
@@ -48,26 +48,29 @@ class HistoricalSignal(Signal):
         else:
             raise ValueError(f"Incompatible type {type(actual)} for 'actual'.")
 
-        self._forecast_request_index: Optional[np.Array] = None
-        self._forecast_index: Optional[np.Array] = None
+        self._forecast_request_index: Optional[np.ndarray] = None
+        self._forecast_index: Optional[np.ndarray] = None
         if isinstance(forecast, (pd.Series, pd.DataFrame)):
             if isinstance(forecast.index, pd.MultiIndex):
-                self._forecast_request_index = forecast.index.get_level_values(0).to_numpy()
-                self._forecast_index = forecast.index.get_level_values(1).to_numpy()
-                forecast_index_sorter = np.lexsort(
-                    self._forecast_index, self._forecast_request_index
+                self._forecast_request_index = forecast.index.get_level_values(0).to_numpy(
+                    dtype="datetime64[ns]"
                 )
+                self._forecast_index = forecast.index.get_level_values(1).to_numpy(
+                    dtype="datetime64[ns]"
+                )
+                forecast_index_sorter = np.lexsort((
+                    self._forecast_index, self._forecast_request_index
+                ))
                 self._forecast_request_index = self._forecast_request_index[forecast_index_sorter]
             else:
-                self._forecast_index = forecast.index.to_numpy()
+                self._forecast_index = forecast.index.to_numpy(dtype="datetime64[ns]")
                 forecast_index_sorter = np.argsort(self._forecast_index)
             self._forecast_index = self._forecast_index[forecast_index_sorter]
 
-        self._forecast: Optional[dict[str, np.Array]] = None
+        self._forecast: dict[str, np.ndarray] = {}
         if isinstance(forecast, pd.Series):
-            self._forecast = {str(forecast.name): forecast.to_numpy()[forecast_index_sorter]}
+            self._forecast[str(forecast.name)] = forecast.to_numpy()[forecast_index_sorter]
         elif isinstance(forecast, pd.DataFrame):
-            self._forecast = {}
             for col in forecast.columns:
                 self._forecast[str(col)] = forecast[col].to_numpy()[forecast_index_sorter]
         elif forecast is not None:
@@ -110,23 +113,18 @@ class HistoricalSignal(Signal):
         start_time: DatetimeLike,
         end_time: DatetimeLike,
         column: Optional[str] = None,
-        frequency: Optional[str | pd.DateOffset | timedelta] = None,
+        frequency: Optional[str | timedelta] = None,
         resample_method: Optional[str] = None,
     ) -> pd.Series:
-        if isinstance(start_time, str):
-            start_time = parser.parse(start_time)
-        if isinstance(end_time, str):
-            end_time = parser.parse(end_time)
-        forecast: pd.Series = self._get_forecast_data_source(start_time, column)
+        np_start = np.datetime64(start_time)
+        np_end = np.datetime64(end_time)
+        index, forecast = self._get_forecast_data_source(np_start, column)
 
         # Resample the data to get the data to specified frequency
         if frequency is not None:
-            frequency = pd.tseries.frequencies.to_offset(frequency)
-            if frequency is None:
-                raise ValueError(f"Frequency '{frequency}' invalid.")
-
+            np_freq = np.timedelta64(frequency)
             forecast_in_freq = self._resample_to_frequency(
-                forecast, start_time, end_time, frequency, resample_method
+                index, forecast, np_start, np_end, np_freq, resample_method
             )
 
             # Check if there are NaN values in the result
@@ -137,30 +135,35 @@ class HistoricalSignal(Signal):
                 )
             return forecast_in_freq
 
-        start_index = forecast.index.searchsorted(start_time, side="right")
-        return forecast.loc[forecast.index[start_index] : end_time]  # type: ignore
+        mask = (np_start < index) & (index <= np_end) & ~np.isnan(forecast)
+        return pd.Series(forecast[mask], index=index[mask])
 
-    def _get_forecast_data_source(self, start_time: datetime, column: Optional[str]) -> pd.Series:
-        """Returns series of column data used to derive forecast prediction."""
-        data_src = self._forecast[_get_column_name(self._forecast, column)]
+    def _get_forecast_data_source(
+        self, start_time: np.datetime64, column: Optional[str]
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Returns index and values of column data used to derive forecast prediction."""
+        if self._forecast_index is None:
+            return self._actual_index, self._actual[_get_column_name(self._actual, column)]
 
-        if data_src.index.nlevels > 1:
-            # Forecast does include request timestamp
-            try:
-                # Get forecasts of the nearest existing timestamp lower than start time
-                req_time = data_src.loc[:start_time].index.get_level_values(0)[-1]  # type: ignore
-            except IndexError:
-                raise ValueError(f"No forecasts available at time {start_time}.")
-            data_src = data_src.loc[req_time]
+        column_name = _get_column_name(self._forecast, column)
+        if self._forecast_request_index is None:
+            return self._forecast_index, self._forecast[column_name]
 
-        return data_src
+        try:
+            req_time = self._forecast_request_index[self._forecast_request_index <= start_time][-1]
+        except IndexError:
+            raise ValueError(f"No forecasts available at time {start_time}.")
+
+        mask = self._forecast_request_index == req_time
+        return self._forecast_index[mask], self._forecast[column_name][mask]
 
     def _resample_to_frequency(
         self,
-        df: pd.Series,
-        start_time: datetime,
-        end_time: datetime,
-        frequency: pd.DateOffset,
+        index: np.ndarray,
+        data: np.ndarray,
+        start_time: np.datetime64,
+        end_time: np.datetime64,
+        frequency: np.timedelta64,
         resample_method: Optional[str] = None,
     ) -> pd.Series:
         """Transform frame into the desired frequency between start and end time."""
@@ -215,14 +218,14 @@ def _abs_path(data_dir: Optional[str | Path]):
         raise ValueError(f"Path {data_dir} not valid. Has to be absolute or None.")
 
 
-def _ffill(arr: np.Array) -> np.Array:
+def _ffill(arr: np.ndarray) -> np.ndarray:
     """Performs forward-fill on a one-dimensional numpy array."""
     mask = np.isnan(arr)
-    idx = np.where(~mask,np.arange(mask.size),0)
+    idx = np.where(~mask, np.arange(mask.size), 0)
     np.maximum.accumulate(idx, out=idx)
     return arr[idx]
 
 
-def _bfill(arr: np.Array) -> np.Array:
+def _bfill(arr: np.ndarray) -> np.ndarray:
     """Performs backward-fill on a one-dimensional numpy array."""
     return _ffill(arr[::-1])[::-1]
