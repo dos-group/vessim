@@ -16,8 +16,10 @@ from vessim.util import Clock
 class Microgrid:
     def __init__(
         self,
-        actors: Optional[list[Actor]] = None,
-        controllers: Optional[list[Controller]] = None,
+        world: mosaik.World,
+        clock: Clock,
+        actors: list[Actor],
+        controllers: list[Controller],
         storage: Optional[Storage] = None,
         storage_policy: Optional[StoragePolicy] = None,
         step_size: int = 1,  # global default
@@ -28,23 +30,21 @@ class Microgrid:
         self.storage_policy = storage_policy
         self.step_size = step_size
 
-    def initialize(self, world: mosaik.World, clock: Clock):
-        """Create co-simulation entities and connect them to world."""
         grid_sim = world.start("Grid")
-        grid_entity = grid_sim.Grid(storage=self.storage, policy=self.storage_policy)
+        grid_entity = grid_sim.Grid(storage=storage, policy=storage_policy)
 
         actor_names_and_entities = []
-        for actor in self.actors:
-            step_size = actor.step_size if actor.step_size else self.step_size
-            actor_sim = world.start("Actor", clock=clock, step_size=step_size)
+        for actor in actors:
+            actor_step_size = actor.step_size if actor.step_size else step_size
+            actor_sim = world.start("Actor", clock=clock, step_size=actor_step_size)
             actor_entity = actor_sim.Actor(actor=actor)
             world.connect(actor_entity, grid_entity, "p")
             actor_names_and_entities.append((actor.name, actor_entity))
 
-        for controller in self.controllers:
+        for controller in controllers:
             controller.start(self, clock)
-            step_size = controller.step_size if controller.step_size else self.step_size
-            controller_sim = world.start("Controller", step_size=step_size)
+            controller_step_size = controller.step_size if controller.step_size else step_size
+            controller_sim = world.start("Controller", step_size=controller_step_size)
             controller_entity = controller_sim.Controller(controller=controller)
             world.connect(grid_entity, controller_entity, "p_delta")
             for actor_name, actor_entity in actor_names_and_entities:
@@ -82,10 +82,27 @@ class Environment:
     def __init__(self, sim_start):
         self.clock = Clock(sim_start)
         self.microgrids = []
-        self.world = mosaik.World(self.COSIM_CONFIG) # type: ignore
+        self.world = mosaik.World(self.COSIM_CONFIG)  # type: ignore
 
-    def add_microgrid(self, microgrid: Microgrid):
+    def add_microgrid(
+        self,
+        actors: Optional[list[Actor]] = None,
+        controllers: Optional[list[Controller]] = None,
+        storage: Optional[Storage] = None,
+        storage_policy: Optional[StoragePolicy] = None,
+        step_size: int = 1,  # global default
+    ):
+        microgrid = Microgrid(
+            self.world,
+            self.clock,
+            actors if actors is not None else [],
+            controllers if controllers is not None else [],
+            storage,
+            storage_policy,
+            step_size
+        )
         self.microgrids.append(microgrid)
+        return microgrid
 
     def run(
         self,
@@ -93,11 +110,9 @@ class Environment:
         rt_factor: Optional[float] = None,
         print_progress: bool | Literal["individual"] = True,
     ):
+        if until is None:
+            until = int("inf")
         try:
-            for microgrid in self.microgrids:
-                microgrid.initialize(self.world, self.clock)
-            if until is None:
-                until = int("inf")
             self.world.run(
                 until=until, rt_factor=rt_factor, print_progress=print_progress
             )

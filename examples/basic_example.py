@@ -12,8 +12,9 @@ DURATION = 3600 * 24 * 2  # two days
 
 def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
+
     monitor = Monitor()  # stores simulation result on each step
-    microgrid = Microgrid(
+    environment.add_microgrid(
         actors=[
             ComputingSystem(power_meters=[
                 MockPowerMeter(p=2.194),
@@ -23,10 +24,8 @@ def main(result_csv: str):
         ],
         controllers=[monitor],
         storage=SimpleBattery(capacity=100),
-        zone="DE",
         step_size=60,  # global step size (can be overridden by actors or controllers)
     )
-    environment.add_microgrid(microgrid)
 
     environment.run(until=DURATION)
     monitor.to_csv(result_csv)
