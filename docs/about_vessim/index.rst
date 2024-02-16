@@ -28,4 +28,4 @@ Vessim is released under the `MIT License
 Credit
 ======
 
-The Vessim logo was created with the assistance of OpenAI's DALL·E 2.
+The Vessim logo was created with the assistance of OpenAI's DALL·E 3.
