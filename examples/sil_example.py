@@ -51,7 +51,7 @@ def main(result_csv: str):
             ComputeNode(name="raspi", address=RASPI_ADDRESS),
         ],
     )
-    microgrid = Microgrid(
+    environment.add_microgrid(
         actors=[
             ComputingSystem(power_meters=power_meters),
             Generator(signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5))),
@@ -61,7 +61,6 @@ def main(result_csv: str):
         controllers=[monitor, carbon_aware_controller],
         step_size=60,  # global step size (can be overridden by actors or controllers)
     )
-    environment.add_microgrid(microgrid)
 
     environment.run(until=DURATION, rt_factor=RT_FACTOR, print_progress=False)
     monitor.to_csv(result_csv)
