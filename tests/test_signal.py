@@ -197,7 +197,7 @@ class TestHistoricalSignal:
                 "2023-01-01T00:00:00",
                 "2023-01-01T01:00:00",
                 "b",
-                pd.tseries.offsets.DateOffset(minutes=35),
+                timedelta(minutes=35),
                 "bfill",
                 pd.Series([2.5], index=[pd.to_datetime("2023-01-01T00:35:00")]),
             ),

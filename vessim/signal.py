@@ -28,11 +28,12 @@ class HistoricalSignal(Signal):
         fill_method: Literal["ffill", "bfill"] = "ffill",
     ):
         self._fill_method = fill_method
-
+        # Unpack index of actual dataframe
         self._actual_index = actual.index.to_numpy(dtype="datetime64[ns]")
         actual_index_sorter = self._actual_index.argsort()
         self._actual_index = self._actual_index[actual_index_sorter]
 
+        # Unpack values of actual dataframe
         self._actual: dict[str, np.ndarray] = {}
         if isinstance(actual, pd.Series):
             if self._fill_method == "bfill":
@@ -48,6 +49,7 @@ class HistoricalSignal(Signal):
         else:
             raise ValueError(f"Incompatible type {type(actual)} for 'actual'.")
 
+        # Unpack indices of forecast dataframe if present
         self._forecast_request_index: Optional[np.ndarray] = None
         self._forecast_index: Optional[np.ndarray] = None
         if isinstance(forecast, (pd.Series, pd.DataFrame)):
@@ -67,6 +69,7 @@ class HistoricalSignal(Signal):
                 forecast_index_sorter = np.argsort(self._forecast_index)
             self._forecast_index = self._forecast_index[forecast_index_sorter]
 
+        # Unpack values of forecast dataframe if present
         self._forecast: dict[str, np.ndarray] = {}
         if isinstance(forecast, pd.Series):
             self._forecast[str(forecast.name)] = forecast.to_numpy()[forecast_index_sorter]
@@ -122,9 +125,9 @@ class HistoricalSignal(Signal):
 
         # Resample the data to get the data to specified frequency
         if frequency is not None:
-            np_freq = np.timedelta64(frequency)
+            np_freq = np.timedelta64(pd.to_timedelta(frequency))
             forecast_in_freq = self._resample_to_frequency(
-                index, forecast, np_start, np_end, np_freq, resample_method
+                index, forecast, column, np_start, np_end, np_freq, resample_method
             )
 
             # Check if there are NaN values in the result
@@ -143,56 +146,68 @@ class HistoricalSignal(Signal):
     ) -> tuple[np.ndarray, np.ndarray]:
         """Returns index and values of column data used to derive forecast prediction."""
         if self._forecast_index is None:
+            # No error forecast (actual data is used as static forecast)
             return self._actual_index, self._actual[_get_column_name(self._actual, column)]
 
         column_name = _get_column_name(self._forecast, column)
         if self._forecast_request_index is None:
+            # Static forecast
             return self._forecast_index, self._forecast[column_name]
 
-        try:
-            req_time = self._forecast_request_index[self._forecast_request_index <= start_time][-1]
-        except IndexError:
+        # Non-static forecast
+        req_index = np.searchsorted(self._forecast_request_index, start_time, side='right') - 1
+        if req_index < 0:
             raise ValueError(f"No forecasts available at time {start_time}.")
 
-        mask = self._forecast_request_index == req_time
+        mask = self._forecast_request_index == self._forecast_request_index[req_index]
         return self._forecast_index[mask], self._forecast[column_name][mask]
 
     def _resample_to_frequency(
         self,
         index: np.ndarray,
         data: np.ndarray,
+        column: Optional[str],
         start_time: np.datetime64,
         end_time: np.datetime64,
-        frequency: np.timedelta64,
+        freq: np.timedelta64,
         resample_method: Optional[str] = None,
     ) -> pd.Series:
         """Transform frame into the desired frequency between start and end time."""
-        new_index = pd.date_range(start=start_time, end=end_time, freq=frequency)
+        # Cutoff data for performance
+        start_index = np.searchsorted(index, start_time, side="right")
+        if start_index >= index.size:
+            raise ValueError(f"No data found at start time '{start_time}'.")
+        end_index = np.maximum(np.searchsorted(index, end_time, side="right"), index.size)
+        index = index[start_index:end_index]
+        data = data[start_index:end_index]
 
-        if resample_method is not None:
-            # Cutoff data for performance
-            try:
-                cutoff_time = df.index[df.index.searchsorted(end_time, side="right")]
-                df = df.loc[start_time:cutoff_time]  # type: ignore
-            except IndexError:
-                df = df.loc[start_time:]  # type: ignore
-            # Add NaN values in the specified frequency
-            combined_index = df.index.union(new_index, sort=True)
-            df = df.reindex(combined_index)
+        new_index = np.arange(
+            start_time + freq, end_time + np.timedelta64(1, "ns"), freq, dtype='datetime64'
+        )
+        times_to_add = new_index[~np.isin(new_index, index)]
 
-            # Use specific resample method if specified to fill NaN values
+        if times_to_add.size > 0:
+            # Resampling is required
+            insertion_indices = np.searchsorted(index, times_to_add, side='left')
+            index = np.insert(index.copy(), insertion_indices, times_to_add)
+            data = np.insert(data.copy(), insertion_indices, np.nan)
+
             if resample_method == "bfill":
-                df.bfill(inplace=True)
+                data = _bfill(data)
             elif resample_method is not None:
-                # Add actual value to front of series because needed for interpolation
-                df[start_time] = self.at(start_time, column=str(df.name))
+                # Insert current actual value at the front for interpolation/forward-fill
+                index = np.insert(index, 0, start_time)
+                data = np.insert(data, 0, self.at(start_time, column))
                 if resample_method == "ffill":
-                    df.ffill(inplace=True)
+                    data = _ffill(data)
                 else:
+                    df = pd.Series(data, index=index)
                     df.interpolate(method=resample_method, inplace=True)  # type: ignore
+                    return df.reindex(new_index)
+            else:
+                raise ValueError(f"Not enough data at frequency '{freq}' without resampling.")
 
-        # Get the data to the desired frequency after interpolation
-        return df.reindex(new_index[1:])  # type: ignore
+        return pd.Series(data[np.isin(index, new_index)], index=new_index)
 
 
 def _get_column_name(data: dict[str, Any], column: Optional[str]) -> str:
