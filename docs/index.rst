@@ -7,8 +7,11 @@ systems**. It lets users connect domain-specific simulators for energy system
 components such as renewable power generation and energy storage with *real*
 software and hardware while abstracting microgrid complexities.
 
-It is based on `mosaik <https://mosaik.offis.de/>`_,  a general-purpose
-co-simulation framework.
+Vessim is based on |mosaik| , a general-purpose co-simulation framework.
+
+.. |mosaik| image:: _static/mosaik.png
+    :height: 3 em
+    :target: https://mosaik.offis.de 
 
 .. image:: _static/CarbonAware_vessim_Aspects.png
     :width: 75%
@@ -24,7 +27,7 @@ What can I do with it?
 
 
 This documentation guides you through the concepts of Vessim, presents usage
-tutorials to get you started, and provided the API reference.
+tutorials to get you started, and provides the API reference.
 
 .. note::
     
