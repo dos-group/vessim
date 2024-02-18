@@ -66,7 +66,8 @@ If you use Vessim in your research, please cite it like the following:
    :hidden:
    :caption: Content:
  
-   overview/index
+   main_components/index
+   installation/index
    tutorials/index
    api_reference/index
    about_vessim/index
