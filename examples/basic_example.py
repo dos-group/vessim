@@ -1,7 +1,7 @@
-from _data import load_carbon_data, load_solar_data
+from _data import load_solar_data
 from vessim.actor import ComputingSystem, Generator
 from vessim.controller import Monitor
-from vessim.cosim import Environment, Microgrid
+from vessim.cosim import Environment
 from vessim.power_meter import MockPowerMeter
 from vessim.signal import HistoricalSignal
 from vessim.storage import SimpleBattery
