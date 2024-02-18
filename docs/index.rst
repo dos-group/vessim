@@ -17,6 +17,14 @@ Vessim is based on |mosaik| , a general-purpose co-simulation framework.
     :width: 75%
     :align: center
 
+This documentation guides you through the concepts of Vessim, presents usage
+tutorials to get you started, and provides the API reference.
+
+.. note::
+    
+    Vessim is in alpha stage and under active development. Functionality and
+    documentation will improve in the next weeks and months.
+
 What can I do with it?
 ======================
 
@@ -25,14 +33,6 @@ What can I do with it?
     - **Digital Twin**: Predict future system states in carbon-aware datacenters, aid decision-making, and assess risks during extreme events like power outages.
     - **Quality Assurance**: Apply Vessim in continuous integrating testing or use it to validate software roll-outs in a controlled environment.
 
-
-This documentation guides you through the concepts of Vessim, presents usage
-tutorials to get you started, and provides the API reference.
-
-.. note::
-    
-    Vessim is in alpha stage and under active development. Functionality and
-    documentation will improve in the next weeks and months.
 
 Further Reading & Research
 ==========================
