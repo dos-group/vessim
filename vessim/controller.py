@@ -8,8 +8,8 @@ from typing import Any, TYPE_CHECKING, MutableMapping, Optional, Callable
 import mosaik_api  # type: ignore
 import pandas as pd
 
-from vessim.util import Clock
 from vessim.signal import Signal
+from vessim.util import Clock
 
 if TYPE_CHECKING:
     from vessim.cosim import Microgrid
