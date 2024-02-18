@@ -42,6 +42,7 @@ extensions = [
     "nbsphinx",
 ]
 
+html_css_files = ["custom.css"]
 html_static_path = ["_static"]
 html_logo = "_static/logo.png"
 
