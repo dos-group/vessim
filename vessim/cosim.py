@@ -114,7 +114,8 @@ class Environment:
         print_progress: bool | Literal["individual"] = True,
     ):
         if until is None:
-            until = int("inf")
+            # there is no integer representing infinity in python
+            until = float("inf") # type: ignore
         try:
             self.world.run(
                 until=until, rt_factor=rt_factor, print_progress=print_progress
