@@ -29,7 +29,7 @@ class HistoricalSignal(Signal):
     ):
         self._fill_method = fill_method
         # Unpack index of actual dataframe
-        self._actual_times = actual.index.to_numpy(dtype="datetime64[ns]", copy=True)
+        self._actual_times = actual.index.to_numpy(dtype="datetime64[s]", copy=True)
         actual_times_sorter = self._actual_times.argsort()
         self._actual_times = self._actual_times[actual_times_sorter]
 
@@ -63,17 +63,17 @@ class HistoricalSignal(Signal):
         if isinstance(forecast, (pd.Series, pd.DataFrame)):
             if isinstance(forecast.index, pd.MultiIndex):
                 self._forecast_request_times = forecast.index.get_level_values(0).to_numpy(
-                    dtype="datetime64[ns]", copy=True
+                    dtype="datetime64[s]", copy=True
                 )
                 self._forecast_times = forecast.index.get_level_values(1).to_numpy(
-                    dtype="datetime64[ns]", copy=True
+                    dtype="datetime64[s]", copy=True
                 )
                 forecast_times_sorter = np.lexsort(
                     (self._forecast_times, self._forecast_request_times)
                 )
                 self._forecast_request_times = self._forecast_request_times[forecast_times_sorter]
             else:
-                self._forecast_times = forecast.index.to_numpy(dtype="datetime64[ns]", copy=True)
+                self._forecast_times = forecast.index.to_numpy(dtype="datetime64[s]", copy=True)
                 forecast_times_sorter = np.argsort(self._forecast_times)
             self._forecast_times = self._forecast_times[forecast_times_sorter]
 
@@ -113,13 +113,13 @@ class HistoricalSignal(Signal):
         if self._fill_method == "ffill":
             index = self._actual_times.searchsorted(np_dt, side="right") - 1
             if index >= 0:
-                return values[index]
+                return values[index].astype(float)
             else:
                 raise ValueError(f"'{dt}' is too early to get data in column '{column}'.")
         else:
             index = self._actual_times.searchsorted(np_dt, side="left")
             try:
-                return values[index]
+                return values[index].astype(float)
             except IndexError:
                 raise ValueError(f"'{dt}' is too late to get data in column '{column}'.")
 
@@ -130,7 +130,7 @@ class HistoricalSignal(Signal):
         column: Optional[str] = None,
         frequency: Optional[str | timedelta] = None,
         resample_method: Optional[str] = None,
-    ) -> pd.Series:
+    ) -> dict[np.datetime64, float]:
         np_start = np.datetime64(start_time)
         np_end = np.datetime64(end_time)
         times, forecast = self._get_forecast_data_source(np_start, column)
@@ -148,9 +148,11 @@ class HistoricalSignal(Signal):
 
         start_index = np.searchsorted(times, np_start, side="right")
         end_index = np.searchsorted(times, np_end, side="right")
-        return pd.Series(
-            forecast[start_index:end_index].copy(), index=times[start_index:end_index].copy()
-        )
+        return {
+            time: value.astype(float) for time, value in zip(
+                times[start_index:end_index].copy(), forecast[start_index:end_index].copy()
+            )
+        }
 
     def _get_forecast_data_source(
         self, start_time: np.datetime64, column: Optional[str]
@@ -187,9 +189,9 @@ class HistoricalSignal(Signal):
         end_time: np.datetime64,
         freq: np.timedelta64,
         resample_method: Optional[str],
-    ) -> pd.Series:
+    ) -> dict[np.datetime64, float]:
         """Transform frame into the desired frequency between start and end time."""
-        # Cutoff data, create deep copy and add actual value at start_time to the front
+        # Cutoff data and create deep copy
         start_index = np.searchsorted(times, start_time, side="right")
         if start_index >= times.size:
             raise ValueError(f"No data found at start time '{start_time}'.")
@@ -198,37 +200,34 @@ class HistoricalSignal(Signal):
         data = data[start_index:end_index].copy()
 
         new_times = np.arange(
-            start_time + freq, end_time + np.timedelta64(1, "ns"), freq, dtype="datetime64[ns]"
+            start_time + freq, end_time + np.timedelta64(1, "s"), freq, dtype="datetime64[s]"
         )
 
         new_times_indices = np.searchsorted(times, new_times, side="left")
-        if not np.array_equal(new_times, times[new_times_indices]):
-            # Resampling is required
-            if resample_method == "bfill":
-                new_data = data[new_times_indices]
+        if not np.array_equal(new_times, times[new_times_indices]) and resample_method != "bfill":
+            # Actual value is used for interpolation
+            times = np.insert(times, 0, start_time)
+            data = np.insert(data, 0, self.at(start_time, column))
+            if resample_method == "ffill":
+                new_data = data[np.searchsorted(times, new_times, side="right") - 1]
+            elif resample_method == "nearest":
+                spacing = np.diff(times) / 2
+                times = times + np.hstack([spacing, spacing[-1]])
+                data = np.hstack([data, data[-1]])
+                new_data = data[np.searchsorted(times, new_times)]
+            elif resample_method == "linear":
+                # Numpy does not support interpolation on datetimes
+                new_data = np.interp(
+                    new_times.astype("float64"), times.astype("float64"), data
+                )
             elif resample_method is not None:
-                times = np.insert(times, 0, start_time)
-                data = np.insert(data, 0, self.at(start_time, column))
-                if resample_method == "ffill":
-                    new_data = data[np.searchsorted(times, new_times, side="right") - 1]
-                elif resample_method == "nearest":
-                    spacing = np.diff(times) / 2
-                    times = times + np.hstack([spacing, spacing[-1]])
-                    data = np.hstack([data, data[-1]])
-                    new_data = data[np.searchsorted(times, new_times)]
-                elif resample_method == "linear":
-                    # Numpy does not support interpolation on datetimes
-                    new_data = np.interp(
-                        new_times.astype("float64"), times.astype("float64"), data
-                    )
-                else:
-                    raise ValueError(f"Unknown resample_method '{resample_method}'.")
+                raise ValueError(f"Unknown resample_method '{resample_method}'.")
             else:
                 raise ValueError(f"Not enough data at frequency '{freq}' without resampling.")
         else:
             new_data = data[new_times_indices]
 
-        return pd.Series(new_data, index=new_times)
+        return {time: value.astype(float) for time, value in zip(new_times, new_data)}
 
 
 def _get_column_name(data: dict[str, Any], column: Optional[str]) -> str:
