@@ -66,6 +66,7 @@ furo = {version = "*", optional = true}
 sphinx-copybutton = {version = "*", optional = true}
 nbsphinx = {version = "*", optional = true}
 pandoc = {version = "*", optional = true}
+ipython = {version = "*", optional = true}
 
 [tool.poetry.extras]
 sil = ["requests", "fastapi", "docker", "redis", "uvicorn"]
