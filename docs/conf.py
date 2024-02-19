@@ -42,6 +42,8 @@ extensions = [
     "nbsphinx",
 ]
 
+autodoc_member_order = "bysource"
+
 html_css_files = ["custom.css"]
 html_static_path = ["_static"]
 html_logo = "_static/logo.png"
