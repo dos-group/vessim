@@ -1,5 +1,6 @@
 import pytest
 import pandas as pd
+import numpy as np
 from datetime import timedelta
 
 from vessim.signal import HistoricalSignal
@@ -60,12 +61,12 @@ class TestHistoricalSignal:
     @pytest.mark.parametrize(
         "dt, column, expected",
         [
-            (pd.to_datetime("2023-01-01T00:00:00"), "a", 1),
-            (pd.to_datetime("2023-01-01T00:00:10"), "a", 1),
-            (pd.to_datetime("2023-01-01T01:00:00"), "a", 3),
-            (pd.to_datetime("2023-01-01T10:00:00"), "a", 3),
-            (pd.to_datetime("2023-01-01T00:29:59"), "b", 0),
-            (pd.to_datetime("2023-01-01T00:30:00"), "b", 3),
+            (("2023-01-01T00:00:00"), "a", 1),
+            (("2023-01-01T00:00:10"), "a", 1),
+            (("2023-01-01T01:00:00"), "a", 3),
+            (("2023-01-01T10:00:00"), "a", 3),
+            (("2023-01-01T00:29:59"), "b", 0),
+            (("2023-01-01T00:30:00"), "b", 3),
         ],
     )
     def test_actual(self, hist_signal, dt, column, expected):
@@ -73,47 +74,39 @@ class TestHistoricalSignal:
 
     def test_actual_fails_if_column_not_specified(self, hist_signal):
         with pytest.raises(ValueError):
-            hist_signal.at(pd.to_datetime("2023-01-01T00:00:00"))
+            hist_signal.at("2023-01-01T00:00:00")
 
     def test_actual_fails_if_column_does_not_exist(self, hist_signal):
         with pytest.raises(ValueError):
-            hist_signal.at(pd.to_datetime("2023-01-01T00:00:00"), "d")
+            hist_signal.at("2023-01-01T00:00:00", "d")
 
     def test_actual_fails_if_now_too_early(self, hist_signal):
         with pytest.raises(ValueError):
-            hist_signal.at(pd.to_datetime("2022-12-30T23:59:59"), "a")
+            hist_signal.at("2022-12-30T23:59:59", "a")
 
     def test_actual_fails_if_now_too_late(self, hist_signal_single):
         with pytest.raises(ValueError):
-            hist_signal_single.at(pd.to_datetime("2023-01-01T01:00:01"))
+            hist_signal_single.at("2023-01-01T01:00:01")
 
     def test_forecast_single_column(self, hist_signal_single):
         assert hist_signal_single.forecast(
             start_time="2023-01-01T00:00:00",
             end_time="2023-01-01T01:00:00",
-        ).equals(
-            pd.Series(
-                [2.0, 3.0],
-                index=[
-                    pd.to_datetime("2023-01-01T00:30:00"),
-                    pd.to_datetime("2023-01-01T01:00:00"),
-                ],
-            )
-        )
+        ) == {
+                np.datetime64("2023-01-01T00:30:00"): 2.0,
+                np.datetime64("2023-01-01T01:00:00"): 3.0,
+            }
+
 
     def test_forecast_static(self, hist_signal_static_forecast):
         assert hist_signal_static_forecast.forecast(
             start_time="2023-01-01T00:00:00",
             end_time="2023-01-01T02:00:00",
-        ).equals(
-            pd.Series(
-                [2.0, 4.0],
-                index=[
-                    pd.to_datetime("2023-01-01T01:00:00"),
-                    pd.to_datetime("2023-01-01T02:00:00"),
-                ],
-            )
-        )
+        ) == {
+                np.datetime64("2023-01-01T01:00:00"): 2.0,
+                np.datetime64("2023-01-01T02:00:00"): 4.0,
+            }
+
 
     @pytest.mark.parametrize(
         "start, end, column, expected",
@@ -122,61 +115,52 @@ class TestHistoricalSignal:
                 "2023-01-01T00:00:00",
                 "2023-01-01T01:00:00",
                 "a",
-                pd.Series(
-                    [2.0, 1.5],
-                    index=[
-                        pd.to_datetime("2023-01-01T00:10:00"),
-                        pd.to_datetime("2023-01-01T01:00:00"),
-                    ],
-                ),
+                {
+                    np.datetime64("2023-01-01T00:10:00"): 2.0,
+                    np.datetime64("2023-01-01T01:00:00"): 1.5,
+                }
             ),
             (
                 "2023-01-01T01:00:00",
                 "2023-01-01T02:00:00",
                 "a",
-                pd.Series([3.0], index=[pd.to_datetime("2023-01-01T02:00:00")]),
+                {np.datetime64("2023-01-01T02:00:00"): 3.0},
             ),
             (
                 "2023-01-01T00:05:00",
                 "2023-01-01T00:50:00",
                 "a",
-                pd.Series([2.0], index=[pd.to_datetime("2023-01-01T00:10:00")]),
+                {np.datetime64("2023-01-01T00:10:00"): 2.0},
             ),
             (
                 "2023-01-01T00:11:00",
                 "2023-01-01T00:59:00",
                 "a",
-                pd.Series([], dtype=float, index=pd.DatetimeIndex([])),
+                {},
             ),
             (
                 "2023-01-01T00:00:00",
                 "2023-01-01T02:00:00",
                 "b",
-                pd.Series(
-                    [2.5, 2.5, 3.5],
-                    index=[
-                        pd.to_datetime("2023-01-01T00:10:00"),
-                        pd.to_datetime("2023-01-01T01:00:00"),
-                        pd.to_datetime("2023-01-01T02:00:00"),
-                    ],
-                ),
+                {
+                    np.datetime64("2023-01-01T00:10:00"): 2.5,
+                    np.datetime64("2023-01-01T01:00:00"): 2.5,
+                    np.datetime64("2023-01-01T02:00:00"): 3.5,
+                },
             ),
             (
                 "2023-01-01T01:00:00",
                 "2023-04-04T14:00:00",
                 "a",
-                pd.Series(
-                    [3.0, 1.5],
-                    index=[
-                        pd.to_datetime("2023-01-01T02:00:00"),
-                        pd.to_datetime("2023-01-01T03:00:00"),
-                    ],
-                ),
+                {
+                    np.datetime64("2023-01-01T02:00:00"): 3.0,
+                    np.datetime64("2023-01-01T03:00:00"): 1.5,
+                }
             ),
         ],
     )
     def test_forecast(self, hist_signal_forecast, start, end, column, expected):
-        assert hist_signal_forecast.forecast(start, end, column).equals(expected)
+        assert hist_signal_forecast.forecast(start, end, column) == expected
 
     @pytest.mark.parametrize(
         "start, end, column, frequency, method, expected",
@@ -187,7 +171,7 @@ class TestHistoricalSignal:
                 "a",
                 "2H",
                 None,
-                pd.Series([2.5], index=[pd.to_datetime("2023-01-01T02:00:00")]),
+                {np.datetime64("2023-01-01T02:00:00"): 2.5},
             ),
             (
                 "2023-01-01T00:00:00",
@@ -195,7 +179,7 @@ class TestHistoricalSignal:
                 "b",
                 timedelta(minutes=35),
                 "bfill",
-                pd.Series([2.5], index=[pd.to_datetime("2023-01-01T00:35:00")]),
+                {np.datetime64("2023-01-01T00:35:00"): 2.5},
             ),
             (
                 "2023-01-01T01:00:00",
@@ -203,13 +187,10 @@ class TestHistoricalSignal:
                 "a",
                 timedelta(minutes=45),
                 "ffill",
-                pd.Series(
-                    [2.0, 3.0],
-                    index=[
-                        pd.to_datetime("2023-01-01T01:45:00"),
-                        pd.to_datetime("2023-01-01T02:30:00"),
-                    ],
-                ),
+                {
+                    np.datetime64("2023-01-01T01:45:00"): 2.0,
+                    np.datetime64("2023-01-01T02:30:00"): 3.0,
+                },
             ),
             (
                 "2023-01-01T00:00:00",
@@ -217,69 +198,57 @@ class TestHistoricalSignal:
                 "a",
                 timedelta(hours=1, minutes=30),
                 "linear",
-                pd.Series(
-                    [2.0, 2.0],
-                    index=[
-                        pd.to_datetime("2023-01-01T01:30:00"),
-                        pd.to_datetime("2023-01-01T03:00:00"),
-                    ],
-                ),
+                {
+                    np.datetime64("2023-01-01T01:30:00"): 2.0,
+                    np.datetime64("2023-01-01T03:00:00"): 2.0,
+                },
             ),
             (
                 "2023-01-01T00:20:00",
                 "2023-01-01T01:00:00",
                 "b",
-                "20T",
+                "20min",
                 "bfill",
-                pd.Series(
-                    [2.5, 2.5],
-                    index=[
-                        pd.to_datetime("2023-01-01T00:40:00"),
-                        pd.to_datetime("2023-01-01T01:00:00"),
-                    ],
-                ),
+                {
+                    np.datetime64("2023-01-01T00:40:00"): 2.5,
+                    np.datetime64("2023-01-01T01:00:00"): 2.5,
+                },
             ),
             (
                 "2023-01-01T00:30:00",
                 "2023-01-01T01:00:00",
                 "b",
-                "20T",
+                "20min",
                 "linear",
-                pd.Series(
-                    [2.0],
-                    index=[pd.to_datetime("2023-01-01T00:50:00")],
-                ),
+                {np.datetime64("2023-01-01T00:50:00"): 2.0},
             ),
             (
                 "2023-01-01T00:45:00",
                 "2023-01-01T01:00:00",
                 "b",
-                "12T",
+                "12min",
                 "linear",
-                pd.Series([2.4], index=[pd.to_datetime("2023-01-01T00:57:00")]),
+                {np.datetime64("2023-01-01T00:57:00"): 2.4},
             ),
             (
                 "2023-01-01T00:35:00",
                 "2023-01-01T00:40:00",
                 "a",
-                "5T",
+                "5min",
                 "linear",
-                pd.Series([4.3], index=[pd.to_datetime("2023-01-01T00:40:00")]),
+                {np.datetime64("2023-01-01T00:40:00"): 4.3},
             ),
             (
                 "2023-01-01T00:40:00",
                 "2023-01-01T00:55:00",
                 "b",
-                "5T",
+                "5min",
                 "nearest",
-                pd.Series(
-                    [2.0, 2.0, 2.5],
-                    index=[
-                        pd.to_datetime("2023-01-01T00:45:00"),
-                        pd.to_datetime("2023-01-01T00:50:00"),
-                        pd.to_datetime("2023-01-01T00:55:00"),
-                    ],
-                ),
+                {
+                    np.datetime64("2023-01-01T00:45:00"): 2.0,
+                    np.datetime64("2023-01-01T00:50:00"): 2.0,
+                    np.datetime64("2023-01-01T00:55:00"): 2.5,
+                },
             ),
         ],
     )
@@ -292,28 +261,28 @@ class TestHistoricalSignal:
             column=column,
             frequency=frequency,
             resample_method=method,
-        ).equals(expected)
+        ) == expected
 
     def test_forecast_fails_if_column_not_specified(self, hist_signal):
         with pytest.raises(ValueError):
             hist_signal.forecast(
-                pd.to_datetime("2023-01-01T00:00:00"),
-                pd.to_datetime("2023-01-01T01:00:00"),
+                np.datetime64("2023-01-01T00:00:00"),
+                np.datetime64("2023-01-01T01:00:00"),
             )
 
     def test_forecast_fails_if_column_does_not_exist(self, hist_signal):
         with pytest.raises(ValueError):
             hist_signal.forecast(
-                pd.to_datetime("2023-01-01T00:00:00"),
-                pd.to_datetime("2023-01-01T01:00:00"),
+                np.datetime64("2023-01-01T00:00:00"),
+                np.datetime64("2023-01-01T01:00:00"),
                 column="d",
             )
 
     def test_forecast_fails_if_start_too_early(self, hist_signal_forecast):
         with pytest.raises(ValueError):
             hist_signal_forecast.forecast(
-                pd.to_datetime("2022-12-31T23:59:59"),
-                pd.to_datetime("2023-01-01T01:00:00"),
+                np.datetime64("2022-12-31T23:59:59"),
+                np.datetime64("2023-01-01T01:00:00"),
                 column="a",
             )
 
@@ -321,8 +290,8 @@ class TestHistoricalSignal:
         with pytest.raises(ValueError):
             hist_signal.forecast(
                 hist_signal.forecast(
-                    pd.to_datetime("2023-01-01T00:00:00"),
-                    pd.to_datetime("2023-01-01T01:00:00"),
+                    np.datetime64("2023-01-01T00:00:00"),
+                    np.datetime64("2023-01-01T01:00:00"),
                     column="a",
                     frequency="invalid",
                 )
@@ -331,8 +300,8 @@ class TestHistoricalSignal:
     def test_forecast_fails_if_not_enough_data_for_frequency(self, hist_signal):
         with pytest.raises(ValueError):
             hist_signal.forecast(
-                pd.to_datetime("2023-01-01T00:00:00"),
-                pd.to_datetime("2023-01-01T01:00:00"),
+                np.datetime64("2023-01-01T00:00:00"),
+                np.datetime64("2023-01-01T01:00:00"),
                 column="a",
                 frequency="15T",
             )
