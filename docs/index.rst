@@ -39,15 +39,20 @@ Further Reading & Research
 
 If you'd like to dive deeper into the base concepts of this project, you can
 read more in our our vision paper, `"A Testbed for Carbon-Aware Applications and
-Systems" <https://arxiv.org/pdf/2306.09774.pdf>`_ by Philipp Wiesner, Ilja
-Behnke and Odej Kao.
+Systems" <https://arxiv.org/pdf/2306.09774.pdf>`_ or our journal paper on
+software-in-the-loop simulation for carbon-aware applications,
+`"Software-in-the-Loop Simulation for Developing and Testing Carbon-Aware
+Applications" <https://onlinelibrary.wiley.com/doi/10.1002/spe.3275>`_.
 
-.. image:: _static/vessim_paper.png
-    :width: 40%
-    :align: center
+.. |pic1| image:: _static/vessim_paper.png
+   :width: 49%
 
+.. |pic2| image:: _static/sil_paper.png
+   :width: 49%
 
-If you use Vessim in your research, please cite it like the following:
+.. centered:: |pic1| |pic2|
+
+If you use Vessim in your research, please cite either one:
 
 .. code-block:: text
 
@@ -60,6 +65,18 @@ If you use Vessim in your research, please cite it like the following:
         primaryClass={cs.DC}
     }
 
+.. code-block:: text
+
+    @article{wiesner2023sil,
+        title = {Software-in-the-loop simulation for developing and testing carbon-aware applications},
+        author = {Wiesner, Philipp and Steinke, Marvin and Nickel, Henrik and Kitana, Yazan and Kao, Odej},
+        journal = {Software: Practice and Experience},
+        year = {2023},
+        volume = {53},
+        number = {12},
+        pages = {2362-2376},
+        doi = {https://doi.org/10.1002/spe.3275}
+    }
 
 .. toctree::
     :maxdepth: 3
