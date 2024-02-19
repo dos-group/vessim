@@ -46,17 +46,3 @@ Power-Meter Module
     :maxdepth: 2
 
     power_meter
-
-Util Module
------------
-.. toctree::
-    :maxdepth: 2
-
-    util
-
-Software-in-the-Loop Module
----------------------------
-.. toctree::
-    :maxdepth: 2
-
-    sil

@@ -1,5 +1,5 @@
 #!/bin/bash
-for name in actor controller cosim power_meter signal sil storage util
+for name in actor controller cosim power_meter signal storage 
 do
     echo "vessim.$name" > $name.rst
     echo "============" >> $name.rst
