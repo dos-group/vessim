@@ -16,7 +16,6 @@ if TYPE_CHECKING:
 
 
 class Controller(ABC):
-
     def __init__(self, step_size: Optional[int] = None):
         self.step_size = step_size
 
@@ -81,9 +80,6 @@ class Monitor(Controller):
         self.custom_monitor_fns.append(fn)
 
     def step(self, time: int, p_delta: float, actor_infos: dict) -> None:
-        self.monitor(time, p_delta, actor_infos)
-
-    def monitor(self, time: int, p_delta: float, actor_infos: dict) -> None:
         log_entry = dict(
             p_delta=p_delta,
             actor_infos=actor_infos,
