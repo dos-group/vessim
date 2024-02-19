@@ -62,12 +62,13 @@ If you use Vessim in your research, please cite it like the following:
 
 
 .. toctree::
-   :maxdepth: 3
-   :hidden:
-   :caption: Content:
- 
-   main_components/index
-   installation/index
-   tutorials/index
-   api_reference/index
-   about_vessim/index
+    :maxdepth: 3
+    :hidden:
+    :caption: Content:
+
+    Overview <self>
+    main_components/index
+    installation/index
+    tutorials/index
+    api_reference/index
+    about_vessim/index
