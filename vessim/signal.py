@@ -29,53 +29,65 @@ class HistoricalSignal(Signal):
     ):
         self._fill_method = fill_method
         # Unpack index of actual dataframe
-        self._actual_index = actual.index.to_numpy(dtype="datetime64[ns]")
-        actual_index_sorter = self._actual_index.argsort()
-        self._actual_index = self._actual_index[actual_index_sorter]
+        self._actual_times = actual.index.to_numpy(dtype="datetime64[ns]", copy=True)
+        actual_times_sorter = self._actual_times.argsort()
+        self._actual_times = self._actual_times[actual_times_sorter]
 
         # Unpack values of actual dataframe
         self._actual: dict[str, np.ndarray] = {}
         if isinstance(actual, pd.Series):
             if self._fill_method == "bfill":
-                self._actual[str(actual.name)] = _bfill(actual.to_numpy()[actual_index_sorter])
+                self._actual[str(actual.name)] = _bfill(
+                    actual.to_numpy(dtype="float64", copy=True)[actual_times_sorter]
+                )
             else:
-                self._actual[str(actual.name)] = _ffill(actual.to_numpy()[actual_index_sorter])
+                self._actual[str(actual.name)] = _ffill(
+                    actual.to_numpy(dtype="float64", copy=True)[actual_times_sorter]
+                )
         elif isinstance(actual, pd.DataFrame):
             for col in actual.columns:
                 if self._fill_method == "bfill":
-                    self._actual[str(col)] = _bfill(actual[col].to_numpy()[actual_index_sorter])
+                    self._actual[str(col)] = _bfill(
+                        actual[col].to_numpy(dtype="float64", copy=True)[actual_times_sorter]
+                    )
                 else:
-                    self._actual[str(col)] = _ffill(actual[col].to_numpy()[actual_index_sorter])
+                    self._actual[str(col)] = _ffill(
+                        actual[col].to_numpy(dtype="float64", copy=True)[actual_times_sorter]
+                    )
         else:
             raise ValueError(f"Incompatible type {type(actual)} for 'actual'.")
 
         # Unpack indices of forecast dataframe if present
-        self._forecast_request_index: Optional[np.ndarray] = None
-        self._forecast_index: Optional[np.ndarray] = None
+        self._forecast_request_times: Optional[np.ndarray] = None
+        self._forecast_times: Optional[np.ndarray] = None
         if isinstance(forecast, (pd.Series, pd.DataFrame)):
             if isinstance(forecast.index, pd.MultiIndex):
-                self._forecast_request_index = forecast.index.get_level_values(0).to_numpy(
-                    dtype="datetime64[ns]"
+                self._forecast_request_times = forecast.index.get_level_values(0).to_numpy(
+                    dtype="datetime64[ns]", copy=True
                 )
-                self._forecast_index = forecast.index.get_level_values(1).to_numpy(
-                    dtype="datetime64[ns]"
+                self._forecast_times = forecast.index.get_level_values(1).to_numpy(
+                    dtype="datetime64[ns]", copy=True
                 )
-                forecast_index_sorter = np.lexsort((
-                    self._forecast_index, self._forecast_request_index
-                ))
-                self._forecast_request_index = self._forecast_request_index[forecast_index_sorter]
+                forecast_times_sorter = np.lexsort(
+                    (self._forecast_times, self._forecast_request_times)
+                )
+                self._forecast_request_times = self._forecast_request_times[forecast_times_sorter]
             else:
-                self._forecast_index = forecast.index.to_numpy(dtype="datetime64[ns]")
-                forecast_index_sorter = np.argsort(self._forecast_index)
-            self._forecast_index = self._forecast_index[forecast_index_sorter]
+                self._forecast_times = forecast.index.to_numpy(dtype="datetime64[ns]", copy=True)
+                forecast_times_sorter = np.argsort(self._forecast_times)
+            self._forecast_times = self._forecast_times[forecast_times_sorter]
 
         # Unpack values of forecast dataframe if present
         self._forecast: dict[str, np.ndarray] = {}
         if isinstance(forecast, pd.Series):
-            self._forecast[str(forecast.name)] = forecast.to_numpy()[forecast_index_sorter]
+            self._forecast[str(forecast.name)] = forecast.to_numpy(dtype="float64", copy=True)[
+                forecast_times_sorter
+            ]
         elif isinstance(forecast, pd.DataFrame):
             for col in forecast.columns:
-                self._forecast[str(col)] = forecast[col].to_numpy()[forecast_index_sorter]
+                self._forecast[str(col)] = forecast[col].to_numpy(dtype="float64", copy=True)[
+                    forecast_times_sorter
+                ]
         elif forecast is not None:
             raise ValueError(f"Incompatible type {type(forecast)} for 'forecast'.")
 
@@ -94,20 +106,20 @@ class HistoricalSignal(Signal):
         """Returns a list of all columns where actual data is available."""
         return list(self._actual.keys())
 
-    def at(self, dt: DatetimeLike, column: Optional[str] = None, **kwargs):
+    def at(self, dt: DatetimeLike, column: Optional[str] = None, **kwargs) -> float:
         np_dt = np.datetime64(dt)
         values = self._actual[_get_column_name(self._actual, column)]
 
         if self._fill_method == "ffill":
-            time_index = self._actual_index.searchsorted(np_dt, side="right")
-            if time_index > 0:
-                return values[time_index - 1]
+            index = self._actual_times.searchsorted(np_dt, side="right") - 1
+            if index >= 0:
+                return values[index]
             else:
                 raise ValueError(f"'{dt}' is too early to get data in column '{column}'.")
         else:
-            time_index = self._actual_index.searchsorted(np_dt, side="left")
+            index = self._actual_times.searchsorted(np_dt, side="left")
             try:
-                return values[time_index]
+                return values[index]
             except IndexError:
                 raise ValueError(f"'{dt}' is too late to get data in column '{column}'.")
 
@@ -121,93 +133,102 @@ class HistoricalSignal(Signal):
     ) -> pd.Series:
         np_start = np.datetime64(start_time)
         np_end = np.datetime64(end_time)
-        index, forecast = self._get_forecast_data_source(np_start, column)
+        times, forecast = self._get_forecast_data_source(np_start, column)
+
+        nan_mask = ~np.isnan(forecast)
+        times = times[nan_mask]
+        forecast = forecast[nan_mask]
 
         # Resample the data to get the data to specified frequency
         if frequency is not None:
             np_freq = np.timedelta64(pd.to_timedelta(frequency))
-            forecast_in_freq = self._resample_to_frequency(
-                index, forecast, column, np_start, np_end, np_freq, resample_method
+            return self._resample_to_frequency(
+                times, forecast, column, np_start, np_end, np_freq, resample_method
             )
 
-            # Check if there are NaN values in the result
-            if forecast_in_freq.hasnans:
-                raise ValueError(
-                    f"Not enough data for frequency '{frequency}'"
-                    f"with resample_method '{resample_method}'."
-                )
-            return forecast_in_freq
-
-        mask = (np_start < index) & (index <= np_end) & ~np.isnan(forecast)
-        return pd.Series(forecast[mask], index=index[mask])
+        start_index = np.searchsorted(times, np_start, side="right")
+        end_index = np.searchsorted(times, np_end, side="right")
+        return pd.Series(
+            forecast[start_index:end_index].copy(), index=times[start_index:end_index].copy()
+        )
 
     def _get_forecast_data_source(
         self, start_time: np.datetime64, column: Optional[str]
     ) -> tuple[np.ndarray, np.ndarray]:
         """Returns index and values of column data used to derive forecast prediction."""
-        if self._forecast_index is None:
+        if self._forecast_times is None:
             # No error forecast (actual data is used as static forecast)
-            return self._actual_index, self._actual[_get_column_name(self._actual, column)]
+            return self._actual_times, self._actual[_get_column_name(self._actual, column)]
 
         column_name = _get_column_name(self._forecast, column)
-        if self._forecast_request_index is None:
+        if self._forecast_request_times is None:
             # Static forecast
-            return self._forecast_index, self._forecast[column_name]
+            return self._forecast_times, self._forecast[column_name]
 
         # Non-static forecast
-        req_index = np.searchsorted(self._forecast_request_index, start_time, side='right') - 1
-        if req_index < 0:
+        req_end_index = np.searchsorted(self._forecast_request_times, start_time, side="right")
+        if req_end_index <= 0:
             raise ValueError(f"No forecasts available at time {start_time}.")
-
-        mask = self._forecast_request_index == self._forecast_request_index[req_index]
-        return self._forecast_index[mask], self._forecast[column_name][mask]
+        req_start_index = np.searchsorted(
+            self._forecast_request_times,
+            self._forecast_request_times[req_end_index - 1],
+        )
+        return (
+            self._forecast_times[req_start_index:req_end_index],
+            self._forecast[column_name][req_start_index:req_end_index],
+        )
 
     def _resample_to_frequency(
         self,
-        index: np.ndarray,
+        times: np.ndarray,
         data: np.ndarray,
         column: Optional[str],
         start_time: np.datetime64,
         end_time: np.datetime64,
         freq: np.timedelta64,
-        resample_method: Optional[str] = None,
+        resample_method: Optional[str],
     ) -> pd.Series:
         """Transform frame into the desired frequency between start and end time."""
-        # Cutoff data for performance
-        start_index = np.searchsorted(index, start_time, side="right")
-        if start_index >= index.size:
+        # Cutoff data, create deep copy and add actual value at start_time to the front
+        start_index = np.searchsorted(times, start_time, side="right")
+        if start_index >= times.size:
             raise ValueError(f"No data found at start time '{start_time}'.")
-        end_index = np.maximum(np.searchsorted(index, end_time, side="right"), index.size)
-        index = index[start_index:end_index]
-        data = data[start_index:end_index]
+        end_index = np.searchsorted(times, end_time, side="right") + 1
+        times = times[start_index:end_index].copy()
+        data = data[start_index:end_index].copy()
 
-        new_index = np.arange(
-            start_time + freq, end_time + np.timedelta64(1, "ns"), freq, dtype='datetime64'
+        new_times = np.arange(
+            start_time + freq, end_time + np.timedelta64(1, "ns"), freq, dtype="datetime64[ns]"
         )
-        times_to_add = new_index[~np.isin(new_index, index)]
 
-        if times_to_add.size > 0:
+        new_times_indices = np.searchsorted(times, new_times, side="left")
+        if not np.array_equal(new_times, times[new_times_indices]):
             # Resampling is required
-            insertion_indices = np.searchsorted(index, times_to_add, side='left')
-            index = np.insert(index.copy(), insertion_indices, times_to_add)
-            data = np.insert(data.copy(), insertion_indices, np.nan)
-
             if resample_method == "bfill":
-                data = _bfill(data)
+                new_data = data[new_times_indices]
             elif resample_method is not None:
-                # Insert current actual value at the front for interpolation/forward-fill
-                index = np.insert(index, 0, start_time)
+                times = np.insert(times, 0, start_time)
                 data = np.insert(data, 0, self.at(start_time, column))
                 if resample_method == "ffill":
-                    data = _ffill(data)
+                    new_data = data[np.searchsorted(times, new_times, side="right") - 1]
+                elif resample_method == "nearest":
+                    spacing = np.diff(times) / 2
+                    times = times + np.hstack([spacing, spacing[-1]])
+                    data = np.hstack([data, data[-1]])
+                    new_data = data[np.searchsorted(times, new_times)]
+                elif resample_method == "linear":
+                    # Numpy does not support interpolation on datetimes
+                    new_data = np.interp(
+                        new_times.astype("float64"), times.astype("float64"), data
+                    )
                 else:
-                    df = pd.Series(data, index=index)
-                    df.interpolate(method=resample_method, inplace=True)  # type: ignore
-                    return df.reindex(new_index)
+                    raise ValueError(f"Unknown resample_method '{resample_method}'.")
             else:
                 raise ValueError(f"Not enough data at frequency '{freq}' without resampling.")
+        else:
+            new_data = data[new_times_indices]
 
-        return pd.Series(data[np.isin(index, new_index)], index=new_index)
+        return pd.Series(new_data, index=new_times)
 
 
 def _get_column_name(data: dict[str, Any], column: Optional[str]) -> str:
@@ -234,7 +255,7 @@ def _abs_path(data_dir: Optional[str | Path]):
 
 
 def _ffill(arr: np.ndarray) -> np.ndarray:
-    """Performs forward-fill on a one-dimensional numpy array."""
+    """Fills up NaN values of array using forward-fill."""
     mask = np.isnan(arr)
     idx = np.where(~mask, np.arange(mask.size), 0)
     np.maximum.accumulate(idx, out=idx)
@@ -242,5 +263,5 @@ def _ffill(arr: np.ndarray) -> np.ndarray:
 
 
 def _bfill(arr: np.ndarray) -> np.ndarray:
-    """Performs backward-fill on a one-dimensional numpy array."""
+    """Fills up NaN values of array using backward-fill."""
     return _ffill(arr[::-1])[::-1]

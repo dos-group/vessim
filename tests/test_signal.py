@@ -13,9 +13,7 @@ class TestHistoricalSignal:
             "2023-01-01T00:30:00",
             "2023-01-01T01:00:00",
         ]
-        actual = pd.DataFrame(
-            {"a": [1, 2, 3], "b": [0, 3, 0], "c":[None, 4, None]}, index=index
-        )
+        actual = pd.DataFrame({"a": [1, 2, 3], "b": [0, 3, 0], "c": [None, 4, None]}, index=index)
         return HistoricalSignal(actual)
 
     @pytest.fixture
@@ -39,9 +37,7 @@ class TestHistoricalSignal:
             ["2023-01-01T01:00:00", "2023-01-01T02:00:00", 3, 2.5],
             ["2023-01-01T01:00:00", "2023-01-01T03:00:00", 1.5, 1.5],
         ]
-        forecast = pd.DataFrame(
-            forecast_data, columns=["request_time", "forecast_time", "a", "b"]
-        )
+        forecast = pd.DataFrame(forecast_data, columns=["request_time", "forecast_time", "a", "b"])
         forecast.set_index(["request_time", "forecast_time"], inplace=True)
         return HistoricalSignal(actual, forecast)
 
@@ -97,7 +93,7 @@ class TestHistoricalSignal:
             end_time="2023-01-01T01:00:00",
         ).equals(
             pd.Series(
-                [2, 3],
+                [2.0, 3.0],
                 index=[
                     pd.to_datetime("2023-01-01T00:30:00"),
                     pd.to_datetime("2023-01-01T01:00:00"),
@@ -111,7 +107,7 @@ class TestHistoricalSignal:
             end_time="2023-01-01T02:00:00",
         ).equals(
             pd.Series(
-                [2, 4],
+                [2.0, 4.0],
                 index=[
                     pd.to_datetime("2023-01-01T01:00:00"),
                     pd.to_datetime("2023-01-01T02:00:00"),
@@ -220,7 +216,7 @@ class TestHistoricalSignal:
                 "2023-01-01T03:00:00",
                 "a",
                 timedelta(hours=1, minutes=30),
-                "time",
+                "linear",
                 pd.Series(
                     [2.0, 2.0],
                     index=[
@@ -248,7 +244,7 @@ class TestHistoricalSignal:
                 "2023-01-01T01:00:00",
                 "b",
                 "20T",
-                "time",
+                "linear",
                 pd.Series(
                     [2.0],
                     index=[pd.to_datetime("2023-01-01T00:50:00")],
@@ -259,7 +255,7 @@ class TestHistoricalSignal:
                 "2023-01-01T01:00:00",
                 "b",
                 "12T",
-                "time",
+                "linear",
                 pd.Series([2.4], index=[pd.to_datetime("2023-01-01T00:57:00")]),
             ),
             (
@@ -267,8 +263,23 @@ class TestHistoricalSignal:
                 "2023-01-01T00:40:00",
                 "a",
                 "5T",
-                "time",
+                "linear",
                 pd.Series([4.3], index=[pd.to_datetime("2023-01-01T00:40:00")]),
+            ),
+            (
+                "2023-01-01T00:40:00",
+                "2023-01-01T00:55:00",
+                "b",
+                "5T",
+                "nearest",
+                pd.Series(
+                    [2.0, 2.0, 2.5],
+                    index=[
+                        pd.to_datetime("2023-01-01T00:45:00"),
+                        pd.to_datetime("2023-01-01T00:50:00"),
+                        pd.to_datetime("2023-01-01T00:55:00"),
+                    ],
+                ),
             ),
         ],
     )
