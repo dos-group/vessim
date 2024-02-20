@@ -74,12 +74,12 @@ class Microgrid:
 class Environment:
     COSIM_CONFIG = {
         "Actor": {
-            "python": "vessim.actor:ActorSim",
+            "python": "vessim.actor:_ActorSim",
         },
         "Controller": {
-            "python": "vessim.controller:ControllerSim",
+            "python": "vessim.controller:_ControllerSim",
         },
-        "Grid": {"python": "vessim.cosim:GridSim"},
+        "Grid": {"python": "vessim.cosim:_GridSim"},
     }
 
     def __init__(self, sim_start):
@@ -128,7 +128,7 @@ class Environment:
             raise
 
 
-class GridSim(mosaik_api.Simulator):
+class _GridSim(mosaik_api.Simulator):
     META = {
         "type": "time-based",
         "models": {
