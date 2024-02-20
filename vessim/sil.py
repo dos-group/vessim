@@ -93,7 +93,7 @@ class SilController(Controller):
     def __init__(
         self,
         api_routes: Callable,
-        grid_signals: list[Signal] = None,  # TODO temporary fix
+        grid_signals: Optional[list[Signal]] = None,  # TODO temporary fix
         request_collectors: Optional[dict[str, Callable]] = None,
         compute_nodes: Optional[list[ComputeNode]] = None,
         api_host: str = "127.0.0.1",
