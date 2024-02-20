@@ -73,7 +73,7 @@ class Broker:
     def get_actor(self, actor: str) -> dict:
         return json.loads(self.redis_db.get("actors"))[actor]  # type: ignore
 
-    def get_grid_power(self) -> float:
+    def get_p_delta(self) -> float:
         return float(self.redis_db.get("p_delta"))  # type: ignore
 
     def set_event(self, category: str, value: Any) -> None:
@@ -93,6 +93,7 @@ class SilController(Controller):
     def __init__(
         self,
         api_routes: Callable,
+        grid_signals: list[Signal] = None,  # TODO temporary fix
         request_collectors: Optional[dict[str, Callable]] = None,
         compute_nodes: Optional[list[ComputeNode]] = None,
         api_host: str = "127.0.0.1",
@@ -102,6 +103,7 @@ class SilController(Controller):
     ):
         super().__init__(step_size=step_size)
         self.api_routes = api_routes
+        self.grid_signals = grid_signals
         self.request_collectors = (
             request_collectors if request_collectors is not None else {}
         )
@@ -129,6 +131,7 @@ class SilController(Controller):
                 api_routes=self.api_routes,
                 api_host=self.api_host,
                 api_port=self.api_port,
+                grid_signals=self.grid_signals
             ),
         ).start()
         logger.info("Started SiL Controller API server process 'Vessim API'")

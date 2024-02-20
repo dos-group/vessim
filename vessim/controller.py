@@ -52,20 +52,16 @@ class Monitor(Controller):
         self,
         step_size: Optional[int] = None,
         grid_signals: Optional[dict[str, Signal]] = None,
-        monitor_storage: bool = True,
     ):
         super().__init__(step_size=step_size)
         self.grid_signals = grid_signals
-        self.monitor_storage = monitor_storage
         self.monitor_log: dict[datetime, dict] = defaultdict(dict)
         self.custom_monitor_fns: list[Callable] = []
         self.clock: Optional[Clock] = None
 
     def start(self, microgrid: Microgrid, clock: Clock) -> None:
         self.clock = clock
-        if self.monitor_storage:
-            if microgrid.storage is None:
-                raise ValueError("Cannot monitor storage if no storage is present.")
+        if microgrid.storage is not None:
             storage_state = microgrid.storage.state()
             self.add_monitor_fn(lambda _: {"storage": storage_state})
 
