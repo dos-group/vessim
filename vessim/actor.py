@@ -98,7 +98,7 @@ class Generator(Actor):  # TODO signal should return next step
         }
 
 
-class ActorSim(mosaik_api.Simulator):
+class _ActorSim(mosaik_api.Simulator):
     META = {
         "type": "time-based",
         "models": {
