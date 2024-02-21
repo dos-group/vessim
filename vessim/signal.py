@@ -148,11 +148,9 @@ class HistoricalSignal(Signal):
 
         start_index = np.searchsorted(times, np_start, side="right")
         end_index = np.searchsorted(times, np_end, side="right")
-        return {
-            time: value.astype(float) for time, value in zip(
-                times[start_index:end_index].copy(), forecast[start_index:end_index].copy()
-            )
-        }
+        return dict(
+            zip(times[start_index:end_index].copy(), forecast[start_index:end_index].copy())
+        )
 
     def _get_forecast_data_source(
         self, start_time: np.datetime64, column: Optional[str]
