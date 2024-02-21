@@ -8,15 +8,14 @@ from typing import Any, TYPE_CHECKING, MutableMapping, Optional, Callable
 import mosaik_api  # type: ignore
 import pandas as pd
 
-from vessim.util import Clock
 from vessim.signal import Signal
+from vessim.util import Clock
 
 if TYPE_CHECKING:
     from vessim.cosim import Microgrid
 
 
 class Controller(ABC):
-
     def __init__(self, step_size: Optional[int] = None):
         self.step_size = step_size
 
@@ -52,20 +51,16 @@ class Monitor(Controller):
         self,
         step_size: Optional[int] = None,
         grid_signals: Optional[dict[str, Signal]] = None,
-        monitor_storage: bool = True,
     ):
         super().__init__(step_size=step_size)
         self.grid_signals = grid_signals
-        self.monitor_storage = monitor_storage
         self.monitor_log: dict[datetime, dict] = defaultdict(dict)
         self.custom_monitor_fns: list[Callable] = []
         self.clock: Optional[Clock] = None
 
     def start(self, microgrid: Microgrid, clock: Clock) -> None:
         self.clock = clock
-        if self.monitor_storage:
-            if microgrid.storage is None:
-                raise ValueError("Cannot monitor storage if no storage is present.")
+        if microgrid.storage is not None:
             storage_state = microgrid.storage.state()
             self.add_monitor_fn(lambda _: {"storage": storage_state})
 
@@ -81,9 +76,6 @@ class Monitor(Controller):
         self.custom_monitor_fns.append(fn)
 
     def step(self, time: int, p_delta: float, actor_infos: dict) -> None:
-        self.monitor(time, p_delta, actor_infos)
-
-    def monitor(self, time: int, p_delta: float, actor_infos: dict) -> None:
         log_entry = dict(
             p_delta=p_delta,
             actor_infos=actor_infos,
@@ -94,22 +86,22 @@ class Monitor(Controller):
         self.monitor_log[self.clock.to_datetime(time)] = log_entry
 
     def to_csv(self, out_path: str):
-        df = pd.DataFrame({k: flatten_dict(v) for k, v in self.monitor_log.items()}).T
+        df = pd.DataFrame({k: _flatten_dict(v) for k, v in self.monitor_log.items()}).T
         df.to_csv(out_path)
 
 
-def flatten_dict(d: MutableMapping, parent_key: str = "") -> MutableMapping:
+def _flatten_dict(d: MutableMapping, parent_key: str = "") -> MutableMapping:
     items: list[tuple[str, Any]] = []
     for k, v in d.items():
         new_key = parent_key + "." + k if parent_key else k
         if isinstance(v, MutableMapping):
-            items.extend(flatten_dict(v, str(new_key)).items())
+            items.extend(_flatten_dict(v, str(new_key)).items())
         else:
             items.append((new_key, v))
     return dict(items)
 
 
-class ControllerSim(mosaik_api.Simulator):
+class _ControllerSim(mosaik_api.Simulator):
     META = {
         "type": "time-based",
         "models": {

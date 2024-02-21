@@ -14,7 +14,7 @@ Vessim allows you to simulate energy systems next to real or simulated computing
 ```python
 from vessim.actor import ComputingSystem, Generator
 from vessim.controller import Monitor
-from vessim.cosim import Environment, Microgrid
+from vessim.cosim import Environment
 from vessim.power_meter import MockPowerMeter
 from vessim.signal import HistoricalSignal
 from vessim.storage import SimpleBattery
@@ -22,7 +22,7 @@ from vessim.storage import SimpleBattery
 environment = Environment(sim_start="15-06-2022")
 
 monitor = Monitor()
-microgrid = Microgrid(
+environment.add_microgrid(
     actors=[
         ComputingSystem(power_meters=[MockPowerMeter(p=100)]),
         Generator(signal=HistoricalSignal.from_dataset("solcast2022_global")),
@@ -31,7 +31,6 @@ microgrid = Microgrid(
     storage=SimpleBattery(capacity=100),
     step_size=60,
 )
-environment.add_microgrid(microgrid)
 
 environment.run(until=24 * 3600)  # 24h
 monitor.to_csv("result.csv")

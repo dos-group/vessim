@@ -1,7 +1,7 @@
-from _data import load_carbon_data, load_solar_data
+from _data import load_solar_data
 from vessim.actor import ComputingSystem, Generator
 from vessim.controller import Monitor
-from vessim.cosim import Environment, Microgrid
+from vessim.cosim import Environment
 from vessim.power_meter import MockPowerMeter
 from vessim.signal import HistoricalSignal
 from vessim.storage import SimpleBattery
@@ -12,8 +12,9 @@ DURATION = 3600 * 24 * 2  # two days
 
 def main(result_csv: str):
     environment = Environment(sim_start=SIM_START)
+
     monitor = Monitor()  # stores simulation result on each step
-    microgrid = Microgrid(
+    environment.add_microgrid(
         actors=[
             ComputingSystem(power_meters=[
                 MockPowerMeter(p=2.194),
@@ -25,7 +26,6 @@ def main(result_csv: str):
         storage=SimpleBattery(capacity=100),
         step_size=60,  # global step size (can be overridden by actors or controllers)
     )
-    environment.add_microgrid(microgrid)
 
     environment.run(until=DURATION)
     monitor.to_csv(result_csv)

@@ -35,9 +35,10 @@ def main(result_csv: str):
         battery=battery,
         policy=POLICY,
         carbon_signal=ci_signal,
+        zone="DE",
     )
 
-    microgrid = Microgrid(
+    environment.add_microgrid(
         actors=[
             ComputingSystem(power_meters=power_meters),
             Generator(signal=HistoricalSignal(load_solar_data(sqm=0.4 * 0.5))),
@@ -47,19 +48,19 @@ def main(result_csv: str):
         controllers=[monitor, carbon_aware_controller],
         step_size=60,  # global step size (can be overridden by actors or controllers)
     )
-    environment.add_microgrid(microgrid)
 
     environment.run(until=DURATION)
     monitor.to_csv(result_csv)
 
 
 class CarbonAwareController(Controller):
-    def __init__(self, power_meters, battery, policy, carbon_signal, step_size=None):
+    def __init__(self, power_meters, battery, policy, carbon_signal, zone: str, step_size=None):
         super().__init__(step_size)
         self.power_meters = power_meters
         self.battery = battery
         self.policy = policy
         self.carbon_signal = carbon_signal
+        self.zone = zone
 
         self.microgrid: Optional["Microgrid"] = None
         self.clock: Optional[Clock] = None
@@ -70,7 +71,7 @@ class CarbonAwareController(Controller):
             time=time,
             battery_soc=self.battery.soc(),
             ci=self.carbon_signal.at(
-                self.clock.to_datetime(time), self.microgrid.zone
+                self.clock.to_datetime(time), self.zone
             ),
             node_names=[node.name for node in self.power_meters],
         )

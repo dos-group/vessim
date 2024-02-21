@@ -79,15 +79,16 @@ class Generator(Actor):  # TODO signal should return next step
     _ids = count(0)
 
     def __init__(
-        self, signal: Signal, step_size: Optional[int] = None, name: Optional[str] = None
+        self, signal: Signal, step_size: Optional[int] = None, name: Optional[str] = None, **kwargs
     ):
         if name is None:
             name = f"Generator-{next(self._ids)}"
         super().__init__(name, step_size)
-        self.signal = signal  # TODO make sure that signal is single column?
+        self.signal = signal
+        self.kwargs = kwargs
 
     def p(self, now: datetime) -> float:
-        data_point = self.signal.at(now)
+        data_point = self.signal.at(now, **self.kwargs)
         assert data_point is not None
         return data_point
 
@@ -97,7 +98,7 @@ class Generator(Actor):  # TODO signal should return next step
         }
 
 
-class ActorSim(mosaik_api.Simulator):
+class _ActorSim(mosaik_api.Simulator):
     META = {
         "type": "time-based",
         "models": {

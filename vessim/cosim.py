@@ -16,8 +16,10 @@ from vessim.util import Clock
 class Microgrid:
     def __init__(
         self,
-        actors: Optional[list[Actor]] = None,
-        controllers: Optional[list[Controller]] = None,
+        world: mosaik.World,
+        clock: Clock,
+        actors: list[Actor],
+        controllers: list[Controller],
         storage: Optional[Storage] = None,
         storage_policy: Optional[StoragePolicy] = None,
         step_size: int = 1,  # global default
@@ -28,23 +30,24 @@ class Microgrid:
         self.storage_policy = storage_policy
         self.step_size = step_size
 
-    def initialize(self, world: mosaik.World, clock: Clock):
-        """Create co-simulation entities and connect them to world."""
-        grid_sim = world.start("Grid")
-        grid_entity = grid_sim.Grid(storage=self.storage, policy=self.storage_policy)
-
         actor_names_and_entities = []
-        for actor in self.actors:
-            step_size = actor.step_size if actor.step_size else self.step_size
-            actor_sim = world.start("Actor", clock=clock, step_size=step_size)
+        for actor in actors:
+            actor_step_size = actor.step_size if actor.step_size else step_size
+            actor_sim = world.start("Actor", clock=clock, step_size=actor_step_size)
+            # We initialize all actors before the grid simulation to make sure that
+            # there is already a valid p_delta at step 0
             actor_entity = actor_sim.Actor(actor=actor)
-            world.connect(actor_entity, grid_entity, "p")
             actor_names_and_entities.append((actor.name, actor_entity))
 
-        for controller in self.controllers:
+        grid_sim = world.start("Grid", step_size=step_size)
+        grid_entity = grid_sim.Grid(storage=storage, policy=storage_policy)
+        for actor_name, actor_entity in actor_names_and_entities:
+            world.connect(actor_entity, grid_entity, "p")
+
+        for controller in controllers:
             controller.start(self, clock)
-            step_size = controller.step_size if controller.step_size else self.step_size
-            controller_sim = world.start("Controller", step_size=step_size)
+            controller_step_size = controller.step_size if controller.step_size else step_size
+            controller_sim = world.start("Controller", step_size=controller_step_size)
             controller_entity = controller_sim.Controller(controller=controller)
             world.connect(grid_entity, controller_entity, "p_delta")
             for actor_name, actor_entity in actor_names_and_entities:
@@ -71,21 +74,38 @@ class Microgrid:
 class Environment:
     COSIM_CONFIG = {
         "Actor": {
-            "python": "vessim.actor:ActorSim",
+            "python": "vessim.actor:_ActorSim",
         },
         "Controller": {
-            "python": "vessim.controller:ControllerSim",
+            "python": "vessim.controller:_ControllerSim",
         },
-        "Grid": {"python": "vessim.cosim:GridSim"},
+        "Grid": {"python": "vessim.cosim:_GridSim"},
     }
 
     def __init__(self, sim_start):
         self.clock = Clock(sim_start)
         self.microgrids = []
-        self.world = mosaik.World(self.COSIM_CONFIG) # type: ignore
+        self.world = mosaik.World(self.COSIM_CONFIG)  # type: ignore
 
-    def add_microgrid(self, microgrid: Microgrid):
+    def add_microgrid(
+        self,
+        actors: Optional[list[Actor]] = None,
+        controllers: Optional[list[Controller]] = None,
+        storage: Optional[Storage] = None,
+        storage_policy: Optional[StoragePolicy] = None,
+        step_size: int = 1,  # global default
+    ):
+        microgrid = Microgrid(
+            self.world,
+            self.clock,
+            actors if actors is not None else [],
+            controllers if controllers is not None else [],
+            storage,
+            storage_policy,
+            step_size
+        )
         self.microgrids.append(microgrid)
+        return microgrid
 
     def run(
         self,
@@ -93,11 +113,10 @@ class Environment:
         rt_factor: Optional[float] = None,
         print_progress: bool | Literal["individual"] = True,
     ):
+        if until is None:
+            # there is no integer representing infinity in python
+            until = float("inf") # type: ignore
         try:
-            for microgrid in self.microgrids:
-                microgrid.initialize(self.world, self.clock)
-            if until is None:
-                until = int("inf")
             self.world.run(
                 until=until, rt_factor=rt_factor, print_progress=print_progress
             )
@@ -109,9 +128,9 @@ class Environment:
             raise
 
 
-class GridSim(mosaik_api.Simulator):
+class _GridSim(mosaik_api.Simulator):
     META = {
-        "type": "event-based",
+        "type": "time-based",
         "models": {
             "Grid": {
                 "public": True,
@@ -124,10 +143,15 @@ class GridSim(mosaik_api.Simulator):
     def __init__(self):
         super().__init__(self.META)
         self.eid = "Grid"
+        self.step_size = None
         self.storage = None
         self.policy = None
         self.p_delta = 0.0
         self._last_step_time = 0
+
+    def init(self, sid, time_resolution=1.0, **sim_params):
+        self.step_size = sim_params["step_size"]
+        return self.meta
 
     def create(self, num, model, **model_params):
         assert num == 1, "Only one instance per simulation is supported"
@@ -138,16 +162,13 @@ class GridSim(mosaik_api.Simulator):
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
-        duration = time - self._last_step_time
-        self._last_step_time = time
-        if duration == 0:
-            return
         p_delta = sum(inputs[self.eid]["p"].values())
         if self.storage is None:
             self.p_delta = p_delta
         else:
             assert self.policy is not None
-            self.p_delta = self.policy.apply(self.storage, p_delta, duration)
+            self.p_delta = self.policy.apply(self.storage, p_delta, self.step_size)
+        return time + self.step_size
 
     def get_data(self, outputs):
         return {self.eid: {"p_delta": self.p_delta}}
