@@ -93,8 +93,8 @@ class TestHistoricalSignal:
             start_time="2023-01-01T00:00:00",
             end_time="2023-01-01T01:00:00",
         ) == {
-                np.datetime64("2023-01-01T00:30:00"): 2.0,
-                np.datetime64("2023-01-01T01:00:00"): 3.0,
+                np.datetime64("2023-01-01T00:30:00.000000000"): 2.0,
+                np.datetime64("2023-01-01T01:00:00.000000000"): 3.0,
             }
 
 
@@ -103,8 +103,8 @@ class TestHistoricalSignal:
             start_time="2023-01-01T00:00:00",
             end_time="2023-01-01T02:00:00",
         ) == {
-                np.datetime64("2023-01-01T01:00:00"): 2.0,
-                np.datetime64("2023-01-01T02:00:00"): 4.0,
+                np.datetime64("2023-01-01T01:00:00.000000000"): 2.0,
+                np.datetime64("2023-01-01T02:00:00.000000000"): 4.0,
             }
 
 
@@ -116,21 +116,21 @@ class TestHistoricalSignal:
                 "2023-01-01T01:00:00",
                 "a",
                 {
-                    np.datetime64("2023-01-01T00:10:00"): 2.0,
-                    np.datetime64("2023-01-01T01:00:00"): 1.5,
+                    np.datetime64("2023-01-01T00:10:00.000000000"): 2.0,
+                    np.datetime64("2023-01-01T01:00:00.000000000"): 1.5,
                 }
             ),
             (
                 "2023-01-01T01:00:00",
                 "2023-01-01T02:00:00",
                 "a",
-                {np.datetime64("2023-01-01T02:00:00"): 3.0},
+                {np.datetime64("2023-01-01T02:00:00.000000000"): 3.0},
             ),
             (
                 "2023-01-01T00:05:00",
                 "2023-01-01T00:50:00",
                 "a",
-                {np.datetime64("2023-01-01T00:10:00"): 2.0},
+                {np.datetime64("2023-01-01T00:10:00.000000000"): 2.0},
             ),
             (
                 "2023-01-01T00:11:00",
@@ -143,9 +143,9 @@ class TestHistoricalSignal:
                 "2023-01-01T02:00:00",
                 "b",
                 {
-                    np.datetime64("2023-01-01T00:10:00"): 2.5,
-                    np.datetime64("2023-01-01T01:00:00"): 2.5,
-                    np.datetime64("2023-01-01T02:00:00"): 3.5,
+                    np.datetime64("2023-01-01T00:10:00.000000000"): 2.5,
+                    np.datetime64("2023-01-01T01:00:00.000000000"): 2.5,
+                    np.datetime64("2023-01-01T02:00:00.000000000"): 3.5,
                 },
             ),
             (
@@ -153,8 +153,8 @@ class TestHistoricalSignal:
                 "2023-04-04T14:00:00",
                 "a",
                 {
-                    np.datetime64("2023-01-01T02:00:00"): 3.0,
-                    np.datetime64("2023-01-01T03:00:00"): 1.5,
+                    np.datetime64("2023-01-01T02:00:00.000000000"): 3.0,
+                    np.datetime64("2023-01-01T03:00:00.000000000"): 1.5,
                 }
             ),
         ],
@@ -171,7 +171,7 @@ class TestHistoricalSignal:
                 "a",
                 "2H",
                 None,
-                {np.datetime64("2023-01-01T02:00:00"): 2.5},
+                {np.datetime64("2023-01-01T02:00:00.000000000"): 2.5},
             ),
             (
                 "2023-01-01T00:00:00",
@@ -179,7 +179,7 @@ class TestHistoricalSignal:
                 "b",
                 timedelta(minutes=35),
                 "bfill",
-                {np.datetime64("2023-01-01T00:35:00"): 2.5},
+                {np.datetime64("2023-01-01T00:35:00.000000000"): 2.5},
             ),
             (
                 "2023-01-01T01:00:00",
@@ -188,8 +188,8 @@ class TestHistoricalSignal:
                 timedelta(minutes=45),
                 "ffill",
                 {
-                    np.datetime64("2023-01-01T01:45:00"): 2.0,
-                    np.datetime64("2023-01-01T02:30:00"): 3.0,
+                    np.datetime64("2023-01-01T01:45:00.000000000"): 2.0,
+                    np.datetime64("2023-01-01T02:30:00.000000000"): 3.0,
                 },
             ),
             (
@@ -199,8 +199,8 @@ class TestHistoricalSignal:
                 timedelta(hours=1, minutes=30),
                 "linear",
                 {
-                    np.datetime64("2023-01-01T01:30:00"): 2.0,
-                    np.datetime64("2023-01-01T03:00:00"): 2.0,
+                    np.datetime64("2023-01-01T01:30:00.000000000"): 2.0,
+                    np.datetime64("2023-01-01T03:00:00.000000000"): 2.0,
                 },
             ),
             (
@@ -210,8 +210,8 @@ class TestHistoricalSignal:
                 "20min",
                 "bfill",
                 {
-                    np.datetime64("2023-01-01T00:40:00"): 2.5,
-                    np.datetime64("2023-01-01T01:00:00"): 2.5,
+                    np.datetime64("2023-01-01T00:40:00.000000000"): 2.5,
+                    np.datetime64("2023-01-01T01:00:00.000000000"): 2.5,
                 },
             ),
             (
@@ -220,7 +220,7 @@ class TestHistoricalSignal:
                 "b",
                 "20min",
                 "linear",
-                {np.datetime64("2023-01-01T00:50:00"): 2.0},
+                {np.datetime64("2023-01-01T00:50:00.000000000"): 2.0},
             ),
             (
                 "2023-01-01T00:45:00",
@@ -228,7 +228,7 @@ class TestHistoricalSignal:
                 "b",
                 "12min",
                 "linear",
-                {np.datetime64("2023-01-01T00:57:00"): 2.4},
+                {np.datetime64("2023-01-01T00:57:00.000000000"): 2.4},
             ),
             (
                 "2023-01-01T00:35:00",
@@ -236,7 +236,7 @@ class TestHistoricalSignal:
                 "a",
                 "5min",
                 "linear",
-                {np.datetime64("2023-01-01T00:40:00"): 4.3},
+                {np.datetime64("2023-01-01T00:40:00.000000000"): 4.3},
             ),
             (
                 "2023-01-01T00:40:00",
@@ -245,9 +245,9 @@ class TestHistoricalSignal:
                 "5min",
                 "nearest",
                 {
-                    np.datetime64("2023-01-01T00:45:00"): 2.0,
-                    np.datetime64("2023-01-01T00:50:00"): 2.0,
-                    np.datetime64("2023-01-01T00:55:00"): 2.5,
+                    np.datetime64("2023-01-01T00:45:00.000000000"): 2.0,
+                    np.datetime64("2023-01-01T00:50:00.000000000"): 2.0,
+                    np.datetime64("2023-01-01T00:55:00.000000000"): 2.5,
                 },
             ),
         ],
@@ -266,23 +266,23 @@ class TestHistoricalSignal:
     def test_forecast_fails_if_column_not_specified(self, hist_signal):
         with pytest.raises(ValueError):
             hist_signal.forecast(
-                np.datetime64("2023-01-01T00:00:00"),
-                np.datetime64("2023-01-01T01:00:00"),
+                "2023-01-01T00:00:00",
+                "2023-01-01T01:00:00",
             )
 
     def test_forecast_fails_if_column_does_not_exist(self, hist_signal):
         with pytest.raises(ValueError):
             hist_signal.forecast(
-                np.datetime64("2023-01-01T00:00:00"),
-                np.datetime64("2023-01-01T01:00:00"),
+                "2023-01-01T00:00:00",
+                "2023-01-01T01:00:00",
                 column="d",
             )
 
     def test_forecast_fails_if_start_too_early(self, hist_signal_forecast):
         with pytest.raises(ValueError):
             hist_signal_forecast.forecast(
-                np.datetime64("2022-12-31T23:59:59"),
-                np.datetime64("2023-01-01T01:00:00"),
+                "2022-12-31T23:59:59",
+                "2023-01-01T01:00:00",
                 column="a",
             )
 
@@ -290,8 +290,8 @@ class TestHistoricalSignal:
         with pytest.raises(ValueError):
             hist_signal.forecast(
                 hist_signal.forecast(
-                    np.datetime64("2023-01-01T00:00:00"),
-                    np.datetime64("2023-01-01T01:00:00"),
+                    "2023-01-01T00:00:00",
+                    "2023-01-01T01:00:00",
                     column="a",
                     frequency="invalid",
                 )
@@ -300,8 +300,8 @@ class TestHistoricalSignal:
     def test_forecast_fails_if_not_enough_data_for_frequency(self, hist_signal):
         with pytest.raises(ValueError):
             hist_signal.forecast(
-                np.datetime64("2023-01-01T00:00:00"),
-                np.datetime64("2023-01-01T01:00:00"),
+                "2023-01-01T00:00:00",
+                "2023-01-01T01:00:00",
                 column="a",
                 frequency="15T",
             )
