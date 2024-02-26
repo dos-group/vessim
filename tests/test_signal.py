@@ -72,6 +72,10 @@ class TestHistoricalSignal:
     def test_actual(self, hist_signal, dt, column, expected):
         assert hist_signal.at(dt, column) == expected
 
+    def test_actual_fails_if_invalid_key_word_arguments(self, hist_signal_single):
+        with pytest.raises(ValueError):
+            hist_signal_single.at("2023-01-01T00:00:00", invalid="invalid")
+
     def test_actual_fails_if_column_not_specified(self, hist_signal):
         with pytest.raises(ValueError):
             hist_signal.at("2023-01-01T00:00:00")

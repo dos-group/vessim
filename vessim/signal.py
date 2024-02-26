@@ -57,7 +57,7 @@ class HistoricalSignal(Signal):
     ):
         self._fill_method = fill_method
         # Unpack index of actual dataframe
-        actual_times = actual.index.to_numpy(dtype="datetime64[ns]", )
+        actual_times = actual.index.to_numpy(dtype="datetime64[ns]", copy=True)
         actual_times_sorter = actual_times.argsort()
         actual_times = actual_times[actual_times_sorter]
 
@@ -104,9 +104,7 @@ class HistoricalSignal(Signal):
             if forecast_request_times is not None:
                 req_times = forecast_request_times[nan_mask]
             self._forecast = {
-                str(forecast.name): (
-                    req_times, forecast_times[nan_mask], values[nan_mask]
-                )
+                str(forecast.name): (req_times, forecast_times[nan_mask], values[nan_mask])
             }
         elif isinstance(forecast, pd.DataFrame):
             self._forecast = {}
@@ -115,9 +113,7 @@ class HistoricalSignal(Signal):
                 nan_mask = ~np.isnan(values)
                 if forecast_request_times is not None:
                     req_times = forecast_request_times[nan_mask]
-                self._forecast[str(col)] = (
-                    req_times, forecast_times[nan_mask], values[nan_mask]
-                )
+                self._forecast[str(col)] = (req_times, forecast_times[nan_mask], values[nan_mask])
         elif forecast is not None:
             raise ValueError(f"Incompatible type {type(forecast)} for 'forecast'.")
 
@@ -160,11 +156,15 @@ class HistoricalSignal(Signal):
             dt: Timestamp, at which data is returned.
             column: Optional column for the data. Has to be provided if there is more than one
                 column specified in the data. Defaults to None.
-            **kwargs: Extra keyword arguments for subclasses.
+            **kwargs: Possibly needed for subclasses. Are not supported in this class and a
+                ValueError will be raised if specified.
 
         Raises:
-            ValueError: If there is no available data at specified zone or time.
+            ValueError: If there is no available data at zone or time, or extra kwargs specified.
         """
+        if kwargs:
+            raise ValueError(f"Invalid arguments: {kwargs.keys()}")
+
         np_dt = np.datetime64(dt)
         times, values = self._actual[_get_column_name(self._actual, column)]
 
