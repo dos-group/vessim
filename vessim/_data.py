@@ -111,12 +111,7 @@ def _read_data_from_csv(
     path: Path, index_cols: list[int], scale: float = 1.0
 ) -> pd.Series | pd.DataFrame:
     """Retrieves a dataframe from a csv file and transforms it."""
-    df = convert_to_datetime(pd.read_csv(path, index_col=index_cols))
-    return (df * scale).astype(float)
-
-
-def convert_to_datetime(df: pd.Series | pd.DataFrame) -> pd.Series | pd.DataFrame:
-    """Converts the indices of a dataframe to datetime indices."""
+    df = pd.read_csv(path, index_col=index_cols)
     if isinstance(df.index, pd.MultiIndex):
         index: pd.MultiIndex = df.index
         for i, level in enumerate(index.levels):
@@ -126,7 +121,7 @@ def convert_to_datetime(df: pd.Series | pd.DataFrame) -> pd.Series | pd.DataFram
         df.index = pd.to_datetime(df.index)
 
     df.sort_index(inplace=True)
-    return df
+    return (df * scale).astype(float)
 
 
 def _shift(df: pd.Series | pd.DataFrame, shift: timedelta) -> pd.Series | pd.DataFrame:

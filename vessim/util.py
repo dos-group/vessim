@@ -4,8 +4,9 @@ from datetime import datetime, timedelta
 from typing import Union
 
 import pandas as pd
+import numpy as np
 
-DatetimeLike = Union[str, datetime]
+DatetimeLike = Union[str, datetime, np.datetime64]
 
 
 class Clock:
