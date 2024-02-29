@@ -115,3 +115,10 @@ convention = "google"
 # Configure mypy to ignore missing imports
 [mypy]
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "error",
+    # https://github.com/dateutil/dateutil/issues/1314
+    "ignore:datetime.datetime.utcfromtimestamp:DeprecationWarning:dateutil.tz.tz",
+]

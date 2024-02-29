@@ -53,7 +53,8 @@ jobs:
 
     # linting
     - name: Run linter
-      run: poetry run ruff vessim
+      run: poetry run ruff check vessim
 
-    #- name: Run tests
-    #  run: python -m pytest
+    # unit-testing
+    - name: Run tests
+      run: poetry run pytest
