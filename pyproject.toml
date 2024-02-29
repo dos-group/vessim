@@ -35,40 +35,42 @@ source = "git-tag"
 [tool.poetry.dependencies]
 python = ">=3.8,<3.13"
 numpy = [
-    { version = "^1.22", python = "<3.12" },
-    { version = "^1.26", python = ">=3.12" }
+    { version = "^1.22.0", python = "<3.12" },
+    { version = "^1.26.0", python = ">=3.12" }
 ]
-
-# Mandatory dependencies
-pandas = "*"
-mosaik = "*"
-mosaik-api = "*"
-loguru = "*"
+pandas = "^2.0.0"
+mosaik = "^3.2.0"
+mosaik-api-v3 = "^3.0.4"
+loguru = "^0.6.0"
 
 # Optional dependencies (software-in-the-loop)
-requests = {version = "*", optional = true}
-fastapi = {version = "*", optional = true}
-docker = {version = "*", optional = true}
-redis = {version = "*", optional = true}
-uvicorn = {version = "*", optional = true}
-
-# Optional dependencies (development)
-pytest = {version = "*", optional = true}
-mypy = {version = "*", optional = true}
-types-psutil = {version = "*", optional = true}
-pandas-stubs = {version = "*", optional = true}
-types-requests = {version = "*", optional = true}
-black = {version = "*", optional = true}
-ruff = {version = "*", optional = true}
-
-# Optional dependencies (documentation)
-furo = {version = "*", optional = true}
-sphinx-copybutton = {version = "*", optional = true}
+requests = {version = "^2.26.0", optional = true}
+fastapi = {version = "^0.104.0", optional = true}
+docker = {version = "^7.0.0", optional = true}
+redis = {version = "^5.0.0", optional = true}
+uvicorn = {version = "^0.23.0", optional = true}
 
 [tool.poetry.extras]
 sil = ["requests", "fastapi", "docker", "redis", "uvicorn"]
-dev = ["pytest", "mypy", "types-psutil", "pandas-stubs", "types-requests", "black", "ruff"]
-docs = ["furo", "sphinx-copybutton"]
+
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+mypy = "*"
+types-psutil = "*"
+pandas-stubs = "*"
+types-requests = "*"
+black = "*"
+ruff = "*"
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+furo = "*"
+sphinx-copybutton = "*"
 
 [build-system]
 requires = ["setuptools", "poetry-core>=1.1.0"]
@@ -80,6 +82,11 @@ target-version = ['py38']   # Set python versions that black should format the c
 include = '\.py$'  # Format only python files
 
 [tool.ruff]
+line-length = 99  # Set the maximum characters per line (similar to black)
+target-version = "py38"  # Set python version for linting (similar to black)
+include = ["*.py"]  # Only enable linting for python files (similar to black)
+
+[tool.ruff.lint]
 # Enable Ruff to check for issues (https://beta.ruff.rs/docs/rules)
 select = [
   "E", "W",  # pycodestyle (error and warning)
@@ -101,12 +108,8 @@ ignore = ["D100", "D101", "D102", "D103", "D107", "E722"]
 fixable = ["D", "E", "W"]
 unfixable = ["F"]
 
-line-length = 99  # Set the maximum characters per line (similar to black)
-target-version = "py38"  # Set python version for linting (similar to black)
-include = ["*.py"]  # Only enable linting for python files (similar to black)
-
+[tool.ruff.lint.pydocstyle]
 # Configure Ruff to enforce Google-style docstrings when checking documentation
-[tool.ruff.pydocstyle]
 convention = "google"
 
 # Configure mypy to ignore missing imports

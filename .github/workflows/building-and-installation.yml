@@ -38,30 +38,12 @@ jobs:
       uses: actions/cache@v3
       with:
         path: .venv
-        key: venv-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
-
-    # install dependencies if cache not available
-    - name: Install dependencies
-      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-      run: poetry install --no-interaction --no-root --extras "sil dev"
-
-    # install library 
-    - name: Install root project
-      run: poetry install --no-interaction --extras "sil dev"
+        key: venv-${{ steps.setup-python.outputs.python-version }}
 
     # build package
     - name: Build package out of local poject
       run: poetry build
 
+    # install package
     - name: Install package 
       run: pip install dist/*.tar.gz 
-
-    #- name: Run example scenario and compare result
-    #  run: |
-     #   python examples/basic_example.py --out result.csv
-     #   if diff result.csv examples/data/base_result.csv; then
-     #     echo "Files are identical"
-     #   else
-     #     echo "Differences found between the resulting data and the data from the repository."
-    #      exit 1
-    #    fi

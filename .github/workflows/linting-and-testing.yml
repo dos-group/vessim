@@ -36,20 +36,22 @@ jobs:
       uses: actions/cache@v3
       with:
         path: .venv
-        key: venv-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+        key: venv-${{ steps.setup-python.outputs.python-version }}
 
     # install dependencies if cache not available
     - name: Install dependencies
       if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-      run: poetry install --no-interaction --no-root --extras "sil dev"
+      run: poetry install --no-interaction --no-root --extras "sil" --with dev
 
     # install library
     - name: Install root project
-      run: poetry install --no-interaction --extras "sil dev"
+      run: poetry install --no-interaction --extras "sil" --with dev 
 
+    # type checking
     - name: Run type checker
       run: poetry run mypy vessim
 
+    # linting
     - name: Run linter
       run: poetry run ruff vessim
 
