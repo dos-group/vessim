@@ -57,4 +57,4 @@ jobs:
 
     # unit-testing
     - name: Run tests
-      run: python -m pytest
+      run: poetry run python -m pytest
