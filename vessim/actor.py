@@ -5,7 +5,7 @@ from datetime import datetime
 from itertools import count
 from typing import Optional
 
-import mosaik_api  # type: ignore
+import mosaik_api_v3  # type: ignore
 
 from vessim.power_meter import PowerMeter
 from vessim.signal import Signal
@@ -98,7 +98,7 @@ class Generator(Actor):  # TODO signal should return next step
         }
 
 
-class _ActorSim(mosaik_api.Simulator):
+class _ActorSim(mosaik_api_v3.Simulator):
     META = {
         "type": "time-based",
         "models": {

@@ -18,30 +18,32 @@ jobs:
     # downloads the repository code to the runner's file system for workflow access
     - uses: actions/checkout@v4
 
-    # installs poetry and configures it to use the active python version instead of newest
-    - name: Install poetry
-      uses: snok/install-poetry@v1
-    - run: poetry config virtualenvs.prefer-active-python true
-
     # sets up python environment with specified versions 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+    - name: Set up python ${{ matrix.python-version }}
+      id: setup-python
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-        cache: 'poetry'    
 
+    # installs poetry and configures it
+    - name: Install poetry
+      uses: snok/install-poetry@v1
+      with:
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+
+    # loads cached venv if it exists
+    - name: Load cached venv
+      id: cached-poetry-dependencies
+      uses: actions/cache@v3
+      with:
+        path: .venv
+        key: venv-${{ steps.setup-python.outputs.python-version }}
+
+    # build package
     - name: Build package out of local poject
       run: poetry build
 
+    # install package
     - name: Install package 
       run: pip install dist/*.tar.gz 
-
-    #- name: Run example scenario and compare result
-    #  run: |
-     #   python examples/basic_example.py --out result.csv
-     #   if diff result.csv examples/data/base_result.csv; then
-     #     echo "Files are identical"
-     #   else
-     #     echo "Differences found between the resulting data and the data from the repository."
-    #      exit 1
-    #    fi

@@ -5,7 +5,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Any, TYPE_CHECKING, MutableMapping, Optional, Callable
 
-import mosaik_api  # type: ignore
+import mosaik_api_v3  # type: ignore
 import pandas as pd
 
 from vessim.signal import Signal
@@ -101,7 +101,7 @@ def _flatten_dict(d: MutableMapping, parent_key: str = "") -> MutableMapping:
     return dict(items)
 
 
-class _ControllerSim(mosaik_api.Simulator):
+class _ControllerSim(mosaik_api_v3.Simulator):
     META = {
         "type": "time-based",
         "models": {
