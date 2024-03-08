@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime
-import time
 from typing import Optional
 from threading import Thread
-
-import pandas as pd
 from fastapi import FastAPI
+import time
+import pandas as pd
+import requests
+import json
 
 from vessim.actor import ComputingSystem, Generator
 from vessim.controller import Monitor
@@ -88,7 +89,8 @@ class ComputeNode(PowerMeter):
         collect_interval: float = 1,
     ) -> None:
         super().__init__(name)
-        self.http_client = HttpClient(f"{address}:{port}")
+        self.port = port
+        self.address = address
         self.collect_interval = collect_interval
         self.power_mode = self.power_modes()[0]
         self._p = 0.0
@@ -110,7 +112,11 @@ class ComputeNode(PowerMeter):
             return
 
         def update_power_model():
-            self.http_client.put("/power_mode", {"power_mode": power_mode})
+            requests.put(
+                f"{self.address}:{self.port}/power_mode",
+                data=json.dumps({"power_mode": power_mode}),
+                headers={"Content-type": "application/json"},
+            )
 
         Thread(target=update_power_model).start()
         self.power_mode = power_mode
@@ -118,7 +124,11 @@ class ComputeNode(PowerMeter):
     def _collect_loop(self) -> None:
         """Gets the power demand every `interval` seconds from the API server."""
         while True:
-            self._p = float(self.http_client.get("/power")["power"])
+            self._p = float(
+                requests.get(
+                    f"{self.address}:{self.port}/power",
+                ).json()["power"]
+            )
             time.sleep(self.collect_interval)
 
 
