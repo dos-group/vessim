@@ -7,21 +7,20 @@ from fastapi import FastAPI
 import time
 import pandas as pd
 import requests
-import json
 
 from vessim.actor import ComputingSystem, Generator
 from vessim.controller import Monitor
 from vessim.cosim import Environment, Microgrid
 from vessim.power_meter import PowerMeter
 from vessim.signal import Signal, HistoricalSignal
-from vessim.sil import SilController, Broker, get_latest_event, HttpClient
+from vessim.sil import SilController, Broker, get_latest_event
 from vessim.storage import SimpleBattery
 
 
 def main(result_csv: str):
     environment = Environment(sim_start="15-06-2022")
 
-    nodes = [
+    nodes: list = [
         ComputeNode(name="sample_app", port=8001),
     ]
     monitor = Monitor()  # stores simulation result on each step
@@ -71,7 +70,9 @@ def api_routes(
         broker.set_event("nodes_power_mode", {node_name: power_mode})
 
 
-# curl -X PUT -d '{"power_mode": "normal"}' http://localhost:8000/nodes/gcp -H 'Content-Type: application/json'
+# curl -X PUT http://localhost:8000/nodes/sample_app \
+#   -d '{"power_mode": "normal"}' \
+#   -H 'Content-Type: application/json'
 def node_power_mode_collector(events: dict, microgrid: Microgrid, **kwargs):
     print(f"Received nodes_power_mode events: {events}")
     latest = get_latest_event(events)
@@ -112,11 +113,7 @@ class ComputeNode(PowerMeter):
             return
 
         def update_power_model():
-            requests.put(
-                f"{self.address}:{self.port}/power_mode",
-                data=json.dumps({"power_mode": power_mode}),
-                headers={"Content-type": "application/json"},
-            )
+            requests.put(f"{self.address}:{self.port}/power_mode", data=power_mode)
 
         Thread(target=update_power_model).start()
         self.power_mode = power_mode
@@ -127,7 +124,7 @@ class ComputeNode(PowerMeter):
             self._p = float(
                 requests.get(
                     f"{self.address}:{self.port}/power",
-                ).json()["power"]
+                ).text
             )
             time.sleep(self.collect_interval)
 
