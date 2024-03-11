@@ -56,5 +56,5 @@ jobs:
       run: poetry run ruff check vessim
 
     # unit-testing
-    #- name: Run tests
-    #  run: poetry run python -m pytest
+    - name: Run tests
+      run: poetry run python -m pytest
