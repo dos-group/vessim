@@ -81,7 +81,7 @@ def api_routes(
 
     @app.get("/grid-power")
     async def get_grid_energy():
-        return broker.get_grid_power()
+        return broker.get_p_delta()
 
     @app.get("/carbon-intensity")
     async def get_carbon_intensity(time: Optional[str]):
