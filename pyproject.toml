@@ -67,11 +67,13 @@ sphinx-copybutton = {version = "*", optional = true}
 nbsphinx = {version = "*", optional = true}
 pandoc = {version = "*", optional = true}
 ipython = {version = "*", optional = true}
+sphinx = {version = "*", optional = true}
+setuptools = {version = "*", optional = true}
 
 [tool.poetry.extras]
 sil = ["requests", "fastapi", "docker", "redis", "uvicorn"]
 dev = ["pytest", "mypy", "types-psutil", "pandas-stubs", "types-requests", "black", "ruff"]
-docs = ["furo", "sphinx-copybutton"]
+docs = ["setuptools", "sphinx", "furo", "sphinx-copybutton", "nbsphinx", "pandoc", "ipython"]
 
 [build-system]
 requires = ["setuptools", "poetry-core>=1.1.0"]
