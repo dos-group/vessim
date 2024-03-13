@@ -60,7 +60,7 @@ html_theme_options = {
     },
 }
 
-html_title = f"Vessim Documentation v{version}"
+html_title = f"Vessim {version}"
 templates_path = ["_templates"]
 
 source_suffix = ".rst"

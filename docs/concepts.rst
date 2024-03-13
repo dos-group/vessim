@@ -1,82 +1,48 @@
-===============
+========
 Concepts
-===============
+========
 
-The Vessim Cosim interface consists of three base components which include the
-Actor, Controller, and Microgrid. Under the hood, each of these components is
-mangaged through a mosaik simulator which executes the component as a simulation
-model. For you as the user, this mosaik representation only serves as background
-information to help you understand how Vessim works.
+Vessim simulates energy systems by connecting domain-specific simulators for renewable power generation and energy storage through the co-simulation framework `Mosaik
+<https://mosaik.offis.de>`_. Mosaik takes care of synchronizing all simulation models and enables message passing between models. *However, to work with Vessim, you do not need to have any knowledge about co-simulation or Mosaik.*
+
+Co-Simulation
+=============
+
+A Vessim simulation is represented by a :class:`Environment <vessim.cosim.Environment>` which let's you add an arbitrary number of :class:`Microgrid <vessim.cosim.Microgrid>` simulations. A microgrid models the energy system of a computing system and constitutes the following co-simulation components.
 
 
+.. image:: _static/vessim_co-simulation_concept.png
+    :width: 100%
+    :alt: Vessim Co-Simulation Concept
 
 
+Actors
+    Actors are defined by users and model entities that either consume (:math:`p < 0`), or produce (:math:`p > 0`) power.
+    Consumers
+    Consumers are usually computing systems while producers can represent generators such as solar panels or wind turbines.
 
-Actor
-=====
+Grid
+    The grid simulation continually aggregates the current power production/consumption of actors to calculate the power delta :math:`p_{delta}`.
 
-.. image:: _static/actor.png
-    :width: 40%
-    :align: center
+Battery
+    The :class:`Storage <vessim.storage.Storage>` simulation can connect domain-specific battery simulators which can (dis)charge based on the current :math:`p_{delta}` based on a :class:`StoragePolicy <vessim.storage.StoragePolicy>`.
+    Vessim currently only ships with a :class:`SimpleBattery <vessim.storage.SimpleBattery>`, but we are working on more sophisticated modeling.
 
-The Actor represents an entity that either consumes power (`p < 0`), or produces
-power (`p > 0`), which we refer to as power consumers and producers. In a
-simulation scenario, this could represent a solar panel or a computing node.
+Controllers
+    :class:`Controllers <vessim.controller.Controller>` are defined by users and can interact with the energy and computing system during execution.
+    Vessim currently ships with a :class:`Monitor <vessim.controller.Controller>` which periodically stores the energy system state and can export to CSV.
 
-The Actor mosaik model does not receive any input values, but outputs consumed
-or produced power `p` and an optional `state` value which can be utilized in a
-Controller. All Actors need to be sublcassed from the Actor abstract base class
-in `vessim.actor
-<https://github.com/dos-group/vessim/blob/main/vessim/actor.py>`_:
+    We are currently working on better documenting our software-in-the-loop capabilities which let you develop controllers that, for example, expose a REST API that provides applications visibility and control over the energy system.
+    Besides getters for current power production, battery state of charge, current grid carbon intensity etc., such controllers can also actively manipulate battery chanre policies or set power modes on computing devices.
 
-.. automodule:: vessim.actor
-    :members: Actor
-    :noindex:
+For examples, please refer to our tutorials.
 
-Controller
-==========
 
-.. image:: _static/controller.png
-    :width: 40%
-    :align: center
+Signals
+=======
 
-The Controller's function involves interacting with the Actors' power and
-additional Actor information. Moreover, it engages with the power variance, or
-power delta, from the Grid. An example for a Controller could include a load
-balancer that, depending on the total power delta, manages the resource
-consumption of an Actor.
+Besides simulating entire energy systems, Vessim also offers a simple utility class for stepping over historical time series, which currently is the most common use case for simulations in carbon-aware computing.
 
-All Controllers need to be sublcassed from the Controller abstract base class in
-`vessim.controller
-<https://github.com/dos-group/vessim/blob/main/vessim/controller.py>`_:
+Such time series, represented by a :class:`HistoricalSignal <vessim.signal.HistoricalSignal>`, can, for example, represent grid carbon intensity over time or the power production/consumption of an actor.
 
-.. automodule:: vessim.controller
-    :members: Controller
-    :noindex:
-
-Microgrid
-=========
-
-.. image:: _static/grid.png
-    :width: 40%
-    :align: center
-
-The Microgrid component serves as the central entity that establishes, connects,
-and manages the Actors and Controllers. The Microgrid also performs the
-calculation of power delta, based on inputs and storage policies.
-
-The power consumption and production of the Actors is summed to `p_delta` and,
-depending on the storage policy, (dis)charged to Storage. The remaining
-`p_delta` now either holds excess energy that was not charged to Storage, or a
-lack of energy that could not be discharged from Storage. This `p_delta` is then
-available to Controllers.
-
-.. image:: _static/cosim_models.png
-    :align: center
-
-In contrast to the Actor and Controller, the Microgrid is neither to be
-subclassed, nor to be instantiated. Instead, the `add_microgrid()` function is
-to be used.
-
-.. autofunction:: vessim.cosim.Environment.add_microgrid
-    :noindex:
+For examples, please refer to our tutorials.
