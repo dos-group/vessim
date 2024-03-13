@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Optional
 from threading import Thread
 from fastapi import FastAPI
 import time
-import pandas as pd
 import requests
 
 from vessim.actor import ComputingSystem, Generator
@@ -20,24 +17,18 @@ from vessim.storage import SimpleBattery
 def main(result_csv: str):
     environment = Environment(sim_start="15-06-2022")
 
-    nodes: list = [
-        ComputeNode(name="sample_app", port=8001),
-    ]
     monitor = Monitor()  # stores simulation result on each step
-    carbon_aware_controller = SilController(  # executes software-in-the-loop controller
+    sil_controller = SilController(  # executes software-in-the-loop controller
         api_routes=api_routes,
-        request_collectors={
-            "nodes_power_mode": node_power_mode_collector,
-        },
-        kwargs={"compute_nodes": {node.name: node for node in nodes}},
+        request_collectors={"battery_min_soc": battery_min_soc_collector},
     )
     environment.add_microgrid(
         actors=[
-            ComputingSystem(power_meters=nodes),
+            ComputingSystem(power_meters=HttpPowerMeter(name="sample_app", port=8001)),
             Generator(signal=HistoricalSignal.from_dataset("solcast2022_global"), column="Berlin"),
         ],
         storage=SimpleBattery(capacity=100),
-        controllers=[monitor, carbon_aware_controller],
+        controllers=[monitor, sil_controller],
         step_size=60,  # global step size (can be overridden by actors or controllers)
     )
 
@@ -50,38 +41,20 @@ def api_routes(
     broker: Broker,
     grid_signals: dict[str, Signal],
 ):
-    @app.get("/actors/{actor}/p")
-    async def get_actor(actor: str):
-        return broker.get_actor(actor)["p"]
-
-    @app.get("/battery/soc")
-    async def get_battery_soc():
-        storage = broker.get_microgrid().storage
-        assert storage is not None
-        return storage.soc()
-
-    @app.get("/carbon-intensity")
-    async def get_carbon_intensity(time: Optional[str]):
-        datetime_time = pd.to_datetime(time) if time is not None else datetime.now()
-        return grid_signals["carbon_intensity"].at(datetime_time)
-
-    @app.put("/nodes/{node_name}")
-    async def put_nodes(node_name: str, power_mode: str):
-        broker.set_event("nodes_power_mode", {node_name: power_mode})
+    @app.put("/battery/min-soc")
+    async def put_battery_min_soc(min_soc: float):
+        broker.set_event("battery_min_soc", min_soc)
 
 
-# curl -X PUT http://localhost:8000/nodes/sample_app \
-#   -d '{"power_mode": "normal"}' \
+# curl -X PUT http://localhost:8000/battery/min-soc \
+#   -d '{"min_soc": 0.3}' \
 #   -H 'Content-Type: application/json'
-def node_power_mode_collector(events: dict, microgrid: Microgrid, **kwargs):
-    print(f"Received nodes_power_mode events: {events}")
-    latest = get_latest_event(events)
-    for node_name, power_mode in latest.items():
-        node: ComputeNode = kwargs["compute_nodes"][node_name]
-        node.set_power_mode(power_mode)
+def battery_min_soc_collector(events: dict, microgrid: Microgrid, **kwargs):
+    print(f"Received battery.min_soc events: {events}")
+    microgrid.storage.min_soc = get_latest_event(events)
 
 
-class ComputeNode(PowerMeter):
+class HttpPowerMeter(PowerMeter):
     def __init__(
         self,
         name: str,
@@ -93,33 +66,13 @@ class ComputeNode(PowerMeter):
         self.port = port
         self.address = address
         self.collect_interval = collect_interval
-        self.power_mode = self.power_modes()[0]
         self._p = 0.0
         Thread(target=self._collect_loop, daemon=True).start()
 
     def measure(self) -> float:
         return self._p
 
-    def power_modes(self) -> list[str]:
-        return ["high performance", "normal", "power-saving"]
-
-    def set_power_mode(self, power_mode: str) -> None:
-        if power_mode not in self.power_modes():
-            raise ValueError(
-                f"'{power_mode}' is not recognized. Available power modes are "
-                f"{self.power_modes()}"
-            )
-        if power_mode == self.power_mode:
-            return
-
-        def update_power_model():
-            requests.put(f"{self.address}:{self.port}/power_mode", data=power_mode)
-
-        Thread(target=update_power_model).start()
-        self.power_mode = power_mode
-
     def _collect_loop(self) -> None:
-        """Gets the power demand every `interval` seconds from the API server."""
         while True:
             self._p = float(
                 requests.get(
