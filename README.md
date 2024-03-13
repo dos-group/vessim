@@ -7,9 +7,20 @@
 
 Vessim is a versatile **co-simulation testbed for carbon-aware applications and systems** which connects domain-specific simulators for renewable power generation and energy storage with real software and hardware.
 
-## Simulated energy systems for computing systems
+It simulates energy systems that interact with real or simulated computing systems for:
 
-Vessim allows you to simulate energy systems next to real or simulated computing systems:
+- **Carbon-aware applications**: Microgrids simulated by Vessim offer real-time visibility and control via APIs, enabling the development and testing of novel applications that interact with their energy system.
+- **Energy system composition**: Examine how the integration of solar panels, wind energy, or batteries would affect the energy mix of your datacenters.
+- **Digital Twins**: Predict future system states in carbon-aware datacenters, aid decision-making, and assess risks during extreme events like power outages.
+- **Quality Assurance**: Apply Vessim in continuous integrating testing or use it to validate software roll-outs in a controlled environment.
+
+Vessim can simulate large numbers of microgrids in parallel, comes with ready-to-use datasets, can execute simulated experiments faster than real-time, and is easily extendible with new simulators of any platform through [Mosaik](https://mosaik.offis.de)'s TCP interface.
+
+Check out our [documentation](https://vessim.readthedocs.io/en/latest/).
+
+## Example scenario
+
+The scenario below simulates a microgrid consisting of a simulated computing system (wich consistently draws 400W), a single producer (a solar power plant who's production is modelled based on a dataset provided by [Solcast](https://solcast.com/)), and a battery. The *Monitor* periodically stores the energy system state.
 
 ```python
 from vessim.actor import ComputingSystem, Generator
@@ -24,7 +35,7 @@ environment = Environment(sim_start="15-06-2022")
 monitor = Monitor()
 environment.add_microgrid(
     actors=[
-        ComputingSystem(power_meters=[MockPowerMeter(p=100)]),
+        ComputingSystem(power_meters=[MockPowerMeter(p=400)]),
         Generator(signal=HistoricalSignal.from_dataset("solcast2022_global")),
     ],
     controllers=[monitor],
@@ -46,7 +57,7 @@ via [pip](https://pip.pypa.io/en/stable/quickstart/):
 pip install vessim
 ```
 
-If you require software-in-the-loop (SiL) capabilities, you can install the `sil` extra:
+If you require software-in-the-loop (SiL) capabilities, you should additionally install the `sil` extension:
 
 ```
 pip install vessim[sil]
@@ -60,9 +71,9 @@ For complex scenarios that involve custom co-simulation actors we recommend clon
 Vessim comes with ready-to-user datasets for solar irradiance and average carbon intensity provided by
 
 <p float="left">
-  <img src="docs/_static/solcast_logo.png" width="150" />
+  <img src="docs/_static/solcast_logo.png" width="120" />
   <span> and </span>
-  <img src="docs/_static/watttime_logo.png" width="150" />
+  <img src="docs/_static/watttime_logo.png" width="120" />
 </p>
 
 We're working on documentation on how to include custom datasets for your simulations.
@@ -73,29 +84,15 @@ We're working on documentation on how to include custom datasets for your simula
 Our team at the [Distributed and Operating Systems](https://distributedsystems.berlin/) group at TU Berlin is actively working to improve Vessim.
 We are currently working on the following aspects and features:
 
-- **Website**: We are currently working on better examples and documentation. You can find the current WiP documentation [here](https://vessim.readthedocs.io/en/latest/).
-- **Imroved Software-in-the-loop (SiL) API**: We will soon release a new API for SiL simulations with new examples and better documentation.
-- **System Advisor Model (SAM)**: We are working on making NREL's [SAM](https://sam.nrel.gov/) available as a subsystem in Vessim.
+- **Software-in-the-loop API**: We will soon release a new API for SiL simulations with new examples and better documentation.
+- **System Advisor Model (SAM)**: We are working on integrating NREL's [SAM](https://sam.nrel.gov/) as a subsystem in Vessim, allowing for better simulation of solar arrays, wind farms, and other types of renewable energy generators.
+- **Flower**: We are working on integrating Vessim into the federated learning framework [Flower](https://flower.ai).
+- **Validation**: We are working on validating the accuracy of Vessim compared to real hardware testbeds.
 
 
 ## Publications
 
-If you use Vessim in your research, please cite our vision paper:
-
-Philipp Wiesner, Ilja Behnke and Odej Kao. "[A Testbed for Carbon-Aware Applications and Systems](https://arxiv.org/pdf/2306.09774.pdf)" arXiv:2302.08681 [cs.DC]. 2023.
-
-```
-@misc{wiesner2023vessim,
-    title={A Testbed for Carbon-Aware Applications and Systems}, 
-    author={Wiesner, Philipp and Behnke, Ilja and Kao, Odej},
-    year={2023},
-    eprint={2306.09774},
-    archivePrefix={arXiv},
-    primaryClass={cs.DC}
-}
-```
-
-Or our journal paper on software-in-the-loop similation for carbon-aware applications:
+If you use Vessim in your research, please cite our paper on software-in-the-loop similation for carbon-aware applications:
 
 Philipp Wiesner, Marvin Steinke, Henrik Nickel, Yazan Kitana, and Odej Kao. "[Software-in-the-Loop Simulation for Developing and Testing Carbon-Aware Applications](https://doi.org/10.1002/spe.3275)" Software: Practice and Experience, 53 (12). 2023.
 
@@ -109,5 +106,20 @@ Philipp Wiesner, Marvin Steinke, Henrik Nickel, Yazan Kitana, and Odej Kao. "[So
     number = {12},
     pages = {2362-2376},
     doi = {https://doi.org/10.1002/spe.3275}
+}
+```
+
+Also have a look at our overall vision paper:
+
+Philipp Wiesner, Ilja Behnke and Odej Kao. "[A Testbed for Carbon-Aware Applications and Systems](https://arxiv.org/pdf/2306.09774.pdf)" arXiv:2302.08681 [cs.DC]. 2023.
+
+```
+@misc{wiesner2023vessim,
+    title={A Testbed for Carbon-Aware Applications and Systems}, 
+    author={Wiesner, Philipp and Behnke, Ilja and Kao, Odej},
+    year={2023},
+    eprint={2306.09774},
+    archivePrefix={arXiv},
+    primaryClass={cs.DC}
 }
 ```
