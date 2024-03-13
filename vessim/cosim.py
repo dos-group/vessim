@@ -5,7 +5,7 @@ from copy import copy
 from typing import Optional, Literal
 
 import mosaik  # type: ignore
-import mosaik_api  # type: ignore
+import mosaik_api_v3  # type: ignore
 
 from vessim.actor import Actor
 from vessim.controller import Controller
@@ -128,7 +128,7 @@ class Environment:
             raise
 
 
-class _GridSim(mosaik_api.Simulator):
+class _GridSim(mosaik_api_v3.Simulator):
     META = {
         "type": "time-based",
         "models": {
