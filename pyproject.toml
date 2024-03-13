@@ -69,8 +69,13 @@ ruff = "*"
 optional = true
 
 [tool.poetry.group.docs.dependencies]
+setuptools = "*"
+sphinx = "*"
 furo = "*"
 sphinx-copybutton = "*"
+nbsphinx = "*"
+pandoc = "*"
+ipython = "*"
 
 [build-system]
 requires = ["setuptools", "poetry-core>=1.1.0"]

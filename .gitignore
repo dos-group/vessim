@@ -74,3 +74,5 @@ crash.log
 # Ignore local .env files used for environment variables
 .env*
 
+# Sphinx
+_build

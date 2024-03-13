@@ -1,0 +1,10 @@
+#!/bin/bash
+for name in actor controller cosim power_meter signal storage 
+do
+    echo "vessim.$name" > $name.rst
+    echo "============" >> $name.rst
+    echo ".. automodule:: vessim.$name" >> $name.rst
+    echo "   :members:" >> $name.rst
+    echo "   :undoc-members:" >> $name.rst
+    echo "   :show-inheritance:" >> $name.rst
+done

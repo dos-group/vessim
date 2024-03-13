@@ -1,27 +1,57 @@
-Overview
-==========
+======
+Vessim
+======
 
-Vessim is a versatile **co-simulation testbed for carbon-aware applications and systems**. 
-It lets users connect domain-specific simulators for energy system components such as renewable power generation, energy storage, and power flow analysis with real software and hardware.
-It is based on `mosaik <https://mosaik.offis.de/>`_,  a general-purpose co-simulation framework.
-Mosaik connects simulators of any language and real systems via TCP and ensures their synchronization. It also offers an API for defining simulation scenarios. 
+Vessim is a versatile **co-simulation testbed for carbon-aware applications and systems** which connects domain-specific simulators for renewable power generation and energy storage with real software and hardware.
 
-Vessim is in alpha stage and under active development. Functionality and documentation will improve in the next weeks and months.
+.. image:: _static/vessim_overview.png
+    :width: 100%
+    :alt: Vessim Overview
 
-The documentation provides a guide explaining the concept of this project, two examples to get you started with it and an API reference.
 
-.. image:: _static/CarbonAware_vessim_Aspects.png
-    :width: 480px
-    :align: center
+What can I do with Vessim?
+==========================
 
-Vessim is released under the `MIT License <https://github.com/dos-group/vessim/blob/main/LICENSE>`_. 
+Vessim simulates energy systems that interact with real or simulated computing systems for:
+
+    - **Carbon-aware applications**: Simulated microgrids offer real-time visibility and control via APIs, enabling the development of novel applications that interact with their energy system.
+    - **Energy system composition**: Examine how the integration of solar panels, wind energy, or batteries would affect the energy mix of your datacenters.
+    - **Digital Twins**: Predict future system states in carbon-aware datacenters, aid decision-making, and assess risks during extreme events like power outages.
+    - **Quality Assurance**: Apply Vessim in continuous integrating testing or use it to validate software roll-outs in a controlled environment.
+
+Vessim is based on `Mosaik <https://mosaik.offis.de>`_, a general-purpose co-simulation framework.
+It can simulate large numbers of microgrids in parallel, comes with ready-to-use datasets, can execute simulated experiments faster than real-time, and is easily extendable with new simulators of any platform through Mosaik's TCP interface.
+
+
+Installation
+============
+
+You can install our `latest release <https://pypi.org/project/vessim/>`_ via
+`pip <https://pip.pypa.io/en/stable/getting-started/>`_:
+
+.. code-block:: console
+
+    pip install vessim
+
+If you require software-in-the-loop (SiL) capabilities, you can install the
+`sil`` extra:
+
+.. code-block:: console
+
+    pip install vessim[sil]
+
+For complex scenarios that involve custom co-simulation actors we recommend
+cloning and editing this depository directly.
+
+
 
 .. toctree::
-   :maxdepth: 3
-   :hidden:
-   :caption: Content:
- 
-   references/overview
-   references/examples
-   references/apireference
-   references/aboutvessim  
+    :maxdepth: 3
+    :hidden:
+    :caption: Content:
+
+    Overview <self>
+    concepts
+    tutorials/index
+    api_reference/index
+    about
