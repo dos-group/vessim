@@ -36,7 +36,7 @@ monitor = Monitor()
 environment.add_microgrid(
     actors=[
         ComputingSystem(power_meters=[MockPowerMeter(p=400)]),
-        Generator(signal=HistoricalSignal.from_dataset("solcast2022_global")),
+        Generator(signal=HistoricalSignal.from_dataset("solcast2022_global"), column="Berlin"),
     ],
     controllers=[monitor],
     storage=SimpleBattery(capacity=100),
