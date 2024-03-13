@@ -7,7 +7,6 @@ build:
   jobs:
     post_create_environment:
       - pip install poetry
-      - poetry self add poetry-dynamic-versioning
     post_install:
       - poetry install --extras "sil" --with docs
 
