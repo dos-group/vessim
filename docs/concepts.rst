@@ -1,5 +1,5 @@
 ===============
-Main Components
+Concepts
 ===============
 
 The Vessim Cosim interface consists of three base components which include the
@@ -8,10 +8,14 @@ mangaged through a mosaik simulator which executes the component as a simulation
 model. For you as the user, this mosaik representation only serves as background
 information to help you understand how Vessim works.
 
+
+
+
+
 Actor
 =====
 
-.. image:: ../_static/actor.png
+.. image:: _static/actor.png
     :width: 40%
     :align: center
 
@@ -32,7 +36,7 @@ in `vessim.actor
 Controller
 ==========
 
-.. image:: ../_static/controller.png
+.. image:: _static/controller.png
     :width: 40%
     :align: center
 
@@ -53,7 +57,7 @@ All Controllers need to be sublcassed from the Controller abstract base class in
 Microgrid
 =========
 
-.. image:: ../_static/grid.png
+.. image:: _static/grid.png
     :width: 40%
     :align: center
 
@@ -67,7 +71,7 @@ depending on the storage policy, (dis)charged to Storage. The remaining
 lack of energy that could not be discharged from Storage. This `p_delta` is then
 available to Controllers.
 
-.. image:: ../_static/cosim_models.png
+.. image:: _static/cosim_models.png
     :align: center
 
 In contrast to the Actor and Controller, the Microgrid is neither to be
