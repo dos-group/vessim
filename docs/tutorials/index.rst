@@ -3,11 +3,12 @@ Tutorials
 =========
 
 .. toctree::
+    :maxdepth: 1
 
-   signal_example
-   basic_example
-   controller_example
-   sil_example
+    signal_example
+    basic_example
+    controller_example
+    sil_example
 
 
 .. note::
