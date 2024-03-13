@@ -4,6 +4,7 @@ Tutorials
 
 .. toctree::
 
-   basic_scenario
-   controller_scenario
-   storage_scenario
+   basic_example
+   controller_example
+   storage_example
+   signal_example
