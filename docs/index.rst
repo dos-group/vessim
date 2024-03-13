@@ -20,9 +20,7 @@ Vessim simulates energy systems that interact with real or simulated computing s
     - **Quality Assurance**: Apply Vessim in continuous integrating testing or use it to validate software roll-outs in a controlled environment.
 
 Vessim is based on `Mosaik <https://mosaik.offis.de>`_, a general-purpose co-simulation framework.
-It can simulate large numbers of microgrids in parallel, comes with ready-to-use datasets, can execute simulated experiments faster than real-time, and is easily extendible with new simulators of any platform through Mosaik's TCP interface.
-
-
+It can simulate large numbers of microgrids in parallel, comes with ready-to-use datasets, can execute simulated experiments faster than real-time, and is easily extendable with new simulators of any platform through Mosaik's TCP interface.
 
 
 Installation
