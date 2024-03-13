@@ -29,40 +29,6 @@ from vessim.signal import Signal
 from vessim.util import DatetimeLike, Clock
 
 
-class ComputeNode:  # TODO we could soon replace this agent-based implementation with k8s
-    """Represents a physical or virtual computing node.
-
-    This class keeps track of nodes and assigns unique IDs to each new
-    instance. It also allows the setting of a power meter and power mode.
-
-    Args:
-        name: A unique name assigned to each node.
-        address: The network address of the node API.
-        port: The application port of the node API.
-    """
-
-    def __init__(
-        self,
-        name: str,
-        power_mode: str = "normal",
-        address: str = "127.0.0.1",
-        port: int = 8000,
-    ):
-        self.name = name
-        self.http_client = HttpClient(f"{address}:{port}")
-        self.power_mode = power_mode
-
-    def set_power_mode(self, power_mode: str):
-        if power_mode == self.power_mode:
-            return
-
-        def update_power_model():
-            self.http_client.put("/power_mode", {"power_mode": power_mode})
-
-        Thread(target=update_power_model).start()
-        self.power_mode = power_mode
-
-
 class Broker:
     def __init__(self):
         self.redis_db = redis.Redis()
@@ -95,24 +61,20 @@ class SilController(Controller):
         api_routes: Callable,
         grid_signals: Optional[list[Signal]] = None,  # TODO temporary fix
         request_collectors: Optional[dict[str, Callable]] = None,
-        compute_nodes: Optional[list[ComputeNode]] = None,
         api_host: str = "127.0.0.1",
         api_port: int = 8000,
         request_collector_interval: float = 1,
         step_size: Optional[int] = None,
+        **kwargs,
     ):
         super().__init__(step_size=step_size)
         self.api_routes = api_routes
         self.grid_signals = grid_signals
-        self.request_collectors = (
-            request_collectors if request_collectors is not None else {}
-        )
-        self.compute_nodes_dict = (
-            {n.name: n for n in compute_nodes} if compute_nodes is not None else {}
-        )
+        self.request_collectors = request_collectors if request_collectors is not None else {}
         self.api_host = api_host
         self.api_port = api_port
         self.request_collector_interval = request_collector_interval
+        self.kwargs = kwargs
         self.redis_docker_container = _redis_docker_container()
         self.redis_db = redis.Redis()
 
@@ -131,7 +93,7 @@ class SilController(Controller):
                 api_routes=self.api_routes,
                 api_host=self.api_host,
                 api_port=self.api_port,
-                grid_signals=self.grid_signals
+                grid_signals=self.grid_signals,
             ),
         ).start()
         logger.info("Started SiL Controller API server process 'Vessim API'")
@@ -156,8 +118,8 @@ class SilController(Controller):
         while True:
             events = self.redis_db.lrange("set_events", start=0, end=-1)
             assert events is not None
-            if len(events) > 0: # type: ignore
-                events = [pickle.loads(e) for e in events] # type: ignore
+            if len(events) > 0:  # type: ignore
+                events = [pickle.loads(e) for e in events]  # type: ignore
                 events_by_category = defaultdict(dict)
                 for event in events:
                     events_by_category[event["category"]][event["time"]] = event["value"]
@@ -165,7 +127,7 @@ class SilController(Controller):
                     self.request_collectors[category](
                         events=events_by_category[category],
                         microgrid=self.microgrid,
-                        compute_nodes=self.compute_nodes_dict,
+                        kwargs=self.kwargs,
                     )
             self.redis_db.delete("set_events")
             sleep(self.request_collector_interval)
@@ -191,7 +153,7 @@ def _redis_docker_container(
     if docker_client is None:
         try:
             docker_client = docker.from_env()
-        except docker.errors.DockerException as e: # type: ignore
+        except docker.errors.DockerException as e:  # type: ignore
             raise RuntimeError("Could not connect to Docker.") from e
     try:
         container = docker_client.containers.run(
@@ -199,7 +161,7 @@ def _redis_docker_container(
             ports={"6379/tcp": port},
             detach=True,  # run in background
         )
-    except docker.errors.APIError as e: # type: ignore
+    except docker.errors.APIError as e:  # type: ignore
         if e.status_code == 500 and "port is already allocated" in e.explanation:
             # TODO prompt user to automatically kill container
             raise RuntimeError(
@@ -211,12 +173,12 @@ def _redis_docker_container(
 
     # Check if the container has started
     while True:
-        container_info = docker_client.containers.get(container.name) # type: ignore
-        if container_info.status == "running": # type: ignore
+        container_info = docker_client.containers.get(container.name)  # type: ignore
+        if container_info.status == "running":  # type: ignore
             break
         sleep(1)
 
-    return container # type: ignore
+    return container  # type: ignore
 
 
 def get_latest_event(events: dict[datetime, Any]) -> Any:
@@ -254,9 +216,7 @@ class WatttimeSignal(Signal):
 
     def _request(self, endpoint: str, params: dict):
         while True:
-            rsp = requests.get(
-                f"{self._URL}/v3{endpoint}", headers=self.headers, params=params
-            )
+            rsp = requests.get(f"{self._URL}/v3{endpoint}", headers=self.headers, params=params)
             if rsp.status_code == 200:
                 return rsp.json()["data"][0]["value"]
             if rsp.status_code == 400:
@@ -269,58 +229,5 @@ class WatttimeSignal(Signal):
 
     def _login(self) -> str:
         # TODO reconnect if token is expired
-        rsp = requests.get(
-            f"{self._URL}/login", auth=HTTPBasicAuth(self.username, self.password)
-        )
+        rsp = requests.get(f"{self._URL}/login", auth=HTTPBasicAuth(self.username, self.password))
         return rsp.json()["token"]
-
-
-class HttpClient:
-    """Class for making HTTP requests to the Vessim API server.
-
-    Args:
-        server_address: The address of the server to connect to.
-            e.g. http://localhost
-    """
-
-    def __init__(self, server_address: str, timeout: float = 5) -> None:
-        self.server_address = server_address
-        self.timeout = timeout
-
-    def get(self, route: str) -> dict:
-        """Sends a GET request to the server and retrieves data.
-
-        Args:
-            route: The path of the endpoint to send the request to.
-
-        Raises:
-            HTTPError: If response code is != 200.
-
-        Returns:
-            A dictionary containing the response.
-        """
-        response = requests.get(self.server_address + route, timeout=self.timeout)
-        if response.status_code != 200:
-            response.raise_for_status()
-        data = response.json()  # assuming the response data is in JSON format
-        return data
-
-    def put(self, route: str, data: dict[str, Any] = {}) -> None:
-        """Sends a PUT request to the server to update data.
-
-        Args:
-            route: The path of the endpoint to send the request to.
-            data: The data to be updated, in dictionary format.
-
-        Raises:
-            HTTPError: If response code is != 200.
-        """
-        headers = {"Content-type": "application/json"}
-        response = requests.put(
-            self.server_address + route,
-            data=json.dumps(data),
-            headers=headers,
-            timeout=self.timeout,
-        )
-        if response.status_code != 200:
-            response.raise_for_status()
