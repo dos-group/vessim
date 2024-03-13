@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from threading import Thread
-import math
 import random
 import time
 import uvicorn
@@ -12,6 +11,7 @@ class NodeApiServer:
         self.port = port
         self.p_static = p_static
         self.p_max = p_max
+        self.utilization = 0
         Thread(target=self._workload_sim, daemon=True).start()
 
         @self.app.get("/power")
@@ -20,11 +20,8 @@ class NodeApiServer:
 
     def _workload_sim(self):
         while True:
-            end = time.time() + 10
-            while time.time() < end:
-                self.utilization = random
-            self.utilization = 0.05
-            time.sleep(10)
+            self.utilization = round(random.uniform(0.1, 1), 2)
+            time.sleep(2)
 
     def start(self):
         uvicorn.run(self.app, host="0.0.0.0", port=self.port)
