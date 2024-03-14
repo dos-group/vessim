@@ -7,7 +7,7 @@ build:
   jobs:
     post_create_environment:
       - pip install poetry
-      - pip install furo sphinx-copybutton nbsphinx pandoc ipython
+      - pip install furo sphinx-copybutton nbsphinx pandoc ipython mosaik-api-v3
     post_install:
       - poetry install --extras "sil" --with docs
 
