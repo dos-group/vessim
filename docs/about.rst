@@ -3,7 +3,19 @@ About Vessim
 ============
 
 Vessim is being developed at the research group for `Distributed and Operating
-Systems (DOS) <https://www.dos.tu-berlin.de>`_, at TU Berlin.
+Systems (DOS) <https://www.dos.tu-berlin.de>`_ at TU Berlin.
+Development is funded by the `Federal Ministry of Education and Research (BMBF) <https://www.bmbf.de/>`_ as part of the Software Campus project `SYNERGY <https://softwarecampus.de/en/projekt/synergy-synergies-of-distributed-artificial-intelligence-and-renewable-energy-generation/>`_ under the lead of `Philipp Wiesner <https://philippwiesner.org>`_.
+
+After researching on energy-aware and carbon-aware computing systems for several years, we noticed how almost all scientific evaluations are simulation-based, as (globally distributed) hardware testbeds are rare and expensive to build and maintain.
+Vessim tries to simplify and unify such evaluations and enables the continuous testing of new applications.
+Active development of Vessim started in March 2023.
+
+Many thanks to our team which worked on Vessim for more than a year now:
+
+- Marvin Steinke
+- Paul Kilian
+- Amanda Malkowski
+
 In case of questions, please reach out to `Philipp Wiesner
 <https://philippwiesner.org>`_.
 
