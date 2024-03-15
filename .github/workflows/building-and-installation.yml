@@ -47,3 +47,15 @@ jobs:
     # install package
     - name: Install package 
       run: pip install dist/*.tar.gz 
+      
+    # Install dependencies needed for notebook execution
+    - name: Install notebook dependencies
+      run: pip install jupyter nbconvert
+
+    # Execute example notebooks to verify that no errors are thrown
+    - name: Run Jupyter Notebooks
+      run: |
+        notebooks=("examples/signal_example.ipynb" "examples/basic_example.ipynb" "examples/controller_example.ipynb")
+        for notebook in "${notebooks[@]}"; do
+          jupyter nbconvert --to notebook --execute "$notebook"
+        done
