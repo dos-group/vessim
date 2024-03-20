@@ -5,7 +5,6 @@ from vessim import cosim
 from vessim import power_meter
 from vessim import signal
 from vessim import storage
-from vessim import util
 
 __all__ = [
     "signal",
@@ -14,7 +13,6 @@ __all__ = [
     "controller",
     "storage",
     "power_meter",
-    "util",
 ]
 
 try:

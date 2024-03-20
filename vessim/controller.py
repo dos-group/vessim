@@ -9,7 +9,6 @@ import mosaik_api_v3  # type: ignore
 import pandas as pd
 
 from vessim.signal import Signal
-from vessim.util import Clock
 
 if TYPE_CHECKING:
     from vessim.cosim import Microgrid
@@ -20,20 +19,19 @@ class Controller(ABC):
         self.step_size = step_size
 
     @abstractmethod
-    def start(self, microgrid: Microgrid, clock: Clock) -> None:
+    def start(self, microgrid: Microgrid) -> None:
         """Supplies the controller with objects available after simulation start.
 
         Args:
             microgrid: The microgrid under control.
-            clock: The clock of the simulation environment.
         """
 
     @abstractmethod
-    def step(self, time: int, p_delta: float, actor_infos: dict) -> None:
+    def step(self, time: datetime, p_delta: float, actor_infos: dict) -> None:
         """Performs a simulation step.
 
         Args:
-            time: Current simulation time.
+            time: Current datetime.
             p_delta: Current power delta from the microgrid after the storage has been
                 (de)charged. If negative, this power must be drawn from the public grid.
                 If positive, the power can be fed to the public grid or must be curtailed.
@@ -56,10 +54,8 @@ class Monitor(Controller):
         self.grid_signals = grid_signals
         self.monitor_log: dict[datetime, dict] = defaultdict(dict)
         self.custom_monitor_fns: list[Callable] = []
-        self.clock: Optional[Clock] = None
 
-    def start(self, microgrid: Microgrid, clock: Clock) -> None:
-        self.clock = clock
+    def start(self, microgrid: Microgrid) -> None:
         if microgrid.storage is not None:
             storage_state = microgrid.storage.state()
             self.add_monitor_fn(lambda _: {"storage": storage_state})
@@ -68,22 +64,21 @@ class Monitor(Controller):
             for signal_name, signal_api in self.grid_signals.items():
 
                 def fn(time):
-                    return {signal_name: signal_api.at(clock.to_datetime(time))}
+                    return {signal_name: signal_api.at(time)}
 
                 self.add_monitor_fn(fn)
 
     def add_monitor_fn(self, fn: Callable[[float], dict[str, Any]]):
         self.custom_monitor_fns.append(fn)
 
-    def step(self, time: int, p_delta: float, actor_infos: dict) -> None:
+    def step(self, time: datetime, p_delta: float, actor_infos: dict) -> None:
         log_entry = dict(
             p_delta=p_delta,
             actor_infos=actor_infos,
         )
         for monitor_fn in self.custom_monitor_fns:
             log_entry.update(monitor_fn(time))
-        assert self.clock is not None  # clock is initialized at this point
-        self.monitor_log[self.clock.to_datetime(time)] = log_entry
+        self.monitor_log[time] = log_entry
 
     def to_csv(self, out_path: str):
         df = pd.DataFrame({k: _flatten_dict(v) for k, v in self.monitor_log.items()}).T
@@ -118,10 +113,12 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         super().__init__(self.META)
         self.eid = "Controller"
         self.step_size = None
-        self.controller: Optional[Controller] = None
+        self.clock = None
+        self.controller = None
 
     def init(self, sid, time_resolution=1.0, **sim_params):
         self.step_size = sim_params["step_size"]
+        self.clock = sim_params["clock"]
         return self.meta
 
     def create(self, num, model, **model_params):
@@ -131,10 +128,8 @@ class _ControllerSim(mosaik_api_v3.Simulator):
 
     def step(self, time, inputs, max_advance):
         assert self.controller is not None
-        try:
-            self.controller.step(time, *_parse_controller_inputs(inputs[self.eid]))
-        except KeyError:
-            self.controller.step(time, p_delta=0, actor_infos={})
+        now = self.clock.to_datetime(time)
+        self.controller.step(now, *_parse_controller_inputs(inputs[self.eid]))
         return time + self.step_size
 
     def get_data(self, outputs):

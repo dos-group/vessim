@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 
 from vessim._data import load_dataset
-from vessim.util import DatetimeLike
+from vessim._util import DatetimeLike
 
 
 class Signal(ABC):

@@ -26,7 +26,7 @@ from requests.auth import HTTPBasicAuth
 
 from vessim.cosim import Controller, Microgrid
 from vessim.signal import Signal
-from vessim.util import DatetimeLike, Clock
+from vessim._util import DatetimeLike
 
 
 class Broker:
@@ -79,11 +79,9 @@ class SilController(Controller):
         self.redis_db = redis.Redis()
 
         self.microgrid: Optional[Microgrid] = None
-        self.clock: Optional[Clock] = None
 
-    def start(self, microgrid: Microgrid, clock: Clock) -> None:
+    def start(self, microgrid: Microgrid) -> None:
         self.microgrid = microgrid
-        self.clock = clock
 
         multiprocessing.Process(
             target=_serve_api,
@@ -100,9 +98,9 @@ class SilController(Controller):
 
         Thread(target=self._collect_set_requests_loop, daemon=True).start()
 
-    def step(self, time: int, p_delta: float, actor_infos: dict) -> None:
+    def step(self, time: datetime, p_delta: float, actor_infos: dict) -> None:
         pipe = self.redis_db.pipeline()
-        pipe.set("time", time)
+        pipe.set("time", time.isoformat())
         pipe.set("p_delta", p_delta)
         pipe.set("actors", json.dumps(actor_infos))
         assert self.microgrid is not None

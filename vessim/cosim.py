@@ -10,7 +10,7 @@ import mosaik_api_v3  # type: ignore
 from vessim.actor import Actor
 from vessim.controller import Controller
 from vessim.storage import Storage, StoragePolicy, DefaultStoragePolicy
-from vessim.util import Clock
+from vessim._util import Clock
 
 
 class Microgrid:
@@ -45,9 +45,9 @@ class Microgrid:
             world.connect(actor_entity, grid_entity, "p")
 
         for controller in controllers:
-            controller.start(self, clock)
+            controller.start(self)
             controller_step_size = controller.step_size if controller.step_size else step_size
-            controller_sim = world.start("Controller", step_size=controller_step_size)
+            controller_sim = world.start("Controller", clock=clock, step_size=controller_step_size)
             controller_entity = controller_sim.Controller(controller=controller)
             world.connect(grid_entity, controller_entity, "p_delta")
             for actor_name, actor_entity in actor_names_and_entities:
