@@ -1,8 +1,8 @@
 from __future__ import annotations
-
 from abc import ABC, abstractmethod
 from typing import Optional
 
+import mosaik_api_v3
 from loguru import logger
 
 
@@ -21,10 +21,6 @@ class Storage(ABC):
             or if the C-rate was exceeded.
             If 0, all power was successfully (dis)charged.
         """
-
-    @abstractmethod
-    def soc(self) -> float:
-        """Returns the current State of Charge (SoC)."""
 
     @abstractmethod
     def state(self) -> dict:
@@ -100,6 +96,7 @@ class SimpleBattery(Storage):
 
     def state(self) -> dict:
         return {
+            "soc": self.soc(),
             "charge_level": self.charge_level,
             "capacity": self.capacity,
             "min_soc": self.min_soc,
@@ -143,3 +140,44 @@ class DefaultStoragePolicy(StoragePolicy):
         return {
             "grid_power": self.grid_power,
         }
+
+
+class _StorageSim(mosaik_api_v3.Simulator):
+    META = {
+        "type": "time-based",
+        "models": {
+            "Storage": {
+                "public": True,
+                "params": ["storage", "policy"],
+                "attrs": ["p_delta", "state"],
+            },
+        },
+    }
+
+    def __init__(self):
+        super().__init__(self.META)
+        self.eid = "Grid"
+        self.step_size = None
+        self.storage = None
+        self.policy = None
+
+    def init(self, sid, time_resolution=1.0, **sim_params):
+        self.step_size = sim_params["step_size"]
+        return self.meta
+
+    def create(self, num, model, **model_params):
+        assert num == 1, "Only one instance per simulation is supported"
+        self.storage = model_params["storage"]
+        self.policy = model_params["policy"]
+        if self.policy is None:
+            self.policy = DefaultStoragePolicy()
+        return [{"eid": self.eid, "type": model}]
+
+    def step(self, time, inputs, max_advance):
+        p_delta = list(inputs[self.eid]["p_delta"].values())[0]
+        self.charge = self.policy.apply(self.storage, p_delta, self.step_size)
+        self.state = self.storage.state()
+        return time + self.step_size
+
+    def get_data(self, outputs):
+        return {self.eid: {"state": self.state}}

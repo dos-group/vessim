@@ -24,7 +24,7 @@ from fastapi import FastAPI
 from loguru import logger
 from requests.auth import HTTPBasicAuth
 
-from vessim.cosim import Controller, Microgrid
+from vessim.controller import Controller
 from vessim.signal import Signal
 from vessim._util import DatetimeLike
 
@@ -32,9 +32,6 @@ from vessim._util import DatetimeLike
 class Broker:
     def __init__(self):
         self.redis_db = redis.Redis()
-
-    def get_microgrid(self) -> Microgrid:
-        return pickle.loads(self.redis_db.get("microgrid"))  # type: ignore
 
     def get_actor(self, actor: str) -> dict:
         return json.loads(self.redis_db.get("actors"))[actor]  # type: ignore
@@ -78,11 +75,7 @@ class SilController(Controller):
         self.redis_docker_container = _redis_docker_container()
         self.redis_db = redis.Redis()
 
-        self.microgrid: Optional[Microgrid] = None
-
-    def start(self, microgrid: Microgrid) -> None:
-        self.microgrid = microgrid
-
+    def start(self) -> None:
         multiprocessing.Process(
             target=_serve_api,
             name="Vessim API",
@@ -98,13 +91,13 @@ class SilController(Controller):
 
         Thread(target=self._collect_set_requests_loop, daemon=True).start()
 
-    def step(self, time: datetime, p_delta: float, actor_infos: dict) -> None:
+    def step(
+        self, time: datetime, p_delta: float, actor_infos: dict, storage_state: Optional[dict]
+    ) -> None:
         pipe = self.redis_db.pipeline()
         pipe.set("time", time.isoformat())
         pipe.set("p_delta", p_delta)
         pipe.set("actors", json.dumps(actor_infos))
-        assert self.microgrid is not None
-        pipe.set("microgrid", self.microgrid.pickle())
         pipe.execute()
 
     def finalize(self) -> None:
@@ -124,7 +117,6 @@ class SilController(Controller):
                 for category, events in events_by_category.items():
                     self.request_collectors[category](
                         events=events_by_category[category],
-                        microgrid=self.microgrid,
                         kwargs=self.kwargs,
                     )
             self.redis_db.delete("set_events")

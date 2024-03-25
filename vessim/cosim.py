@@ -9,11 +9,11 @@ import mosaik_api_v3  # type: ignore
 
 from vessim.actor import Actor
 from vessim.controller import Controller
-from vessim.storage import Storage, StoragePolicy, DefaultStoragePolicy
+from vessim.storage import Storage, StoragePolicy
 from vessim._util import Clock
 
 
-class Microgrid:
+class _Microgrid:
     def __init__(
         self,
         world: mosaik.World,
@@ -24,10 +24,8 @@ class Microgrid:
         storage_policy: Optional[StoragePolicy] = None,
         step_size: int = 1,  # global default
     ):
-        self.actors = actors if actors is not None else []
-        self.controllers = controllers if controllers is not None else []
-        self.storage = storage
-        self.storage_policy = storage_policy
+        self.actors = actors
+        self.controllers = controllers
         self.step_size = step_size
 
         actor_names_and_entities = []
@@ -40,12 +38,13 @@ class Microgrid:
             actor_names_and_entities.append((actor.name, actor_entity))
 
         grid_sim = world.start("Grid", step_size=step_size)
-        grid_entity = grid_sim.Grid(storage=storage, policy=storage_policy)
+        grid_entity = grid_sim.Grid()
         for actor_name, actor_entity in actor_names_and_entities:
             world.connect(actor_entity, grid_entity, "p")
 
+        controller_entities = []
         for controller in controllers:
-            controller.start(self)
+            controller.start()
             controller_step_size = controller.step_size if controller.step_size else step_size
             controller_sim = world.start("Controller", clock=clock, step_size=controller_step_size)
             controller_entity = controller_sim.Controller(controller=controller)
@@ -53,6 +52,20 @@ class Microgrid:
             for actor_name, actor_entity in actor_names_and_entities:
                 world.connect(
                     actor_entity, controller_entity, ("state", f"actor.{actor_name}")
+                )
+            controller_entities.append(controller_entity)
+
+        if storage is not None:
+            storage_sim = world.start("Storage", step_size=step_size)
+            storage_entity = storage_sim.Storage(storage=storage, policy=storage_policy)
+            world.connect(grid_entity, storage_entity, "p_delta")
+            for controller_entity in controller_entities:
+                world.connect(
+                    storage_entity,
+                    controller_entity,
+                    ("state", "storage_state"),
+                    time_shifted=True,
+                    initial_data={"state": storage.state()},
                 )
 
     def pickle(self) -> bytes:
@@ -73,13 +86,10 @@ class Microgrid:
 
 class Environment:
     COSIM_CONFIG = {
-        "Actor": {
-            "python": "vessim.actor:_ActorSim",
-        },
-        "Controller": {
-            "python": "vessim.controller:_ControllerSim",
-        },
+        "Actor": {"python": "vessim.actor:_ActorSim"},
+        "Controller": {"python": "vessim.controller:_ControllerSim"},
         "Grid": {"python": "vessim.cosim:_GridSim"},
+        "Storage": {"python": "vessim.storage:_StorageSim"},
     }
 
     def __init__(self, sim_start):
@@ -95,14 +105,14 @@ class Environment:
         storage_policy: Optional[StoragePolicy] = None,
         step_size: int = 1,  # global default
     ):
-        microgrid = Microgrid(
+        microgrid = _Microgrid(
             self.world,
             self.clock,
             actors if actors is not None else [],
             controllers if controllers is not None else [],
             storage,
             storage_policy,
-            step_size
+            step_size,
         )
         self.microgrids.append(microgrid)
         return microgrid
@@ -134,7 +144,7 @@ class _GridSim(mosaik_api_v3.Simulator):
         "models": {
             "Grid": {
                 "public": True,
-                "params": ["storage", "policy"],
+                "params": [],
                 "attrs": ["p", "p_delta"],
             },
         },
@@ -144,10 +154,7 @@ class _GridSim(mosaik_api_v3.Simulator):
         super().__init__(self.META)
         self.eid = "Grid"
         self.step_size = None
-        self.storage = None
-        self.policy = None
         self.p_delta = 0.0
-        self._last_step_time = 0
 
     def init(self, sid, time_resolution=1.0, **sim_params):
         self.step_size = sim_params["step_size"]
@@ -155,19 +162,10 @@ class _GridSim(mosaik_api_v3.Simulator):
 
     def create(self, num, model, **model_params):
         assert num == 1, "Only one instance per simulation is supported"
-        self.storage = model_params["storage"]
-        self.policy = model_params["policy"]
-        if self.policy is None:
-            self.policy = DefaultStoragePolicy()
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
-        p_delta = sum(inputs[self.eid]["p"].values())
-        if self.storage is None:
-            self.p_delta = p_delta
-        else:
-            assert self.policy is not None
-            self.p_delta = self.policy.apply(self.storage, p_delta, self.step_size)
+        self.p_delta = sum(inputs[self.eid]["p"].values())
         return time + self.step_size
 
     def get_data(self, outputs):

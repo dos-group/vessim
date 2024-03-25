@@ -3,31 +3,26 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, TYPE_CHECKING, MutableMapping, Optional, Callable
+from typing import Any, MutableMapping, Optional, Callable
 
 import mosaik_api_v3  # type: ignore
 import pandas as pd
 
 from vessim.signal import Signal
 
-if TYPE_CHECKING:
-    from vessim.cosim import Microgrid
-
 
 class Controller(ABC):
     def __init__(self, step_size: Optional[int] = None):
         self.step_size = step_size
 
-    @abstractmethod
-    def start(self, microgrid: Microgrid) -> None:
-        """Supplies the controller with objects available after simulation start.
-
-        Args:
-            microgrid: The microgrid under control.
-        """
+    def start(self):
+        """Function to be executed before simulation is started."""
+        pass
 
     @abstractmethod
-    def step(self, time: datetime, p_delta: float, actor_infos: dict) -> None:
+    def step(
+        self, time: datetime, p_delta: float, actor_states: dict, storage_state: Optional[dict]
+    ) -> None:
         """Performs a simulation step.
 
         Args:
@@ -35,13 +30,17 @@ class Controller(ABC):
             p_delta: Current power delta from the microgrid after the storage has been
                 (de)charged. If negative, this power must be drawn from the public grid.
                 If positive, the power can be fed to the public grid or must be curtailed.
-            actor_infos: Contains the last "info" dictionaries by all actors in the
-                microgrid. The info dictionary is defined by the actor and can contain
+            actor_states: Contains the last state dictionaries by all actors in the
+                microgrid. The state dictionary is defined by the actor and can contain
                 any information about the actor's state.
+            storage_state: Contains the last state dictionary of the storage instance if
+                microgrid has a storage and None otherwise. The state dictionary is defined
+                by the storage and can contain any information about the storage state.
         """
 
     def finalize(self) -> None:
         """This method can be overridden clean-up after the simulation finished."""
+        pass
 
 
 class Monitor(Controller):
@@ -51,31 +50,29 @@ class Monitor(Controller):
         grid_signals: Optional[dict[str, Signal]] = None,
     ):
         super().__init__(step_size=step_size)
-        self.grid_signals = grid_signals
+        self.grid_signals = grid_signals if grid_signals is not None else {}
         self.monitor_log: dict[datetime, dict] = defaultdict(dict)
         self.custom_monitor_fns: list[Callable] = []
 
-    def start(self, microgrid: Microgrid) -> None:
-        if microgrid.storage is not None:
-            storage_state = microgrid.storage.state()
-            self.add_monitor_fn(lambda _: {"storage": storage_state})
+        for signal_name, signal_api in self.grid_signals.items():
 
-        if self.grid_signals is not None:
-            for signal_name, signal_api in self.grid_signals.items():
+            def fn(time):
+                return {signal_name: signal_api.at(time)}
 
-                def fn(time):
-                    return {signal_name: signal_api.at(time)}
-
-                self.add_monitor_fn(fn)
+            self.add_monitor_fn(fn)
 
     def add_monitor_fn(self, fn: Callable[[float], dict[str, Any]]):
         self.custom_monitor_fns.append(fn)
 
-    def step(self, time: datetime, p_delta: float, actor_infos: dict) -> None:
+    def step(
+        self, time: datetime, p_delta: float, actor_states: dict, storage_state: Optional[dict]
+    ) -> None:
         log_entry = dict(
             p_delta=p_delta,
-            actor_infos=actor_infos,
+            actor_states=actor_states,
         )
+        if storage_state is not None:
+            log_entry["storage_state"] = storage_state
         for monitor_fn in self.custom_monitor_fns:
             log_entry.update(monitor_fn(time))
         self.monitor_log[time] = log_entry
@@ -141,18 +138,21 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         self.controller.finalize()
 
 
-def _parse_controller_inputs(inputs: dict[str, dict[str, Any]]) -> tuple[float, dict]:
-    try:
-        p_delta = _get_val(inputs, "p_delta")
-    except KeyError:
-        p_delta = None  # in case there has not yet been any power reported by actors
+def _parse_controller_inputs(
+    inputs: dict[str, dict[str, Any]],
+) -> tuple[float, dict, Optional[dict]]:
+    p_delta = _get_val(inputs, "p_delta")
     actor_keys = [k for k in inputs.keys() if k.startswith("actor")]
     actors: defaultdict[str, Any] = defaultdict(dict)
     for k in actor_keys:
         _, actor_name = k.split(".")
         actors[actor_name] = _get_val(inputs, k)
+    if "storage_state" in inputs.keys():
+        storage_state = _get_val(inputs, "storage_state")
+    else:
+        storage_state = None
     assert p_delta is not None
-    return p_delta, dict(actors)
+    return p_delta, dict(actors), storage_state
 
 
 def _get_val(inputs: dict, key: str) -> Any:
