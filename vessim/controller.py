@@ -9,6 +9,7 @@ import mosaik_api_v3  # type: ignore
 import pandas as pd
 
 from vessim.signal import Signal
+from vessim.storage import Storage, StoragePolicy
 
 
 class Controller(ABC):
@@ -16,13 +17,11 @@ class Controller(ABC):
         self.step_size = step_size
 
     def start(self):
-        """Function to be executed before simulation is started."""
+        """Function to be executed before simulation is started. Can be overridden."""
         pass
 
     @abstractmethod
-    def step(
-        self, time: datetime, p_delta: float, actor_states: dict, storage_state: Optional[dict]
-    ) -> None:
+    def step(self, time: datetime, p_delta: float, actor_states: dict) -> None:
         """Performs a simulation step.
 
         Args:
@@ -33,13 +32,10 @@ class Controller(ABC):
             actor_states: Contains the last state dictionaries by all actors in the
                 microgrid. The state dictionary is defined by the actor and can contain
                 any information about the actor's state.
-            storage_state: Contains the last state dictionary of the storage instance if
-                microgrid has a storage and None otherwise. The state dictionary is defined
-                by the storage and can contain any information about the storage state.
         """
 
     def finalize(self) -> None:
-        """This method can be overridden clean-up after the simulation finished."""
+        """Function to be executed after simulation has ended. Can be overridden for clean-up."""
         pass
 
 
@@ -48,31 +44,43 @@ class Monitor(Controller):
         self,
         step_size: Optional[int] = None,
         grid_signals: Optional[dict[str, Signal]] = None,
+        storage: Optional[Storage] = None,
+        storage_policy: Optional[StoragePolicy] = None,
     ):
         super().__init__(step_size=step_size)
-        self.grid_signals = grid_signals if grid_signals is not None else {}
         self.monitor_log: dict[datetime, dict] = defaultdict(dict)
         self.custom_monitor_fns: list[Callable] = []
 
-        for signal_name, signal_api in self.grid_signals.items():
+        if grid_signals is not None:
+            for signal_name, signal_api in grid_signals.items():
+
+                def fn(time):
+                    return {signal_name: signal_api.at(time)}
+
+                self.add_monitor_fn(fn)
+
+        if storage is not None:
 
             def fn(time):
-                return {signal_name: signal_api.at(time)}
+                return storage.state()
+
+            self.add_monitor_fn(fn)
+
+        if storage_policy is not None:
+
+            def fn(time):
+                return storage_policy.state()
 
             self.add_monitor_fn(fn)
 
     def add_monitor_fn(self, fn: Callable[[float], dict[str, Any]]):
         self.custom_monitor_fns.append(fn)
 
-    def step(
-        self, time: datetime, p_delta: float, actor_states: dict, storage_state: Optional[dict]
-    ) -> None:
+    def step(self, time: datetime, p_delta: float, actor_states: dict) -> None:
         log_entry = dict(
             p_delta=p_delta,
             actor_states=actor_states,
         )
-        if storage_state is not None:
-            log_entry["storage_state"] = storage_state
         for monitor_fn in self.custom_monitor_fns:
             log_entry.update(monitor_fn(time))
         self.monitor_log[time] = log_entry

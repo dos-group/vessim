@@ -17,25 +17,25 @@ class TestSimpleBattery:
         assert battery.soc() == 0.8
 
     @pytest.mark.parametrize(
-        "power, duration, exp_delta, exp_charge_level",
+        "power, duration, exp_charge_energy, exp_charge_level",
         [
             # No charge
             (0, 1000, 0, 80),
             # Charge
-            (1, 1, 0, 81),
-            (10, 2, 0, 100),
-            (10, 4, 5, 100),
-            (100, 4, 95, 100),
+            (1, 1, 1, 81),
+            (10, 2, 20, 100),
+            (10, 4, 20, 100),
+            (100, 4, 20, 100),
             # Discharge
-            (-1, 1, 0, 79),
-            (-10, 7, 0, 10),
-            (-15, 7, -5, 10),
-            (-10, 14, -5, 10),
+            (-1, 1, -1, 79),
+            (-10, 7, -70, 10),
+            (-15, 7, -70, 10),
+            (-10, 14, -70, 10),
         ],
     )
-    def test_update(self, battery, power, duration, exp_delta, exp_charge_level):
-        delta = battery.update(power=power, duration=duration)
-        assert delta == exp_delta
+    def test_update(self, battery, power, duration, exp_charge_energy, exp_charge_level):
+        charge_energy = battery.update(power=power, duration=duration)
+        assert charge_energy == exp_charge_energy
         assert battery.charge_level == exp_charge_level
 
     @pytest.mark.parametrize(
@@ -44,21 +44,21 @@ class TestSimpleBattery:
             # No charge
             (0, 10, 0, 1800),
             # Charge
-            (10, 10, 0, 1900),
-            (20, 10, 10, 1900),
-            (50, 10, 40, 1900),
+            (10, 10, 100, 1900),
+            (20, 10, 100, 1900),
+            (50, 10, 100, 1900),
             # Discharge
-            (-10, 10, 0, 1700),
-            (-20, 10, -10, 1700),
-            (-50, 10, -40, 1700),
+            (-10, 10, -100, 1700),
+            (-20, 10, -100, 1700),
+            (-50, 10, -100, 1700),
             # Charge over capacity
-            (10, 180, 0, 3600),
-            (10, 200, 1, 3600),
-            (15, 200, 6, 3600),
-            # Discharge untl empty
-            (-10, 180, 0, 0),
-            (-10, 200, -1, 0),
-            (-15, 200, -6, 0),
+            (10, 180, 1800, 3600),
+            (10, 200, 1800, 3600),
+            (15, 200, 1800, 3600),
+            # Discharge until empty
+            (-10, 180, -1800, 0),
+            (-10, 200, -1800, 0),
+            (-15, 200, -1800, 0),
         ],
     )
     def test_update_c_rate(self, battery_c, power, duration, exp_delta, exp_charge_level):
