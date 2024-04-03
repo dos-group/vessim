@@ -9,7 +9,8 @@ import mosaik_api_v3  # type: ignore
 import pandas as pd
 
 from vessim.signal import Signal
-from vessim.storage import Storage, StoragePolicy
+from vessim.storage import Storage
+from vessim.cosim import MicrogridPolicy
 
 
 class Controller(ABC):
@@ -21,14 +22,14 @@ class Controller(ABC):
         pass
 
     @abstractmethod
-    def step(self, time: datetime, p_delta: float, actor_states: dict) -> None:
+    def step(self, time: datetime, p_delta: float, e_delta: float, actor_states: dict) -> None:
         """Performs a simulation step.
 
         Args:
             time: Current datetime.
-            p_delta: Current power delta from the microgrid after the storage has been
-                (de)charged. If negative, this power must be drawn from the public grid.
-                If positive, the power can be fed to the public grid or must be curtailed.
+            p_delta: Power delta in W based on the consumption and production of all actors.
+            e_delta: Total energy in Ws that has been drawn from/ fed to the utility grid
+                in the previous time step.
             actor_states: Contains the last state dictionaries by all actors in the
                 microgrid. The state dictionary is defined by the actor and can contain
                 any information about the actor's state.
@@ -44,8 +45,8 @@ class Monitor(Controller):
         self,
         step_size: Optional[int] = None,
         grid_signals: Optional[dict[str, Signal]] = None,
+        policy: Optional[MicrogridPolicy] = None,
         storage: Optional[Storage] = None,
-        storage_policy: Optional[StoragePolicy] = None,
     ):
         super().__init__(step_size=step_size)
         self.monitor_log: dict[datetime, dict] = defaultdict(dict)
@@ -59,6 +60,13 @@ class Monitor(Controller):
 
                 self.add_monitor_fn(fn)
 
+        if policy is not None:
+
+            def fn(time):
+                return policy.state()
+
+            self.add_monitor_fn(fn)
+
         if storage is not None:
 
             def fn(time):
@@ -66,19 +74,13 @@ class Monitor(Controller):
 
             self.add_monitor_fn(fn)
 
-        if storage_policy is not None:
-
-            def fn(time):
-                return storage_policy.state()
-
-            self.add_monitor_fn(fn)
-
     def add_monitor_fn(self, fn: Callable[[float], dict[str, Any]]):
         self.custom_monitor_fns.append(fn)
 
-    def step(self, time: datetime, p_delta: float, actor_states: dict) -> None:
+    def step(self, time: datetime, p_delta: float, e_delta: float, actor_states: dict) -> None:
         log_entry = dict(
             p_delta=p_delta,
+            e_delta=e_delta,
             actor_states=actor_states,
         )
         for monitor_fn in self.custom_monitor_fns:
@@ -146,21 +148,15 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         self.controller.finalize()
 
 
-def _parse_controller_inputs(
-    inputs: dict[str, dict[str, Any]],
-) -> tuple[float, dict, Optional[dict]]:
+def _parse_controller_inputs(inputs: dict[str, dict[str, Any]]) -> tuple[float,float, dict]:
     p_delta = _get_val(inputs, "p_delta")
+    e_delta = _get_val(inputs, "e_delta")
     actor_keys = [k for k in inputs.keys() if k.startswith("actor")]
     actors: defaultdict[str, Any] = defaultdict(dict)
     for k in actor_keys:
         _, actor_name = k.split(".")
         actors[actor_name] = _get_val(inputs, k)
-    if "storage_state" in inputs.keys():
-        storage_state = _get_val(inputs, "storage_state")
-    else:
-        storage_state = None
-    assert p_delta is not None
-    return p_delta, dict(actors), storage_state
+    return p_delta, e_delta, dict(actors)
 
 
 def _get_val(inputs: dict, key: str) -> Any:

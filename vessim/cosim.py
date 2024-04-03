@@ -3,13 +3,14 @@ from __future__ import annotations
 import pickle
 from copy import copy
 from typing import Optional, Literal
+from abc import ABC, abstractmethod
 
 import mosaik  # type: ignore
 import mosaik_api_v3  # type: ignore
 
 from vessim.actor import Actor
 from vessim.controller import Controller
-from vessim.storage import Storage, StoragePolicy, DefaultStoragePolicy
+from vessim.storage import Storage
 from vessim._util import Clock
 
 
@@ -20,12 +21,14 @@ class Microgrid:
         clock: Clock,
         actors: list[Actor],
         controllers: list[Controller],
+        policy: MicrogridPolicy,
         storage: Optional[Storage] = None,
-        storage_policy: Optional[StoragePolicy] = None,
         step_size: int = 1,  # global default
     ):
         self.actors = actors
         self.controllers = controllers
+        self.storage = storage
+        self.policy = policy
         self.step_size = step_size
 
         actor_names_and_entities = []
@@ -56,7 +59,7 @@ class Microgrid:
             controller_entities.append(controller_entity)
 
         grid_sim = world.start("Grid", step_size=step_size)
-        grid_entity = grid_sim.Grid(storage=storage, policy=storage_policy)
+        grid_entity = grid_sim.Grid(storage=storage, policy=policy)
         world.connect(aggregator_entity, grid_entity, "p_delta")
         for controller_entity in controller_entities:
             world.connect(
@@ -83,6 +86,61 @@ class Microgrid:
             controller.finalize()
 
 
+class MicrogridPolicy(ABC):
+    """Policy that describes how the microgrid deals with specific power deltas."""
+
+    @abstractmethod
+    def apply(self, p_delta: float, duration: int, storage: Optional[Storage]) -> float:
+        """"""
+
+    @abstractmethod
+    def state(self) -> dict:
+        """Returns information about the current state of the storage policy as dictionary."""
+
+
+class DefaultMicrogridPolicy(MicrogridPolicy):
+    """Policy that is used as default for simulations.
+
+    Args:
+        mode: Defines the mode that the microgrid operates in. In `grid-connected` mode, the
+            microgrid can draw power from and feed power to the utility grid at will, whereas
+            in `islanded` mode, the microgrid has to rely on its own energy resources.
+            Default is `grid-connected`.
+        grid-power: Additional power that can be specified to charge/discharge microgrid storage
+            (e.g. grid power of 5 would charge the battery at 5W on top of the overall energy delta
+            everytime the policy is applied).
+    """
+
+    def __init__(
+        self,
+        mode: Literal["grid-connected", "islanded"] = "grid-connected",
+        grid_power: float = 0,
+    ):
+        self.mode = mode
+        self.grid_power = grid_power
+
+    def apply(self, p_delta: float, duration: int, storage: Optional[Storage]) -> float:
+        energy_delta = p_delta * duration
+        if self.mode == "grid-connected" and storage is not None:
+            energy_delta += self.grid_power * duration
+            energy_delta -= storage.update(self.grid_power + p_delta, duration)
+        elif self.mode == "islanded":
+            # TODO What should be done when there is excess energy in islanded mode?
+            if storage:
+                energy_delta -= storage.update(p_delta, duration)
+            if energy_delta < 0.0:
+                raise RuntimeError("Not enough energy available to operate in islanded mode.")
+            energy_delta = 0.0
+        return energy_delta
+
+    def state(self) -> dict:
+        """Returns current mode and grid_power value."""
+        return {
+            "mode": self.mode,
+            "grid_power": self.grid_power,
+        }
+
+
 class Environment:
     COSIM_CONFIG = {
         "Actor": {"python": "vessim.actor:_ActorSim"},
@@ -101,7 +159,7 @@ class Environment:
         actors: Optional[list[Actor]] = None,
         controllers: Optional[list[Controller]] = None,
         storage: Optional[Storage] = None,
-        storage_policy: Optional[StoragePolicy] = None,
+        policy: Optional[MicrogridPolicy] = None,
         step_size: int = 1,  # global default
     ):
         microgrid = Microgrid(
@@ -109,8 +167,8 @@ class Environment:
             self.clock,
             actors if actors is not None else [],
             controllers if controllers is not None else [],
+            policy if policy is not None else DefaultMicrogridPolicy(),
             storage,
-            storage_policy,
             step_size,
         )
         self.microgrids.append(microgrid)
@@ -198,16 +256,11 @@ class _GridSim(mosaik_api_v3.Simulator):
         assert num == 1, "Only one instance per simulation is supported"
         self.storage = model_params["storage"]
         self.policy = model_params["policy"]
-        if self.policy is None and self.storage is not None:
-            self.policy = DefaultStoragePolicy()
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
         p_delta = list(inputs[self.eid]["p_delta"].values())[0]
-        if self.policy is None:
-            self.e_delta = 0.0
-        else:
-            self.e_delta = self.policy.apply(self.storage, p_delta, self.step_size)
+        self.e_delta = self.policy.apply(self.storage, p_delta, self.step_size)
         return time + self.step_size
 
     def get_data(self, outputs):
