@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pickle
 from copy import copy
 from typing import Optional, Literal
 
@@ -59,11 +58,11 @@ class Microgrid:
                     actor_entity, controller_entity, ("state", f"actor.{actor_name}")
                 )
 
-    def pickle(self) -> bytes:
+    def __getstate__(self) -> dict:
         """Returns a Dict with the current state of the microgrid for monitoring."""
-        cp = copy(self)
-        cp.controllers = []  # controllers are not needed and often not pickleable
-        return pickle.dumps(cp)
+        state = copy(self.__dict__)
+        state["controllers"] = []  # controllers are not needed and often not pickleable
+        return state
 
     def finalize(self):
         """Clean up in case the simulation was interrupted.
