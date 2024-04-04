@@ -37,10 +37,12 @@ def _iterate_queue(q: multiprocessing.Queue, timeout: Optional[float] = None) ->
 class Broker:
     def __init__(self, queue_size: int = 0):
         # Note: Any objects put onto queues are automatically pickled and depickled when retrieved.
-        self._outgoing_events_queue: Optional[multiprocessing.Queue] = \
-            multiprocessing.Queue(maxsize=queue_size)
-        self._incoming_data_queue: Optional[multiprocessing.Queue] = \
-            multiprocessing.Queue(maxsize=queue_size)
+        self._outgoing_events_queue: Optional[multiprocessing.Queue] = multiprocessing.Queue(
+            maxsize=queue_size
+        )
+        self._incoming_data_queue: Optional[multiprocessing.Queue] = multiprocessing.Queue(
+            maxsize=queue_size
+        )
         self._microgrid: Optional[Microgrid] = None
         self._actor_infos: Optional[dict] = None
         self._p_delta: Optional[float] = None
@@ -62,11 +64,13 @@ class Broker:
 
     def set_event(self, category: str, value: Any) -> None:
         if self._outgoing_events_queue is not None:
-            self._outgoing_events_queue.put({
-                "category": category,
-                "time": datetime.now(),
-                "value": value,
-            })
+            self._outgoing_events_queue.put(
+                {
+                    "category": category,
+                    "time": datetime.now(),
+                    "value": value,
+                }
+            )
 
     def _add_microgrid_data(self, time: datetime, data: dict) -> None:
         if self._incoming_data_queue is not None:
@@ -119,7 +123,7 @@ class SilController(Controller):
 
     def start(self, microgrid: Microgrid) -> None:
         self.microgrid = microgrid
-        name = "Vessim API for microgrid {:x}".format(id(self.microgrid))
+        name = f"Vessim API for microgrid {id(self.microgrid)}"
 
         multiprocessing.Process(
             target=_serve_api,
@@ -133,17 +137,20 @@ class SilController(Controller):
                 grid_signals=self.grid_signals,
             ),
         ).start()
-        logger.info("Started SiL Controller API server process '{}'", name)
+        logger.info(f"Started SiL Controller API server process '{name}'")
 
         Thread(target=self._collect_set_requests_loop, daemon=True).start()
 
     def step(self, time: datetime, p_delta: float, actor_infos: dict) -> None:
         assert self.microgrid is not None
-        self.broker._add_microgrid_data(time, {
-            "microgrid": self.microgrid,
-            "actor_infos": actor_infos,
-            "p_delta": p_delta,
-        })
+        self.broker._add_microgrid_data(
+            time,
+            {
+                "microgrid": self.microgrid,
+                "actor_infos": actor_infos,
+                "p_delta": p_delta,
+            },
+        )
 
     def finalize(self) -> None:
         self.broker._finalize()
