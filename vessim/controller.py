@@ -10,7 +10,7 @@ import pandas as pd
 
 from vessim.signal import Signal
 from vessim.storage import Storage
-from vessim.cosim import MicrogridPolicy
+from vessim.policy import MicrogridPolicy
 
 
 class Controller(ABC):
