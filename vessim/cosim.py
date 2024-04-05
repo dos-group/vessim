@@ -89,7 +89,7 @@ class Microgrid:
 class Environment:
     COSIM_CONFIG = {
         "Actor": {"python": "vessim.actor:_ActorSim"},
-        "Aggregator": {"python": "vessim.aggregator: _AggregatorSim"},
+        "Aggregator": {"python": "vessim.cosim:_AggregatorSim"},
         "Controller": {"python": "vessim.controller:_ControllerSim"},
         "Grid": {"python": "vessim.cosim:_GridSim"},
     }
@@ -181,7 +181,7 @@ class _GridSim(mosaik_api_v3.Simulator):
             "Grid": {
                 "public": True,
                 "params": ["storage", "policy"],
-                "attrs": ["p_delta", "state"],
+                "attrs": ["p_delta", "e_delta"],
             },
         },
     }
@@ -192,6 +192,7 @@ class _GridSim(mosaik_api_v3.Simulator):
         self.step_size = None
         self.storage = None
         self.policy = None
+        self.e_delta = 0.0
 
     def init(self, sid, time_resolution=1.0, **sim_params):
         self.step_size = sim_params["step_size"]
@@ -205,7 +206,7 @@ class _GridSim(mosaik_api_v3.Simulator):
 
     def step(self, time, inputs, max_advance):
         p_delta = list(inputs[self.eid]["p_delta"].values())[0]
-        self.e_delta = self.policy.apply(self.storage, p_delta, self.step_size)
+        self.e_delta = self.policy.apply(p_delta, duration=self.step_size, storage=self.storage)
         return time + self.step_size
 
     def get_data(self, outputs):
