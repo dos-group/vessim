@@ -46,6 +46,7 @@ class Broker:
         self._microgrid: Optional[Microgrid] = None
         self._actor_infos: Optional[dict] = None
         self._p_delta: Optional[float] = None
+        self._e_delta: Optional[float] = None
 
     def get_microgrid(self) -> Microgrid:
         self._process_incoming_data()
@@ -61,6 +62,11 @@ class Broker:
         self._process_incoming_data()
         assert self._p_delta is not None
         return self._p_delta
+
+    def get_e_delta(self) -> float:
+        self._process_incoming_data()
+        assert self._e_delta is not None
+        return self._e_delta
 
     def set_event(self, category: str, value: Any) -> None:
         if self._outgoing_events_queue is not None:
@@ -87,6 +93,7 @@ class Broker:
                 self._microgrid = data.pop("microgrid", self._microgrid)
                 self._actor_infos = data.pop("actor_infos", self._actor_infos)
                 self._p_delta = data.pop("p_delta", self._p_delta)
+                self._e_delta = data.pop("e_delta", self._e_delta)
 
     def _finalize(self) -> None:
         assert self._outgoing_events_queue is not None
@@ -141,7 +148,7 @@ class SilController(Controller):
 
         Thread(target=self._collect_set_requests_loop, daemon=True).start()
 
-    def step(self, time: datetime, p_delta: float, actor_infos: dict) -> None:
+    def step(self, time: datetime, p_delta: float, e_delta: float, actor_infos: dict) -> None:
         assert self.microgrid is not None
         self.broker._add_microgrid_data(
             time,
@@ -149,6 +156,7 @@ class SilController(Controller):
                 "microgrid": self.microgrid,
                 "actor_infos": actor_infos,
                 "p_delta": p_delta,
+                "e_delta": e_delta,
             },
         )
 

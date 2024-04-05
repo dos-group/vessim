@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, MutableMapping, Optional, Callable
+from typing import Any, MutableMapping, Optional, Callable, TYPE_CHECKING
 
 import mosaik_api_v3  # type: ignore
 import pandas as pd
@@ -12,12 +12,15 @@ from vessim.signal import Signal
 from vessim.storage import Storage
 from vessim.policy import MicrogridPolicy
 
+if TYPE_CHECKING:
+    from vessim.cosim import Microgrid
+
 
 class Controller(ABC):
     def __init__(self, step_size: Optional[int] = None):
         self.step_size = step_size
 
-    def start(self):
+    def start(self, microgrid: Microgrid):
         """Function to be executed before simulation is started. Can be overridden."""
         pass
 

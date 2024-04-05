@@ -48,7 +48,7 @@ class Microgrid:
 
         controller_entities = []
         for controller in controllers:
-            controller.start()
+            controller.start(self)
             controller_step_size = controller.step_size if controller.step_size else step_size
             if controller_step_size % step_size != 0:
                 raise ValueError("Controller step size has to be a multiple of grids step size.")
