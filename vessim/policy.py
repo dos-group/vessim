@@ -22,7 +22,7 @@ class MicrogridPolicy(ABC):
                 microgrid inside a simulation.
 
         Returns:
-            Total energy in Ws that has to be drawn from the public grid.
+            Total energy in Ws that has to be drawn from/ is fed to the public grid.
         """
 
     def state(self) -> dict:

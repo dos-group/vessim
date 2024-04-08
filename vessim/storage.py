@@ -28,10 +28,12 @@ class SimpleBattery(Storage):
 
     Args:
         capacity: Battery capacity in watt-seconds (Ws).
-        charge_level: Initial charge level in watt-seconds (Ws).
+        charge_level: Initial charge level in watt-seconds (Ws). Defaults to 0Ws.
         min_soc: Minimum allowed state of charge (SoC) for the battery.
-        c_rate: C-rate, which defines the charge and discharge rate of the battery.
+            Defaults to 0%. Can be altered during simulation.
+        c_rate: Optional C-rate, which defines the charge and discharge rate of the battery.
             For more information on C-rate, see `C-rate explanation <https://www.batterydesign.net/electrical/c-rate/>`_.
+            Defaults to None.
     """
 
     def __init__(
@@ -52,6 +54,7 @@ class SimpleBattery(Storage):
         if duration <= 0.0:
             raise ValueError("Duration needs to be a positive value")
 
+        assert self.min_soc <= self.soc(), "Minimum SoC can not be smaller than the current SoC"
         if self.c_rate is not None:
             max_power = self.c_rate * self.capacity / 3600
             if power >= max_power:

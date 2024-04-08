@@ -68,9 +68,9 @@ class Microgrid:
             world.connect(
                 grid_entity,
                 controller_entity,
-                "e_delta",
+                "e",
                 time_shifted=True,
-                initial_data={"e_delta": 0.0},
+                initial_data={"e": 0.0},
             )
 
     def __getstate__(self) -> dict:
@@ -187,7 +187,7 @@ class _GridSim(mosaik_api_v3.Simulator):
             "Grid": {
                 "public": True,
                 "params": ["storage", "policy"],
-                "attrs": ["p_delta", "e_delta"],
+                "attrs": ["p_delta", "e"],
             },
         },
     }
@@ -198,7 +198,7 @@ class _GridSim(mosaik_api_v3.Simulator):
         self.step_size = None
         self.storage = None
         self.policy = None
-        self.e_delta = 0.0
+        self.e = 0.0
 
     def init(self, sid, time_resolution=1.0, **sim_params):
         self.step_size = sim_params["step_size"]
@@ -212,8 +212,8 @@ class _GridSim(mosaik_api_v3.Simulator):
 
     def step(self, time, inputs, max_advance):
         p_delta = list(inputs[self.eid]["p_delta"].values())[0]
-        self.e_delta = self.policy.apply(p_delta, duration=self.step_size, storage=self.storage)
+        self.e += self.policy.apply(p_delta, duration=self.step_size, storage=self.storage)
         return time + self.step_size
 
     def get_data(self, outputs):
-        return {self.eid: {"e_delta": self.e_delta}}
+        return {self.eid: {"e": self.e}}

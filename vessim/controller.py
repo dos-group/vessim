@@ -125,6 +125,7 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         self.step_size = None
         self.clock = None
         self.controller = None
+        self.e = 0.0
 
     def init(self, sid, time_resolution=1.0, **sim_params):
         self.step_size = sim_params["step_size"]
@@ -139,7 +140,7 @@ class _ControllerSim(mosaik_api_v3.Simulator):
     def step(self, time, inputs, max_advance):
         assert self.controller is not None
         now = self.clock.to_datetime(time)
-        self.controller.step(now, *_parse_controller_inputs(inputs[self.eid]))
+        self.controller.step(now, *self._parse_controller_inputs(inputs[self.eid]))
         return time + self.step_size
 
     def get_data(self, outputs):
@@ -150,16 +151,18 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         assert self.controller is not None
         self.controller.finalize()
 
-
-def _parse_controller_inputs(inputs: dict[str, dict[str, Any]]) -> tuple[float,float, dict]:
-    p_delta = _get_val(inputs, "p_delta")
-    e_delta = _get_val(inputs, "e_delta")
-    actor_keys = [k for k in inputs.keys() if k.startswith("actor")]
-    actors: defaultdict[str, Any] = defaultdict(dict)
-    for k in actor_keys:
-        _, actor_name = k.split(".")
-        actors[actor_name] = _get_val(inputs, k)
-    return p_delta, e_delta, dict(actors)
+    def _parse_controller_inputs(
+            self, inputs: dict[str, dict[str, Any]]
+    ) -> tuple[float,float, dict]:
+        p_delta = _get_val(inputs, "p_delta")
+        last_e = self.e
+        self.e = _get_val(inputs, "e")
+        actor_keys = [k for k in inputs.keys() if k.startswith("actor")]
+        actors: defaultdict[str, Any] = defaultdict(dict)
+        for k in actor_keys:
+            _, actor_name = k.split(".")
+            actors[actor_name] = _get_val(inputs, k)
+        return p_delta, self.e - last_e, dict(actors)
 
 
 def _get_val(inputs: dict, key: str) -> Any:
