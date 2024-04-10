@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pickle
 from copy import copy
 from typing import Optional, Literal
 
@@ -24,8 +23,8 @@ class Microgrid:
         storage_policy: Optional[StoragePolicy] = None,
         step_size: int = 1,  # global default
     ):
-        self.actors = actors if actors is not None else []
-        self.controllers = controllers if controllers is not None else []
+        self.actors = actors
+        self.controllers = controllers
         self.storage = storage
         self.storage_policy = storage_policy
         self.step_size = step_size
@@ -33,6 +32,8 @@ class Microgrid:
         actor_names_and_entities = []
         for actor in actors:
             actor_step_size = actor.step_size if actor.step_size else step_size
+            if actor_step_size % step_size != 0:
+                raise ValueError("Actor step size has to be a multiple of grids step size.")
             actor_sim = world.start("Actor", clock=clock, step_size=actor_step_size)
             # We initialize all actors before the grid simulation to make sure that
             # there is already a valid p_delta at step 0
@@ -47,6 +48,8 @@ class Microgrid:
         for controller in controllers:
             controller.start(self)
             controller_step_size = controller.step_size if controller.step_size else step_size
+            if controller_step_size % step_size != 0:
+                raise ValueError("Controller step size has to be a multiple of grids step size.")
             controller_sim = world.start("Controller", clock=clock, step_size=controller_step_size)
             controller_entity = controller_sim.Controller(controller=controller)
             world.connect(grid_entity, controller_entity, "p_delta")
@@ -55,11 +58,11 @@ class Microgrid:
                     actor_entity, controller_entity, ("state", f"actor.{actor_name}")
                 )
 
-    def pickle(self) -> bytes:
+    def __getstate__(self) -> dict:
         """Returns a Dict with the current state of the microgrid for monitoring."""
-        cp = copy(self)
-        cp.controllers = []  # controllers are not needed and often not pickleable
-        return pickle.dumps(cp)
+        state = copy(self.__dict__)
+        state["controllers"] = []  # controllers are not needed and often not pickleable
+        return state
 
     def finalize(self):
         """Clean up in case the simulation was interrupted.
@@ -89,16 +92,19 @@ class Environment:
 
     def add_microgrid(
         self,
-        actors: Optional[list[Actor]] = None,
+        actors: list[Actor],
         controllers: Optional[list[Controller]] = None,
         storage: Optional[Storage] = None,
         storage_policy: Optional[StoragePolicy] = None,
         step_size: int = 1,  # global default
     ):
+        if not actors:
+            raise ValueError("There should be at least one actor in the Microgrid.")
+
         microgrid = Microgrid(
             self.world,
             self.clock,
-            actors if actors is not None else [],
+            actors,
             controllers if controllers is not None else [],
             storage,
             storage_policy,
