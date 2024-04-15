@@ -178,7 +178,7 @@ class SilController(Controller):
 
     def _collect_set_requests_loop(self):
         while True:
-            start_time = time.time()
+            start_time = time.monotonic()
             events_by_category = defaultdict(dict)
             while self.events_pipe_out.poll():
                 event = self.events_pipe_out.recv()
