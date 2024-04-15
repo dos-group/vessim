@@ -50,7 +50,7 @@ jobs:
       
     # Install dependencies needed for notebook execution
     - name: Install notebook dependencies
-      run: pip install jupyter nbconvert
+      run: pip install jupyter nbconvert matplotlib
 
     # Execute example notebooks to verify that no errors are thrown
     - name: Run Jupyter Notebooks
