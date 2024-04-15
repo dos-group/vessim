@@ -34,7 +34,7 @@ class Broker:
         self._p_delta_ts: dict[DatetimeLike, float] = {}
         self._e_delta_ts: dict[DatetimeLike, float] = {}
         self._microgrid: Optional[Microgrid] = None
-        self._actor_infos: dict = {}
+        self._actor_infos: dict[str, dict] = {}
         self._p_delta: float = 0
         self._e_delta: float = 0
         Thread(target=self._recv_data, daemon=True).start()
@@ -47,8 +47,26 @@ class Broker:
             self._p_delta_ts[time] = self._p_delta = data["p_delta"]
             self._e_delta_ts[time] = self._e_delta = data["e_delta"]
 
-    def get_microgrid(self) -> Microgrid | None:
+    def set_event(self, category: str, value: Any) -> None:
+        self._events_pipe_in.send(
+            {
+                "category": category,
+                "time": datetime.now(),
+                "value": value,
+            }
+        )
+
+    @property
+    def microgrid(self) -> Microgrid | None:
         return self._microgrid
+
+    @property
+    def p_delta(self) -> float:
+        return self._p_delta
+
+    @property
+    def e_delta(self) -> float:
+        return self._e_delta
 
     def get_microgrid_ts(self) -> dict[DatetimeLike, Microgrid]:
         return self._microgrid_ts
@@ -59,26 +77,11 @@ class Broker:
     def get_actor_ts(self) -> dict[DatetimeLike, dict]:
         return self._actor_infos_ts
 
-    def get_p_delta(self) -> float:
-        return self._p_delta
-
     def get_p_delta_ts(self) -> dict[DatetimeLike, float]:
         return self._p_delta_ts
 
-    def get_e_delta(self) -> float:
-        return self._e_delta
-
     def get_e_delta_ts(self) -> dict[DatetimeLike, float]:
         return self._e_delta_ts
-
-    def set_event(self, category: str, value: Any) -> None:
-        self._events_pipe_in.send(
-            {
-                "category": category,
-                "time": datetime.now(),
-                "value": value,
-            }
-        )
 
 
 class SilController(Controller):
@@ -150,6 +153,7 @@ class SilController(Controller):
                     events=events,
                     microgrid=self.microgrid,
                 )
+            # timer implementtieren
             sleep(self.request_collector_interval)
 
 
