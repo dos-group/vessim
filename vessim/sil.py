@@ -32,9 +32,11 @@ class Broker:
         self._microgrid_ts: dict[DatetimeLike, Microgrid] = {}
         self._actor_infos_ts: dict[DatetimeLike, dict] = {}
         self._p_delta_ts: dict[DatetimeLike, float] = {}
+        self._e_delta_ts: dict[DatetimeLike, float] = {}
         self._microgrid: Optional[Microgrid] = None
         self._actor_infos: dict = {}
         self._p_delta: float = 0
+        self._e_delta: float = 0
         Thread(target=self._recv_data, daemon=True).start()
 
     def _recv_data(self) -> None:
@@ -43,6 +45,7 @@ class Broker:
             self._microgrid_ts[time] = self._microgrid = data["microgrid"]
             self._actor_infos_ts[time] = self._actor_infos = data["actor_infos"]
             self._p_delta_ts[time] = self._p_delta = data["p_delta"]
+            self._e_delta_ts[time] = self._e_delta = data["e_delta"]
 
     def get_microgrid(self) -> Microgrid | None:
         return self._microgrid
@@ -61,6 +64,12 @@ class Broker:
 
     def get_p_delta_ts(self) -> dict[DatetimeLike, float]:
         return self._p_delta_ts
+
+    def get_e_delta(self) -> float:
+        return self._e_delta
+
+    def get_e_delta_ts(self) -> dict[DatetimeLike, float]:
+        return self._e_delta_ts
 
     def set_event(self, category: str, value: Any) -> None:
         self._events_pipe_in.send(
@@ -116,7 +125,7 @@ class SilController(Controller):
 
         Thread(target=self._collect_set_requests_loop, daemon=True).start()
 
-    def step(self, time: datetime, p_delta: float, actor_infos: dict) -> None:
+    def step(self, time: datetime, p_delta: float, e_delta: float, actor_infos: dict) -> None:
         assert self.microgrid is not None
         self.data_pipe_in.send(
             (
@@ -125,6 +134,7 @@ class SilController(Controller):
                     "microgrid": self.microgrid,
                     "actor_infos": actor_infos,
                     "p_delta": p_delta,
+                    "e_delta": e_delta,
                 },
             )
         )
