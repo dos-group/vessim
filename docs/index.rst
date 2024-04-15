@@ -52,6 +52,7 @@ cloning and editing this depository directly.
 
     Overview <self>
     concepts
+    datasets
     tutorials/index
     api_reference/index
     about
