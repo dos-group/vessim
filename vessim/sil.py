@@ -189,7 +189,7 @@ class SilController(Controller):
                     microgrid=self.microgrid,
                 )
             # Calculate elapsed time and sleep if necessary
-            elapsed_time = time.time() - start_time
+            elapsed_time = time.monotonic() - start_time
             time_to_wait = self.request_collector_interval - elapsed_time
             if time_to_wait > 0:
                 time.sleep(time_to_wait)
