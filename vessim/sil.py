@@ -6,12 +6,12 @@ This module is still experimental, the public API might change at any time.
 from __future__ import annotations
 
 from multiprocessing import Process, Pipe
-from multiprocessing.connection import PipeConnection
+from multiprocessing.connection import Connection
 from collections import defaultdict
 from datetime import datetime, timedelta
 from threading import Thread
-from time import sleep
 from typing import Any, Optional, Callable
+import time
 
 import pandas as pd
 import requests
@@ -26,7 +26,7 @@ from vessim._util import DatetimeLike
 
 
 class Broker:
-    def __init__(self, data_pipe_out: PipeConnection, events_pipe_in: PipeConnection):
+    def __init__(self, data_pipe_out: Connection, events_pipe_in: Connection):
         self._data_pipe_out = data_pipe_out
         self._events_pipe_in = events_pipe_in
         self._microgrid_ts: dict[DatetimeLike, Microgrid] = {}
@@ -144,6 +144,7 @@ class SilController(Controller):
 
     def _collect_set_requests_loop(self):
         while True:
+            start_time = time.time()
             events_by_category = defaultdict(dict)
             while self.events_pipe_out.poll():
                 event = self.events_pipe_out.recv()
@@ -153,8 +154,11 @@ class SilController(Controller):
                     events=events,
                     microgrid=self.microgrid,
                 )
-            # timer implementtieren
-            sleep(self.request_collector_interval)
+            # Calculate elapsed time and sleep if necessary
+            elapsed_time = time.time() - start_time
+            time_to_wait = self.request_collector_interval - elapsed_time
+            if time_to_wait > 0:
+                time.sleep(time_to_wait)
 
 
 def _serve_api(
