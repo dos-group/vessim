@@ -6,7 +6,7 @@ This module is still experimental, the public API might change at any time.
 from __future__ import annotations
 
 from multiprocessing import Process, Pipe
-from multiprocessing.connection import Connection
+from multiprocessing.connection import PipeConnection
 from collections import defaultdict
 from datetime import datetime, timedelta
 from threading import Thread
@@ -26,7 +26,7 @@ from vessim._util import DatetimeLike
 
 
 class Broker:
-    def __init__(self, data_pipe_out: Connection, events_pipe_in: Connection):
+    def __init__(self, data_pipe_out: PipeConnection, events_pipe_in: PipeConnection):
         self._data_pipe_out = data_pipe_out
         self._events_pipe_in = events_pipe_in
         self._microgrid_ts: dict[DatetimeLike, Microgrid] = {}
