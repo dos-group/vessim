@@ -135,9 +135,9 @@ class SilController(Controller):
             while self.events_pipe_out.poll():
                 event = self.events_pipe_out.recv()
                 events_by_category[event["category"]][event["time"]] = event["value"]
-            for category, _ in events_by_category.items():
+            for category, events in events_by_category.items():
                 self.request_collectors[category](
-                    events=events_by_category[category],
+                    events=events,
                     microgrid=self.microgrid,
                 )
             sleep(self.request_collector_interval)
