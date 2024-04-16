@@ -98,7 +98,7 @@ class Broker:
     def get_actor_infos(self, actor: str) -> dict:
         return self._actor_infos[actor]
 
-    def get_actor_infos_ts(
+    def get_actors_infos_ts(
         self, start_time: Optional[DatetimeLike] = None, end_time: Optional[DatetimeLike] = None
     ) -> list[tuple[DatetimeLike, dict[str, dict]]]:
         with self._ts_lock:
