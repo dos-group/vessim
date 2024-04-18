@@ -33,6 +33,13 @@ Controller Module
 
     controller
 
+Policy Module
+-------------
+.. toctree::
+    :maxdepth: 2
+
+    policy
+
 Storage Module
 --------------
 .. toctree::
