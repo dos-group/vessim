@@ -10,7 +10,7 @@ from vessim.actor import Actor
 from vessim.controller import Controller
 from vessim.storage import Storage
 from vessim.policy import MicrogridPolicy, DefaultMicrogridPolicy
-from vessim._util import Clock
+from vessim._util import Clock, disable_rt_warnings
 
 
 class Microgrid:
@@ -130,17 +130,18 @@ class Environment:
         until: Optional[int] = None,
         rt_factor: Optional[float] = None,
         print_progress: bool | Literal["individual"] = True,
+        behind_threshold: float = 0.01
     ):
         if until is None:
             # there is no integer representing infinity in python
             until = float("inf") # type: ignore
+        if rt_factor:
+            disable_rt_warnings(behind_threshold)
         try:
             self.world.run(
                 until=until, rt_factor=rt_factor, print_progress=print_progress
             )
-        except Exception as e:
-            if str(e).startswith("Simulation too slow for real-time factor"):
-                return
+        except Exception:
             for microgrid in self.microgrids:
                 microgrid.finalize()
             raise
