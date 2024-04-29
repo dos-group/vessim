@@ -36,7 +36,7 @@ class Broker:
         self._p_delta_ts: List[Tuple[DatetimeLike, float]] = []
         self._e_delta_ts: List[Tuple[DatetimeLike, float]] = []
         self._microgrid: Optional[Microgrid] = None
-        self._actor_infos: Dict[str, Dict] = {}
+        self._actor_infos: Dict[str, Dict[str, Dict]] = {}
         self._p_delta: float = 0
         self._e_delta: float = 0
         self._ts_lock: Lock = Lock()
@@ -95,12 +95,12 @@ class Broker:
             ts = self._microgrid_ts.copy()
         return self._get_ts_range(ts, start_time, end_time)
 
-    def get_actor_infos(self, actor: str) -> dict:
+    def get_actor_infos(self, actor: str) -> dict[str, dict]:
         return self._actor_infos[actor]
 
     def get_actors_infos_ts(
         self, start_time: Optional[DatetimeLike] = None, end_time: Optional[DatetimeLike] = None
-    ) -> list[tuple[DatetimeLike, dict[str, dict]]]:
+    ) -> list[tuple[DatetimeLike, dict[str, dict[str, dict]]]]:
         with self._ts_lock:
             ts = self._actor_infos_ts.copy()
         return self._get_ts_range(ts, start_time, end_time)
@@ -166,6 +166,12 @@ class SilController(Controller):
 
     def step(self, time: datetime, p_delta: float, e_delta: float, actor_infos: dict) -> None:
         assert self.microgrid is not None
+        actor_infos = actor_infos.copy()
+        for actor in self.microgrid.actors:
+            actor_infos[actor.name] = {
+                "type": type(actor),
+                "state": actor_infos[actor.name],
+            }
         self.data_pipe_in.send(
             (
                 time,
