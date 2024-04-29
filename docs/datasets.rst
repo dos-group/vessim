@@ -71,9 +71,9 @@ solcast2022_germany
 
 `Wattime <https://watttime.org/>`_ is a non-profit organization, providing electricity grid-related data like the Marginal Operating Emissions Rate (MOER), representing the emissions rate of the electricity generator(s) that are responding to changes in load on the local grid at a certain time. 
 
-watttime2023_casio-north
+watttime2023_caiso-north
 ========================
-    Dataset containing actual historical data and historical forecasts of the MOER in the Casio-North region between the 8th of June and the 8th of July 2023. The original data is provided in lbs/MWh, but in the dataset, it is converted to g/kWh.
+    Dataset containing actual historical data and historical forecasts of the MOER in the caiso-North region between the 8th of June and the 8th of July 2023. The original data is provided in lbs/MWh, but in the dataset, it is converted to g/kWh.
 
     **Actual data:**
         .. rst-class:: labeled-list
@@ -92,4 +92,4 @@ watttime2023_casio-north
 
 .. raw:: html
 
-    <iframe src="_static/watttime2023_casio-north_plot.html" style="width: 100%; height: 30vh;"></iframe>
+    <iframe src="_static/watttime2023_caiso-north_plot.html" style="width: 100%; height: 30vh;"></iframe>
