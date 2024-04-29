@@ -18,7 +18,6 @@ A Vessim simulation is represented by a :class:`Environment <vessim.cosim.Enviro
 
 Actors
     Actors are defined by users and model entities that either consume (:math:`p < 0`), or produce (:math:`p > 0`) power.
-    Consumers
     Consumers are usually computing systems while producers can represent generators such as solar panels or wind turbines.
 
 Grid
