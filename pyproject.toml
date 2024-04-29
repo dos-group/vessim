@@ -79,6 +79,7 @@ sphinx-copybutton = "*"
 nbsphinx = "*"
 pandoc = "*"
 ipython = "*"
+matplotlib = "*"
 
 [build-system]
 requires = ["setuptools", "poetry-core>=1.1.0"]

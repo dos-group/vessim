@@ -1,8 +1,9 @@
 #!/bin/bash
-for name in actor controller cosim power_meter signal storage 
+for name in actor controller cosim policy power_meter signal storage
 do
     echo "vessim.$name" > $name.rst
-    echo "============" >> $name.rst
+    len=$((${#name} + 7))  # Calculate length of "vessim." + $name
+    printf "%${len}s\n" | tr ' ' '=' >> $name.rst
     echo ".. automodule:: vessim.$name" >> $name.rst
     echo "   :members:" >> $name.rst
     echo "   :undoc-members:" >> $name.rst
