@@ -71,6 +71,10 @@ class Broker:
         return self._microgrid
 
     @property
+    def actor_infos(self) -> dict[str, dict[str, dict]]:
+        return self._actor_infos
+
+    @property
     def p_delta(self) -> float:
         return self._p_delta
 
