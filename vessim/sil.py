@@ -35,6 +35,7 @@ class Broker:
         self._actor_infos_ts: List[Tuple[DatetimeLike, Dict]] = []
         self._p_delta_ts: List[Tuple[DatetimeLike, float]] = []
         self._e_delta_ts: List[Tuple[DatetimeLike, float]] = []
+        self._time: Optional[DatetimeLike] = None
         self._microgrid: Optional[Microgrid] = None
         self._actor_infos: Dict[str, Dict] = {}
         self._p_delta: float = 0
@@ -45,6 +46,7 @@ class Broker:
     def _recv_data(self) -> None:
         while True:
             time, data = self._data_pipe_out.recv()
+            self._time = time
             self._microgrid = data["microgrid"]
             self._actor_infos = data["actor_infos"]
             self._p_delta = data["p_delta"]
@@ -65,6 +67,10 @@ class Broker:
                 "value": value,
             }
         )
+
+    @property
+    def current_time(self) -> DatetimeLike | None:
+        return self._time
 
     @property
     def microgrid(self) -> Microgrid | None:
