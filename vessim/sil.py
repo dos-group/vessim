@@ -40,7 +40,6 @@ class Broker:
         self._p_delta: float = 0
         self._e_delta: float = 0
         self._ts_lock: Lock = Lock()
-        Thread(target=self._recv_data, daemon=True).start()
 
     def _recv_data(self) -> None:
         while True:
@@ -204,6 +203,7 @@ def _serve_api(
     broker: Broker,
     grid_signals: dict[str, Signal],
 ):
+    Thread(target=broker._recv_data, daemon=True).start()
     app = FastAPI()
     api_routes(app, broker, grid_signals)
     config = uvicorn.Config(app=app, host=api_host, port=api_port, access_log=False)
