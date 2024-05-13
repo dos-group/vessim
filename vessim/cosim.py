@@ -77,7 +77,7 @@ class Microgrid:
         """Returns a Dict with the current state of the microgrid for monitoring."""
         state = copy(self.__dict__)
         state["controllers"] = []  # controllers are not needed and often not pickleable
-        state["actor"] = []  # actor info can be supplied through Actor.state()
+        state["actors"] = []  # actor info can be supplied through Actor.state()
         return state
 
     def finalize(self):
