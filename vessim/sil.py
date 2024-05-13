@@ -69,7 +69,7 @@ class Broker:
         )
 
     @property
-    def current_time(self) -> DatetimeLike | None:
+    def time(self) -> DatetimeLike | None:
         return self._time
 
     @property
