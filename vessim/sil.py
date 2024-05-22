@@ -10,7 +10,7 @@ from multiprocessing.connection import Connection
 from collections import defaultdict
 from datetime import datetime, timedelta
 from threading import Thread, Lock
-from typing import Any, Optional, Callable, List, Tuple, Dict
+from typing import Any, Optional, Callable
 from bisect import bisect_left, bisect_right
 import numpy as np
 import time
@@ -31,17 +31,16 @@ class Broker:
     def __init__(self, data_pipe_out: Connection, events_pipe_in: Connection):
         self._data_pipe_out = data_pipe_out
         self._events_pipe_in = events_pipe_in
-        self._microgrid_ts: List[Tuple[DatetimeLike, Microgrid]] = []
-        self._actor_infos_ts: List[Tuple[DatetimeLike, Dict]] = []
-        self._p_delta_ts: List[Tuple[DatetimeLike, float]] = []
-        self._e_delta_ts: List[Tuple[DatetimeLike, float]] = []
+        self._microgrid_ts: list[tuple[DatetimeLike, Microgrid]] = []
+        self._actor_infos_ts: list[tuple[DatetimeLike, dict]] = []
+        self._p_delta_ts: list[tuple[DatetimeLike, float]] = []
+        self._e_delta_ts: list[tuple[DatetimeLike, float]] = []
         self._time: Optional[DatetimeLike] = None
         self._microgrid: Optional[Microgrid] = None
-        self._actor_infos: Dict[str, Dict] = {}
+        self._actor_infos: dict[str, dict] = {}
         self._p_delta: float = 0
         self._e_delta: float = 0
         self._ts_lock: Lock = Lock()
-        Thread(target=self._recv_data, daemon=True).start()
 
     def _recv_data(self) -> None:
         while True:
@@ -210,6 +209,7 @@ def _serve_api(
     broker: Broker,
     grid_signals: dict[str, Signal],
 ):
+    Thread(target=broker._recv_data, daemon=True).start()
     app = FastAPI()
     api_routes(app, broker, grid_signals)
     config = uvicorn.Config(app=app, host=api_host, port=api_port, access_log=False)
