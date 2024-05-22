@@ -3,28 +3,28 @@ import pandas as pd
 import numpy as np
 from datetime import timedelta
 
-from vessim.signal import HistoricalSignal
+import vessim as vs
 
 
 class TestHistoricalSignal:
     @pytest.fixture
-    def hist_signal(self) -> HistoricalSignal:
+    def hist_signal(self) -> vs.HistoricalSignal:
         index = [
             "2023-01-01T00:00:00",
             "2023-01-01T00:30:00",
             "2023-01-01T01:00:00",
         ]
         actual = pd.DataFrame({"a": [1, 2, 3], "b": [0, 3, 0], "c": [None, 4, None]}, index=index)
-        return HistoricalSignal(actual)
+        return vs.HistoricalSignal(actual)
 
     @pytest.fixture
-    def hist_signal_single(self) -> HistoricalSignal:
+    def hist_signal_single(self) -> vs.HistoricalSignal:
         index = ["2023-01-01T01:00:00", "2023-01-01T00:30:00", "2023-01-01T00:00:00"]
         actual = pd.Series([3, 2, 1], index=index)
-        return HistoricalSignal(actual, fill_method="bfill")
+        return vs.HistoricalSignal(actual, fill_method="bfill")
 
     @pytest.fixture
-    def hist_signal_forecast(self) -> HistoricalSignal:
+    def hist_signal_forecast(self) -> vs.HistoricalSignal:
         index = pd.date_range("2023-01-01T00:00:00", "2023-01-01T01:00:00", freq="20T")
         actual = pd.DataFrame(
             {"a": [1, 5, 3, 2], "b": [0, 1, 2, 3], "c": [4, 3, 2, 7]}, index=index
@@ -40,14 +40,14 @@ class TestHistoricalSignal:
         ]
         forecast = pd.DataFrame(forecast_data, columns=["request_time", "forecast_time", "a", "b"])
         forecast.set_index(["request_time", "forecast_time"], inplace=True)
-        return HistoricalSignal(actual, forecast)
+        return vs.HistoricalSignal(actual, forecast)
 
     @pytest.fixture
-    def hist_signal_static_forecast(self) -> HistoricalSignal:
+    def hist_signal_static_forecast(self) -> vs.HistoricalSignal:
         index = pd.date_range("2023-01-01T00:00:00", "2023-01-01T03:00:00", freq="1H")
         actual = pd.Series([3, 2, 4, 0], index=index)
         forecast = pd.Series([4, 2, 4, 1], index=index)
-        return HistoricalSignal(actual, forecast)
+        return vs.HistoricalSignal(actual, forecast)
 
     def test_columns(self, hist_signal):
         assert hist_signal.columns() == ["a", "b", "c"]

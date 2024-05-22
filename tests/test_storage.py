@@ -1,18 +1,17 @@
 import pytest
 
-from vessim.storage import SimpleBattery
-from vessim.cosim import DefaultMicrogridPolicy
+import vessim as vs
 
 
 class TestSimpleBattery:
     @pytest.fixture
-    def battery(self) -> SimpleBattery:
-        return SimpleBattery(capacity=100, charge_level=80, min_soc=0.1)
+    def battery(self) -> vs.SimpleBattery:
+        return vs.SimpleBattery(capacity=100, charge_level=80, min_soc=0.1)
 
     @pytest.fixture
-    def battery_c(self) -> SimpleBattery:
+    def battery_c(self) -> vs.SimpleBattery:
         """This battery can only be (dis)charged at 10W max."""
-        return SimpleBattery(capacity=3600, charge_level=1800, c_rate=10)
+        return vs.SimpleBattery(capacity=3600, charge_level=1800, c_rate=10)
 
     def test_soc(self, battery):
         assert battery.soc() == 0.8
@@ -74,24 +73,24 @@ class TestSimpleBattery:
 
 class TestDefaultMicrogridPolicy:
     @pytest.fixture
-    def battery(self) -> SimpleBattery:
-        return SimpleBattery(capacity=100, charge_level=80, min_soc=0.1)
+    def battery(self) -> vs.SimpleBattery:
+        return vs.SimpleBattery(capacity=100, charge_level=80, min_soc=0.1)
 
     @pytest.fixture
-    def policy(self) -> DefaultMicrogridPolicy:
-        return DefaultMicrogridPolicy()
+    def policy(self) -> vs.DefaultMicrogridPolicy:
+        return vs.DefaultMicrogridPolicy()
 
     @pytest.fixture
-    def policy_charge(self) -> DefaultMicrogridPolicy:
-        return DefaultMicrogridPolicy(charge_power=10)
+    def policy_charge(self) -> vs.DefaultMicrogridPolicy:
+        return vs.DefaultMicrogridPolicy(charge_power=10)
 
     @pytest.fixture
-    def policy_discharge(self) -> DefaultMicrogridPolicy:
-        return DefaultMicrogridPolicy(charge_power=-10)
+    def policy_discharge(self) -> vs.DefaultMicrogridPolicy:
+        return vs.DefaultMicrogridPolicy(charge_power=-10)
 
     @pytest.fixture
-    def policy_islanded(self) -> DefaultMicrogridPolicy:
-        return DefaultMicrogridPolicy(mode="islanded")
+    def policy_islanded(self) -> vs.DefaultMicrogridPolicy:
+        return vs.DefaultMicrogridPolicy(mode="islanded")
 
     @pytest.mark.parametrize(
         "power, duration, exp_delta, exp_charge_level",

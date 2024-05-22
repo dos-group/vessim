@@ -1,19 +1,18 @@
 import pytest
 from datetime import datetime
 
-from vessim.power_meter import MockPowerMeter
-from vessim.actor import ComputingSystem
+import vessim as vs
 
 
 class TestComputingSystem:
     @pytest.fixture
-    def computing_system(self) -> ComputingSystem:
-        return ComputingSystem(
+    def computing_system(self) -> vs.ComputingSystem:
+        return vs.ComputingSystem(
             name="test_comp",
             step_size=60,
             power_meters=[
-                MockPowerMeter(name="test1", p=5.0),
-                MockPowerMeter(name="test2", p=7.0),
+                vs.MockPowerMeter(name="test1", p=5.0),
+                vs.MockPowerMeter(name="test2", p=7.0),
             ],
             pue=1.5,
         )
