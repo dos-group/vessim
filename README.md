@@ -23,23 +23,18 @@ Vessim can simulate large numbers of microgrids in parallel, comes with ready-to
 The scenario below simulates a microgrid consisting of a simulated computing system (which consistently draws 400W), a single producer (a solar power plant who's production is modelled based on a dataset provided by [Solcast](https://solcast.com/)), and a battery. The *Monitor* periodically stores the energy system state.
 
 ```python
-from vessim.actor import ComputingSystem, Generator
-from vessim.controller import Monitor
-from vessim.cosim import Environment
-from vessim.power_meter import MockPowerMeter
-from vessim.signal import HistoricalSignal
-from vessim.storage import SimpleBattery
+import vessim as vs
 
-environment = Environment(sim_start="15-06-2022")
+environment = vs.Environment(sim_start="15-06-2022")
 
-monitor = Monitor()
+monitor = vs.Monitor()
 environment.add_microgrid(
     actors=[
-        ComputingSystem(power_meters=[MockPowerMeter(p=400)]),
-        Generator(signal=HistoricalSignal.from_dataset("solcast2022_global"), column="Berlin"),
+        vs.ComputingSystem(power_meters=[vs.MockPowerMeter(p=400)]),
+        vs.Generator(signal=vs.HistoricalSignal.from_dataset("solcast2022_global"), column="Berlin"),
     ],
     controllers=[monitor],
-    storage=SimpleBattery(capacity=100),
+    storage=vs.SimpleBattery(capacity=100),
     step_size=60,
 )
 
