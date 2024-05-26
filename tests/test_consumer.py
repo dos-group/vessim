@@ -10,9 +10,9 @@ class TestComputingSystem:
         return vs.ComputingSystem(
             name="test_comp",
             step_size=60,
-            power_meters=[
-                vs.MockPowerMeter(name="test1", p=5.0),
-                vs.MockPowerMeter(name="test2", p=7.0),
+            nodes=[
+                vs.MockPowerConsumer(name="test1", p=5.0),
+                vs.MockPowerConsumer(name="test2", p=7.0),
             ],
             pue=1.5,
         )
@@ -23,5 +23,5 @@ class TestComputingSystem:
     def test_state(self, computing_system):
         assert computing_system.state(datetime.now()) == {
             "p": -18.0,
-            "power_meters": {"test1": -5.0, "test2": -7.0},
+            "nodes": {"test1": -5.0, "test2": -7.0},
         }
