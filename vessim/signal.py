@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from datetime import timedelta
 from pathlib import Path
 from typing import Any, Optional, Literal
+from itertools import count
 
 import pandas as pd
 import numpy as np
@@ -15,9 +16,15 @@ from vessim._util import DatetimeLike
 class Signal(ABC):
     """Abstract base class for signals."""
 
+    def __init__(self, name: Optional[str] = None) -> None:
+        self.name = name
+
     @abstractmethod
     def at(self, dt: DatetimeLike, **kwargs):
         """Retrieves actual data point at given time."""
+
+    def finalize(self) -> None:
+        """Perform necessary finalization tasks of a signal."""
 
 
 class HistoricalSignal(Signal):
@@ -47,6 +54,9 @@ class HistoricalSignal(Signal):
 
         fill_method: Either `ffill` or `bfill`. Determines how actual data is acquired in
             between timestamps. Default is `ffill`.
+
+        column: Default column to be used if no column is specified for at().
+            Defaults to None.
     """
 
     def __init__(
@@ -54,7 +64,9 @@ class HistoricalSignal(Signal):
         actual: pd.Series | pd.DataFrame,
         forecast: Optional[pd.Series | pd.DataFrame] = None,
         fill_method: Literal["ffill", "bfill"] = "ffill",
+        column: Optional[str] = None,
     ):
+        self.default_column = column
         self._fill_method = fill_method
         # Unpack index of actual dataframe
         actual_times = actual.index.to_numpy(dtype="datetime64[ns]", copy=True)
@@ -118,9 +130,10 @@ class HistoricalSignal(Signal):
             raise ValueError(f"Incompatible type {type(forecast)} for 'forecast'.")
 
     @classmethod
-    def from_dataset(
+    def load(
         cls,
         dataset: str,
+        column: Optional[str] = None,
         data_dir: Optional[str | Path] = None,
         params: Optional[dict[Any, Any]] = None,
     ):
@@ -128,6 +141,8 @@ class HistoricalSignal(Signal):
 
         Args:
             dataset: Name of the dataset to be downloaded.
+            column: Default column to use for calling HistoricalSignal.at().
+                Default to None.
             data_dir: Absoulute path to the directory where the data should be loaded.
                 If not specified, the path `~/.cache/vessim` is used. Defaults to None.
             params: Optional extra parameters used for data loading.
@@ -140,7 +155,7 @@ class HistoricalSignal(Signal):
         """
         if params is None:
             params = {}
-        return cls(**load_dataset(dataset, _abs_path(data_dir), params))
+        return cls(**load_dataset(dataset, _abs_path(data_dir), params), column=column)
 
     def columns(self) -> list:
         """Returns a list of all columns where actual data is available."""
@@ -164,6 +179,8 @@ class HistoricalSignal(Signal):
         """
         if kwargs:
             raise ValueError(f"Invalid arguments: {kwargs.keys()}")
+        if not column:
+            column = self.default_column
 
         np_dt = np.datetime64(dt)
         times, values = self._actual[_get_column_name(self._actual, column)]
@@ -260,6 +277,9 @@ class HistoricalSignal(Signal):
             {numpy.datetime64('2020-01-01T01:30:00'): 4.4,
             numpy.datetime64('2020-01-01T01:50:00'): 2.8}
         """
+        if not column:
+            column = self.default_column
+
         np_start = np.datetime64(start_time)
         np_end = np.datetime64(end_time)
         if self._forecast is None:
@@ -364,3 +384,23 @@ def _abs_path(data_dir: Optional[str | Path]) -> Path:
         return path
     else:
         raise ValueError(f"Path {data_dir} not valid. Has to be absolute or None.")
+
+
+class MockPowerConsumer(Signal):
+    _ids = count(0)
+
+    def __init__(self, p: float, name: Optional[str] = None):
+        if name is None:
+            name = f"MockPowerConsumer-{next(self._ids)}"
+        super().__init__(name)
+        if p < 0:
+            raise ValueError("p must not be less than 0")
+        self._p = p
+
+    def set_power(self, value):
+        if value < 0:
+            raise ValueError("p must not be less than 0")
+        self._p = value
+
+    def at(self, dt: DatetimeLike, **kwargs):
+        return self._p
