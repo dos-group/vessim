@@ -179,11 +179,11 @@ class HistoricalSignal(Signal):
         Raises:
             ValueError: If there is no available data at zone or time, or extra kwargs specified.
         """
-        if not dt:
+        if dt is None:
             raise ValueError("Argument dt cannot be None.")
         if kwargs:
             raise ValueError(f"Invalid arguments: {kwargs.keys()}")
-        if not column:
+        if column is None:
             column = self.default_column
 
         np_dt = np.datetime64(dt)
@@ -281,7 +281,7 @@ class HistoricalSignal(Signal):
             {numpy.datetime64('2020-01-01T01:30:00'): 4.4,
             numpy.datetime64('2020-01-01T01:50:00'): 2.8}
         """
-        if not column:
+        if column is None:
             column = self.default_column
 
         np_start = np.datetime64(start_time)
