@@ -20,7 +20,7 @@ class Signal(ABC):
         self.name = name
 
     @abstractmethod
-    def at(self, dt: DatetimeLike, **kwargs):
+    def at(self, dt: Optional[DatetimeLike] = None, **kwargs):
         """Retrieves actual data point at given time."""
 
     def finalize(self) -> None:
@@ -161,7 +161,9 @@ class HistoricalSignal(Signal):
         """Returns a list of all columns where actual data is available."""
         return list(self._actual.keys())
 
-    def at(self, dt: DatetimeLike, column: Optional[str] = None, **kwargs) -> float:
+    def at(
+        self, dt: Optional[DatetimeLike] = None, column: Optional[str] = None, **kwargs
+    ) -> float:
         """Retrieves actual data point of zone at given time.
 
         If queried timestamp is not available in the `actual` dataframe, the fill_method
@@ -177,6 +179,8 @@ class HistoricalSignal(Signal):
         Raises:
             ValueError: If there is no available data at zone or time, or extra kwargs specified.
         """
+        if not dt:
+            raise ValueError("Argument dt cannot be None.")
         if kwargs:
             raise ValueError(f"Invalid arguments: {kwargs.keys()}")
         if not column:
@@ -402,5 +406,5 @@ class MockPowerConsumer(Signal):
             raise ValueError("p must not be less than 0")
         self._p = value
 
-    def at(self, dt: DatetimeLike, **kwargs):
+    def at(self, dt: Optional[DatetimeLike] = None, **kwargs):
         return self._p
