@@ -1,6 +1,8 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Optional, Literal
+from typing import Optional, Literal, Any
+
+from loguru import logger
 
 from vessim.storage import Storage
 
@@ -24,6 +26,16 @@ class MicrogridPolicy(ABC):
         Returns:
             Total energy in Ws that has to be drawn from/ is fed to the public grid.
         """
+
+    def set_parameter(self, key: str, value: Any) -> None:
+        """Fuction to let a controller update a policy parameter during a simulation using Mosaik.
+
+        In the default case, the attribute with the name of the key is set on the policy object.
+        The function can be subclassed to allow other ways of setting parameters.
+        """
+        if not hasattr(self, key):
+            logger.warning(f"Attribute {key} of policy was never previously set.")
+        setattr(self, key, value)
 
     def state(self) -> dict:
         """Returns information about the current state of the policy. Should be overridden."""
@@ -55,7 +67,7 @@ class DefaultMicrogridPolicy(MicrogridPolicy):
         charge_power: Optional[float] = None,
     ):
         self.mode = mode
-        self.charge_power = charge_power
+        self.charge_power = charge_power if charge_power else 0.0
 
     def apply(self, p_delta: float, duration: int, storage: Optional[Storage] = None) -> float:
         energy_delta = p_delta * duration
