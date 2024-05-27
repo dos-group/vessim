@@ -30,7 +30,7 @@ environment = vs.Environment(sim_start="15-06-2022")
 monitor = vs.Monitor()
 environment.add_microgrid(
     actors=[
-        vs.ComputingSystem(nodes=[vs.MockPowerConsumer(p=400)]),
+        vs.ComputingSystem(nodes=[vs.MockSignal(p=400)]),
         vs.Actor(signal=vs.HistoricalSignal.load("solcast2022_global", column="Berlin")),
     ],
     controllers=[monitor],
