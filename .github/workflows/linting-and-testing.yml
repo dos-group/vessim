@@ -36,7 +36,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: .venv
-        key: venv-${{ steps.setup-python.outputs.python-version }}
+        key: venv-${{ matrix.python-version }}
 
     # install dependencies if cache not available
     - name: Install dependencies
