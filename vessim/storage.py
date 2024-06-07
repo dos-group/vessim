@@ -109,7 +109,7 @@ class SimpleBattery(Storage):
             self.charge_level = new_charge_level
             self.soc = self.charge_level / self.capacity
 
-        return charged_energy * 3600 # Wh to Ws
+        return charged_energy * 3600  # Wh to Ws
 
     def state(self) -> dict:
         """Returns state information of the battery as a dict."""

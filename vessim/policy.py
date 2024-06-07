@@ -8,7 +8,15 @@ from vessim.storage import Storage
 
 
 class MicrogridPolicy(ABC):
-    """Policy that describes how the microgrid deals with specific power deltas."""
+    """Policy that describes how the microgrid deals with specific power deltas.
+
+    The policy manages energy excess and shortage of a microgrid. It can model the
+    (dis-)charging of a vessim `Storage`, the exchange of energy with the public grid, and things
+    like curtailment of energy.
+    Every `Microgrid` in a vessim co-simulation has a policy, and if not specified, the
+    `DefaultMicrogridPolicy` is used. The policy is thereby applied at every time-step with the
+    current power-delta and the duration of the time-step.
+    """
 
     @abstractmethod
     def apply(self, p_delta: float, duration: int, storage: Optional[Storage] = None) -> float:
@@ -25,6 +33,7 @@ class MicrogridPolicy(ABC):
 
         Returns:
             Total energy in Ws that has to be drawn from/ is fed to the public grid.
+            If the return value is smaller than 0, energy has been drawn.
         """
 
     def set_parameter(self, key: str, value: Any) -> None:
@@ -45,7 +54,7 @@ class MicrogridPolicy(ABC):
 class DefaultMicrogridPolicy(MicrogridPolicy):
     """Policy that is used as default for simulations.
 
-    Policy tries to (dis)charge as much of the delta as possible using the battery if available.
+    Policy tries to (dis)charge as much of the delta as possible using the storage if available.
     In `grid-connected` mode the public utility grid is used to exchange the remaining energy delta
     (positive or negative). In `islanded` mode, an error is raised when the power consumption
     exceeds the available power as no power can be drawn from the grid.
