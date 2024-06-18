@@ -225,22 +225,22 @@ class WatttimeSignal(Signal):
 
     def now(
         self,
-        dt: Optional[DatetimeLike] = None,
+        at: Optional[DatetimeLike] = None,
         region: Optional[str] = None,
         signal_type: str = "co2_moer",
         **kwargs,
     ):
         if region is None:
             raise ValueError("Region needs to be specified.")
-        if dt is None:
+        if at is None:
             raise ValueError("dt needs to be specified.")
-        dt = pd.to_datetime(dt)
+        at = pd.to_datetime(at)
         rsp = self._request(
             "/historical",
             params={
                 "region": region,
-                "start": (dt - timedelta(minutes=5)).isoformat(),
-                "end": dt.isoformat(),
+                "start": (at - timedelta(minutes=5)).isoformat(),
+                "end": at.isoformat(),
                 "signal_type": signal_type,
             },
         )
