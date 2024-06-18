@@ -36,7 +36,7 @@ class TestSimpleBattery:
         charge_energy = battery.update(power=power, duration=duration * 3600)
         assert charge_energy == exp_charge_energy * 3600
         assert battery.state()["charge_level"] == exp_charge_level
-        assert math.isclose(battery.state()["soc"], exp_soc)
+        assert math.isclose(battery.soc(), exp_soc)
 
     @pytest.mark.parametrize(
         "power, duration, exp_charge_energy, exp_charge_level, exp_soc",
@@ -68,7 +68,7 @@ class TestSimpleBattery:
         charge_energy = battery_c.update(power=power, duration=duration * 60)
         assert charge_energy == exp_charge_energy * 3600
         assert battery_c.state()["charge_level"] == exp_charge_level
-        assert math.isclose(battery_c.state()["soc"], exp_soc)
+        assert math.isclose(battery_c.soc(), exp_soc)
 
     def test_update_fails_if_duration_not_positive(self, battery):
         with pytest.raises(ValueError):
@@ -113,7 +113,7 @@ class TestDefaultMicrogridPolicy:
         # duration in hours and energy delta in Wh
         delta = policy.apply(power, duration * 3600, battery)
         assert delta == exp_delta * 3600
-        assert math.isclose(battery.state()["soc"], exp_soc)
+        assert math.isclose(battery.soc(), exp_soc)
 
     @pytest.mark.parametrize(
         "power, duration, exp_delta, exp_soc",
@@ -136,7 +136,7 @@ class TestDefaultMicrogridPolicy:
         # duration in hours and energy delta in Wh
         delta = policy_charge.apply(power, duration * 3600, battery)
         assert delta == exp_delta * 3600
-        assert math.isclose(battery.state()["soc"], exp_soc)
+        assert math.isclose(battery.soc(), exp_soc)
 
     @pytest.mark.parametrize(
         "power, duration, exp_delta, exp_soc",
@@ -159,7 +159,7 @@ class TestDefaultMicrogridPolicy:
         # duration in hours and energy delta in Wh
         delta = policy_discharge.apply(power, duration * 3600, battery)
         assert delta == exp_delta * 3600
-        assert math.isclose(battery.state()["soc"], exp_soc)
+        assert math.isclose(battery.soc(), exp_soc)
 
     @pytest.mark.parametrize(
         "power, duration, exp_delta, exp_soc",
@@ -178,7 +178,7 @@ class TestDefaultMicrogridPolicy:
         # duration in hours and energy delta in Wh
         delta = policy_islanded.apply(power, duration * 3600, battery)
         assert delta == exp_delta * 3600
-        assert math.isclose(battery.state()["soc"], exp_soc)
+        assert math.isclose(battery.soc(), exp_soc)
 
     @pytest.mark.parametrize(
         "power, duration, exp_delta",
