@@ -11,8 +11,8 @@ class TestComputingSystem:
             name="test_comp",
             step_size=60,
             nodes=[
-                vs.MockSignal(name="test1", p=5.0),
-                vs.MockSignal(name="test2", p=7.0),
+                vs.MockSignal(name="test1", value=5.0),
+                vs.MockSignal(name="test2", value=7.0),
             ],
             pue=1.5,
         )

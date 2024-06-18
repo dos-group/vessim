@@ -223,7 +223,7 @@ class WatttimeSignal(Signal):
         self.password = password
         self.headers = {"Authorization": f"Bearer {self._login()}"}
 
-    def at(
+    def now(
         self,
         dt: Optional[DatetimeLike] = None,
         region: Optional[str] = None,

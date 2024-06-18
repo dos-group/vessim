@@ -20,7 +20,7 @@ class Signal(ABC):
         self.name = name
 
     @abstractmethod
-    def at(self, dt: Optional[DatetimeLike] = None, **kwargs):
+    def now(self, at: Optional[DatetimeLike] = None, **kwargs) -> float:
         """Retrieves actual data point at given time."""
 
     def finalize(self) -> None:
@@ -161,8 +161,8 @@ class HistoricalSignal(Signal):
         """Returns a list of all columns where actual data is available."""
         return list(self._actual.keys())
 
-    def at(
-        self, dt: Optional[DatetimeLike] = None, column: Optional[str] = None, **kwargs
+    def now(
+        self, at: Optional[DatetimeLike] = None, column: Optional[str] = None, **kwargs
     ) -> float:
         """Retrieves actual data point of zone at given time.
 
@@ -170,7 +170,7 @@ class HistoricalSignal(Signal):
         is used to determine the data point.
 
         Args:
-            dt: Timestamp, at which data is returned.
+            at: Timestamp, at which data is returned.
             column: Optional column for the data. Has to be provided if there is more than one
                 column specified in the data. Defaults to None.
             **kwargs: Possibly needed for subclasses. Are not supported in this class and a
@@ -179,14 +179,14 @@ class HistoricalSignal(Signal):
         Raises:
             ValueError: If there is no available data at zone or time, or extra kwargs specified.
         """
-        if dt is None:
+        if at is None:
             raise ValueError("Argument dt cannot be None.")
         if kwargs:
             raise ValueError(f"Invalid arguments: {kwargs.keys()}")
         if column is None:
             column = self.default_column
 
-        np_dt = np.datetime64(dt)
+        np_dt = np.datetime64(at)
         times, values = self._actual[_get_column_name(self._actual, column)]
 
         if self._fill_method == "ffill":
@@ -194,13 +194,13 @@ class HistoricalSignal(Signal):
             if index >= 0:
                 return values[index]
             else:
-                raise ValueError(f"'{dt}' is too early to get data in column '{column}'.")
+                raise ValueError(f"'{at}' is too early to get data in column '{column}'.")
         else:
             index = times.searchsorted(np_dt, side="left")
             try:
                 return values[index]
             except IndexError:
-                raise ValueError(f"'{dt}' is too late to get data in column '{column}'.")
+                raise ValueError(f"'{at}' is too late to get data in column '{column}'.")
 
     def forecast(
         self,
@@ -344,7 +344,7 @@ class HistoricalSignal(Signal):
         if not np.array_equal(new_times, times[new_times_indices]) and resample_method != "bfill":
             # Actual value is used for interpolation
             times = np.insert(times, 0, start_time)
-            data = np.insert(data, 0, self.at(start_time, column))
+            data = np.insert(data, 0, self.now(start_time, column))
             if resample_method == "ffill":
                 new_data = data[np.searchsorted(times, new_times, side="right") - 1]
             elif resample_method == "nearest":
@@ -393,18 +393,14 @@ def _abs_path(data_dir: Optional[str | Path]) -> Path:
 class MockSignal(Signal):
     _ids = count(0)
 
-    def __init__(self, p: float, name: Optional[str] = None):
+    def __init__(self, value: float, name: Optional[str] = None) -> None:
         if name is None:
             name = f"MockSignal-{next(self._ids)}"
         super().__init__(name)
-        if p < 0:
-            raise ValueError("p must not be less than 0")
-        self._p = p
+        self._v = value
 
-    def set_power(self, value):
-        if value < 0:
-            raise ValueError("p must not be less than 0")
-        self._p = value
+    def set_value(self, value: float) -> None:
+        self._v = value
 
-    def at(self, dt: Optional[DatetimeLike] = None, **kwargs):
-        return self._p
+    def now(self, at: Optional[DatetimeLike] = None, **kwargs):
+        return self._v
