@@ -3,35 +3,27 @@ from __future__ import annotations
 from datetime import datetime
 from itertools import count
 from typing import Optional
+from abc import ABC, abstractmethod
 
 import mosaik_api_v3  # type: ignore
 
 from vessim.signal import Signal
 
 
-class Actor:
-    """Base class representing a power consumer or producer."""
+class ActorBase(ABC):
+    """Abstract base class representing a power consumer or producer."""
 
-    def __init__(
-        self, name: str, signal: Optional[Signal] = None, step_size: Optional[int] = None
-    ):
+    def __init__(self, name: str, step_size: Optional[int] = None) -> None:
         self.name = name
-        self.signal = signal
         self.step_size = step_size
 
+    @abstractmethod
     def p(self, now: datetime) -> float:
         """Current power consumption/production to be used in the grid simulation."""
-        if self.signal is None:
-            raise ValueError("A Signal needs to be specified.")
-        data_point = self.signal.at(now)
-        assert data_point is not None
-        return data_point
 
     def state(self, now: datetime) -> dict:
         """Current state of the actor to be used in controllers."""
-        return {
-            "p": self.p(now),
-        }
+        return {}
 
     def finalize(self) -> None:
         """Perform any finalization tasks for the consumer.
@@ -42,7 +34,23 @@ class Actor:
         return
 
 
-class ComputingSystem(Actor):
+class Actor(ActorBase):
+    """Actor that represents a consumer of producer based on a single Signal."""
+
+    def __init__(self, name: str, signal: Signal, step_size: Optional[int] = None) -> None:
+        super().__init__(name, step_size)
+        self.signal = signal
+
+    def p(self, now: datetime) -> float:
+        return self.signal.now(at=now)
+
+    def state(self, now: datetime) -> dict:
+        return {
+            "p": self.p(now),
+        }
+
+
+class ComputingSystem(ActorBase):
     """Model of the computing system.
 
     This model considers the power usage effectiveness (PUE) and power
@@ -64,7 +72,7 @@ class ComputingSystem(Actor):
     ):
         if name is None:
             name = f"ComputingSystem-{next(self._ids)}"
-        super().__init__(name, step_size=step_size)
+        super().__init__(name, step_size)
         self.nodes = nodes
         node_ids = count(0)
         for node in self.nodes:
@@ -73,12 +81,12 @@ class ComputingSystem(Actor):
         self.pue = pue
 
     def p(self, now: datetime) -> float:
-        return self.pue * sum(-signal.at(now) for signal in self.nodes)  # type: ignore
+        return self.pue * sum(-signal.now(at=now) for signal in self.nodes)
 
     def state(self, now: datetime) -> dict:
         return {
             "p": self.p(now),
-            "nodes": {signal.name: -signal.at(now) for signal in self.nodes},  # type: ignore
+            "nodes": {signal.name: -signal.now(at=now) for signal in self.nodes},
         }
 
 
