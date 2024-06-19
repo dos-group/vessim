@@ -39,7 +39,7 @@ numpy = [
     { version = "^1.26.0", python = ">=3.12" }
 ]
 pandas = "^2.0.0"
-mosaik = "^3.2.0"
+mosaik = "^3.3.0"
 mosaik-api-v3 = "^3.0.4"
 loguru = "^0.6.0"
 
