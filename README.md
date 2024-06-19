@@ -87,9 +87,22 @@ We're working on documentation on how to include custom datasets for your simula
 
 ## Publications
 
-If you use Vessim in your research, please cite our paper on software-in-the-loop simulation for carbon-aware applications:
+If you use Vessim in your research, please cite our paper:
 
-Philipp Wiesner, Marvin Steinke, Henrik Nickel, Yazan Kitana, and Odej Kao. "[Software-in-the-Loop Simulation for Developing and Testing Carbon-Aware Applications](https://doi.org/10.1002/spe.3275)" Software: Practice and Experience, 53 (12). 2023.
+- Philipp Wiesner, Ilja Behnke, Paul Kilian, Marvin Steinke, and Odej Kao. "[Vessim: A Testbed for Carbon-Aware Applications and Systems.](https://arxiv.org/pdf/2306.09774.pdf)" _3rd Workshop on Sustainable Computer Systems (HotCarbon)_. 2024.
+
+```
+@inproceedings{Chien_BeyondPUE_2022,
+	title        = {A Testbed for Carbon-Aware Applications and Systems},
+	author       = {Wiesner, Philipp and Behnke, Ilja and Kilian, Paul and Steinke, Marvin and Kao, Odej},
+	year         = 2024,
+	booktitle    = {3rd Workshop on Sustainable Computer Systems (HotCarbon)}
+}
+```
+
+For details in Vessim's software-in-the-loop simulation methodology, refer to:
+
+- Philipp Wiesner, Marvin Steinke, Henrik Nickel, Yazan Kitana, and Odej Kao. "[Software-in-the-Loop Simulation for Developing and Testing Carbon-Aware Applications.](https://doi.org/10.1002/spe.3275)" _Software: Practice and Experience, 53 (12)_. 2023.
 
 ```
 @article{wiesner2023sil,
@@ -104,17 +117,3 @@ Philipp Wiesner, Marvin Steinke, Henrik Nickel, Yazan Kitana, and Odej Kao. "[So
 }
 ```
 
-Also have a look at our overall vision paper:
-
-Philipp Wiesner, Ilja Behnke and Odej Kao. "[A Testbed for Carbon-Aware Applications and Systems](https://arxiv.org/pdf/2306.09774.pdf)" arXiv:2302.08681 [cs.DC]. 2023.
-
-```
-@misc{wiesner2023vessim,
-    title={A Testbed for Carbon-Aware Applications and Systems}, 
-    author={Wiesner, Philipp and Behnke, Ilja and Kao, Odej},
-    year={2023},
-    eprint={2306.09774},
-    archivePrefix={arXiv},
-    primaryClass={cs.DC}
-}
-```
