@@ -1,20 +1,19 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from datetime import datetime
 from itertools import count
 from typing import Optional
+from abc import ABC, abstractmethod
 
 import mosaik_api_v3  # type: ignore
 
-from vessim.power_meter import PowerMeter
 from vessim.signal import Signal
 
 
-class Actor(ABC):
+class ActorBase(ABC):
     """Abstract base class representing a power consumer or producer."""
 
-    def __init__(self, name: str, step_size: Optional[int] = None):
+    def __init__(self, name: str, step_size: Optional[int] = None) -> None:
         self.name = name
         self.step_size = step_size
 
@@ -35,14 +34,30 @@ class Actor(ABC):
         return
 
 
-class ComputingSystem(Actor):
+class Actor(ActorBase):
+    """Actor that represents a consumer of producer based on a single Signal."""
+
+    def __init__(self, name: str, signal: Signal, step_size: Optional[int] = None) -> None:
+        super().__init__(name, step_size)
+        self.signal = signal
+
+    def p(self, now: datetime) -> float:
+        return self.signal.now(at=now)
+
+    def state(self, now: datetime) -> dict:
+        return {
+            "p": self.p(now),
+        }
+
+
+class ComputingSystem(ActorBase):
     """Model of the computing system.
 
     This model considers the power usage effectiveness (PUE) and power
     consumption of a list of power meters.
 
     Args:
-        power_meters: list of PowerMeters that constitute the computing system's demand.
+        signals: list of consumer node signals that constitute the computing system's demand.
         pue: The power usage effectiveness of the system.
     """
 
@@ -50,7 +65,7 @@ class ComputingSystem(Actor):
 
     def __init__(
         self,
-        power_meters: list[PowerMeter],
+        nodes: list[Signal],
         name: Optional[str] = None,
         step_size: Optional[int] = None,
         pue: float = 1,
@@ -58,43 +73,20 @@ class ComputingSystem(Actor):
         if name is None:
             name = f"ComputingSystem-{next(self._ids)}"
         super().__init__(name, step_size)
-        self.power_meters = power_meters
+        self.nodes = nodes
+        node_ids = count(0)
+        for node in self.nodes:
+            if not node.name:
+                node.name = f"Node-{next(node_ids)}"
         self.pue = pue
 
     def p(self, now: datetime) -> float:
-        return self.pue * sum(-pm.measure() for pm in self.power_meters)
+        return self.pue * sum(-signal.now(at=now) for signal in self.nodes)
 
     def state(self, now: datetime) -> dict:
         return {
             "p": self.p(now),
-            "power_meters": {pm.name: -pm.measure() for pm in self.power_meters},
-        }
-
-    def finalize(self) -> None:
-        for power_meter in self.power_meters:
-            power_meter.finalize()
-
-
-class Generator(Actor):  # TODO signal should return next step
-    _ids = count(0)
-
-    def __init__(
-        self, signal: Signal, step_size: Optional[int] = None, name: Optional[str] = None, **kwargs
-    ):
-        if name is None:
-            name = f"Generator-{next(self._ids)}"
-        super().__init__(name, step_size)
-        self.signal = signal
-        self.kwargs = kwargs
-
-    def p(self, now: datetime) -> float:
-        data_point = self.signal.at(now, **self.kwargs)
-        assert data_point is not None
-        return data_point
-
-    def state(self, now: datetime) -> dict:
-        return {
-            "p": self.p(now),
+            "nodes": {signal.name: -signal.now(at=now) for signal in self.nodes},
         }
 
 
@@ -136,6 +128,7 @@ class _ActorSim(mosaik_api_v3.Simulator):
         assert self.actor is not None
         self.p = self.actor.p(now)
         self.state = self.actor.state(now)
+        assert self.step_size is not None
         return time + self.step_size
 
     def get_data(self, outputs):

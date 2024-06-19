@@ -59,7 +59,7 @@ class Monitor(Controller):
             for signal_name, signal_api in grid_signals.items():
 
                 def fn(time):
-                    return {signal_name: signal_api.at(time)}
+                    return {signal_name: signal_api.now(time)}
 
                 self.add_monitor_fn(fn)
 
