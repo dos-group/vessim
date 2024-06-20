@@ -1,12 +1,22 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Optional, Literal
+from typing import Optional, Literal, Any
+
+from loguru import logger
 
 from vessim.storage import Storage
 
 
 class MicrogridPolicy(ABC):
-    """Policy that describes how the microgrid deals with specific power deltas."""
+    """Policy that describes how the microgrid deals with specific power deltas.
+
+    The policy manages energy excess and shortage of a microgrid. It can model the
+    (dis-)charging of a vessim `Storage`, the exchange of energy with the public grid, and things
+    like curtailment of energy.
+    Every `Microgrid` in a vessim co-simulation has a policy, and if not specified, the
+    `DefaultMicrogridPolicy` is used. The policy is thereby applied at every time-step with the
+    current power-delta and the duration of the time-step.
+    """
 
     @abstractmethod
     def apply(self, p_delta: float, duration: int, storage: Optional[Storage] = None) -> float:
@@ -23,7 +33,18 @@ class MicrogridPolicy(ABC):
 
         Returns:
             Total energy in Ws that has to be drawn from/ is fed to the public grid.
+            If the return value is smaller than 0, energy has been drawn.
         """
+
+    def set_parameter(self, key: str, value: Any) -> None:
+        """Fuction to let a controller update a policy parameter during a simulation using Mosaik.
+
+        In the default case, the attribute with the name of the key is set on the policy object.
+        The function can be subclassed to allow other ways of setting parameters.
+        """
+        if not hasattr(self, key):
+            logger.warning(f"Attribute {key} of policy was never previously set.")
+        setattr(self, key, value)
 
     def state(self) -> dict:
         """Returns information about the current state of the policy. Should be overridden."""
@@ -33,7 +54,7 @@ class MicrogridPolicy(ABC):
 class DefaultMicrogridPolicy(MicrogridPolicy):
     """Policy that is used as default for simulations.
 
-    Policy tries to (dis)charge as much of the delta as possible using the battery if available.
+    Policy tries to (dis)charge as much of the delta as possible using the storage if available.
     In `grid-connected` mode the public utility grid is used to exchange the remaining energy delta
     (positive or negative). In `islanded` mode, an error is raised when the power consumption
     exceeds the available power as no power can be drawn from the grid.
@@ -55,7 +76,7 @@ class DefaultMicrogridPolicy(MicrogridPolicy):
         charge_power: Optional[float] = None,
     ):
         self.mode = mode
-        self.charge_power = charge_power
+        self.charge_power = charge_power if charge_power else 0.0
 
     def apply(self, p_delta: float, duration: int, storage: Optional[Storage] = None) -> float:
         energy_delta = p_delta * duration

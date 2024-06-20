@@ -97,20 +97,18 @@ class TestHistoricalSignal:
             start_time="2023-01-01T00:00:00",
             end_time="2023-01-01T01:00:00",
         ) == {
-                np.datetime64("2023-01-01T00:30:00.000000000"): 2.0,
-                np.datetime64("2023-01-01T01:00:00.000000000"): 3.0,
-            }
-
+            np.datetime64("2023-01-01T00:30:00.000000000"): 2.0,
+            np.datetime64("2023-01-01T01:00:00.000000000"): 3.0,
+        }
 
     def test_forecast_static(self, hist_signal_static_forecast):
         assert hist_signal_static_forecast.forecast(
             start_time="2023-01-01T00:00:00",
             end_time="2023-01-01T02:00:00",
         ) == {
-                np.datetime64("2023-01-01T01:00:00.000000000"): 2.0,
-                np.datetime64("2023-01-01T02:00:00.000000000"): 4.0,
-            }
-
+            np.datetime64("2023-01-01T01:00:00.000000000"): 2.0,
+            np.datetime64("2023-01-01T02:00:00.000000000"): 4.0,
+        }
 
     @pytest.mark.parametrize(
         "start, end, column, expected",
@@ -122,7 +120,7 @@ class TestHistoricalSignal:
                 {
                     np.datetime64("2023-01-01T00:10:00.000000000"): 2.0,
                     np.datetime64("2023-01-01T01:00:00.000000000"): 1.5,
-                }
+                },
             ),
             (
                 "2023-01-01T01:00:00",
@@ -159,7 +157,7 @@ class TestHistoricalSignal:
                 {
                     np.datetime64("2023-01-01T02:00:00.000000000"): 3.0,
                     np.datetime64("2023-01-01T03:00:00.000000000"): 1.5,
-                }
+                },
             ),
         ],
     )
@@ -259,13 +257,16 @@ class TestHistoricalSignal:
     def test_forecast_with_frequency(
         self, hist_signal_forecast, start, end, column, frequency, method, expected
     ):
-        assert hist_signal_forecast.forecast(
-            start,
-            end,
-            column=column,
-            frequency=frequency,
-            resample_method=method,
-        ) == expected
+        assert (
+            hist_signal_forecast.forecast(
+                start,
+                end,
+                column=column,
+                frequency=frequency,
+                resample_method=method,
+            )
+            == expected
+        )
 
     def test_forecast_fails_if_column_not_specified(self, hist_signal):
         with pytest.raises(ValueError):

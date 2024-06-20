@@ -24,7 +24,7 @@ class NodeApiServer:
             time.sleep(2)
 
     def start(self):
-        uvicorn.run(self.app, host="0.0.0.0", port=self.port)
+        uvicorn.run(self.app, host="127.0.0.1", port=self.port)
 
 
 if __name__ == "__main__":
