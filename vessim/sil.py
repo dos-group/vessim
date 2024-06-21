@@ -220,22 +220,24 @@ class WatttimeSignal(Signal):
         self.password = password
         self.headers = {"Authorization": f"Bearer {self._login()}"}
 
-    def at(
+    def now(
         self,
-        dt: DatetimeLike,
+        at: Optional[DatetimeLike] = None,
         region: Optional[str] = None,
         signal_type: str = "co2_moer",
         **kwargs,
     ):
         if region is None:
             raise ValueError("Region needs to be specified.")
-        dt = pd.to_datetime(dt)
+        if at is None:
+            raise ValueError("dt needs to be specified.")
+        at = pd.to_datetime(at)
         rsp = self._request(
             "/historical",
             params={
                 "region": region,
-                "start": (dt - timedelta(minutes=5)).isoformat(),
-                "end": dt.isoformat(),
+                "start": (at - timedelta(minutes=5)).isoformat(),
+                "end": at.isoformat(),
                 "signal_type": signal_type,
             },
         )

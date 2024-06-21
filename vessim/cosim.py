@@ -6,7 +6,7 @@ from typing import Optional, Literal
 import mosaik  # type: ignore
 import mosaik_api_v3  # type: ignore
 
-from vessim.actor import Actor
+from vessim.actor import ActorBase
 from vessim.controller import Controller
 from vessim.storage import Storage
 from vessim.policy import MicrogridPolicy, DefaultMicrogridPolicy
@@ -18,7 +18,7 @@ class Microgrid:
         self,
         world: mosaik.World,
         clock: Clock,
-        actors: list[Actor],
+        actors: list[ActorBase],
         controllers: list[Controller],
         policy: MicrogridPolicy,
         storage: Optional[Storage] = None,
@@ -35,7 +35,9 @@ class Microgrid:
             actor_step_size = actor.step_size if actor.step_size else step_size
             if actor_step_size % step_size != 0:
                 raise ValueError("Actor step size has to be a multiple of grids step size.")
-            actor_sim = world.start("Actor", clock=clock, step_size=actor_step_size)
+            actor_sim = world.start(
+                "Actor", sim_id=actor.name, clock=clock, step_size=actor_step_size
+            )
             # We initialize all actors before the grid simulation to make sure that
             # there is already a valid p_delta at step 0
             actor_entity = actor_sim.Actor(actor=actor)
@@ -52,13 +54,13 @@ class Microgrid:
             controller_step_size = controller.step_size if controller.step_size else step_size
             if controller_step_size % step_size != 0:
                 raise ValueError("Controller step size has to be a multiple of grids step size.")
-            controller_sim = world.start("Controller", clock=clock, step_size=controller_step_size)
+            controller_sim = world.start(
+                "Controller", sim_id=controller.name, clock=clock, step_size=controller_step_size
+            )
             controller_entity = controller_sim.Controller(controller=controller)
             world.connect(grid_entity, controller_entity, "p_delta")
             for actor_name, actor_entity in actor_names_and_entities:
-                world.connect(
-                    actor_entity, controller_entity, ("state", f"actor.{actor_name}")
-                )
+                world.connect(actor_entity, controller_entity, ("state", f"actor.{actor_name}"))
             controller_entities.append(controller_entity)
 
         storage_sim = world.start("Storage", step_size=step_size)
@@ -103,7 +105,7 @@ class Microgrid:
 
 
 class Environment:
-    COSIM_CONFIG = {
+    COSIM_CONFIG: mosaik.SimConfig = {
         "Actor": {"python": "vessim.actor:_ActorSim"},
         "Controller": {"python": "vessim.controller:_ControllerSim"},
         "Grid": {"python": "vessim.cosim:_GridSim"},
@@ -113,11 +115,11 @@ class Environment:
     def __init__(self, sim_start):
         self.clock = Clock(sim_start)
         self.microgrids = []
-        self.world = mosaik.World(self.COSIM_CONFIG)  # type: ignore
+        self.world = mosaik.World(self.COSIM_CONFIG, skip_greetings=True)
 
     def add_microgrid(
         self,
-        actors: list[Actor],
+        actors: list[ActorBase],
         controllers: Optional[list[Controller]] = None,
         storage: Optional[Storage] = None,
         policy: Optional[MicrogridPolicy] = None,
@@ -143,17 +145,16 @@ class Environment:
         until: Optional[int] = None,
         rt_factor: Optional[float] = None,
         print_progress: bool | Literal["individual"] = True,
-        behind_threshold: float = 0.01
+        behind_threshold: float = 0.01,
     ):
         if until is None:
             # there is no integer representing infinity in python
-            until = float("inf") # type: ignore
+            until = float("inf")  # type: ignore
+        assert until is not None
         if rt_factor:
             disable_rt_warnings(behind_threshold)
         try:
-            self.world.run(
-                until=until, rt_factor=rt_factor, print_progress=print_progress
-            )
+            self.world.run(until=until, rt_factor=rt_factor, print_progress=print_progress)
         except Exception:
             for microgrid in self.microgrids:
                 microgrid.finalize()
@@ -188,6 +189,7 @@ class _GridSim(mosaik_api_v3.Simulator):
 
     def step(self, time, inputs, max_advance):
         self.p_delta = sum(inputs[self.eid]["p"].values())
+        assert self.step_size is not None
         return time + self.step_size
 
     def get_data(self, outputs):
@@ -230,6 +232,7 @@ class _StorageSim(mosaik_api_v3.Simulator):
                 if key_split[0] == "policy":
                     self.policy.set_parameter(key_split[1], value)
                 elif key_split[0] == "storage":
+                    assert self.storage is not None
                     self.storage.set_parameter(key_split[1], value)
                 else:
                     raise ValueError(
