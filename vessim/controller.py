@@ -3,6 +3,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime
+from pathlib import Path
+from csv import DictWriter
 from typing import Any, MutableMapping, Optional, Callable, TYPE_CHECKING
 
 import mosaik_api_v3  # type: ignore
@@ -47,9 +49,15 @@ class Monitor(Controller):
     def __init__(
         self,
         step_size: Optional[int] = None,
+        outfile: Optional[str | Path] = None,
         grid_signals: Optional[dict[str, Signal]] = None,
     ):
         super().__init__(step_size=step_size)
+        self.outpath: Optional[Path] = None
+        if outfile:
+            self.outpath = Path(outfile).expanduser()
+        self._fieldnames: Optional[list] = None
+
         self.monitor_log: dict[datetime, dict] = defaultdict(dict)
         self.custom_monitor_fns: list[Callable] = []
 
@@ -73,6 +81,23 @@ class Monitor(Controller):
         for monitor_fn in self.custom_monitor_fns:
             log_entry.update(monitor_fn(time))
         self.monitor_log[time] = log_entry
+
+        if self.outpath:
+            if not self._fieldnames:
+                log_dict = _flatten_dict(log_entry)
+                self._fieldnames = list(log_dict.keys())
+                self._fieldnames.insert(0, "time")
+                log_dict["time"] = time
+                with self.outpath.open("w") as csvfile:
+                    writer = DictWriter(csvfile, fieldnames=self._fieldnames)
+                    writer.writeheader()
+                    writer.writerow(log_dict)
+            else:
+                with self.outpath.open('a', newline='') as csvfile:
+                    writer = DictWriter(csvfile, fieldnames=self._fieldnames)
+                    log_dict = _flatten_dict(log_entry)
+                    log_dict["time"] = time
+                    writer.writerow(log_dict)
 
     def to_csv(self, out_path: str):
         df = pd.DataFrame({k: _flatten_dict(v) for k, v in self.monitor_log.items()}).T
