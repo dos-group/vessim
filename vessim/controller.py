@@ -5,6 +5,8 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from csv import DictWriter
+from itertools import count
+from collections.abc import Iterator
 from typing import Any, MutableMapping, Optional, Callable, TYPE_CHECKING
 
 import mosaik_api_v3  # type: ignore
@@ -17,11 +19,20 @@ if TYPE_CHECKING:
 
 
 class Controller(ABC):
-    def __init__(self, step_size: Optional[int] = None):
+    _counters: dict[type[Controller], Iterator[int]] = {}
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        """Initializes the subclass and sets up a counter for naming."""
+        super().__init_subclass__(**kwargs)
+        cls._counters[cls] = count()
+
+    def __init__(self, step_size: Optional[int] = None) -> None:
+        cls = self.__class__
+        self.name: str = f"{cls.__name__}-{next(cls._counters[cls])}"
         self.step_size = step_size
         self.set_parameters: dict[str, Any] = {}
 
-    def start(self, microgrid: Microgrid):
+    def start(self, microgrid: Microgrid) -> None:
         """Function to be executed before simulation is started. Can be overridden."""
         pass
 
@@ -65,7 +76,7 @@ class Monitor(Controller):
             for signal_name, signal_api in grid_signals.items():
 
                 def fn(time):
-                    return {signal_name: signal_api.at(time)}
+                    return {signal_name: signal_api.now(time)}
 
                 self.add_monitor_fn(fn)
 
@@ -148,6 +159,8 @@ class _ControllerSim(mosaik_api_v3.Simulator):
 
     def step(self, time, inputs, max_advance):
         assert self.controller is not None
+        assert self.clock is not None
+        assert self.step_size is not None
         now = self.clock.to_datetime(time)
         self.controller.step(now, *self._parse_controller_inputs(inputs[self.eid]))
         self.set_parameters = self.controller.set_parameters.copy()
@@ -163,8 +176,8 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         self.controller.finalize()
 
     def _parse_controller_inputs(
-            self, inputs: dict[str, dict[str, Any]]
-    ) -> tuple[float,float, dict]:
+        self, inputs: dict[str, dict[str, Any]]
+    ) -> tuple[float, float, dict]:
         p_delta = _get_val(inputs, "p_delta")
         last_e = self.e
         self.e = _get_val(inputs, "e")

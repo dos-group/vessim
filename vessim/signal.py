@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from datetime import timedelta
 from pathlib import Path
 from typing import Any, Optional, Literal
+from itertools import count
 
 import pandas as pd
 import numpy as np
@@ -15,9 +16,15 @@ from vessim._util import DatetimeLike
 class Signal(ABC):
     """Abstract base class for signals."""
 
+    def __init__(self, name: Optional[str] = None) -> None:
+        self.name = name
+
     @abstractmethod
-    def at(self, dt: DatetimeLike, **kwargs):
+    def now(self, at: Optional[DatetimeLike] = None, **kwargs) -> float:
         """Retrieves actual data point at given time."""
+
+    def finalize(self) -> None:
+        """Perform necessary finalization tasks of a signal."""
 
 
 class HistoricalSignal(Signal):
@@ -47,6 +54,9 @@ class HistoricalSignal(Signal):
 
         fill_method: Either `ffill` or `bfill`. Determines how actual data is acquired in
             between timestamps. Default is `ffill`.
+
+        column: Default column to be used if no column is specified for at().
+            Defaults to None.
     """
 
     def __init__(
@@ -54,7 +64,9 @@ class HistoricalSignal(Signal):
         actual: pd.Series | pd.DataFrame,
         forecast: Optional[pd.Series | pd.DataFrame] = None,
         fill_method: Literal["ffill", "bfill"] = "ffill",
+        column: Optional[str] = None,
     ):
+        self.default_column = column
         self._fill_method = fill_method
         # Unpack index of actual dataframe
         actual_times = actual.index.to_numpy(dtype="datetime64[ns]", copy=True)
@@ -118,9 +130,10 @@ class HistoricalSignal(Signal):
             raise ValueError(f"Incompatible type {type(forecast)} for 'forecast'.")
 
     @classmethod
-    def from_dataset(
+    def load(
         cls,
         dataset: str,
+        column: Optional[str] = None,
         data_dir: Optional[str | Path] = None,
         params: Optional[dict[Any, Any]] = None,
     ):
@@ -128,6 +141,8 @@ class HistoricalSignal(Signal):
 
         Args:
             dataset: Name of the dataset to be downloaded.
+            column: Default column to use for calling HistoricalSignal.at().
+                Default to None.
             data_dir: Absoulute path to the directory where the data should be loaded.
                 If not specified, the path `~/.cache/vessim` is used. Defaults to None.
             params: Optional extra parameters used for data loading.
@@ -140,20 +155,22 @@ class HistoricalSignal(Signal):
         """
         if params is None:
             params = {}
-        return cls(**load_dataset(dataset, _abs_path(data_dir), params))
+        return cls(**load_dataset(dataset, _abs_path(data_dir), params), column=column)
 
     def columns(self) -> list:
         """Returns a list of all columns where actual data is available."""
         return list(self._actual.keys())
 
-    def at(self, dt: DatetimeLike, column: Optional[str] = None, **kwargs) -> float:
+    def now(
+        self, at: Optional[DatetimeLike] = None, column: Optional[str] = None, **kwargs
+    ) -> float:
         """Retrieves actual data point of zone at given time.
 
         If queried timestamp is not available in the `actual` dataframe, the fill_method
         is used to determine the data point.
 
         Args:
-            dt: Timestamp, at which data is returned.
+            at: Timestamp, at which data is returned.
             column: Optional column for the data. Has to be provided if there is more than one
                 column specified in the data. Defaults to None.
             **kwargs: Possibly needed for subclasses. Are not supported in this class and a
@@ -162,10 +179,14 @@ class HistoricalSignal(Signal):
         Raises:
             ValueError: If there is no available data at zone or time, or extra kwargs specified.
         """
+        if at is None:
+            raise ValueError("Argument dt cannot be None.")
         if kwargs:
             raise ValueError(f"Invalid arguments: {kwargs.keys()}")
+        if column is None:
+            column = self.default_column
 
-        np_dt = np.datetime64(dt)
+        np_dt = np.datetime64(at)
         times, values = self._actual[_get_column_name(self._actual, column)]
 
         if self._fill_method == "ffill":
@@ -173,13 +194,13 @@ class HistoricalSignal(Signal):
             if index >= 0:
                 return values[index]
             else:
-                raise ValueError(f"'{dt}' is too early to get data in column '{column}'.")
+                raise ValueError(f"'{at}' is too early to get data in column '{column}'.")
         else:
             index = times.searchsorted(np_dt, side="left")
             try:
                 return values[index]
             except IndexError:
-                raise ValueError(f"'{dt}' is too late to get data in column '{column}'.")
+                raise ValueError(f"'{at}' is too late to get data in column '{column}'.")
 
     def forecast(
         self,
@@ -260,6 +281,9 @@ class HistoricalSignal(Signal):
             {numpy.datetime64('2020-01-01T01:30:00'): 4.4,
             numpy.datetime64('2020-01-01T01:50:00'): 2.8}
         """
+        if column is None:
+            column = self.default_column
+
         np_start = np.datetime64(start_time)
         np_end = np.datetime64(end_time)
         if self._forecast is None:
@@ -320,7 +344,7 @@ class HistoricalSignal(Signal):
         if not np.array_equal(new_times, times[new_times_indices]) and resample_method != "bfill":
             # Actual value is used for interpolation
             times = np.insert(times, 0, start_time)
-            data = np.insert(data, 0, self.at(start_time, column))
+            data = np.insert(data, 0, self.now(start_time, column))
             if resample_method == "ffill":
                 new_data = data[np.searchsorted(times, new_times, side="right") - 1]
             elif resample_method == "nearest":
@@ -364,3 +388,19 @@ def _abs_path(data_dir: Optional[str | Path]) -> Path:
         return path
     else:
         raise ValueError(f"Path {data_dir} not valid. Has to be absolute or None.")
+
+
+class MockSignal(Signal):
+    _ids = count(0)
+
+    def __init__(self, value: float, name: Optional[str] = None) -> None:
+        if name is None:
+            name = f"MockSignal-{next(self._ids)}"
+        super().__init__(name)
+        self._v = value
+
+    def set_value(self, value: float) -> None:
+        self._v = value
+
+    def now(self, at: Optional[DatetimeLike] = None, **kwargs):
+        return self._v
