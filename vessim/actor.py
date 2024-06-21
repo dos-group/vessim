@@ -57,7 +57,7 @@ class ComputingSystem(ActorBase):
     consumption of a list of power meters.
 
     Args:
-        signals: list of consumer node signals that constitute the computing system's demand.
+        nodes: list of consumer node signals that constitute the computing system's demand.
         pue: The power usage effectiveness of the system.
     """
 
