@@ -185,10 +185,7 @@ class SilController(Controller):
                 event = self.events_pipe_out.recv()
                 events_by_category[event["category"]][event["time"]] = event["value"]
             for category, events in events_by_category.items():
-                self.request_collectors[category](
-                    events=events,
-                    microgrid=self.microgrid,
-                )
+                self.request_collectors[category](self, events=events)
             # Calculate elapsed time and sleep if necessary
             elapsed_time = time.monotonic() - start_time
             time_to_wait = self.request_collector_interval - elapsed_time

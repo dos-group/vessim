@@ -11,8 +11,6 @@ import mosaik_api_v3  # type: ignore
 import pandas as pd
 
 from vessim.signal import Signal
-from vessim.storage import Storage
-from vessim.policy import MicrogridPolicy
 
 if TYPE_CHECKING:
     from vessim.cosim import Microgrid
@@ -30,13 +28,14 @@ class Controller(ABC):
         cls = self.__class__
         self.name: str = f"{cls.__name__}-{next(cls._counters[cls])}"
         self.step_size = step_size
+        self.set_parameters: dict[str, Any] = {}
 
     def start(self, microgrid: Microgrid) -> None:
         """Function to be executed before simulation is started. Can be overridden."""
         pass
 
     @abstractmethod
-    def step(self, time: datetime, p_delta: float, e_delta: float, actor_states: dict) -> None:
+    def step(self, time: datetime, p_delta: float, e_delta: float, state: dict) -> None:
         """Performs a simulation step.
 
         Args:
@@ -44,9 +43,10 @@ class Controller(ABC):
             p_delta: Power delta in W based on the consumption and production of all actors.
             e_delta: Total energy in Ws that has been drawn from/ fed to the utility grid
                 in the previous time step.
-            actor_states: Contains the last state dictionaries by all actors in the
-                microgrid. The state dictionary is defined by the actor and can contain
-                any information about the actor's state.
+            state: Contains the last state dictionaries by all actors, the policy, and the storage
+                in the microgrid. The state dictionary is defined by the microgrid components and
+                can contain any information about their custom defined state.
+                The keys are the actor names, `policy`, and `storage` respectively.
         """
 
     def finalize(self) -> None:
@@ -59,8 +59,6 @@ class Monitor(Controller):
         self,
         step_size: Optional[int] = None,
         grid_signals: Optional[dict[str, Signal]] = None,
-        policy: Optional[MicrogridPolicy] = None,
-        storage: Optional[Storage] = None,
     ):
         super().__init__(step_size=step_size)
         self.monitor_log: dict[datetime, dict] = defaultdict(dict)
@@ -74,29 +72,15 @@ class Monitor(Controller):
 
                 self.add_monitor_fn(fn)
 
-        if policy is not None:
-
-            def fn(time):
-                return policy.state()
-
-            self.add_monitor_fn(fn)
-
-        if storage is not None:
-
-            def fn(time):
-                return storage.state()
-
-            self.add_monitor_fn(fn)
-
     def add_monitor_fn(self, fn: Callable[[float], dict[str, Any]]):
         self.custom_monitor_fns.append(fn)
 
-    def step(self, time: datetime, p_delta: float, e_delta: float, actor_states: dict) -> None:
+    def step(self, time: datetime, p_delta: float, e_delta: float, state: dict) -> None:
         log_entry = dict(
             p_delta=p_delta,
             e_delta=e_delta,
-            actor_states=actor_states,
         )
+        log_entry.update(state)
         for monitor_fn in self.custom_monitor_fns:
             log_entry.update(monitor_fn(time))
         self.monitor_log[time] = log_entry
@@ -125,7 +109,7 @@ class _ControllerSim(mosaik_api_v3.Simulator):
                 "public": True,
                 "any_inputs": True,
                 "params": ["controller"],
-                "attrs": [],
+                "attrs": ["set_parameters"],
             },
         },
     }
@@ -154,10 +138,12 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         assert self.step_size is not None
         now = self.clock.to_datetime(time)
         self.controller.step(now, *self._parse_controller_inputs(inputs[self.eid]))
+        self.set_parameters = self.controller.set_parameters.copy()
+        self.controller.set_parameters = {}
         return time + self.step_size
 
     def get_data(self, outputs):
-        return {}  # TODO so far unused
+        return {self.eid: {"set_parameters": self.set_parameters}}
 
     def finalize(self) -> None:
         """Stops the api server and the collector thread when the simulation finishes."""
@@ -175,7 +161,9 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         for k in actor_keys:
             _, actor_name = k.split(".")
             actors[actor_name] = _get_val(inputs, k)
-        return p_delta, self.e - last_e, dict(actors)
+        state = dict(actors)
+        state.update(_get_val(inputs, "state"))
+        return p_delta, self.e - last_e, state
 
 
 def _get_val(inputs: dict, key: str) -> Any:

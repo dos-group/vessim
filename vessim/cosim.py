@@ -6,7 +6,7 @@ from typing import Optional, Literal
 import mosaik  # type: ignore
 import mosaik_api_v3  # type: ignore
 
-from vessim.actor import Actor
+from vessim.actor import ActorBase
 from vessim.controller import Controller
 from vessim.storage import Storage
 from vessim.policy import MicrogridPolicy, DefaultMicrogridPolicy
@@ -18,7 +18,7 @@ class Microgrid:
         self,
         world: mosaik.World,
         clock: Clock,
-        actors: list[Actor],
+        actors: list[ActorBase],
         controllers: list[Controller],
         policy: MicrogridPolicy,
         storage: Optional[Storage] = None,
@@ -43,10 +43,10 @@ class Microgrid:
             actor_entity = actor_sim.Actor(actor=actor)
             actor_names_and_entities.append((actor.name, actor_entity))
 
-        aggregator_sim = world.start("Aggregator", step_size=step_size)
-        aggregator_entity = aggregator_sim.Aggregator()
+        grid_sim = world.start("Grid", step_size=step_size)
+        grid_entity = grid_sim.Grid()
         for actor_name, actor_entity in actor_names_and_entities:
-            world.connect(actor_entity, aggregator_entity, "p")
+            world.connect(actor_entity, grid_entity, "p")
 
         controller_entities = []
         for controller in controllers:
@@ -58,21 +58,33 @@ class Microgrid:
                 "Controller", sim_id=controller.name, clock=clock, step_size=controller_step_size
             )
             controller_entity = controller_sim.Controller(controller=controller)
-            world.connect(aggregator_entity, controller_entity, "p_delta")
+            world.connect(grid_entity, controller_entity, "p_delta")
             for actor_name, actor_entity in actor_names_and_entities:
                 world.connect(actor_entity, controller_entity, ("state", f"actor.{actor_name}"))
             controller_entities.append(controller_entity)
 
-        grid_sim = world.start("Grid", step_size=step_size)
-        grid_entity = grid_sim.Grid(storage=storage, policy=policy)
-        world.connect(aggregator_entity, grid_entity, "p_delta")
+        storage_sim = world.start("Storage", step_size=step_size)
+        storage_entity = storage_sim.Storage(storage=storage, policy=policy)
+        world.connect(grid_entity, storage_entity, "p_delta")
+        initial_state = {}
+        initial_state["policy"] = policy.state()
+        if storage:
+            initial_state["storage"] = storage.state()
         for controller_entity in controller_entities:
+            world.connect(controller_entity, storage_entity, "set_parameters")
             world.connect(
-                grid_entity,
+                storage_entity,
                 controller_entity,
                 "e",
                 time_shifted=True,
                 initial_data={"e": 0.0},
+            )
+            world.connect(
+                storage_entity,
+                controller_entity,
+                "state",
+                time_shifted=True,
+                initial_data={"state": initial_state},
             )
 
     def __getstate__(self) -> dict:
@@ -95,9 +107,9 @@ class Microgrid:
 class Environment:
     COSIM_CONFIG: mosaik.SimConfig = {
         "Actor": {"python": "vessim.actor:_ActorSim"},
-        "Aggregator": {"python": "vessim.cosim:_AggregatorSim"},
         "Controller": {"python": "vessim.controller:_ControllerSim"},
         "Grid": {"python": "vessim.cosim:_GridSim"},
+        "Storage": {"python": "vessim.cosim:_StorageSim"},
     }
 
     def __init__(self, sim_start):
@@ -107,7 +119,7 @@ class Environment:
 
     def add_microgrid(
         self,
-        actors: list[Actor],
+        actors: list[ActorBase],
         controllers: Optional[list[Controller]] = None,
         storage: Optional[Storage] = None,
         policy: Optional[MicrogridPolicy] = None,
@@ -149,11 +161,11 @@ class Environment:
             raise
 
 
-class _AggregatorSim(mosaik_api_v3.Simulator):
+class _GridSim(mosaik_api_v3.Simulator):
     META = {
         "type": "time-based",
         "models": {
-            "Aggregator": {
+            "Grid": {
                 "public": True,
                 "params": [],
                 "attrs": ["p", "p_delta"],
@@ -163,7 +175,7 @@ class _AggregatorSim(mosaik_api_v3.Simulator):
 
     def __init__(self):
         super().__init__(self.META)
-        self.eid = "Aggregator"
+        self.eid = "Grid"
         self.step_size = None
         self.p_delta = 0.0
 
@@ -184,42 +196,54 @@ class _AggregatorSim(mosaik_api_v3.Simulator):
         return {self.eid: {"p_delta": self.p_delta}}
 
 
-class _GridSim(mosaik_api_v3.Simulator):
+class _StorageSim(mosaik_api_v3.Simulator):
     META = {
         "type": "time-based",
         "models": {
-            "Grid": {
+            "Storage": {
                 "public": True,
                 "params": ["storage", "policy"],
-                "attrs": ["p_delta", "e"],
+                "attrs": ["p_delta", "set_parameters", "e", "state"],
             },
         },
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(self.META)
-        self.eid = "Grid"
-        self.step_size = None
-        self.storage = None
-        self.policy = None
-        self.e = 0.0
+        self.eid: str = "Storage"
 
-    def init(self, sid, time_resolution=1.0, **sim_params):
-        self.step_size = sim_params["step_size"]
+    def init(self, sid: str, time_resolution: float = 1.0, **sim_params):
+        self.step_size: int = sim_params["step_size"]
+        self.e: float = 0.0
+        self.state: dict = {}
         return self.meta
 
-    def create(self, num, model, **model_params):
+    def create(self, num: int, model, **model_params):
         assert num == 1, "Only one instance per simulation is supported"
-        self.storage = model_params["storage"]
-        self.policy = model_params["policy"]
+        self.storage: Optional[Storage] = model_params["storage"]
+        self.policy: MicrogridPolicy = model_params["policy"]
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
         p_delta = list(inputs[self.eid]["p_delta"].values())[0]
-        assert self.policy is not None
+        for parameters in inputs[self.eid]["set_parameters"].values():
+            for key, value in parameters.items():
+                key_split = key.split(":", 1)
+                if key_split[0] == "policy":
+                    self.policy.set_parameter(key_split[1], value)
+                elif key_split[0] == "storage":
+                    assert self.storage is not None
+                    self.storage.set_parameter(key_split[1], value)
+                else:
+                    raise ValueError(
+                        f"Invalid parameter: {key}. Has to start with 'policy:' or 'storage:'."
+                    )
+
         self.e += self.policy.apply(p_delta, duration=self.step_size, storage=self.storage)
-        assert self.step_size is not None
+        self.state["policy"] = self.policy.state()
+        if self.storage:
+            self.state["storage"] = self.storage.state()
         return time + self.step_size
 
     def get_data(self, outputs):
-        return {self.eid: {"e": self.e}}
+        return {self.eid: {"e": self.e, "state": self.state}}
