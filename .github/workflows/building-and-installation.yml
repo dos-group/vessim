@@ -38,7 +38,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: .venv
-        key: venv-${{ steps.setup-python.outputs.python-version }}
+        key: venv-${{ matrix.python-version }}
 
     # build package
     - name: Build package out of local poject
