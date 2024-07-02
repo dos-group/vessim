@@ -25,7 +25,7 @@ The scenario below simulates a microgrid consisting of a simulated computing sys
 ```python
 import vessim as vs
 
-environment = vs.Environment(sim_start="15-06-2022")
+environment = vs.Environment(sim_start="2022-06-15")
 
 monitor = vs.Monitor()
 environment.add_microgrid(
