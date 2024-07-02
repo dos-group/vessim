@@ -30,8 +30,11 @@ environment = vs.Environment(sim_start="15-06-2022")
 monitor = vs.Monitor()
 environment.add_microgrid(
     actors=[
-        vs.ComputingSystem(nodes=[vs.MockSignal(p=400)]),
-        vs.Actor(signal=vs.HistoricalSignal.load("solcast2022_global", column="Berlin")),
+        vs.ComputingSystem(nodes=[vs.MockSignal(value=400)]),
+        vs.Actor(
+            name="solar_panel",
+            signal=vs.HistoricalSignal.load("solcast2022_global", column="Berlin")
+        ),
     ],
     controllers=[monitor],
     storage=vs.SimpleBattery(capacity=100),
@@ -45,7 +48,7 @@ monitor.to_csv("result.csv")
 
 ## Installation
 
-You can install the [latest release](https://pypi.org/project/vessim/) of Vessim 
+You can install the [latest release](https://pypi.org/project/vessim/) of Vessim
 via [pip](https://pip.pypa.io/en/stable/quickstart/):
 
 ```
