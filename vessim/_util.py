@@ -13,7 +13,7 @@ DatetimeLike = Union[str, datetime, np.datetime64]
 
 class Clock:
     def __init__(self, sim_start: str | datetime):
-        self.sim_start = pd.to_datetime(sim_start)
+        self.sim_start = pd.to_datetime(sim_start, dayfirst=True)
 
     def to_datetime(self, simtime: int) -> datetime:
         return self.sim_start + timedelta(seconds=simtime)
