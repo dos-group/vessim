@@ -25,10 +25,12 @@ class Clock:
 def disable_rt_warnings(behind_threshold: float):
     """Disables Mosaik's rt_check warnings.
 
-    The simulation is always behind by a few fractions of a second (which is
-    fine, code needs time to execute) which Mosaik logs as a Warning. These
-    Warnings are flagged as bugs in Mosaik's current developement and should be
-    fixed within its next release. Until then, this function should do.
+    Mosaik's current implementation of the real-time checks are faulty and a new
+    implementation is already outlined in
+    https://gitlab.com/mosaik/mosaik/-/issues/172. As this issue was opened in
+    June 2023, it is unlikely that the issue will be resolved soon. Therefore,
+    we disable the warnings with a threshold after which these offsets are
+    logged.
 
     Args:
         behind_threshold: Time the simulation is allowed to be behind schedule.
