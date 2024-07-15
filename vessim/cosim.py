@@ -145,7 +145,7 @@ class Environment:
         until: Optional[int] = None,
         rt_factor: Optional[float] = None,
         print_progress: bool | Literal["individual"] = True,
-        behind_threshold: float = 0.01,
+        behind_threshold: float = float("inf"),
     ):
         if until is None:
             # there is no integer representing infinity in python
