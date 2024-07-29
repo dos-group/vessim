@@ -98,25 +98,25 @@ class SimpleBattery(Storage):
                 )
                 power = -max_power
 
-        charged_energy = power * duration / 3600  # Total energy to be (dis)charged in Wh
-        new_charge_level = self.charge_level + charged_energy
+        charged_energy = power * duration
+        new_charge_level = self.charge_level + charged_energy / 3600
 
         abs_min_soc = self.min_soc * self.capacity
         if new_charge_level < abs_min_soc:
             # Battery can not be discharged further than the minimum state-of-charge
-            charged_energy = abs_min_soc - self.charge_level
+            charged_energy = (abs_min_soc - self.charge_level) * 3600
             self.charge_level = abs_min_soc
             self._soc = self.min_soc
         elif new_charge_level > self.capacity:
             # Battery can not be charged past its capacity
-            charged_energy = self.capacity - self.charge_level
+            charged_energy = (self.capacity - self.charge_level) * 3600
             self.charge_level = self.capacity
             self._soc = 1.0
         else:
             self.charge_level = new_charge_level
             self._soc = self.charge_level / self.capacity
 
-        return charged_energy * 3600  # Wh to Ws
+        return charged_energy
 
     def soc(self) -> float:
         return self._soc
