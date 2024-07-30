@@ -185,24 +185,27 @@ class TestHistoricalSignal:
             ),
             (
                 "2023-01-01T01:00:00",
-                "2023-01-01T03:00:00",
+                "2023-01-01T04:00:00",
                 "a",
                 timedelta(minutes=45),
                 "ffill",
                 {
                     np.datetime64("2023-01-01T01:45:00.000000000"): 2.0,  # type: ignore
                     np.datetime64("2023-01-01T02:30:00.000000000"): 3.0,  # type: ignore
+                    np.datetime64("2023-01-01T03:15:00.000000000"): 1.5,  # type: ignore
+                    np.datetime64("2023-01-01T04:00:00.000000000"): 1.5,  # type: ignore
                 },
             ),
             (
                 "2023-01-01T00:00:00",
-                "2023-01-01T03:00:00",
+                "2023-01-01T05:00:00",
                 "a",
                 timedelta(hours=1, minutes=30),
                 "linear",
                 {
                     np.datetime64("2023-01-01T01:30:00.000000000"): 2.0,  # type: ignore
                     np.datetime64("2023-01-01T03:00:00.000000000"): 2.0,  # type: ignore
+                    np.datetime64("2023-01-01T04:30:00.000000000"): 2.0,  # type: ignore
                 },
             ),
             (
@@ -252,21 +255,50 @@ class TestHistoricalSignal:
                     np.datetime64("2023-01-01T00:55:00.000000000"): 2.5,  # type: ignore
                 },
             ),
+            (
+                "2023-01-01T01:00:00",
+                "2023-01-01T04:00:00",
+                "b",
+                "1H",
+                "bfill",
+                {
+                    np.datetime64("2023-01-01T02:00:00.000000000"): 2.5,  # type: ignore
+                    np.datetime64("2023-01-01T03:00:00.000000000"): 1.5,  # type: ignore
+                    np.datetime64("2023-01-01T04:00:00.000000000"): np.nan,  # type: ignore
+                },
+            ),
+            (
+                "2023-01-01T01:00:00",
+                "2023-01-01T04:00:00",
+                "b",
+                "1H",
+                "nearest",
+                {
+                    np.datetime64("2023-01-01T02:00:00.000000000"): 2.5,  # type: ignore
+                    np.datetime64("2023-01-01T03:00:00.000000000"): 1.5,  # type: ignore
+                    np.datetime64("2023-01-01T04:00:00.000000000"): 1.5,  # type: ignore
+                },
+            ),
         ],
     )
     def test_forecast_with_frequency(
         self, hist_signal_forecast, start, end, column, frequency, method, expected
     ):
-        assert (
-            hist_signal_forecast.forecast(
-                start,
-                end,
-                column=column,
-                frequency=frequency,
-                resample_method=method,
-            )
-            == expected
+        forecast = hist_signal_forecast.forecast(
+            start,
+            end,
+            column=column,
+            frequency=frequency,
+            resample_method=method,
         )
+        # Complicated because np.nan == np.nan is False
+        assert forecast.keys() == expected.keys()
+        assert all(
+            np.isnan(expected[k]) if np.isnan(forecast[k])
+            else forecast[k] == expected[k]
+            for k in forecast.keys()
+        )
+
 
     def test_forecast_fails_if_column_not_specified(self, hist_signal):
         with pytest.raises(ValueError):
