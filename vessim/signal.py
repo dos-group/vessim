@@ -343,7 +343,17 @@ class HistoricalSignal(Signal):
         )
 
         new_times_indices = np.searchsorted(times, new_times, side="left")
-        if not np.array_equal(new_times, times[new_times_indices]) and resample_method != "bfill":
+        if np.all(new_times_indices < times.size) and np.array_equal(
+            new_times, times[new_times_indices]
+        ):
+            # No resampling necessary
+            new_data = data[new_times_indices]
+        elif resample_method == "bfill":
+            # Perform backward-fill whereas values outside range are filled with NaN
+            new_data = np.full(new_times_indices.shape, np.nan)
+            valid_mask = new_times_indices < len(data)
+            new_data[valid_mask] = data[new_times_indices[valid_mask]]
+        else:
             # Actual value is used for interpolation
             times = np.insert(times, 0, start_time)
             data = np.insert(data, 0, self.now(start_time, column))
@@ -361,8 +371,6 @@ class HistoricalSignal(Signal):
                 raise ValueError(f"Unknown resample_method '{resample_method}'.")
             else:
                 raise ValueError(f"Not enough data at frequency '{freq}' without resampling.")
-        else:
-            new_data = data[new_times_indices]
 
         return dict(zip(new_times, new_data))
 
