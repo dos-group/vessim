@@ -32,11 +32,11 @@ class Broker:
         self._data_pipe_out = data_pipe_out
         self._events_pipe_in = events_pipe_in
         self._microgrid_ts: list[tuple[DatetimeLike, Microgrid]] = []
-        self._actor_infos_ts: list[tuple[DatetimeLike, dict]] = []
+        self._state_ts: list[tuple[DatetimeLike, dict]] = []
         self._p_delta_ts: list[tuple[DatetimeLike, float]] = []
         self._e_delta_ts: list[tuple[DatetimeLike, float]] = []
         self._microgrid: Optional[Microgrid] = None
-        self._actor_infos: dict[str, dict] = {}
+        self._state: dict[str, dict] = {}
         self._p_delta: float = 0
         self._e_delta: float = 0
         self._ts_lock: Lock = Lock()
@@ -45,14 +45,14 @@ class Broker:
         while True:
             time, data = self._data_pipe_out.recv()
             self._microgrid = data["microgrid"]
-            self._actor_infos = data["actor_infos"]
+            self._state = data["state"]
             self._p_delta = data["p_delta"]
             self._e_delta = data["e_delta"]
             with self._ts_lock:
                 assert isinstance(time, (str, datetime, np.datetime64))
                 assert self._microgrid is not None
                 self._microgrid_ts.append((time, self._microgrid))
-                self._actor_infos_ts.append((time, self._actor_infos))
+                self._state_ts.append((time, self._state))
                 self._p_delta_ts.append((time, self._p_delta))
                 self._e_delta_ts.append((time, self._e_delta))
 
@@ -77,46 +77,38 @@ class Broker:
     def e_delta(self) -> float:
         return self._e_delta
 
+    @property
+    def state(self) -> dict[str, dict]:
+        return self._state
+
     def _get_ts_range(
-        self,
-        series: list[tuple[DatetimeLike, Any]],
-        start_time: Optional[DatetimeLike],
-        end_time: Optional[DatetimeLike],
+        self, ts_attr: str, start_time: Optional[DatetimeLike], end_time: Optional[DatetimeLike]
     ) -> list[tuple[DatetimeLike, Any]]:
-        start_idx = 0 if start_time is None else bisect_left(series, (start_time,))
-        end_idx = len(series) if end_time is None else bisect_right(series, (end_time,))
-        return series[start_idx:end_idx]
+        with self._ts_lock:
+            ts = getattr(self, ts_attr).copy()
+        start_idx = 0 if start_time is None else bisect_left(ts, (start_time,))
+        end_idx = len(ts) if end_time is None else bisect_right(ts, (end_time,))
+        return ts[start_idx:end_idx]
 
     def get_microgrid_ts(
         self, start_time: Optional[DatetimeLike] = None, end_time: Optional[DatetimeLike] = None
     ) -> list[tuple[DatetimeLike, Microgrid]]:
-        with self._ts_lock:
-            ts = self._microgrid_ts.copy()
-        return self._get_ts_range(ts, start_time, end_time)
+        return self._get_ts_range("_microgrid_ts", start_time, end_time)
 
-    def get_actor_infos(self, actor: str) -> dict:
-        return self._actor_infos[actor]
-
-    def get_actors_infos_ts(
+    def get_state_ts(
         self, start_time: Optional[DatetimeLike] = None, end_time: Optional[DatetimeLike] = None
     ) -> list[tuple[DatetimeLike, dict[str, dict]]]:
-        with self._ts_lock:
-            ts = self._actor_infos_ts.copy()
-        return self._get_ts_range(ts, start_time, end_time)
+        return self._get_ts_range("_state_ts", start_time, end_time)
 
     def get_p_delta_ts(
         self, start_time: Optional[DatetimeLike] = None, end_time: Optional[DatetimeLike] = None
     ) -> list[tuple[DatetimeLike, float]]:
-        with self._ts_lock:
-            ts = self._p_delta_ts.copy()
-        return self._get_ts_range(ts, start_time, end_time)
+        return self._get_ts_range("_p_delta_ts", start_time, end_time)
 
     def get_e_delta_ts(
         self, start_time: Optional[DatetimeLike] = None, end_time: Optional[DatetimeLike] = None
     ) -> list[tuple[DatetimeLike, float]]:
-        with self._ts_lock:
-            ts = self._e_delta_ts.copy()
-        return self._get_ts_range(ts, start_time, end_time)
+        return self._get_ts_range("_e_delta_ts", start_time, end_time)
 
 
 class SilController(Controller):
@@ -163,14 +155,14 @@ class SilController(Controller):
 
         Thread(target=self._collect_set_requests_loop, daemon=True).start()
 
-    def step(self, time: datetime, p_delta: float, e_delta: float, actor_infos: dict) -> None:
+    def step(self, time: datetime, p_delta: float, e_delta: float, state: dict) -> None:
         assert self.microgrid is not None
         self.data_pipe_in.send(
             (
                 time,
                 {
                     "microgrid": self.microgrid,
-                    "actor_infos": actor_infos,
+                    "state": state,
                     "p_delta": p_delta,
                     "e_delta": e_delta,
                 },
