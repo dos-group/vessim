@@ -75,6 +75,111 @@ class TestSimpleBattery:
             battery.update(10, -5)
 
 
+class TestClcBattery:
+    @pytest.fixture
+    def battery(self) -> vs.ClcBattery:
+        # Test battery for charging inefficiencies, current limits, number of cells and minimum SoC
+        return vs.ClcBattery(
+            number_of_cells=10,
+            initial_soc=0.5,
+            min_soc=0.1,
+            u_1=0,
+            v_1=0,
+            u_2=0,
+            v_2=10,
+            alpha_d=-1,
+            alpha_c=0.5,
+            eta_c=0.5,
+            eta_d=2,
+        )
+
+    @pytest.fixture
+    def battery_u_energy(self) -> vs.ClcBattery:
+        # Test battery for upper energy limits
+        return vs.ClcBattery(
+            initial_soc=0.75,
+            nom_voltage=4,
+            u_1=0,
+            v_1=0,
+            u_2=-1,
+            v_2=10,
+            alpha_c=1,
+            eta_c=1,
+        )
+
+    @pytest.fixture
+    def battery_l_energy(self) -> vs.ClcBattery:
+        # Test battery for lower energy limits
+        return vs.ClcBattery(
+            initial_soc=0.25,
+            nom_voltage=4,
+            u_1=-1,
+            v_1=0,
+            u_2=0,
+            v_2=10,
+            alpha_d=-1,
+            eta_d=1,
+        )
+
+    @pytest.mark.parametrize(
+        "power, duration, exp_charge_energy, exp_charge_level, exp_soc",
+        [
+            # No charge
+            (0, 1000, 0, 5, 0.5),
+            # Charge
+            (2.5, 60, 2.5, 6.25, 0.625),
+            (5, 30, 2.5, 6.25, 0.625),
+            (5, 60, 5, 7.5, 0.75),
+            (5, 200, 10, 10, 1),  # try charging past capacity
+            (10, 30, 2.5, 6.25, 0.625),  # exceeds charging limit of 5W per cell
+            # Discharge
+            (-2.5, 30, -1.25, 2.5, 0.25),
+            (-5, 15, -1.25, 2.5, 0.25),
+            (-10, 7.5, -1.25, 2.5, 0.25),
+            (-20, 7.5, -1.25, 2.5, 0.25),  # exceeds discharging limit of -10W per cell
+            (-10, 60, -2, 1.0, 0.1),  # Exceeds minimum SoC
+        ],
+    )
+    def test_update(self, battery, power, duration, exp_charge_energy, exp_charge_level, exp_soc):
+        # duration in minutes, energies in Wh, and power per cell
+        charge_energy = battery.update(power=power * 10, duration=duration * 60)
+        assert charge_energy == exp_charge_energy * 3600 * 10  # 10 cells
+        assert battery.state()["charge_level"] == exp_charge_level * 10  # 10 cells
+        assert math.isclose(battery.soc(), exp_soc)
+
+    @pytest.mark.parametrize(
+        "power, duration, exp_charge_energy, exp_charge_level",
+        [
+            (20, 5, 0.625, 8.125),  # limit for this step is 7.5W
+            (20, 15, 1.25, 8.75),  # limit for this step is 5W
+            (20, 45, 1.875, 9.375),  # limit for this step is 2.5W
+        ],
+    )
+    def test_update_upper_energy_limits(
+        self, battery_u_energy, power, duration, exp_charge_energy, exp_charge_level
+    ):
+        # duration in minutes, energies in Wh
+        charge_energy = battery_u_energy.update(power=power, duration=duration * 60)
+        assert charge_energy == exp_charge_energy * 3600
+        assert battery_u_energy.state()["charge_level"] == exp_charge_level
+
+    @pytest.mark.parametrize(
+        "power, duration, exp_charge_energy, exp_charge_level",
+        [
+            (-20, 5, -0.625, 1.875),  # limit for this step is 7.5W
+            (-20, 15, -1.25, 1.25),  # limit for this step is 5W
+            (-20, 45, -1.875, 0.625),  # limit for this step is 2.5W
+        ],
+    )
+    def test_update_lower_energy_limits(
+        self, battery_l_energy, power, duration, exp_charge_energy, exp_charge_level
+    ):
+        # duration in minutes, energies in Wh
+        charge_energy = battery_l_energy.update(power=power, duration=duration * 60)
+        assert charge_energy == exp_charge_energy * 3600
+        assert battery_l_energy.state()["charge_level"] == exp_charge_level
+
+
 class TestDefaultMicrogridPolicy:
     @pytest.fixture
     def battery(self) -> vs.SimpleBattery:

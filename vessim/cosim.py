@@ -226,18 +226,19 @@ class _StorageSim(mosaik_api_v3.Simulator):
 
     def step(self, time, inputs, max_advance):
         p_delta = list(inputs[self.eid]["p_delta"].values())[0]
-        for parameters in inputs[self.eid]["set_parameters"].values():
-            for key, value in parameters.items():
-                key_split = key.split(":", 1)
-                if key_split[0] == "policy":
-                    self.policy.set_parameter(key_split[1], value)
-                elif key_split[0] == "storage":
-                    assert self.storage is not None
-                    self.storage.set_parameter(key_split[1], value)
-                else:
-                    raise ValueError(
-                        f"Invalid parameter: {key}. Has to start with 'policy:' or 'storage:'."
-                    )
+        if "set_parameters" in inputs[self.eid].keys():
+            for parameters in inputs[self.eid]["set_parameters"].values():
+                for key, value in parameters.items():
+                    key_split = key.split(":", 1)
+                    if key_split[0] == "policy":
+                        self.policy.set_parameter(key_split[1], value)
+                    elif key_split[0] == "storage":
+                        assert self.storage is not None
+                        self.storage.set_parameter(key_split[1], value)
+                    else:
+                        raise ValueError(
+                            f"Invalid parameter: {key}. Has to start with 'policy:' or 'storage:'."
+                        )
 
         self.e += self.policy.apply(p_delta, duration=self.step_size, storage=self.storage)
         self.state["policy"] = self.policy.state()
