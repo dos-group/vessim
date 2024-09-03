@@ -9,6 +9,7 @@ Tutorials
     basic_example
     controller_example
     sil_example
+    stranger_sims_example
 
 
 .. note::
