@@ -26,9 +26,7 @@ class TestHistoricalSignal:
     @pytest.fixture
     def hist_signal_forecast(self) -> vs.HistoricalSignal:
         index = pd.date_range("2023-01-01T00:00:00", "2023-01-01T01:00:00", freq="20T")
-        actual = pd.DataFrame(
-            {"a": [1, 5, 3, 2], "b": [0, 1, 2, 3], "c": [4, 3, 2, 7]}, index=index
-        )
+        actual = pd.DataFrame({"a": [1, 5, 3, 2], "b": [0, 1, 2, 3]}, index=index)
 
         forecast_data = [
             ["2023-01-01T00:00:00", "2023-01-01T00:10:00", 2, 2.5],
@@ -294,11 +292,9 @@ class TestHistoricalSignal:
         # Complicated because np.nan == np.nan is False
         assert forecast.keys() == expected.keys()
         assert all(
-            np.isnan(expected[k]) if np.isnan(forecast[k])
-            else forecast[k] == expected[k]
+            np.isnan(expected[k]) if np.isnan(forecast[k]) else forecast[k] == expected[k]
             for k in forecast.keys()
         )
-
 
     def test_forecast_fails_if_column_not_specified(self, hist_signal):
         with pytest.raises(ValueError):

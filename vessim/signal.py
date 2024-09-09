@@ -364,7 +364,9 @@ class HistoricalSignal(Signal):
             # Actual value is used for interpolation
             times = np.insert(times, 0, start_time)
             # https://github.com/dos-group/vessim/issues/234
-            data = np.insert(data, 0, self.now(start_time, None if data.ndim == 1 else column))
+            data = np.insert(
+                data, 0, self.now(start_time, None if len(self._actual) == 1 else column)
+            )
             if resample_method == "ffill":
                 new_data = data[np.searchsorted(times, new_times, side="right") - 1]
             elif resample_method == "nearest":
