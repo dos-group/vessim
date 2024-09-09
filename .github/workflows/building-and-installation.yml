@@ -2,14 +2,14 @@ name: Build
 
 # event that triggers workflow
 # runs on every pull request
-on: 
+on:
   pull_request:
     branches:
-      - main
+    - main
 
 jobs:
   integration-tests:
-    # specifies the os that the job will run on 
+    # specifies the os that the job will run on
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -18,7 +18,7 @@ jobs:
     # downloads the repository code to the runner's file system for workflow access
     - uses: actions/checkout@v4
 
-    # sets up python environment with specified versions 
+    # sets up python environment with specified versions
     - name: Set up python ${{ matrix.python-version }}
       id: setup-python
       uses: actions/setup-python@v5
@@ -45,17 +45,17 @@ jobs:
       run: poetry build
 
     # install package
-    - name: Install package 
-      run: pip install dist/*.tar.gz 
-      
+    - name: Install package
+      run: pip install dist/*.tar.gz
+
     # Install dependencies needed for notebook execution
     - name: Install notebook dependencies
-      run: pip install jupyter nbconvert matplotlib
+      run: pip install jupyter nbconvert matplotlib windpowerlib
 
     # Execute example notebooks to verify that no errors are thrown
     - name: Run Jupyter Notebooks
       run: |
-        notebooks=("examples/signal_example.ipynb" "examples/basic_example.ipynb" "examples/controller_example.ipynb")
+        notebooks=("examples/signal_example.ipynb" "examples/basic_example.ipynb" "examples/controller_example.ipynb" "examples/stranger_sims_example.ipynb")
         for notebook in "${notebooks[@]}"; do
           jupyter nbconvert --to notebook --execute "$notebook"
         done

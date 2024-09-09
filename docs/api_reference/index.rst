@@ -46,10 +46,3 @@ Storage Module
     :maxdepth: 2
 
     storage
-
-Power-Meter Module
-------------------
-.. toctree::
-    :maxdepth: 2
-
-    power_meter

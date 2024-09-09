@@ -80,6 +80,7 @@ nbsphinx = "*"
 pandoc = "*"
 ipython = "*"
 matplotlib = "*"
+windpowerlib = "*"
 
 [build-system]
 requires = ["setuptools", "poetry-core>=1.1.0"]
