@@ -68,6 +68,13 @@ class HistoricalSignal(Signal):
         fill_method: Literal["ffill", "bfill"] = "ffill",
         column: Optional[str] = None,
     ):
+        if isinstance(actual, pd.DataFrame) and forecast is not None:
+            if isinstance(forecast, pd.DataFrame):
+                if not actual.columns.equals(forecast.columns):
+                    raise ValueError("Column names in actual and forecast do not match.")
+            else:
+                raise ValueError("Forecast has to be a DataFrame if actual is a DataFrame.")
+
         self.default_column = column
         self._fill_method = fill_method
         # Unpack index of actual dataframe
@@ -356,7 +363,14 @@ class HistoricalSignal(Signal):
         else:
             # Actual value is used for interpolation
             times = np.insert(times, 0, start_time)
-            data = np.insert(data, 0, self.now(start_time, column))
+            # https://github.com/dos-group/vessim/issues/234
+            # Use the length of the actual data to determine the column:
+            # self._actual is a dict[str, tuple[np.ndarray, np.ndarray]]
+            # -> every key is a column name
+            # -> if len(self._actual) == 1, _actual is based on pd.Series and column is None
+            data = np.insert(
+                data, 0, self.now(start_time, None if len(self._actual) == 1 else column)
+            )
             if resample_method == "ffill":
                 new_data = data[np.searchsorted(times, new_times, side="right") - 1]
             elif resample_method == "nearest":
