@@ -364,6 +364,10 @@ class HistoricalSignal(Signal):
             # Actual value is used for interpolation
             times = np.insert(times, 0, start_time)
             # https://github.com/dos-group/vessim/issues/234
+            # Use the length of the actual data to determine the column:
+            # self._actual is a dict[str, tuple[np.ndarray, np.ndarray]]
+            # -> every key is a column name
+            # -> if len(self._actual) == 1, _actual is based on pd.Series and column is None
             data = np.insert(
                 data, 0, self.now(start_time, None if len(self._actual) == 1 else column)
             )
