@@ -49,6 +49,9 @@ class Actor(ActorBase):
             "p": self.p(now),
         }
 
+    def finalize(self) -> None:
+        self.signal.finalize()
+
 
 class ComputingSystem(ActorBase):
     """Model of the computing system.
