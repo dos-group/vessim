@@ -92,6 +92,10 @@ class ComputingSystem(ActorBase):
             "nodes": {signal.name: -signal.now(at=now) for signal in self.nodes},
         }
 
+    def finalize(self) -> None:
+        for node in self.nodes:
+            node.finalize()
+
 
 class _ActorSim(mosaik_api_v3.Simulator):
     META = {
