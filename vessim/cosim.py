@@ -102,6 +102,8 @@ class Microgrid:
         """
         for controller in self.controllers:
             controller.finalize()
+        for actor in self.actors:
+            actor.finalize()
 
 
 class Environment:
