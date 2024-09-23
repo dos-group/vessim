@@ -49,6 +49,9 @@ class Actor(ActorBase):
             "p": self.p(now),
         }
 
+    def finalize(self) -> None:
+        self.signal.finalize()
+
 
 class ComputingSystem(ActorBase):
     """Model of the computing system.
@@ -88,6 +91,10 @@ class ComputingSystem(ActorBase):
             "p": self.p(now),
             "nodes": {signal.name: -signal.now(at=now) for signal in self.nodes},
         }
+
+    def finalize(self) -> None:
+        for node in self.nodes:
+            node.finalize()
 
 
 class _ActorSim(mosaik_api_v3.Simulator):
