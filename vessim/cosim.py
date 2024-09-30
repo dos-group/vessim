@@ -157,10 +157,9 @@ class Environment:
             disable_rt_warnings(behind_threshold)
         try:
             self.world.run(until=until, rt_factor=rt_factor, print_progress=print_progress)
-        except Exception:
+        finally:
             for microgrid in self.microgrids:
                 microgrid.finalize()
-            raise
 
 
 class _GridSim(mosaik_api_v3.Simulator):
