@@ -69,10 +69,11 @@ For complex scenarios that involve custom co-simulation actors we recommend clon
 Our team at the [Distributed and Operating Systems](https://distributedsystems.berlin/) group at TU Berlin is actively working to improve Vessim.
 We are currently working on the following aspects and features:
 
-- **Software-in-the-loop API**: We will soon release a new API for SiL simulations with new examples and better documentation.
+- **Calibration**: We are working on a methodology for calibrating Vessim simulations on real hardware testbeds.
 - **System Advisor Model (SAM)**: We are working on integrating NREL's [SAM](https://sam.nrel.gov/) as a subsystem in Vessim, allowing for better simulation of solar arrays, wind farms, and other types of renewable energy generators.
-- **Flower**: We are working on integrating Vessim into the federated learning framework [Flower](https://flower.ai).
-- **Validation**: We are working on validating the accuracy of Vessim compared to real hardware testbeds.
+- **Battery degradation**: We are working on integrating NREL's [BLAST-Lite](https://github.com/NREL/BLAST-Lite) for modeling battery lifetime and degradation
+- **Vessim X Flower**: We are working on integrating Vessim into the federated learning framework [Flower](https://flower.ai).
+- **Software-in-the-loop API**: We will soon release a new API for SiL simulations with new examples and better documentation.
 
 
 ## Datasets
