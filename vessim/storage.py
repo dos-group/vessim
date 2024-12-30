@@ -5,6 +5,8 @@ from typing import Optional, Any
 import numpy as np
 from loguru import logger
 
+from vessim.signal import Signal
+
 
 class Storage(ABC):
     @abstractmethod
@@ -41,7 +43,131 @@ class Storage(ABC):
         return {}
 
 
-class SimpleBattery(Storage):
+class BatteryDegradation(ABC):
+    @abstractmethod
+    def update(self, soc: float, duration: int) -> float:
+        """Calculate degradation based on state-of-charge after specified duration.
+
+        Args:
+            soc: The battery's SoC after the duration.
+            duration: Duration in seconds over which the battery reached the given SoC.
+
+        Returns:
+            The newly calculated relative discharge capacity.
+        """
+        pass
+
+    @abstractmethod
+    def q(self) -> float:
+        """Returns the relative discharge capacity (q) of the battery.
+
+        Values should range between 0 and 1.
+        """
+        pass
+
+    def state(self) -> dict:
+        """Returns information about the current state of the degradation. Can be overriden."""
+        return {"q": self.q()}
+
+
+try:
+    from blast.models import BatteryDegradationModel
+
+    class ModelDegradation(BatteryDegradation):
+        """Battery degradation as modeled by a BLAST-Lite model.
+
+        Args:
+            model: BLAST-Lite degradation model.
+            temp: Battery temperature signal in Celsius. Should start at 00:00:00.
+            sample_size: Number of battery SoC samples to take before updating degradation model.
+        """
+
+        def __init__(
+            self,
+            model: BatteryDegradationModel,
+            temp: Signal,
+            sample_size: int,
+            initial_soc: float = 0,
+        ) -> None:
+            self.model = model
+            self.temp = temp
+            self.sample_size = sample_size
+            self.t = np.datetime64(0, "s")
+            self._q = 1
+
+            self.t_secs = np.zeros(sample_size)
+            self.soc = np.zeros(sample_size)
+            self.T_celsius = np.zeros(sample_size)
+            self.t_secs[0] = 0
+            self.soc[0] = initial_soc
+            self.T_celsius[0] = temp.now(self.t)
+            self.samples = 1
+
+        def update(self, soc: float, duration: int) -> float:
+            dt = np.timedelta64(duration, "s")
+            self.t += dt
+
+            if self.samples > 0 and self.samples % self.sample_size == 0:
+                self.model.update_battery_state(
+                    self.t_secs,
+                    self.soc,
+                    self.T_celsius,
+                )
+                self._q = self.model.outputs["q"][-1]
+                self.samples = 0
+
+            self.t_secs[self.samples] = self.t_secs[self.samples - 1] + duration
+            self.soc[self.samples] = soc
+            self.T_celsius[self.samples] = self.temp.now(self.t)
+            self.samples += 1
+            return self._q
+
+        def q(self) -> float:
+            return self._q
+
+        def state(self) -> dict:
+            s = super().state()
+            s.update(
+                {
+                    "temp": self.temp.now(self.t),
+                    "stressors": {k: v[-1] for k, v in self.model.stressors.items()},
+                }
+            )
+            return s
+except ImportError:
+    pass
+
+
+class Battery(Storage):
+    def __init__(self, deg: Optional[BatteryDegradation] = None) -> None:
+        self.deg = deg
+
+    def update(self, power: float, duration: int) -> float:
+        total_power = self._update(power, duration)
+        if self.deg is not None:
+            q = self.deg.update(self.soc(), duration)
+            self.degrade_to(q)
+        return total_power
+
+    @abstractmethod
+    def _update(self, power: float, duration: int) -> float:
+        pass
+
+    @abstractmethod
+    def degrade_to(self, q: float) -> None:
+        pass
+
+    def state(self) -> dict:
+        s = self._state()
+        if self.deg is not None:
+            s.update(self.deg.state())
+        return s
+
+    def _state(self) -> dict:
+        return {}
+
+
+class SimpleBattery(Battery):
     """(Way too) simple battery.
 
     Args:
@@ -62,7 +188,10 @@ class SimpleBattery(Storage):
         initial_soc: float = 0,
         min_soc: float = 0,
         c_rate: Optional[float] = None,
+        deg: Optional[BatteryDegradation] = None,
     ):
+        super().__init__(deg)
+        self.initial_capacity = capacity
         self.capacity = capacity
         assert 0 <= initial_soc <= 1, "Invalid initial state-of-charge. Has to be between 0 and 1."
         self.charge_level = capacity * initial_soc
@@ -71,7 +200,7 @@ class SimpleBattery(Storage):
         self.min_soc = min_soc
         self.c_rate = c_rate
 
-    def update(self, power: float, duration: int) -> float:
+    def _update(self, power: float, duration: int) -> float:
         """Charges the battery with specific power for a duration.
 
         Updates batteries energy level according to power that is fed to/ drawn from the battery.
@@ -123,21 +252,28 @@ class SimpleBattery(Storage):
 
         return charged_energy
 
+    def degrade_to(self, q: float) -> None:
+        new_capacity = q * self.initial_capacity
+        self.capacity = new_capacity
+        self.charge_level = min(self.charge_level, self.capacity)
+        self._soc = self.charge_level / self.capacity
+
     def soc(self) -> float:
         return self._soc
 
-    def state(self) -> dict:
+    def _state(self) -> dict:
         """Returns state information of the battery as a dict."""
         return {
             "soc": self._soc,
             "charge_level": self.charge_level,
+            "initial_capacity": self.initial_capacity,
             "capacity": self.capacity,
             "min_soc": self.min_soc,
             "c_rate": self.c_rate,
         }
 
 
-class ClcBattery(Storage):
+class ClcBattery(Battery):
     """Implementation of the C-L-C Battery model for lithium-ion batteries.
 
     This class implements the C-L-C model as described in:
@@ -196,16 +332,19 @@ class ClcBattery(Storage):
         eta_c: float = 0.978,
         discharging_current_cutoff: float = -0.05,
         charging_current_cutoff: float = 0.05,
+        deg: Optional[BatteryDegradation] = None,
     ) -> None:
+        super().__init__(deg)
         assert number_of_cells > 0, "There has to be a positive number of cells."
         self.number_of_cells = number_of_cells
         self.u_1 = u_1
         self.v_1 = v_1
         self.u_2 = u_2
         self.v_2 = v_2
+        self.initial_v2 = v_2
         assert 0 <= initial_soc <= 1, "Invalid initial state-of-charge. Has to be between 0 and 1."
         self._soc = initial_soc
-        self.charge_level = self.v_2 * initial_soc # Charge level of one cell
+        self.charge_level = self.v_2 * initial_soc  # Charge level of one cell
         assert 0 <= min_soc <= 1, "Invalid minimum state-of-charge. Has to be between 0 and 1."
         self.min_soc = min_soc
         self.nom_voltage = nom_voltage
@@ -221,7 +360,7 @@ class ClcBattery(Storage):
     def soc(self) -> float:
         return self._soc
 
-    def update(self, power: float, duration: int) -> float:
+    def _update(self, power: float, duration: int) -> float:
         if duration <= 0.0:
             raise ValueError("Duration needs to be a positive value")
 
@@ -231,6 +370,12 @@ class ClcBattery(Storage):
             return self.discharge(power, duration)
         else:
             return 0
+
+    def degrade_to(self, q: float) -> None:
+        new_capacity = q * self.initial_v2
+        self.v_2 = new_capacity
+        self.charge_level = min(self.charge_level, self.v_2)
+        self._soc = self.charge_level / self.v_2
 
     def charge(self, power: float, duration: int) -> float:
         # Apply charging power limits
@@ -278,10 +423,11 @@ class ClcBattery(Storage):
         self._soc = self.charge_level / self.v_2
         return power * duration
 
-    def state(self) -> dict:
+    def _state(self) -> dict:
         return {
             "soc": self._soc,
             "charge_level": self.charge_level * self.number_of_cells,
+            "initial_capacity": self.initial_v2 * self.number_of_cells,
             "capacity": self.v_2 * self.number_of_cells,
-            "min_soc": self.min_soc
+            "min_soc": self.min_soc,
         }

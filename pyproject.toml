@@ -53,8 +53,12 @@ requests = {version = "^2.26.0", optional = true}
 fastapi = {version = "^0.104.0", optional = true}
 uvicorn = {version = "^0.23.0", optional = true}
 
+# Optional dependencies (battery degradation)
+blast-lite = {version = "^1.0.5", optional = true, python = ">=3.9"}
+
 [tool.poetry.extras]
 sil = ["requests", "fastapi", "uvicorn"]
+model-deg = ["blast-lite"]
 
 [tool.poetry.group.dev]
 optional = true
