@@ -26,8 +26,6 @@ The scenario below simulates a microgrid consisting of a simulated computing sys
 import vessim as vs
 
 environment = vs.Environment(sim_start="2022-06-15")
-
-monitor = vs.Monitor()
 environment.add_microgrid(
     actors=[
         vs.ComputingSystem(nodes=[vs.MockSignal(value=400)]),
@@ -36,13 +34,11 @@ environment.add_microgrid(
             signal=vs.HistoricalSignal.load("solcast2022_global", column="Berlin")
         ),
     ],
-    controllers=[monitor],
+    controllers=[vs.Monitor(outfile="result.csv")],
     storage=vs.SimpleBattery(capacity=100),
     step_size=60,
 )
-
 environment.run(until=24 * 3600)  # 24h
-monitor.to_csv("result.csv")
 ```
 
 
