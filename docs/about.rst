@@ -81,9 +81,3 @@ License
 
 Vessim is released under the `MIT License
 <https://github.com/dos-group/vessim/blob/main/LICENSE>`_. 
-
-
-Credit
-======
-
-The Vessim logo was created with DALL·E 3.
