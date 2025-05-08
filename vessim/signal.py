@@ -247,7 +247,7 @@ class HistoricalSignal(Signal):
 
         Example:
             >>> index = pd.date_range(
-            ...    "2020-01-01T00:00:00", "2020-01-01T03:00:00", freq="1H"
+            ...    "2020-01-01T00:00:00", "2020-01-01T03:00:00", freq="1h"
             ... )
             >>> actual = pd.DataFrame({"zone_a": [4, 6, 2, 8]}, index=index)
 
@@ -269,7 +269,7 @@ class HistoricalSignal(Signal):
             >>> signal.forecast(
             ...    start_time="2020-01-01T00:00:00",
             ...    end_time="2020-01-01T02:00:00",
-            ...    frequency="30T",
+            ...    frequency="30min",
             ...    resample_method="ffill",
             ... )
             {numpy.datetime64('2020-01-01T00:30:00'): 4.0,
