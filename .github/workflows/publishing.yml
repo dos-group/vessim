@@ -24,7 +24,7 @@ jobs:
       id: setup-python
       uses: actions/setup-python@v5
       with:
-        python-version: 3.8
+        python-version: 3.13
 
     # installs poetry and configures it
     - name: Install poetry
@@ -44,8 +44,8 @@ jobs:
     # automatic version numbering
     - name: Install poetry dynamic version plugin, extracts version number from git tag
       run: |
-        pip install poetry-version-plugin
-        poetry self add poetry-version-plugin
+        pip install poetry-dynamic-versioning
+        poetry self add poetry-dynamic-versioning
 
     # build package
     - name: Build package out of local poject
