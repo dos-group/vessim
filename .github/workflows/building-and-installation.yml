@@ -25,32 +25,33 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    # installs poetry and configures it
-    - name: Install poetry
-      uses: snok/install-poetry@v1
-      with:
-        virtualenvs-create: true
-        virtualenvs-in-project: true
+    # installs uv
+    - name: Install uv
+      run: pip install uv
 
     # loads cached venv if it exists
     - name: Load cached venv
-      id: cached-poetry-dependencies
+      id: cached-uv-dependencies
       uses: actions/cache@v3
       with:
         path: .venv
         key: venv-${{ matrix.python-version }}
 
+    # install dependencies
+    - name: Install dependencies
+      run: uv pip install -e .
+
     # build package
-    - name: Build package out of local poject
-      run: poetry build
+    - name: Build package
+      run: uv build
 
     # install package
     - name: Install package
-      run: pip install dist/*.tar.gz
+      run: uv pip install dist/*.tar.gz
 
     # Install dependencies needed for notebook execution
     - name: Install notebook dependencies
-      run: pip install jupyter nbconvert matplotlib windpowerlib
+      run: uv pip install jupyter nbconvert matplotlib windpowerlib
 
     # Execute example notebooks to verify that no errors are thrown
     - name: Run Jupyter Notebooks

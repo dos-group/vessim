@@ -23,16 +23,13 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    # installs poetry and configures it
-    - name: Install poetry
-      uses: snok/install-poetry@v1
-      with:
-        virtualenvs-create: true
-        virtualenvs-in-project: true
+    # installs uv
+    - name: Install uv
+      run: pip install uv
 
     # loads cached venv if it exists
     - name: Load cached venv
-      id: cached-poetry-dependencies
+      id: cached-uv-dependencies
       uses: actions/cache@v3
       with:
         path: .venv
@@ -40,21 +37,17 @@ jobs:
 
     # install dependencies if cache not available
     - name: Install dependencies
-      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-      run: poetry install --no-interaction --no-root --extras "sil" --with dev
-
-    # install library
-    - name: Install root project
-      run: poetry install --no-interaction --extras "sil" --with dev 
+      if: steps.cached-uv-dependencies.outputs.cache-hit != 'true'
+      run: uv pip install -e ".[sil]" --all-extras
 
     # type checking
     - name: Run type checker
-      run: poetry run mypy vessim
+      run: uv run mypy vessim
 
     # linting
     - name: Run linter
-      run: poetry run ruff check vessim
+      run: uv run ruff check vessim
 
     # unit-testing
     - name: Run tests
-      run: poetry run python -m pytest
+      run: uv run python -m pytest
