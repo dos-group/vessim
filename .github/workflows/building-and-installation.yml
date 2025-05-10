@@ -1,7 +1,5 @@
 name: Build
 
-# event that triggers workflow
-# runs on every pull request
 on:
   pull_request:
     branches:
@@ -9,48 +7,31 @@ on:
 
 jobs:
   integration-tests:
-    # specifies the os that the job will run on
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: [3.9, 3.13]
+
     steps:
-    # downloads the repository code to the runner's file system for workflow access
     - uses: actions/checkout@v4
 
-    # sets up python environment with specified versions
-    - name: Set up python ${{ matrix.python-version }}
-      id: setup-python
-      uses: actions/setup-python@v5
+    - name: Install uv and set python version to ${{ matrix.python-version }}
+      uses: astral-sh/setup-uv@v5
       with:
         python-version: ${{ matrix.python-version }}
-
-    # installs poetry and configures it
-    - name: Install poetry
-      uses: snok/install-poetry@v1
-      with:
-        virtualenvs-create: true
-        virtualenvs-in-project: true
-
-    # loads cached venv if it exists
-    - name: Load cached venv
-      id: cached-poetry-dependencies
-      uses: actions/cache@v3
-      with:
-        path: .venv
-        key: venv-${{ matrix.python-version }}
+        enable-cache: true
 
     # build package
-    - name: Build package out of local poject
-      run: poetry build
+    - name: Build package
+      run: uv build
 
     # install package
     - name: Install package
-      run: pip install dist/*.tar.gz
+      run: uv pip install dist/*.tar.gz
 
     # Install dependencies needed for notebook execution
     - name: Install notebook dependencies
-      run: pip install jupyter nbconvert matplotlib windpowerlib
+      run: uv pip install jupyter nbconvert matplotlib windpowerlib
 
     # Execute example notebooks to verify that no errors are thrown
     - name: Run Jupyter Notebooks
