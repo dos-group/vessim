@@ -3,7 +3,9 @@ name = "vessim"
 dynamic = ["version"]
 description = "A simulator for carbon-aware applications and systems."
 keywords = ["simulation", "energy system", "testbed", "carbon-aware computing", "software-in-the-loop"]
-authors = ["Philipp Wiesner <wiesner@tu-berlin.de>"]
+authors = [
+    {name = "Philipp Wiesner", email = "wiesner@tu-berlin.de"}
+]
 readme = "README.md"
 license = "MIT"
 homepage = "https://github.com/dos-group/vessim"
@@ -64,7 +66,7 @@ docs = [
 ]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]

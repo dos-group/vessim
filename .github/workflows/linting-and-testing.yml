@@ -19,8 +19,11 @@ jobs:
         python-version: ${{ matrix.python-version }}
         enable-cache: true
 
-    - name: Install the project
-      run: uv sync --locked --all-extras --dev
+    - name: Install hatch-vcs plugin
+      run: uv pip install hatch-vcs
+
+    - name: Install dependencies
+      run: uv pip install -e ".[dev,sil]"
 
     # type checking
     - name: Run type checker
