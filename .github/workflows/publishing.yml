@@ -10,20 +10,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    
+      with:
+        fetch-depth: 0  # Fetch all history for all branches and tags
+
     - name: Install uv
       uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
 
-    - name: Create virtual environment
-      run: uv venv
-
-    # build package
-    - name: Build package
+    - name: Build
       run: uv build
 
-    # publish to PyPI
-    - name: Publish to PyPI
-      run: uv pip install twine && twine upload dist/*
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+    - name: Publish
+      run: uv publish -t ${{ secrets.PYPI_API_TOKEN }}
