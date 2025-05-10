@@ -47,6 +47,9 @@ jobs:
         pip install poetry-dynamic-versioning
         poetry self add poetry-dynamic-versioning
 
+    - name: Create virtual environment
+      run: uv venv
+
     # build package
     - name: Build package out of local poject
       run: poetry build
