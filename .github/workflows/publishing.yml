@@ -1,37 +1,18 @@
 name: Publish
 
-# workflow is triggered when a new release is created or a new git tag is pushed to this repository
-# and it can be manually triggered
 on:
   workflow_dispatch:
   release:
     types: [created]
-  push:
-    tags:
-      - "*"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    # downloads the repository code to the runner's file system for workflow access
     - uses: actions/checkout@v4
-    - name: Fetch all history for all tags and branches
-      run: git fetch --prune --unshallow
-
-    # sets up python environment
-    - name: Set up python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.13"
-
-    # installs uv
+    
     - name: Install uv
-      run: pip install uv
-
-    # install dependencies
-    - name: Install dependencies
-      run: uv pip install -e .
+      uses: astral-sh/setup-uv@v5
 
     # build package
     - name: Build package

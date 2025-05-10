@@ -74,7 +74,7 @@ packages = ["vessim"]
 allow-direct-references = true
 
 [tool.hatch.version]
-source = "git"
+source = "vcs"
 
 [tool.black]
 line-length = 99  # Set the maximum characters per line

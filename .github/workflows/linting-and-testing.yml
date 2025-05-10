@@ -1,44 +1,26 @@
 name: Tests
 
-# event that triggers workflow
-# runs on every commit
 on: 
   push:
 
 jobs:
   linting-and-testing:
-    # specifies the os that the job will run on 
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: [3.9, 3.13]
+
     steps:
-    # downloads the repository code to the runner's file system for workflow access
     - uses: actions/checkout@v4
 
-    # sets up python environment with specified versions 
-    - name: Set up python ${{ matrix.python-version }}
-      id: setup-python
-      uses: actions/setup-python@v5
+    - name: Install uv and set python version to ${{ matrix.python-version }}
+      uses: astral-sh/setup-uv@v5
       with:
         python-version: ${{ matrix.python-version }}
+        enable-cache: true
 
-    # installs uv
-    - name: Install uv
-      run: pip install uv
-
-    # loads cached venv if it exists
-    - name: Load cached venv
-      id: cached-uv-dependencies
-      uses: actions/cache@v3
-      with:
-        path: .venv
-        key: venv-${{ matrix.python-version }}
-
-    # install dependencies if cache not available
-    - name: Install dependencies
-      if: steps.cached-uv-dependencies.outputs.cache-hit != 'true'
-      run: uv pip install -e ".[sil]" --all-extras
+    - name: Install the project
+      run: uv sync --locked --all-extras --dev
 
     # type checking
     - name: Run type checker
@@ -50,4 +32,4 @@ jobs:
 
     # unit-testing
     - name: Run tests
-      run: uv run python -m pytest
+      run: uv run pytest
