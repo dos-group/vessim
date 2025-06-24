@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/pypi/l/vessim.svg)](https://pypi.org/project/vessim/)
 [![Supported versions](https://img.shields.io/pypi/pyversions/vessim.svg)](https://pypi.org/project/vessim/)
 
-Vessim is a versatile **co-simulation testbed for carbon-aware applications and systems** which connects domain-specific simulators for renewable power generation and energy storage with real software and hardware.
+Vessim is a **co-simulation testbed for carbon-aware applications and systems** which connects domain-specific simulators for renewable power generation and energy storage with real software and hardware.
 
 It simulates energy systems that interact with real or simulated computing systems for:
 
