@@ -44,15 +44,6 @@ sil = [
     "fastapi>=0.104.0",
     "uvicorn>=0.23.0",
 ]
-dev = [
-    "pytest",
-    "mypy",
-    "types-psutil",
-    "pandas-stubs",
-    "types-requests",
-    "black",
-    "ruff",
-]
 docs = [
     "setuptools",
     "sphinx",
@@ -65,6 +56,19 @@ docs = [
     "windpowerlib",
 ]
 
+[dependency-groups]
+dev = [
+    "pytest",
+    "mypy",
+    "types-psutil",
+    "pandas-stubs",
+    "types-requests",
+    "black",
+    "ruff",
+]
+
+[[tool.uv.sources]]
+url = "https://pypi.org/simple"
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
