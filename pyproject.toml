@@ -91,7 +91,7 @@ source = "vcs"
 
 [tool.black]
 line-length = 99  # Set the maximum characters per line
-target-version = ['py38']   # Set python versions that black should format the code for
+target-version = ["py39"]   # Set python versions that black should format the code for
 include = '\.py$'  # Format only python files
 
 [tool.ruff]
@@ -126,7 +126,7 @@ unfixable = ["F"]
 convention = "google"
 
 # Configure mypy to ignore missing imports
-[mypy]
+[tool.mypy]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
