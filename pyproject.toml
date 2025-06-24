@@ -43,9 +43,7 @@ sil = [
     "fastapi>=0.104.0",
     "uvicorn>=0.23.0"
 ]
-
-[dependency-groups.dev]
-dependencies = [
+dev = [
     "pytest",
     "mypy",
     "types-psutil",
@@ -54,9 +52,7 @@ dependencies = [
     "black",
     "ruff"
 ]
-
-[dependency-groups.docs]
-dependencies = [
+docs = [
     "setuptools",
     "sphinx",
     "furo",
@@ -67,14 +63,13 @@ dependencies = [
     "matplotlib",
     "windpowerlib"
 ]
-
-[dependency-groups.examples]
-dependencies = [
+examples = [
     "jupyter",
     "nbconvert",
     "matplotlib",
     "windpowerlib"
 ]
+
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]

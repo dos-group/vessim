@@ -31,7 +31,7 @@ jobs:
 
     # Install dependencies needed for notebook execution
     - name: Install notebook dependencies
-      run: uv pip install --group examples
+      run: uv pip install -e ".[examples]"
 
     # Execute example notebooks to verify that no errors are thrown
     - name: Run Jupyter Notebooks
