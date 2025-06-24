@@ -42,18 +42,22 @@ dependencies = [
 sil = [
     "requests>=2.26.0",
     "fastapi>=0.104.0",
-    "uvicorn>=0.23.0",
+    "uvicorn>=0.23.0"
 ]
-dev = [
+
+[dependency-groups.dev]
+dependencies = [
     "pytest",
     "mypy",
     "types-psutil",
     "pandas-stubs",
     "types-requests",
     "black",
-    "ruff",
+    "ruff"
 ]
-docs = [
+
+[dependency-groups.docs]
+dependencies = [
     "setuptools",
     "sphinx",
     "furo",
@@ -62,7 +66,7 @@ docs = [
     "pandoc",
     "ipython",
     "matplotlib",
-    "windpowerlib",
+    "windpowerlib"
 ]
 
 [build-system]
