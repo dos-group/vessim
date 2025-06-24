@@ -241,7 +241,7 @@ class HistoricalSignal(Signal):
             pd.Series of forecasted data with timestamps of forecast as index.
 
         Raises:
-            ValueError: If no data is available for the specified zone or time, or if
+            ValueError: If no data is available for the specified column or time, or if
                 insufficient data exists for the frequency, without `resample_method`
                 specified.
 
@@ -283,9 +283,9 @@ class HistoricalSignal(Signal):
             >>> signal.forecast(
             ...    start_time="2020-01-01T01:10:00",
             ...    end_time="2020-01-01T01:55:00",
-            ...    zone="zone_a",
+            ...    column="zone_a",
             ...    frequency=timedelta(minutes=20),
-            ...    resample_method="time",
+            ...    resample_method="linear",
             ... )
             {numpy.datetime64('2020-01-01T01:30:00'): 4.4,
             numpy.datetime64('2020-01-01T01:50:00'): 2.8}
