@@ -31,7 +31,7 @@ jobs:
 
     # Install dependencies needed for notebook execution
     - name: Install notebook dependencies
-      run: uv pip install jupyter nbconvert matplotlib windpowerlib
+      run: uv pip install --group examples
 
     # Execute example notebooks to verify that no errors are thrown
     - name: Run Jupyter Notebooks
