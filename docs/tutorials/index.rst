@@ -5,11 +5,11 @@ Tutorials
 .. toctree::
     :maxdepth: 1
 
-    ../examples/signal_example
-    ../examples/basic_example
-    ../examples/controller_example
-    ../examples/sil_example
-    ../examples/stranger_sims_example
+    signal_example
+    basic_example
+    controller_example
+    sil_example
+    stranger_sims_example
 
 
 .. note::
