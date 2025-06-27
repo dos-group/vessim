@@ -78,5 +78,4 @@ It has the following core components:
     Overview <self>
     tutorials/index
     api_reference/index
-    datasets
     about

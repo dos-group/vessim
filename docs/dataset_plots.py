@@ -1,42 +1,22 @@
-import pandas as pd
 import plotly.io
-import plotly.graph_objects as go
-
 import vessim as vs
+from vessim.plot import plot_trace
 
-signal = vs.Trace.from_dataset("watttime2023_caiso-north")
-df = pd.read_csv("~/.cache/vessim/watttime2023_caiso-north_actual.csv", index_col=0)
-df.index = pd.to_datetime(df.index)
-fig = go.Figure()
-fig.add_trace(go.Scatter(x=df.index, y=df["value"]))
-fig.update_layout(
-    {
-        "margin": {"l": 0, "t": 0, "b": 0, "r": 0},
-        "autosize": True,
-        "yaxis_title": "g/kWh",
-    }
-)
-plotly.io.write_html(fig, "./_static/watttime2023_caiso-north_plot.html")
+# Generate carbon intensity plot
+carbon_trace = vs.Trace.load("watttime2023_caiso-north")
+fig_carbon = plot_trace(carbon_trace, dataset_name="watttime2023_caiso-north")
+fig_carbon.update_layout(margin={"l": 0, "t": 0, "b": 0, "r": 0})
+plotly.io.write_html(fig_carbon, "./_static/watttime2023_caiso-north_plot.html")
 
-solcast = ["global", "germany"]
-for s in solcast:
-    signal = vs.Trace.from_dataset(f"solcast2022_{s}")
-    df = pd.read_csv(f"~/.cache/vessim/solcast2022_{s}_actual.csv", index_col=0)
-    df.index = pd.to_datetime(df.index)
-    fig = go.Figure()
-    for col in df.columns:
-        visible = True if col == "Berlin" else "legendonly"
-        fig.add_trace(
-            go.Scatter(x=df.index, y=df[col], visible=visible, name=col)
-        )
+# Generate solar plots
+solcast_datasets = ["global", "germany"]
+for dataset in solcast_datasets:
+    dataset_name = f"solcast2022_{dataset}"
+    trace = vs.Trace.load(dataset_name)
+    fig = plot_trace(trace, default_visible="Berlin", dataset_name=dataset_name)
     fig.update_layout(
-        {
-            "margin": {"l": 0, "t": 0, "b": 0, "r": 0},
-            "autosize": True,
-            "showlegend": True,
-            "yaxis_title": r"% of max output",
-            "legend_y": 0.5,
-            "legend_yanchor": "middle",
-        }
+        margin={"l": 0, "t": 0, "b": 0, "r": 0},
+        legend_y=0.5,
+        legend_yanchor="middle"
     )
-    plotly.io.write_html(fig, f"./_static/solcast2022_{s}_plot.html")
+    plotly.io.write_html(fig, f"./_static/solcast2022_{dataset}_plot.html")

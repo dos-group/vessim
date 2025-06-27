@@ -31,3 +31,10 @@ try:
     __all__.extend(["Broker", "SilController", "WatttimeSignal", "get_latest_event"])
 except ImportError:
     pass
+
+try:
+    from vessim import plot  # noqa: F401
+
+    __all__.extend(["plot"])
+except ImportError:
+    pass
