@@ -22,7 +22,8 @@ You can test scenarios using historical data or connect real applications and ha
 
 ## Example scenario
 
-The scenario below simulates a microgrid consisting of a simulated computing system (which consistently draws 400W), a single producer (a solar power plant who's production is modelled based on a dataset provided by [Solcast](https://solcast.com/)), and a battery. The *Monitor* periodically stores the energy system state.
+The scenario below simulates a microgrid consisting of a simulated computing system (which consistently draws 700W), a single producer (a solar power plant who's production is modelled based on a dataset provided by [Solcast](https://solcast.com/)), and a battery. 
+The *Monitor* periodically stores the energy system state in a CSV file.
 
 ```python
 import vessim as vs
@@ -30,15 +31,12 @@ import vessim as vs
 environment = vs.Environment(sim_start="2022-06-15")
 environment.add_microgrid(
     actors=[
-        vs.ComputingSystem(nodes=[vs.ConstantSignal(value=400)]),
-        vs.Actor(
-            name="solar_panel",
-            signal=vs.HistoricalSignal.load("solcast2022_global", column="Berlin")
-        ),
+        vs.Actor(vs.ConstantSignal(value=-700), name="server"),  # negative = consumes power
+        vs.Actor(vs.Trace.load("solcast2022_global", column="Berlin"), name="solar_panel", params={"scale": 5000}),  # 5kW maximum
     ],
     controllers=[vs.Monitor(outfile="result.csv")],
     storage=vs.SimpleBattery(capacity=100),
-    step_size=60,
+    step_size=300,  # 5 minute step size
 )
 environment.run(until=24 * 3600)  # 24h
 ```
@@ -59,7 +57,11 @@ If you require software-in-the-loop (SiL) capabilities, you should additionally 
 pip install vessim[sil]
 ```
 
-For complex scenarios that involve custom co-simulation actors we recommend cloning and editing this depository directly.
+For complex scenarios that involve custom co-simulation actors we recommend cloning and editing this depository directly, e.g. via:
+
+```
+uv pip install -e ".[dev,sil]"
+```
 
 
 ## Work in progress
@@ -71,6 +73,7 @@ We are currently working on the following aspects and features:
 - **System Advisor Model (SAM)**: We are working on integrating NREL's [SAM](https://sam.nrel.gov/) as a subsystem in Vessim, allowing for better simulation of solar arrays, wind farms, and other types of renewable energy generators.
 - **Battery degradation**: We are working on integrating NREL's [BLAST-Lite](https://github.com/NREL/BLAST-Lite) for modeling battery lifetime and degradation
 - **Vessim X Flower**: We are working on integrating Vessim into the federated learning framework [Flower](https://flower.ai).
+- **Vessim X Vidur**: We are working on integrating Vessim into the LLM simulator [Vidur](https://github.com/microsoft/vidur).
 - **Software-in-the-loop API**: We will soon release a new API for SiL simulations with new examples and better documentation.
 
 

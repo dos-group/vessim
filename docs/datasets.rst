@@ -1,7 +1,7 @@
 ========
 Datasets
 ========
-Vessim comes with several datasets that can be directly used inside simulations through our :class:`HistoricalSignal <vessim.signal.HistoricalSignal>`.
+Vessim comes with several datasets that can be directly used inside simulations through our :class:`Trace <vessim.signal.Trace>`.
 
 ----
 

@@ -60,7 +60,7 @@ Vessim is built around a co-simulation architecture using Mosaik. The core compo
 - **Actor**: Generic power consumer/producer based on a Signal
 - **ComputingSystem**: Represents computing workloads with multiple nodes
 - **ConstantSignal**: Simple signal with constant values for testing
-- **HistoricalSignal**: Time-series data from datasets (solar, carbon intensity)
+- **Trace**: Time-series data from datasets (solar, carbon intensity)
 
 ### Software-in-the-Loop (SiL)
 Optional SiL capabilities (`sil.py`) enable real-time interaction with external systems:
@@ -102,7 +102,7 @@ environment = vs.Environment(sim_start="2022-06-15")
 environment.add_microgrid(
     actors=[
         vs.ComputingSystem(nodes=[vs.ConstantSignal(value=400)]),
-        vs.Actor(name="solar_panel", signal=vs.HistoricalSignal.load("solcast2022_global", column="Berlin"))
+        vs.Actor(name="solar_panel", signal=vs.Trace.load("solcast2022_global", column="Berlin"))
     ],
     controllers=[vs.Monitor(outfile="result.csv")],
     storage=vs.SimpleBattery(capacity=100),

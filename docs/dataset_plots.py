@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 
 import vessim as vs
 
-signal = vs.HistoricalSignal.from_dataset("watttime2023_caiso-north")
+signal = vs.Trace.from_dataset("watttime2023_caiso-north")
 df = pd.read_csv("~/.cache/vessim/watttime2023_caiso-north_actual.csv", index_col=0)
 df.index = pd.to_datetime(df.index)
 fig = go.Figure()
@@ -20,7 +20,7 @@ plotly.io.write_html(fig, "./_static/watttime2023_caiso-north_plot.html")
 
 solcast = ["global", "germany"]
 for s in solcast:
-    signal = vs.HistoricalSignal.from_dataset(f"solcast2022_{s}")
+    signal = vs.Trace.from_dataset(f"solcast2022_{s}")
     df = pd.read_csv(f"~/.cache/vessim/solcast2022_{s}_actual.csv", index_col=0)
     df.index = pd.to_datetime(df.index)
     fig = go.Figure()

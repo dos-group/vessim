@@ -29,10 +29,10 @@ class Signal(ABC):
         """Perform necessary finalization tasks of a signal."""
 
 
-class HistoricalSignal(Signal):
+class Trace(Signal):
     """Simulates a signal for time-series data like solar irradiance or carbon intensity.
 
-    The HistoricalSignal can also deal with unsorted or incomplete data.
+    The Trace can also deal with unsorted or incomplete data.
 
     Args:
         actual: The actual time-series data to be used. It should contain a datetime-like
@@ -146,11 +146,11 @@ class HistoricalSignal(Signal):
         data_dir: Optional[str | Path] = None,
         params: Optional[dict[Any, Any]] = None,
     ):
-        """Creates a HistoricalSignal from a vessim dataset, handling downloading and unpacking.
+        """Creates a Trace from a vessim dataset, handling downloading and unpacking.
 
         Args:
             dataset: Name of the dataset to be downloaded.
-            column: Default column to use for calling HistoricalSignal.at().
+            column: Default column to use for calling Trace.at().
                 Default to None.
             data_dir: Absoulute path to the directory where the data should be loaded.
                 If not specified, the path `~/.cache/vessim` is used. Defaults to None.
@@ -261,7 +261,7 @@ class HistoricalSignal(Signal):
             ... )
             >>> forecast.set_index(["req_time", "forecast_time"], inplace=True)
 
-            >>> signal = HistoricalSignal(actual, forecast)
+            >>> signal = Trace(actual, forecast)
 
             Forward-fill resampling between 2020-01-01T00:00:00 (actual value = 4.0) and
             forecasted values between 2020-01-01T01:00:00 and 2020-01-01T02:00:00:
