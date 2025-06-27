@@ -67,10 +67,16 @@ source_suffix = ".rst"
 # The master toctree document.
 master_doc = "index"
 
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "experimental_tutorials", "Thumbs.db", ".DS_Store"]
 
 pygments_style = "default"
 pygments_dark_style = "gruvbox-dark"
 
 # -- Options for HTML output ------
 html_theme = "furo"
+
+# Configure JavaScript files for Plotly support
+html_js_files = [
+    "require.min.js",
+    "custom.js",
+]
