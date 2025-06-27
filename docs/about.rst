@@ -26,7 +26,6 @@ Publications
 
 If you use Vessim in your research, please cite our paper:
 
-
     Philipp Wiesner, Ilja Behnke, Paul Kilian, Marvin Steinke, and Odej Kao. "`Vessim: A Testbed for Carbon-Aware Applications and Systems. <https://arxiv.org/pdf/2306.09774.pdf>`_" 3rd Workshop on Sustainable Computer Systems (HotCarbon). 2024.
 
 .. raw:: html
@@ -73,6 +72,13 @@ For details in Vessim's software-in-the-loop simulation methodology, refer to ou
 .. raw:: html
 
    </details>
+
+
+Publications using Vessim
+=========================
+
+- Paul Kilian, Philipp Wiesner, and Odej Kao. "`Choosing the Right Battery Model for Data Center Simulations <https://arxiv.org/pdf/2506.17739>`_". 1st International Workshop on Low Carbon Computing (LOCO). 2024.
+- Philipp Wiesner, Ramin Khalili, Dennis Grinwald, Pratik Agrawal, Lauritz Thamsen, and Odej Kao. "`FedZero: Leveraging Renewable Excess Energy in Federated Learning <https://dl.acm.org/doi/10.1145/3632775.3639589>`_". 15th ACM International Conference on Future and Sustainable Energy Systems (e-Energy). 2024.
 
 
 
