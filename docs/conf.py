@@ -75,8 +75,17 @@ pygments_dark_style = "gruvbox-dark"
 # -- Options for HTML output ------
 html_theme = "furo"
 
-# Configure JavaScript files for Plotly support
-html_js_files = [
-    "require.min.js",
-    "custom.js",
-]
+nbsphinx_prolog = r"""
+.. raw:: html
+
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js'></script>
+    <script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>
+    <script>
+        require.config({
+            paths: {
+                'plotly': 'https://cdn.plot.ly/plotly-2.27.0.min.js'
+            }
+        });
+    </script>
+
+"""
