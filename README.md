@@ -30,7 +30,7 @@ import vessim as vs
 environment = vs.Environment(sim_start="2022-06-15")
 environment.add_microgrid(
     actors=[
-        vs.ComputingSystem(nodes=[vs.MockSignal(value=400)]),
+        vs.ComputingSystem(nodes=[vs.ConstantSignal(value=400)]),
         vs.Actor(
             name="solar_panel",
             signal=vs.HistoricalSignal.load("solcast2022_global", column="Berlin")

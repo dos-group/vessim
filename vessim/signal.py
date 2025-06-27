@@ -414,12 +414,12 @@ def _abs_path(data_dir: Optional[str | Path]) -> Path:
         raise ValueError(f"Path {data_dir} not valid. Has to be absolute or None.")
 
 
-class MockSignal(Signal):
+class ConstantSignal(Signal):
     _ids = count(0)
 
     def __init__(self, value: float, name: Optional[str] = None) -> None:
         if name is None:
-            name = f"MockSignal-{next(self._ids)}"
+            name = f"ConstantSignal-{next(self._ids)}"
         super().__init__(name)
         self._v = value
 
