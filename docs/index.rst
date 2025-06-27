@@ -53,20 +53,20 @@ Vessim creates simulated "microgrids" - small energy systems that combine comput
 
 It has the following core components:
 
-- **Actors**: Energy Consumers and Producers
+- **Actors**: Energy consumers and producers
     - Computing systems (servers, workstations, etc.) that consume power
     - Renewable sources (solar panels, wind turbines) that produce power
-    - Both can use historical traces or real-life input from power meters
+    - Both can be based on other simulators, historical traces, or real-life input from power meters
 
 - **Energy Storage**: From batteries to hydrogen storage
     - Batteries that store excess renewable energy for later use
     - Vessim already implements analytical models for realistic Li-ion battery modeling
     - Configurable charging/discharging policies based on your strategy
 
-**Controllers**: Enable Monitoring, Web APIs, and custom controll strategies
+- **Controllers**: Enable monitoring, REST APIs, and custom control strategies
     - Monitors can track the energy system state and carbon emissions over time in a CSV file
-    - Software-in-the-Loop APIs provide real-time visibility and controll over the simulated energy sytem via a web API
-    - Implement custom control strategies to e.g. schedule computing workloads based on energy availability
+    - REST APIs can provide real-time visibility and control over the simulated energy system
+    - You can implement custom control strategies to e.g. schedule computing workloads based on energy availability
 
 
 

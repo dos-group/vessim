@@ -1,6 +1,6 @@
 """A simulator for carbon-aware applications and systems."""
 
-from vessim.actor import ActorBase, Actor, ComputingSystem
+from vessim.actor import ActorBase, Actor
 from vessim.controller import Controller, Monitor
 from vessim.cosim import Microgrid, Environment
 from vessim.policy import MicrogridPolicy, DefaultMicrogridPolicy
@@ -10,7 +10,6 @@ from vessim.storage import Storage, SimpleBattery, ClcBattery
 __all__ = [
     "ActorBase",
     "Actor",
-    "ComputingSystem",
     "Controller",
     "Monitor",
     "Microgrid",

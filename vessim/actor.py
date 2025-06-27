@@ -53,49 +53,6 @@ class Actor(ActorBase):
         self.signal.finalize()
 
 
-class ComputingSystem(ActorBase):
-    """Model of the computing system.
-
-    This model considers the power usage effectiveness (PUE) and power
-    consumption of a list of power meters.
-
-    Args:
-        nodes: list of consumer node signals that constitute the computing system's demand.
-        pue: The power usage effectiveness of the system.
-    """
-
-    _ids = count(0)
-
-    def __init__(
-        self,
-        nodes: list[Signal],
-        name: Optional[str] = None,
-        step_size: Optional[int] = None,
-        pue: float = 1,
-    ):
-        if name is None:
-            name = f"ComputingSystem-{next(self._ids)}"
-        super().__init__(name, step_size)
-        self.nodes = nodes
-        node_ids = count(0)
-        for node in self.nodes:
-            if not node.name:
-                node.name = f"Node-{next(node_ids)}"
-        self.pue = pue
-
-    def p(self, now: datetime) -> float:
-        return self.pue * sum(-signal.now(at=now) for signal in self.nodes)
-
-    def state(self, now: datetime) -> dict:
-        return {
-            "p": self.p(now),
-            "nodes": {signal.name: -signal.now(at=now) for signal in self.nodes},
-        }
-
-    def finalize(self) -> None:
-        for node in self.nodes:
-            node.finalize()
-
 
 class _ActorSim(mosaik_api_v3.Simulator):
     META = {
