@@ -34,12 +34,12 @@ class Broker:
         self._microgrid_ts: list[tuple[DatetimeLike, Microgrid]] = []
         self._state_ts: list[tuple[DatetimeLike, dict]] = []
         self._p_delta_ts: list[tuple[DatetimeLike, float]] = []
-        self._e_delta_ts: list[tuple[DatetimeLike, float]] = []
+        self._p_grid_ts: list[tuple[DatetimeLike, float]] = []
         self._time: Optional[DatetimeLike] = None
         self._microgrid: Optional[Microgrid] = None
         self._state: dict[str, dict] = {}
         self._p_delta: float = 0
-        self._e_delta: float = 0
+        self._p_grid: float = 0
         self._ts_lock: Lock = Lock()
 
     def _recv_data(self) -> None:
@@ -49,14 +49,14 @@ class Broker:
             self._microgrid = data["microgrid"]
             self._state = data["state"]
             self._p_delta = data["p_delta"]
-            self._e_delta = data["e_delta"]
+            self._p_grid = data["p_grid"]
             with self._ts_lock:
                 assert isinstance(time, (str, datetime, np.datetime64))
                 assert self._microgrid is not None
                 self._microgrid_ts.append((time, self._microgrid))
                 self._state_ts.append((time, self._state))
                 self._p_delta_ts.append((time, self._p_delta))
-                self._e_delta_ts.append((time, self._e_delta))
+                self._p_grid_ts.append((time, self._p_grid))
 
     def set_event(self, category: str, value: Any) -> None:
         self._events_pipe_in.send(
@@ -80,8 +80,8 @@ class Broker:
         return self._p_delta
 
     @property
-    def e_delta(self) -> float:
-        return self._e_delta
+    def p_grid(self) -> float:
+        return self._p_grid
 
     @property
     def state(self) -> dict[str, dict]:
@@ -111,10 +111,10 @@ class Broker:
     ) -> list[tuple[DatetimeLike, float]]:
         return self._get_ts_range("_p_delta_ts", start_time, end_time)
 
-    def get_e_delta_ts(
+    def get_p_grid_ts(
         self, start_time: Optional[DatetimeLike] = None, end_time: Optional[DatetimeLike] = None
     ) -> list[tuple[DatetimeLike, float]]:
-        return self._get_ts_range("_e_delta_ts", start_time, end_time)
+        return self._get_ts_range("_p_grid_ts", start_time, end_time)
 
 
 class SilController(Controller):
@@ -161,7 +161,7 @@ class SilController(Controller):
 
         Thread(target=self._collect_set_requests_loop, daemon=True).start()
 
-    def step(self, time: datetime, p_delta: float, e_delta: float, state: dict) -> None:
+    def step(self, time: datetime, p_delta: float, p_grid: float, state: dict) -> None:
         assert self.microgrid is not None
         self.data_pipe_in.send(
             (
@@ -170,7 +170,7 @@ class SilController(Controller):
                     "microgrid": self.microgrid,
                     "state": state,
                     "p_delta": p_delta,
-                    "e_delta": e_delta,
+                    "p_grid": p_grid,
                 },
             )
         )

@@ -49,7 +49,6 @@ html_static_path = ["_static"]
 html_logo = "_static/logo.png"
 
 html_theme_options = {
-    "top_of_page_button": None,
     "light_css_variables": {
         "color-brand-primary": "#4FACB3",
         "color-brand-content": "#4FACB3",

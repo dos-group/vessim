@@ -76,7 +76,7 @@ It has the following core components:
     :caption: Content:
 
     Overview <self>
-    datasets
     tutorials/index
     api_reference/index
+    datasets
     about

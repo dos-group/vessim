@@ -33,7 +33,8 @@ class MicrogridPolicy(ABC):
 
         Returns:
             Total energy in Ws that has to be drawn from/ is fed to the public grid.
-            If the return value is smaller than 0, energy has been drawn.
+            If the return value is smaller than 0, energy has been drawn from the grid.
+            This value is converted to power (W) by dividing by step_size to give p_grid.
         """
 
     def set_parameter(self, key: str, value: Any) -> None:

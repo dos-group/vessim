@@ -11,12 +11,7 @@ Vessim is a co-simulation testbed for carbon-aware applications and systems. It 
 ### Environment Setup
 ```bash
 # Install with development dependencies
-pip install -e .[dev,sil]  # Development + SiL dependencies
-pip install -e .[docs]     # Documentation dependencies
-pip install -e .[examples] # Notebook execution dependencies
-
-# Or with uv (faster)
-uv pip install -e ".[dev,sil]"
+uv pip install -e ".[dev,docs,sil,examples]"
 ```
 
 ### Code Quality

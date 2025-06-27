@@ -15,4 +15,4 @@ Tutorials
 .. note::
 
     All tutorials are available as executable Jupyter Notebooks in the 
-    `examples/ directory <https://github.com/dos-group/vessim/tree/main/examples>`_.
+    `docs/tutorials directory <https://github.com/dos-group/vessim/tree/main/docs/tutorials>`_.

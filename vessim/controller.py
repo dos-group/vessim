@@ -37,14 +37,16 @@ class Controller(ABC):
         pass
 
     @abstractmethod
-    def step(self, time: datetime, p_delta: float, e_delta: float, state: dict) -> None:
+    def step(self, time: datetime, p_delta: float, p_grid: float, state: dict) -> None:
         """Performs a simulation step.
 
         Args:
             time: Current datetime.
             p_delta: Power delta in W based on the consumption and production of all actors.
-            e_delta: Total energy in Ws that has been drawn from/ fed to the utility grid
-                in the previous time step.
+            p_grid: Power in W that has been drawn from/ fed to the utility grid
+                in the previous time step (after energy storage charging/discharging).
+                Positive values indicate power fed to the grid, negative values indicate
+                power drawn from the grid.
             state: Contains the last state dictionaries by all actors, the policy, and the storage
                 in the microgrid. The state dictionary is defined by the microgrid components and
                 can contain any information about their custom defined state.
@@ -69,7 +71,7 @@ class Monitor(Controller):
             self.outpath = Path(outfile).expanduser()
         self._fieldnames: Optional[list] = None
 
-        self.monitor_log: dict[datetime, dict] = defaultdict(dict)
+        self.log: dict[datetime, dict] = defaultdict(dict)
         self.custom_monitor_fns: list[Callable] = []
 
         if grid_signals is not None:
@@ -83,15 +85,15 @@ class Monitor(Controller):
     def add_monitor_fn(self, fn: Callable[[float], dict[str, Any]]):
         self.custom_monitor_fns.append(fn)
 
-    def step(self, time: datetime, p_delta: float, e_delta: float, state: dict) -> None:
+    def step(self, time: datetime, p_delta: float, p_grid: float, state: dict) -> None:
         log_entry = dict(
             p_delta=p_delta,
-            e_delta=e_delta,
+            p_grid=p_grid,
         )
         log_entry.update(state)
         for monitor_fn in self.custom_monitor_fns:
             log_entry.update(monitor_fn(time))
-        self.monitor_log[time] = log_entry
+        self.log[time] = log_entry
 
         if self.outpath:
             if not self._fieldnames:
@@ -111,7 +113,7 @@ class Monitor(Controller):
                     writer.writerow(log_dict)
 
     def to_csv(self, out_path: str):
-        df = pd.DataFrame({k: _flatten_dict(v) for k, v in self.monitor_log.items()}).T
+        df = pd.DataFrame({k: _flatten_dict(v) for k, v in self.log.items()}).T
         df.to_csv(out_path)
 
 
@@ -181,6 +183,8 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         p_delta = _get_val(inputs, "p_delta")
         last_e = self.e
         self.e = _get_val(inputs, "e")
+        e_delta = self.e - last_e
+        p_grid = e_delta / self.step_size if self.step_size else e_delta
         actor_keys = [k for k in inputs.keys() if k.startswith("actor")]
         actors: defaultdict[str, Any] = defaultdict(dict)
         for k in actor_keys:
@@ -188,7 +192,7 @@ class _ControllerSim(mosaik_api_v3.Simulator):
             actors[actor_name] = _get_val(inputs, k)
         state = dict(actors)
         state.update(_get_val(inputs, "state"))
-        return p_delta, self.e - last_e, state
+        return p_delta, p_grid, state
 
 
 def _get_val(inputs: dict, key: str) -> Any:
