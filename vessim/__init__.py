@@ -3,6 +3,7 @@
 from vessim.actor import ActorBase, Actor
 from vessim.controller import Controller, Monitor
 from vessim.cosim import Microgrid, Environment
+from vessim.plot import plot_trace, plot_microgrid_trace
 from vessim.policy import MicrogridPolicy, DefaultMicrogridPolicy
 from vessim.signal import Signal, Trace, ConstantSignal, CollectorSignal
 from vessim.storage import Storage, SimpleBattery, ClcBattery
@@ -23,6 +24,8 @@ __all__ = [
     "Storage",
     "ClcBattery",
     "SimpleBattery",
+    "plot_trace",
+    "plot_microgrid_trace",
 ]
 
 try:
