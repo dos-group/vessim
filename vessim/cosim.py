@@ -36,7 +36,10 @@ class Microgrid:
             if actor_step_size % step_size != 0:
                 raise ValueError("Actor step size has to be a multiple of grids step size.")
             actor_sim = world.start(
-                "Actor", sim_id=f"{self.name}.actor.{actor.name}", clock=clock, step_size=actor_step_size
+                "Actor",
+                sim_id=f"{self.name}.actor.{actor.name}",
+                clock=clock,
+                step_size=actor_step_size,
             )
             # We initialize all actors before the grid simulation to make sure that
             # there is already a valid p_delta at step 0
@@ -159,7 +162,9 @@ class Environment:
                 # Connect to actors for state
                 for actor_name, actor_entity in microgrid.actor_entities:
                     self.world.connect(
-                        actor_entity, controller_entity, ("state", f"{microgrid.name}.actor.{actor_name}")
+                        actor_entity,
+                        controller_entity,
+                        ("state", f"{microgrid.name}.actor.{actor_name}"),
                     )
 
                 # Connect to storage for set_parameters and state/energy feedback

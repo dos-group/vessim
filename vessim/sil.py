@@ -120,6 +120,7 @@ class Broker:
 class SilController(Controller):
     def __init__(
         self,
+        microgrids: list[Microgrid],
         api_routes: Callable,
         grid_signals: Optional[list[Signal]] = None,  # TODO temporary fix
         request_collectors: Optional[dict[str, Callable]] = None,
@@ -128,7 +129,7 @@ class SilController(Controller):
         request_collector_interval: float = 1,
         step_size: Optional[int] = None,
     ):
-        super().__init__(step_size=step_size)
+        super().__init__(microgrids, step_size=step_size)
         self.api_routes = api_routes
         self.grid_signals = grid_signals
         self.request_collectors = request_collectors if request_collectors is not None else {}

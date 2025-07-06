@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Optional
-from abc import ABC, abstractmethod
 
 import mosaik_api_v3  # type: ignore
 

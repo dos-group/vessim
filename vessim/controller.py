@@ -104,7 +104,7 @@ class Monitor(Controller):
 
     def _write_microgrid_csv(self, time: datetime, mg_name: str, log_entry: dict) -> None:
         """Write log entry to a microgrid-specific CSV file."""
-        csv_path = self.outdir / f"{mg_name}.csv"
+        csv_path = f"{self.outdir}/{mg_name}.csv"
         log_dict = _flatten_dict(log_entry)
         log_dict["time"] = time
 
@@ -115,8 +115,10 @@ class Monitor(Controller):
         else:
             mode, write_header = "a", False
 
-        with csv_path.open(mode, newline='') as csvfile:
-            writer = DictWriter(csvfile, fieldnames=self._fieldnames[mg_name])
+        with Path(csv_path).open(mode, newline='') as csvfile:
+            fieldnames = self._fieldnames[mg_name]
+            assert fieldnames is not None
+            writer = DictWriter(csvfile, fieldnames=fieldnames)
             if write_header:
                 writer.writeheader()
             writer.writerow(log_dict)
@@ -133,10 +135,10 @@ class Monitor(Controller):
 
     def to_csv(self, out_path: str | Path, microgrid_name: Optional[str] = None):
         """Export logs to CSV.
-        
+
         Args:
             out_path: Output file path
-            microgrid_name: If specified, export only this microgrid's data. 
+            microgrid_name: If specified, export only this microgrid's data.
                           If None, export all microgrids with microgrid column.
         """
         if microgrid_name:
@@ -158,7 +160,9 @@ class Monitor(Controller):
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # Get all unique microgrid names
-        all_microgrids = {mg_name for microgrids in self.log.values() for mg_name in microgrids.keys()}
+        all_microgrids = {
+            mg_name for microgrids in self.log.values() for mg_name in microgrids.keys()
+        }
 
         # Export each microgrid separately
         for mg_name in all_microgrids:

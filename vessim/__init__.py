@@ -32,7 +32,7 @@ except ImportError:
     pass
 
 try:
-    from vessim.plot import plot_trace, plot_microgrid_trace
+    from vessim.plot import plot_trace, plot_microgrid_trace  # noqa: F401
 
     __all__.extend(["plot_trace", "plot_microgrid_trace"])
 except ImportError:

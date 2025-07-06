@@ -89,82 +89,29 @@ def plot_microgrid_trace(
     df: pd.DataFrame,
     *,
     actors: Optional[List[str]] = None,
-    include_system_power: bool = True,
-    include_storage: bool = True,
-    height: int = 600,
     actor_colors: Optional[dict] = None,
-    layout: str = "detailed",
 ) -> Figure:
-    """Plot microgrid trace with actors, system power, and battery state.
-
-    Creates a visualization with configurable layout:
-    - "detailed": 3 subplots (actors, system power, storage) - comprehensive view
-    - "overview": 2 subplots (actors+system power combined, storage) - compact view
+    """Plot microgrid trace with 3 rows: actors, system power, and battery SoC.
 
     Args:
         df: Simulation results DataFrame with time index and power columns
         actors: List of actor names to plot. If None, auto-detects from columns ending in '.p'
-        include_system_power: Whether to include the system power (p_delta, p_grid)
-        include_storage: Whether to include the storage subplot (storage.soc)
-        height: Total plot height in pixels
         actor_colors: Dict mapping actor names to colors. If None, uses default Plotly colors
-        layout: "detailed" for 3 subplots, "overview" for 2 subplots (default: "detailed")
 
     Returns:
-        Plotly Figure with interactive subplots
-
-    Examples:
-        >>> # Detailed 3-subplot view (default)
-        >>> fig = plot_microgrid_trace(df)
-        >>> fig.show()
-
-        >>> # Compact 2-subplot overview (like notebook)
-        >>> fig = plot_microgrid_trace(df, layout="overview")
-        >>> fig.show()
-
-        >>> # Plot only specific actors
-        >>> fig = plot_microgrid_trace(df, actors=["server", "solar_panel"])
-        >>> fig.show()
+        Plotly Figure with 3 subplots
     """
     # Auto-detect actors if not specified
     if actors is None:
         actors = [col.replace(".p", "") for col in df.columns if col.endswith(".p")]
 
-    # Handle layout options
-    if layout == "overview":
-        # Use overview layout: combine actors and system power in one subplot
-        has_storage = include_storage and "storage.soc" in df.columns
-        subplot_count = 2 if has_storage else 1
-
-        subplot_titles = ["Power Overview"]
-        if has_storage:
-            subplot_titles.append("Battery State of Charge")
-
-        row_heights = [0.67, 0.33] if subplot_count == 2 else [1.0]
-
-    else:  # detailed layout
-        # Determine subplot configuration - separate subplots
-        subplot_count = 1  # Always include actors
-        if include_system_power:
-            subplot_count += 1
-        if include_storage and "storage.soc" in df.columns:
-            subplot_count += 1
-
-        # Create subplot titles
-        subplot_titles = ["Actor Power"]
-        if include_system_power:
-            subplot_titles.append("System Power")
-        if include_storage and "storage.soc" in df.columns:
-            subplot_titles.append("Battery State of Charge")
-
-        # Calculate height ratios - give more space to actors plot
-        row_heights = (
-            [0.5] + [0.5 / (subplot_count - 1)] * (subplot_count - 1) if subplot_count > 1 else [1]
-        )
+    # Always create 3 subplots
+    subplot_titles = ["Actor Power", "System Power", "Battery State of Charge"]
+    row_heights = [0.4, 0.3, 0.3]
 
     # Create subplots
     fig = make_subplots(
-        rows=subplot_count,
+        rows=3,
         cols=1,
         shared_xaxes=True,
         subplot_titles=subplot_titles,
@@ -183,9 +130,7 @@ def plot_microgrid_trace(
         "battery": "#9467bd",  # purple
     }
 
-    current_row = 1
-
-    # 1. Actor Power Plot (and system power if overview layout)
+    # 1. Actor Power Plot (Row 1)
     for actor in actors:
         actor_col = f"{actor}.p"
         if actor_col not in df.columns:
@@ -200,12 +145,6 @@ def plot_microgrid_trace(
 
         # Create display name
         display_name = actor.replace("_", " ").title()
-        if layout == "overview":
-            # Match notebook naming
-            if "server" in actor.lower():
-                display_name = f"{display_name} power"
-            elif "solar" in actor.lower():
-                display_name = f"{display_name} power"
 
         fig.add_trace(
             go.Scatter(
@@ -215,79 +154,56 @@ def plot_microgrid_trace(
                 line=dict(color=color) if color else {},
                 hovertemplate=f"{actor}: %{{y:.1f}} W<extra></extra>",
             ),
-            row=current_row,
+            row=1,
             col=1,
         )
 
-    # Add system power to first subplot if overview layout
-    if layout == "overview" and include_system_power:
-        if "p_delta" in df.columns:
-            fig.add_trace(
-                go.Scatter(
-                    x=df.index, y=df["p_delta"], name="Delta power", line=dict(color="gray")
-                ),
-                row=current_row,
-                col=1,
-            )
-
-        if "p_grid" in df.columns:
-            fig.add_trace(
-                go.Scatter(x=df.index, y=df["p_grid"], name="Grid power", line=dict(color="blue")),
-                row=current_row,
-                col=1,
-            )
-
     # Format first subplot
-    fig.update_yaxes(title_text="Power (W)", row=current_row, col=1)
+    fig.update_yaxes(title_text="Power (W)", row=1, col=1)
     fig.update_xaxes(
-        showgrid=True, gridwidth=1, gridcolor="rgba(128,128,128,0.3)", row=current_row, col=1
+        showgrid=True, gridwidth=1, gridcolor="rgba(128,128,128,0.3)", row=1, col=1
     )
     fig.update_yaxes(
-        showgrid=True, gridwidth=1, gridcolor="rgba(128,128,128,0.3)", row=current_row, col=1
+        showgrid=True, gridwidth=1, gridcolor="rgba(128,128,128,0.3)", row=1, col=1
     )
 
-    current_row += 1
-
-    # 2. System Power Plot (detailed layout only)
-    if layout == "detailed" and include_system_power and current_row <= subplot_count:
-        if "p_delta" in df.columns:
-            fig.add_trace(
-                go.Scatter(
-                    x=df.index,
-                    y=df["p_delta"],
-                    name="Delta Power",
-                    line=dict(color="gray"),
-                    hovertemplate="Delta Power: %{y:.1f} W<extra></extra>",
-                ),
-                row=current_row,
-                col=1,
-            )
-
-        if "p_grid" in df.columns:
-            fig.add_trace(
-                go.Scatter(
-                    x=df.index,
-                    y=df["p_grid"],
-                    name="Grid Power",
-                    line=dict(color="blue"),
-                    hovertemplate="Grid Power: %{y:.1f} W<extra></extra>",
-                ),
-                row=current_row,
-                col=1,
-            )
-
-        fig.update_yaxes(title_text="Power (W)", row=current_row, col=1)
-        fig.update_xaxes(
-            showgrid=True, gridwidth=1, gridcolor="rgba(128,128,128,0.3)", row=current_row, col=1
-        )
-        fig.update_yaxes(
-            showgrid=True, gridwidth=1, gridcolor="rgba(128,128,128,0.3)", row=current_row, col=1
+    # 2. System Power Plot (Row 2)
+    if "p_delta" in df.columns:
+        fig.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=df["p_delta"],
+                name="Delta Power",
+                line=dict(color="gray"),
+                hovertemplate="Delta Power: %{y:.1f} W<extra></extra>",
+            ),
+            row=2,
+            col=1,
         )
 
-        current_row += 1
+    if "p_grid" in df.columns:
+        fig.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=df["p_grid"],
+                name="Grid Power",
+                line=dict(color="blue"),
+                hovertemplate="Grid Power: %{y:.1f} W<extra></extra>",
+            ),
+            row=2,
+            col=1,
+        )
 
-    # 3. Battery State of Charge Plot
-    if include_storage and "storage.soc" in df.columns and current_row <= subplot_count:
+    fig.update_yaxes(title_text="Power (W)", row=2, col=1)
+    fig.update_xaxes(
+        showgrid=True, gridwidth=1, gridcolor="rgba(128,128,128,0.3)", row=2, col=1
+    )
+    fig.update_yaxes(
+        showgrid=True, gridwidth=1, gridcolor="rgba(128,128,128,0.3)", row=2, col=1
+    )
+
+    # 3. Battery State of Charge Plot (Row 3)
+    if "storage.soc" in df.columns:
         # Main SoC trace
         fig.add_trace(
             go.Scatter(
@@ -295,11 +211,11 @@ def plot_microgrid_trace(
                 y=df["storage.soc"] * 100,
                 name="Battery SoC",
                 line=dict(color="green"),
-                fill="tonexty" if len(fig.data) == 0 else "tozeroy",
+                fill="tozeroy",
                 fillcolor="rgba(0,128,0,0.1)",
                 hovertemplate="SoC: %{y:.1f}%<extra></extra>",
             ),
-            row=current_row,
+            row=3,
             col=1,
         )
 
@@ -312,33 +228,28 @@ def plot_microgrid_trace(
                 line_color="gray",
                 annotation_text=f"Min SoC ({min_soc_value:.0f}%)",
                 annotation_position="top right",
-                row=current_row,
+                row=3,
                 col=1,
             )
 
-        fig.update_yaxes(title_text="State of Charge (%)", range=[0, 100], row=current_row, col=1)
+        fig.update_yaxes(title_text="State of Charge (%)", range=[0, 100], row=3, col=1)
         fig.update_xaxes(
-            showgrid=True, gridwidth=1, gridcolor="rgba(128,128,128,0.3)", row=current_row, col=1
+            showgrid=True, gridwidth=1, gridcolor="rgba(128,128,128,0.3)", row=3, col=1
         )
         fig.update_yaxes(
-            showgrid=True, gridwidth=1, gridcolor="rgba(128,128,128,0.3)", row=current_row, col=1
+            showgrid=True, gridwidth=1, gridcolor="rgba(128,128,128,0.3)", row=3, col=1
         )
 
     # Update overall layout
     fig.update_layout(
-        height=height,
+        height=800,
         hovermode="x unified",
         showlegend=True,
-        legend=(
-            dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-            if layout == "detailed"
-            else None
-        ),
-        margin=dict(l=0, t=60, b=0, r=0) if layout == "overview" else None,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
 
     # Format x-axis for bottom subplot only
-    fig.update_xaxes(title_text="Time", row=subplot_count, col=1)
+    fig.update_xaxes(title_text="Time", row=3, col=1)
 
     return fig
 
