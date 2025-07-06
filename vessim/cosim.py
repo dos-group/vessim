@@ -138,22 +138,13 @@ class Environment:
     def _initialize_controllers(self):
         """Initialize all controllers after all microgrids have been added."""
         for controller in self.controllers:
-            # Find the minimum step size among all microgrids this controller manages
-            controller_step_size = controller.step_size
-            if controller_step_size is None:
-                # Use minimum step size from managed microgrids
-                controller_step_size = (
-                    min(mg.step_size for mg in controller.microgrids.values())
-                    if controller.microgrids
-                    else 1
-                )
 
             # Create controller simulator
             controller_sim = self.world.start(
                 "Controller",
                 sim_id=controller.name,
                 clock=self.clock,
-                step_size=controller_step_size,
+                step_size=self.step_size,
             )
             controller_entity = controller_sim.Controller(
                 controller=controller,
@@ -168,7 +159,7 @@ class Environment:
                 # Connect to actors for state
                 for actor_name, actor_entity in microgrid.actor_entities:
                     self.world.connect(
-                        actor_entity, controller_entity, ("state", f"actor.{actor_name}")
+                        actor_entity, controller_entity, ("state", f"{microgrid.name}.actor.{actor_name}")
                     )
 
                 # Connect to storage for set_parameters and state/energy feedback
