@@ -28,18 +28,24 @@ The *Monitor* periodically stores the energy system state in a CSV file.
 ```python
 import vessim as vs
 
-environment = vs.Environment(sim_start="2022-06-15")
-environment.add_microgrid(
+environment = vs.Environment(sim_start="2022-06-15", step_size=300)  # 5 minute step size
+
+microgrid = environment.add_microgrid(
+    name="datacenter",
     actors=[
-        vs.Actor(vs.ConstantSignal(value=-700), name="server"),  # negative = consumes power
-        vs.Actor(vs.Trace.load("solcast2022_global", column="Berlin"), name="solar_panel", params={"scale": 5000}),  # 5kW maximum
+        vs.Actor(name="server", signal=vs.ConstantSignal(value=-700)),  # negative = consumes power
+        vs.Actor(name="solar_panel", signal=vs.Trace.load("solcast2022_global", column="Berlin", params={"scale": 5000})),  # 5kW maximum
     ],
-    controllers=[vs.Monitor(outfile="result.csv")],
     storage=vs.SimpleBattery(capacity=100),
-    step_size=300,  # 5 minute step size
 )
+
+# Write results to CSV
+monitor = vs.Monitor([microgrid], outdir="./results")
+environment.add_controller(monitor)
+
 environment.run(until=24 * 3600)  # 24h
 ```
+
 
 
 ## Installation

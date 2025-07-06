@@ -25,6 +25,7 @@ poetry.lock
 
 # result.csv that is printed after each sim
 result.csv
+results
 
 # Terraform files
 *.tfstate

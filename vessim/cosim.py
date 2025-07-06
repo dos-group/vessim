@@ -18,14 +18,14 @@ class Microgrid:
         self,
         world: mosaik.World,
         clock: Clock,
-        controllers: list[Controller],
         actors: list[Actor],
         policy: MicrogridPolicy,
         storage: Optional[Storage] = None,
         step_size: int = 1,  # global default
+        name: Optional[str] = None,
     ):
+        self.name = name or f"microgrid_{len(actors)}_{id(self)}"
         self.actors = actors
-        self.controllers = controllers
         self.storage = storage
         self.policy = policy
         self.step_size = step_size
@@ -36,56 +36,34 @@ class Microgrid:
             if actor_step_size % step_size != 0:
                 raise ValueError("Actor step size has to be a multiple of grids step size.")
             actor_sim = world.start(
-                "Actor", sim_id=actor.name, clock=clock, step_size=actor_step_size
+                "Actor", sim_id=f"{self.name}.actor.{actor.name}", clock=clock, step_size=actor_step_size
             )
             # We initialize all actors before the grid simulation to make sure that
             # there is already a valid p_delta at step 0
             actor_entity = actor_sim.Actor(actor=actor)
             actor_names_and_entities.append((actor.name, actor_entity))
 
-        grid_sim = world.start("Grid", step_size=step_size)
+        grid_sim = world.start("Grid", sim_id=f"{self.name}.grid", step_size=step_size)
         grid_entity = grid_sim.Grid()
         for actor_name, actor_entity in actor_names_and_entities:
             world.connect(actor_entity, grid_entity, "p")
 
-        controller_entities = []
-        for controller in controllers:
-            controller.start(self)
-            controller_step_size = controller.step_size if controller.step_size else step_size
-            if controller_step_size % step_size != 0:
-                raise ValueError("Controller step size has to be a multiple of grids step size.")
-            controller_sim = world.start(
-                "Controller", sim_id=controller.name, clock=clock, step_size=controller_step_size
-            )
-            controller_entity = controller_sim.Controller(controller=controller)
-            world.connect(grid_entity, controller_entity, "p_delta")
-            for actor_name, actor_entity in actor_names_and_entities:
-                world.connect(actor_entity, controller_entity, ("state", f"actor.{actor_name}"))
-            controller_entities.append(controller_entity)
+        # Store grid and actor entities for later controller connections
+        self.grid_entity = grid_entity
+        self.actor_entities = actor_names_and_entities
 
-        storage_sim = world.start("Storage", step_size=step_size)
+        storage_sim = world.start("Storage", sim_id=f"{self.name}.storage", step_size=step_size)
         storage_entity = storage_sim.Storage(storage=storage, policy=policy)
         world.connect(grid_entity, storage_entity, "p_delta")
+        self.storage_entity = storage_entity
+
         initial_state = {}
         initial_state["policy"] = policy.state()
         if storage:
             initial_state["storage"] = storage.state()
-        for controller_entity in controller_entities:
-            world.connect(controller_entity, storage_entity, "set_parameters")
-            world.connect(
-                storage_entity,
-                controller_entity,
-                "e",
-                time_shifted=True,
-                initial_data={"e": 0.0},
-            )
-            world.connect(
-                storage_entity,
-                controller_entity,
-                "state",
-                time_shifted=True,
-                initial_data={"state": initial_state},
-            )
+        self.initial_state = initial_state
+
+        # Controllers are now managed at Environment level, not per microgrid
 
     def __getstate__(self) -> dict:
         """Returns a Dict with the current state of the microgrid for monitoring."""
@@ -114,18 +92,19 @@ class Environment:
         "Storage": {"python": "vessim.cosim:_StorageSim"},
     }
 
-    def __init__(self, sim_start):
+    def __init__(self, sim_start, step_size: int = 1):
         self.clock = Clock(sim_start)
-        self.microgrids = []
+        self.step_size = step_size
+        self.microgrids: list[Microgrid] = []
+        self.controllers: list[Controller] = []  # Track controllers at environment level
         self.world = mosaik.World(self.COSIM_CONFIG, skip_greetings=True)
 
     def add_microgrid(
         self,
-        controllers: Optional[list[Controller]] = None,
         actors: list[Actor],
         storage: Optional[Storage] = None,
         policy: Optional[MicrogridPolicy] = None,
-        step_size: int = 1,  # global default
+        name: Optional[str] = None,
     ):
         if not actors:
             raise ValueError("There should be at least one actor in the Microgrid.")
@@ -134,13 +113,80 @@ class Environment:
             self.world,
             self.clock,
             actors,
-            controllers if controllers is not None else [],
             policy if policy is not None else DefaultMicrogridPolicy(),
             storage,
-            step_size,
+            self.step_size,
+            name,
         )
         self.microgrids.append(microgrid)
         return microgrid
+
+    def add_controller(self, controller: Controller):
+        """Add a controller to the environment.
+
+        Args:
+            controller: The controller instance (already initialized with microgrids)
+        """
+        if controller not in self.controllers:
+            self.controllers.append(controller)
+
+        # Validate that all microgrids are part of this environment
+        for microgrid in controller.microgrids.values():
+            if microgrid not in self.microgrids:
+                raise ValueError(f"Microgrid '{microgrid.name}' is not part of this environment")
+
+    def _initialize_controllers(self):
+        """Initialize all controllers after all microgrids have been added."""
+        for controller in self.controllers:
+            # Find the minimum step size among all microgrids this controller manages
+            controller_step_size = controller.step_size
+            if controller_step_size is None:
+                # Use minimum step size from managed microgrids
+                controller_step_size = (
+                    min(mg.step_size for mg in controller.microgrids.values())
+                    if controller.microgrids
+                    else 1
+                )
+
+            # Create controller simulator
+            controller_sim = self.world.start(
+                "Controller",
+                sim_id=controller.name,
+                clock=self.clock,
+                step_size=controller_step_size,
+            )
+            controller_entity = controller_sim.Controller(
+                controller=controller,
+                microgrid_names=list(controller.microgrids.keys())
+            )
+
+            # Connect controller to all managed microgrids
+            for microgrid in controller.microgrids.values():
+                # Connect to grid for p_delta
+                self.world.connect(microgrid.grid_entity, controller_entity, "p_delta")
+
+                # Connect to actors for state
+                for actor_name, actor_entity in microgrid.actor_entities:
+                    self.world.connect(
+                        actor_entity, controller_entity, ("state", f"actor.{actor_name}")
+                    )
+
+                # Connect to storage for set_parameters and state/energy feedback
+                self.world.connect(controller_entity, microgrid.storage_entity, "set_parameters")
+                self.world.connect(
+                    microgrid.storage_entity,
+                    controller_entity,
+                    "e",
+                    time_shifted=True,
+                    initial_data={"e": 0.0},
+                )
+                self.world.connect(
+                    microgrid.storage_entity,
+                    controller_entity,
+                    "state",
+                    time_shifted=True,
+                    initial_data={"state": microgrid.initial_state},
+                )
 
     def run(
         self,
@@ -153,6 +199,10 @@ class Environment:
             # there is no integer representing infinity in python
             until = float("inf")  # type: ignore
         assert until is not None
+
+        # Initialize controllers before running simulation
+        self._initialize_controllers()
+
         if rt_factor:
             disable_rt_warnings(behind_threshold)
         try:
