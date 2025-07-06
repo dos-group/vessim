@@ -203,34 +203,47 @@ def plot_microgrid_trace(
     )
 
     # 3. Battery State of Charge Plot (Row 3)
-    if "storage.soc" in df.columns:
-        # Main SoC trace
-        fig.add_trace(
-            go.Scatter(
-                x=df.index,
-                y=df["storage.soc"] * 100,
-                name="Battery SoC",
-                line=dict(color="green"),
-                fill="tozeroy",
-                fillcolor="rgba(0,128,0,0.1)",
-                hovertemplate="SoC: %{y:.1f}%<extra></extra>",
-            ),
-            row=3,
-            col=1,
-        )
-
-        # Add minimum SoC line if available
-        if "storage.min_soc" in df.columns:
-            min_soc_value = df["storage.min_soc"].iloc[0] * 100
-            fig.add_hline(
-                y=min_soc_value,
-                line_dash="dash",
-                line_color="gray",
-                annotation_text=f"Min SoC ({min_soc_value:.0f}%)",
-                annotation_position="top right",
+    # Find SoC columns (handle both old and new naming patterns)
+    soc_columns = [col for col in df.columns if col.endswith('.storage.soc') or col == 'storage.soc']
+    min_soc_columns = [col for col in df.columns if col.endswith('.storage.min_soc') or col == 'storage.min_soc']
+    
+    if soc_columns:
+        # Plot SoC traces for each storage system
+        for soc_col in soc_columns:
+            # Extract microgrid name from column if hierarchical naming
+            if '.' in soc_col and soc_col != 'storage.soc':
+                mg_name = soc_col.split('.')[0]
+                display_name = f"{mg_name} Battery SoC"
+            else:
+                display_name = "Battery SoC"
+            
+            fig.add_trace(
+                go.Scatter(
+                    x=df.index,
+                    y=df[soc_col] * 100,
+                    name=display_name,
+                    line=dict(color="green"),
+                    fill="tozeroy",
+                    fillcolor="rgba(0,128,0,0.1)",
+                    hovertemplate="SoC: %{y:.1f}%<extra></extra>",
+                ),
                 row=3,
                 col=1,
             )
+
+        # Add minimum SoC lines if available
+        for min_soc_col in min_soc_columns:
+            if min_soc_col in df.columns:
+                min_soc_value = df[min_soc_col].iloc[0] * 100
+                fig.add_hline(
+                    y=min_soc_value,
+                    line_dash="dash",
+                    line_color="gray",
+                    annotation_text=f"Min SoC ({min_soc_value:.0f}%)",
+                    annotation_position="top right",
+                    row=3,
+                    col=1,
+                )
 
         fig.update_yaxes(title_text="State of Charge (%)", range=[0, 100], row=3, col=1)
         fig.update_xaxes(

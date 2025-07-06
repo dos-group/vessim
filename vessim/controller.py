@@ -102,7 +102,7 @@ class Monitor(Controller):
             if self.outdir:
                 self._write_microgrid_csv(time, mg_name, log_entry)
 
-    def _write_microgrid_csv(self, time: datetime, mg_name: str, log_entry: dict, outdir: Optional[str]) -> None:
+    def _write_microgrid_csv(self, time: datetime, mg_name: str, log_entry: dict, outdir: Optional[str] = None) -> None:
         """Write log entry to a microgrid-specific CSV file."""
         if outdir is None:
             outdir = self.outdir

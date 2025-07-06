@@ -81,8 +81,6 @@ class Microgrid:
         Mosaik already has a cleanup functionality but this is an additional safety net
         in case the user interrupts the simulation before entering the mosiak event loop.
         """
-        for controller in self.controllers:
-            controller.finalize()
         for actor in self.actors:
             actor.finalize()
 
