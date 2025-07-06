@@ -9,41 +9,20 @@ import mosaik_api_v3  # type: ignore
 from vessim.signal import Signal
 
 
-class ActorBase(ABC):
-    """Abstract base class representing a power consumer or producer."""
-
-    def __init__(self, name: str, step_size: Optional[int] = None) -> None:
-        self.name = name
-        self.step_size = step_size
-
-    @abstractmethod
-    def p(self, now: datetime) -> float:
-        """Current power consumption/production to be used in the grid simulation."""
-
-    def state(self, now: datetime) -> dict:
-        """Current state of the actor to be used in controllers."""
-        return {}
-
-    def finalize(self) -> None:
-        """Perform any finalization tasks for the consumer.
-
-        This method can be overridden by subclasses to implement necessary
-        finalization steps.
-        """
-        return
-
-
-class Actor(ActorBase):
-    """Actor that represents a consumer of producer based on a single Signal."""
+class Actor:
+    """Consumer or producer based on a Signal."""
 
     def __init__(self, name: str, signal: Signal, step_size: Optional[int] = None) -> None:
-        super().__init__(name, step_size)
+        self.name = name
+        self.step_size = step_size
         self.signal = signal
 
     def p(self, now: datetime) -> float:
+        """Current power consumption/production."""
         return self.signal.now(at=now)
 
     def state(self, now: datetime) -> dict:
+        """Current state of the actor which is passed to controllers on every step."""
         return {
             "p": self.p(now),
         }

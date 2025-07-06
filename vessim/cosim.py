@@ -6,7 +6,7 @@ from typing import Optional, Literal
 import mosaik  # type: ignore
 import mosaik_api_v3  # type: ignore
 
-from vessim.actor import ActorBase
+from vessim.actor import Actor
 from vessim.controller import Controller
 from vessim.storage import Storage
 from vessim.policy import MicrogridPolicy, DefaultMicrogridPolicy
@@ -18,8 +18,8 @@ class Microgrid:
         self,
         world: mosaik.World,
         clock: Clock,
-        actors: list[ActorBase],
         controllers: list[Controller],
+        actors: list[Actor],
         policy: MicrogridPolicy,
         storage: Optional[Storage] = None,
         step_size: int = 1,  # global default
@@ -121,8 +121,8 @@ class Environment:
 
     def add_microgrid(
         self,
-        actors: list[ActorBase],
         controllers: Optional[list[Controller]] = None,
+        actors: list[Actor],
         storage: Optional[Storage] = None,
         policy: Optional[MicrogridPolicy] = None,
         step_size: int = 1,  # global default
