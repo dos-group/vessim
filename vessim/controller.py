@@ -102,9 +102,11 @@ class Monitor(Controller):
             if self.outdir:
                 self._write_microgrid_csv(time, mg_name, log_entry)
 
-    def _write_microgrid_csv(self, time: datetime, mg_name: str, log_entry: dict) -> None:
+    def _write_microgrid_csv(self, time: datetime, mg_name: str, log_entry: dict, outdir: Optional[str]) -> None:
         """Write log entry to a microgrid-specific CSV file."""
-        csv_path = f"{self.outdir}/{mg_name}.csv"
+        if outdir is None:
+            outdir = self.outdir
+        csv_path = f"{outdir}/{mg_name}.csv"
         log_dict = _flatten_dict(log_entry)
         log_dict["time"] = time
 
@@ -133,40 +135,11 @@ class Monitor(Controller):
                 records.append(record)
         return records
 
-    def to_csv(self, out_path: str | Path, microgrid_name: Optional[str] = None):
-        """Export logs to CSV.
-
-        Args:
-            out_path: Output file path
-            microgrid_name: If specified, export only this microgrid's data.
-                          If None, export all microgrids with microgrid column.
-        """
-        if microgrid_name:
-            records = self._get_microgrid_records(microgrid_name)
-        else:
-            # Export all microgrids with microgrid column
-            records = []
-            for time, microgrids in self.log.items():
-                for mg_name, mg_data in microgrids.items():
-                    record = {"time": time, "microgrid": mg_name}
-                    record.update(_flatten_dict(mg_data))
-                    records.append(record)
-
-        pd.DataFrame(records).to_csv(out_path, index=False)
-
-    def to_csv_per_microgrid(self, output_dir: str | Path):
-        """Export separate CSV file for each microgrid."""
-        output_dir = Path(output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        # Get all unique microgrid names
-        all_microgrids = {
-            mg_name for microgrids in self.log.values() for mg_name in microgrids.keys()
-        }
-
-        # Export each microgrid separately
-        for mg_name in all_microgrids:
-            self.to_csv(output_dir / f"{mg_name}.csv", microgrid_name=mg_name)
+    def to_csv(self, outdir: str | Path):
+        """Export logs to CSV."""
+        for time, microgrids in self.log.items():
+            for mg_name, log_entry in microgrids.items():
+                self._write_microgrid_csv(time, mg_name, log_entry, outdir=outdir)
 
 
 def _flatten_dict(d: MutableMapping, parent_key: str = "") -> MutableMapping:
