@@ -167,9 +167,9 @@ class Environment:
                 self.world.connect(
                     microgrid.storage_entity,
                     controller_entity,
-                    "e",
+                    "p_grid",
                     time_shifted=True,
-                    initial_data={"e": 0.0},
+                    initial_data={"p_grid": 0.0},
                 )
                 self.world.connect(
                     microgrid.storage_entity,
@@ -246,7 +246,7 @@ class _StorageSim(mosaik_api_v3.Simulator):
             "Storage": {
                 "public": True,
                 "params": ["storage", "policy"],
-                "attrs": ["p_delta", "set_parameters", "e", "state"],
+                "attrs": ["p_delta", "set_parameters", "p_grid", "state"],
             },
         },
     }
@@ -257,7 +257,7 @@ class _StorageSim(mosaik_api_v3.Simulator):
 
     def init(self, sid: str, time_resolution: float = 1.0, **sim_params):
         self.step_size: int = sim_params["step_size"]
-        self.e: float = 0.0
+        self.p_grid: float = 0.0
         self.state: dict = {}
         return self.meta
 
@@ -283,11 +283,11 @@ class _StorageSim(mosaik_api_v3.Simulator):
                             f"Invalid parameter: {key}. Has to start with 'policy:' or 'storage:'."
                         )
 
-        self.e += self.policy.apply(p_delta, duration=self.step_size, storage=self.storage)
+        self.p_grid = self.policy.apply(p_delta, duration=self.step_size, storage=self.storage)
         self.state["policy"] = self.policy.state()
         if self.storage:
             self.state["storage"] = self.storage.state()
         return time + self.step_size
 
     def get_data(self, outputs):
-        return {self.eid: {"e": self.e, "state": self.state}}
+        return {self.eid: {"p_grid": self.p_grid, "state": self.state}}

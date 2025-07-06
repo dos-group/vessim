@@ -216,63 +216,28 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         assert self.step_size is not None
         now = self.clock.to_datetime(time)
 
-        # Parse inputs from all connected microgrids
-        microgrid_states = {}
+        microgrid_states = defaultdict(lambda: {"p_delta": 0.0, "p_grid": 0.0, "state": {}})
 
-        # The inputs now contain data from multiple microgrids
-        # We need to group them by microgrid name
-        input_data = inputs[self.eid]
+        # Add actor values
+        for k, v in inputs[self.eid].items():
+            if k in ['p_delta', 'p_grid', 'state']:
+                continue
+            microgrid = k.split('.')[0]
+            microgrid_states[microgrid]["state"][k] = list(v.values())[0]  # e.g. {'p': -400}
 
-        # Parse p_delta values - one per microgrid
-        p_deltas = input_data.get("p_delta", {})
+        # Add p_delta and p_grid
+        for metric in ['p_delta', 'p_grid']:
+            for full_key, value in inputs[self.eid][metric].items():
+                microgrid = full_key.split('.')[0]
+                microgrid_states[microgrid][metric] = value
 
-        # Parse energy values - one per microgrid
-        energies = input_data.get("e", {})
-
-        # Parse state values - one per microgrid
-        states = input_data.get("state", {})
-
-        # Parse actor states
-        actor_states = defaultdict(lambda: defaultdict(dict))
-        for input_key, values in input_data.items():
-            if input_key.startswith("actor."):
-                parts = input_key.split(".", 2)  # actor.microgrid_name.actor_name
-                if len(parts) == 3:
-                    _, microgrid_name, actor_name = parts
-                    for entity_id, actor_state in values.items():
-                        actor_states[microgrid_name][actor_name] = actor_state
-
-        # Build microgrid states dict
-        for microgrid_name in self.microgrid_names:
-            # Find p_delta for this microgrid
-            p_delta = None
-            for entity_id, value in p_deltas.items():
-                # Need to identify which entity belongs to which microgrid
-                # For now, assume order matches (this needs refinement)
-                p_delta = value
-                break
-
-            # Calculate p_grid from energy
-            current_e = list(energies.values())[0] if energies else 0.0
-            last_e = getattr(self, '_last_e', 0.0)
-            p_grid = (current_e - last_e) / self.step_size if self.step_size else 0.0
-            self._last_e = current_e
-
-            # Get state for this microgrid
-            microgrid_state = list(states.values())[0] if states else {}
-
-            # Add actor states
-            state_with_actors = dict(microgrid_state)
-            state_with_actors.update(actor_states[microgrid_name])
-
-            microgrid_states[microgrid_name] = {
-                "p_delta": p_delta or 0.0,
-                "p_grid": p_grid,
-                "state": state_with_actors
-            }
+        # Add storage state
+        for full_key, value in inputs[self.eid]['state'].items():
+            microgrid = full_key.split('.')[0]
+            microgrid_states[microgrid]["state"][full_key] = value
 
         # Call controller with all microgrid states
-        self.controller.step(now, microgrid_states)
+        self.controller.step(now, dict(microgrid_states))
 
         self.set_parameters = self.controller.set_parameters.copy()
         self.controller.set_parameters = {}
@@ -290,10 +255,7 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         self, inputs: dict[str, dict[str, Any]]
     ) -> tuple[float, float, dict]:
         p_delta = _get_val(inputs, "p_delta")
-        last_e = self.e
-        self.e = _get_val(inputs, "e")
-        e_delta = self.e - last_e
-        p_grid = e_delta / self.step_size if self.step_size else e_delta
+        p_grid = _get_val(inputs, "p_grid")
         actor_keys = [k for k in inputs.keys() if k.startswith("actor")]
         actors: defaultdict[str, Any] = defaultdict(dict)
         for k in actor_keys:
