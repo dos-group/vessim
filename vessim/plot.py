@@ -204,9 +204,11 @@ def plot_microgrid_trace(
 
     # 3. Battery State of Charge Plot (Row 3)
     # Find SoC columns (handle both old and new naming patterns)
-    soc_columns = [col for col in df.columns if col.endswith('.storage.soc') or col == 'storage.soc']
-    min_soc_columns = [col for col in df.columns if col.endswith('.storage.min_soc') or col == 'storage.min_soc']
-    
+    soc_columns = [col for col in df.columns
+                   if col.endswith('.storage.soc') or col == 'storage.soc']
+    min_soc_columns = [col for col in df.columns
+                       if col.endswith('.storage.min_soc') or col == 'storage.min_soc']
+
     if soc_columns:
         # Plot SoC traces for each storage system
         for soc_col in soc_columns:
@@ -216,7 +218,7 @@ def plot_microgrid_trace(
                 display_name = f"{mg_name} Battery SoC"
             else:
                 display_name = "Battery SoC"
-            
+
             fig.add_trace(
                 go.Scatter(
                     x=df.index,

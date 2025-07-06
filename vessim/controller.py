@@ -10,7 +10,6 @@ from collections.abc import Iterator
 from typing import Any, MutableMapping, Optional, Callable, TYPE_CHECKING
 
 import mosaik_api_v3  # type: ignore
-import pandas as pd
 
 from vessim.signal import Signal
 
@@ -102,7 +101,8 @@ class Monitor(Controller):
             if self.outdir:
                 self._write_microgrid_csv(time, mg_name, log_entry)
 
-    def _write_microgrid_csv(self, time: datetime, mg_name: str, log_entry: dict, outdir: Optional[str] = None) -> None:
+    def _write_microgrid_csv(self, time: datetime, mg_name: str, log_entry: dict,
+                             outdir: Optional[str | Path] = None) -> None:
         """Write log entry to a microgrid-specific CSV file."""
         if outdir is None:
             outdir = self.outdir
@@ -135,7 +135,7 @@ class Monitor(Controller):
                 records.append(record)
         return records
 
-    def to_csv(self, outdir: str | Path):
+    def to_csv(self, outdir: Optional[str]):
         """Export logs to CSV."""
         for time, microgrids in self.log.items():
             for mg_name, log_entry in microgrids.items():

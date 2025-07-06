@@ -162,19 +162,19 @@ class SilController(Controller):
 
         Thread(target=self._collect_set_requests_loop, daemon=True).start()
 
-    def step(self, time: datetime, p_delta: float, p_grid: float, state: dict) -> None:
-        assert self.microgrid is not None
-        self.data_pipe_in.send(
-            (
-                time,
-                {
-                    "microgrid": self.microgrid,
-                    "state": state,
-                    "p_delta": p_delta,
-                    "p_grid": p_grid,
-                },
+    def step(self, time: datetime, microgrid_states: dict[str, dict[str, Any]]) -> None:
+        for microgrid_name, microgrid_state in microgrid_states.items():
+            self.data_pipe_in.send(
+                (
+                    time,
+                    {
+                        "microgrid": self.microgrid,
+                        "state": microgrid_state["state"],
+                        "p_delta": microgrid_state["p_delta"],
+                        "p_grid": microgrid_state["p_grid"],
+                    },
+                )
             )
-        )
 
     def _collect_set_requests_loop(self):
         while True:
