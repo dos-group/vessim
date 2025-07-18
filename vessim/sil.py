@@ -8,6 +8,7 @@ from __future__ import annotations
 import time
 from datetime import datetime
 from typing import Optional
+from threading import Timer
 
 import requests
 
@@ -55,6 +56,7 @@ class PrometheusActor(SilActor):
 
         self._last_update: Optional[float] = None
         self._cached_value: float = 0.0
+        self._stop_polling = False
 
         # Set up authentication if provided
         self._auth = None
@@ -64,6 +66,9 @@ class PrometheusActor(SilActor):
 
         # Validate Prometheus connection
         self._validate_connection()
+
+        # Start background polling
+        self._start_background_polling()
 
     def _validate_connection(self) -> None:
         """Validate that we can connect to the Prometheus server."""
@@ -97,12 +102,19 @@ class PrometheusActor(SilActor):
         value = float(results[0]["value"][1])
         return -value if self.consumer else value
 
-    def _should_update(self) -> bool:
-        """Check if we should update the cached value."""
-        now = time.time()
-        if self._last_update is None:
-            return True
-        return (now - self._last_update) >= self.update_interval
+    def _start_background_polling(self) -> None:
+        """Start background polling in a separate thread."""
+        def poll():
+            if not self._stop_polling:
+                try:
+                    self._cached_value = self._fetch_current_value()
+                    self._last_update = time.time()
+                except Exception:
+                    pass  # Keep using cached value
+                # Schedule next poll
+                Timer(self.update_interval, poll).start()
+
+        Timer(0, poll).start()  # Start immediately
 
     def p(self, now: datetime) -> float:
         """Return the current power consumption/production.
@@ -113,9 +125,8 @@ class PrometheusActor(SilActor):
         Returns:
             Current power value in watts (negative for consumption, positive for production)
         """
-        # Update cached value if needed
-        if self._should_update():
-            self._cached_value = self._fetch_current_value()
-            self._last_update = time.time()
-
         return self._cached_value
+
+    def finalize(self) -> None:
+        """Stop background polling and clean up resources."""
+        self._stop_polling = True
