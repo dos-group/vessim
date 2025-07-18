@@ -11,15 +11,11 @@ from typing import Optional
 
 import requests
 
-from vessim.actor import Actor
+from vessim.actor import SilActor
 
 
-class PrometheusActor(Actor):
-    """Actor that pulls energy usage data from a Prometheus instance.
-
-    This actor can only be used in real-time simulations as it queries
-    live metrics from a Prometheus server.
-    """
+class PrometheusActor(SilActor):
+    """Actor that pulls energy usage data from a Prometheus instance."""
 
     def __init__(
         self,
@@ -40,7 +36,7 @@ class PrometheusActor(Actor):
             query: PromQL query to fetch energy usage data
             update_interval: Interval in seconds between metric updates
             timeout: Request timeout in seconds
-            consumer: If True, negates the values read from Prometheus (Vessim represents consumption als negative values)
+            consumer: If True, negates values (Vessim represents consumption as negative)
             username: Username for HTTP Basic Authentication (optional)
             password: Password for HTTP Basic Authentication (optional)
         """
@@ -112,23 +108,11 @@ class PrometheusActor(Actor):
         """Return the current power consumption/production.
 
         Args:
-            now: Current simulation time (must be real-time for this actor)
+            now: Current simulation time
 
         Returns:
             Current power value in watts (negative for consumption, positive for production)
         """
-        # Ensure this is a real-time simulation
-        current_time = datetime.now()
-        sim_time = now
-
-        # Allow some tolerance for real-time simulation timing
-        time_diff = abs((current_time - sim_time).total_seconds())
-        if time_diff > 60:  # More than 1 minute difference
-            raise RuntimeError(
-                f"PrometheusActor can only be used in real-time simulations. "
-                f"Current time: {current_time}, simulation time: {sim_time}"
-            )
-
         # Update cached value if needed
         if self._should_update():
             self._cached_value = self._fetch_current_value()

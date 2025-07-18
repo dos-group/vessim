@@ -74,3 +74,12 @@ class _ActorSim(mosaik_api_v3.Simulator):
 
     def get_data(self, outputs):
         return {self.eid: {"p": self.p, "state": self.state}}
+
+
+class SilActor(Actor):
+    """Marker base class for Software-in-the-Loop actors.
+
+    The Environment class uses this to sanity check that
+    SilActor are only used in real-time simulations.
+    """
+    pass
