@@ -25,10 +25,11 @@ __all__ = [
 ]
 
 try:
-    from vessim.sil import Broker, SilController, WatttimeSignal, get_latest_event  # noqa: F401
+    from vessim.sil import PrometheusActor  # noqa: F401
 
-    __all__.extend(["Broker", "SilController", "WatttimeSignal", "get_latest_event"])
+    __all__.extend(["PrometheusActor"])
 except ImportError:
+    # SiL components require optional dependencies
     pass
 
 try:
