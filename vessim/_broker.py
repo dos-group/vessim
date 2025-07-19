@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Any, Dict, List
 import threading
 from collections import defaultdict, deque
 
@@ -9,31 +8,31 @@ import uvicorn
 
 class DataBroker:
     def __init__(self):
-        self.microgrids: Dict[str, Dict] = {}
-        self.history: Dict[str, deque] = defaultdict(lambda: deque(maxlen=1000))
-        self.commands: List[Dict] = []
+        self.microgrids: dict[str, dict] = {}
+        self.history: dict[str, deque] = defaultdict(lambda: deque(maxlen=1000))
+        self.commands: list[dict] = []
         self.lock = threading.Lock()
         self.status = "stopped"
         self.sim_start_time = None
 
-    def add_microgrid(self, name: str, config: Dict[str, Any]):
+    def add_microgrid(self, name: str, config: dict[str, any]):
         with self.lock:
             self.microgrids[name] = config
 
-    def push_data(self, microgrid_name: str, data: Dict[str, Any]):
+    def push_data(self, microgrid_name: str, data: dict[str, any]):
         with self.lock:
             self.history[microgrid_name].append(data)
             self.status = "running"
             if not self.sim_start_time:
                 self.sim_start_time = datetime.now()
 
-    def get_commands(self) -> List[Dict]:
+    def get_commands(self) -> list[dict]:
         with self.lock:
             commands = self.commands.copy()
             self.commands.clear()
             return commands
 
-    def add_command(self, command: Dict[str, Any]):
+    def add_command(self, command: dict[str, any]):
         with self.lock:
             self.commands.append(command)
 
@@ -43,12 +42,12 @@ app = FastAPI()
 
 # Simulation-facing API
 @app.post("/internal/data/{microgrid_name}")
-def push_data(microgrid_name: str, data: Dict[str, Any]):
+def push_data(microgrid_name: str, data: dict[str, any]):
     broker.push_data(microgrid_name, data)
     return {"status": "ok"}
 
 @app.post("/internal/microgrids/{name}")
-def register_microgrid(name: str, config: Dict[str, Any]):
+def register_microgrid(name: str, config: dict[str, any]):
     broker.add_microgrid(name, config)
     return {"status": "ok"}
 
@@ -97,7 +96,7 @@ def get_status():
         }
 
 @app.put("/api/microgrids/{name}/storage/min_soc")
-def set_min_soc(name: str, value: Dict[str, float]):
+def set_min_soc(name: str, value: dict[str, float]):
     broker.add_command({
         "type": "set_parameter",
         "microgrid": name,

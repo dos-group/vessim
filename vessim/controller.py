@@ -10,7 +10,6 @@ from collections.abc import Iterator
 from typing import Any, MutableMapping, Optional, Callable, TYPE_CHECKING
 import multiprocessing
 import time
-import requests
 
 import mosaik_api_v3  # type: ignore
 
@@ -162,6 +161,12 @@ class RestInterface(Controller):
     def __init__(
         self, microgrids: list["Microgrid"], step_size: Optional[int] = None, broker_port: int = 8502
     ):
+        try:
+            import requests
+            self.requests = requests
+        except ImportError:
+            raise ImportError("RestInterface requires 'requests' package. Install with: pip install requests")
+        
         super().__init__(microgrids, step_size=step_size)
         self.broker_port = broker_port
         self.broker_url = f"http://localhost:{broker_port}"
@@ -172,7 +177,7 @@ class RestInterface(Controller):
         self._register_microgrids()
 
     def _start_broker(self):
-        from vessim.broker import run_broker
+        from vessim._broker import run_broker
         self.broker_process = multiprocessing.Process(
             target=run_broker,
             args=(self.broker_port,),
@@ -189,7 +194,7 @@ class RestInterface(Controller):
                 "actors": [actor.name for actor in mg.actors],
                 "storage": mg.storage.__class__.__name__ if mg.storage else None
             }
-            requests.post(f"{self.broker_url}/internal/microgrids/{mg_name}", json=config)
+            self.requests.post(f"{self.broker_url}/internal/microgrids/{mg_name}", json=config)
 
     def step(self, time: datetime, microgrid_states: dict[str, dict[str, Any]]) -> None:
         """Push data to broker and process commands."""
@@ -202,10 +207,10 @@ class RestInterface(Controller):
                 'p_grid': mg_state['p_grid']
             }
             data.update(mg_state['state'])
-            requests.post(f"{self.broker_url}/internal/data/{mg_name}", json=data)
+            self.requests.post(f"{self.broker_url}/internal/data/{mg_name}", json=data)
 
     def _process_commands(self):
-        response = requests.get(f"{self.broker_url}/internal/commands")
+        response = self.requests.get(f"{self.broker_url}/internal/commands")
         commands = response.json().get("commands", [])
         
         for command in commands:

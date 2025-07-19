@@ -257,7 +257,7 @@ class _GridSim(mosaik_api_v3.Simulator):
         return {self.eid: {"p_delta": self.p_delta}}
 
 
-class _StorageSim(mosaik_api_v3.Simulator):
+class _StorageSim(mosaik_api_v3.Simulator):  # TODO Move this to vessim.storage
     META = {
         "type": "time-based",
         "models": {
