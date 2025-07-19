@@ -10,8 +10,7 @@ from collections.abc import Iterator
 from typing import Any, MutableMapping, Optional, Callable, TYPE_CHECKING
 import multiprocessing
 import time
-import json
-import tempfile
+import requests
 
 import mosaik_api_v3  # type: ignore
 
@@ -157,156 +156,74 @@ def _flatten_dict(d: MutableMapping, parent_key: str = "") -> MutableMapping:
     return dict(items)
 
 
-class Gui(Controller):
-    """Streamlit-based real-time dashboard controller for microgrid visualization."""
+class RestInterface(Controller):
+    """REST API interface for microgrid data and control."""
 
     def __init__(
-        self, microgrids: list["Microgrid"], step_size: Optional[int] = None, port: int = 8501
+        self, microgrids: list["Microgrid"], step_size: Optional[int] = None, broker_port: int = 8502
     ):
         super().__init__(microgrids, step_size=step_size)
-        self.port = port
+        self.broker_port = broker_port
+        self.broker_url = f"http://localhost:{broker_port}"
+        self.broker_process: Optional[multiprocessing.Process] = None
 
-        # File-based communication for GUI
-        self.temp_dir = Path(tempfile.gettempdir()) / f"vessim_gui_{self.port}"
-        self.temp_dir.mkdir(exist_ok=True)
-        self.data_file = self.temp_dir / "data.json"
-        self.command_file = self.temp_dir / "commands.json"
-        self.streamlit_process: Optional[multiprocessing.Process] = None
-        self.app_started = False
-        self.data_history: dict[str, list[dict[str, Any]]] = {}
+        # Start broker
+        self._start_broker()
+        self._register_microgrids()
 
-        # Simulation state that can be controlled from GUI
-        self.parameter_overrides: dict[str, Any] = {}
-
-        # Initialize data files
-        self._initialize_data_files()
-
-        # Start streamlit app
-        self._start_streamlit_app()
-
-    def _initialize_data_files(self) -> None:
-        """Initialize the data and command files."""
-        # Initialize empty data file
-        with open(self.data_file, 'w') as f:
-            json.dump({}, f)
-
-        # Initialize empty command file
-        with open(self.command_file, 'w') as f:
-            json.dump([], f)
-
-    def _start_streamlit_app(self) -> None:
-        """Start the streamlit app in a background process."""
-        self.streamlit_process = multiprocessing.Process(
-            target=_run_streamlit_subprocess,
-            args=(self.port, list(self.microgrids.keys())),
+    def _start_broker(self):
+        from vessim.broker import run_broker
+        self.broker_process = multiprocessing.Process(
+            target=run_broker,
+            args=(self.broker_port,),
             daemon=True
         )
-        self.streamlit_process.start()
+        self.broker_process.start()
+        time.sleep(2)
+        print(f"🌐 API available at: {self.broker_url}")
 
-        # Give streamlit time to start
-        time.sleep(3)
-        self.app_started = True
-        print(f"🌐 Streamlit dashboard available at: http://localhost:{self.port}")
+    def _register_microgrids(self):
+        for mg_name, mg in self.microgrids.items():
+            config = {
+                "name": mg_name,
+                "actors": [actor.name for actor in mg.actors],
+                "storage": mg.storage.__class__.__name__ if mg.storage else None
+            }
+            requests.post(f"{self.broker_url}/internal/microgrids/{mg_name}", json=config)
 
     def step(self, time: datetime, microgrid_states: dict[str, dict[str, Any]]) -> None:
-        """Update the dashboard with new microgrid data and process GUI commands."""
-        if not self.app_started:
-            return
+        """Push data to broker and process commands."""
+        self._process_commands()
 
-        # Process commands from GUI first
-        self._process_gui_commands()
-
-        # Prepare data for file-based communication
         for mg_name, mg_state in microgrid_states.items():
-            # Create a flattened entry that includes timestamp
-            entry: dict[str, Any] = {
+            data = {
                 'time': time.isoformat(),
                 'p_delta': mg_state['p_delta'],
                 'p_grid': mg_state['p_grid']
             }
-            entry.update(mg_state['state'])
+            data.update(mg_state['state'])
+            requests.post(f"{self.broker_url}/internal/data/{mg_name}", json=data)
 
-            # Add to data history
-            if mg_name not in self.data_history:
-                self.data_history[mg_name] = []
-            self.data_history[mg_name].append(entry)
-
-            # Keep only last 100 entries per microgrid
-            if len(self.data_history[mg_name]) > 100:
-                self.data_history[mg_name] = self.data_history[mg_name][-100:]
-
-        # Write data to file for dashboard
-        self._write_data_file()
-
-    def _write_data_file(self) -> None:
-        """Write current data to file for dashboard access."""
-        with open(self.data_file, 'w') as f:
-            json.dump(self.data_history, f)
-
-    def _process_gui_commands(self) -> None:
-        """Process commands received from the GUI."""
-        if self.command_file.exists():
-            with open(self.command_file, 'r') as f:
-                commands = json.load(f)
-
-            # Process all commands
-            for command in commands:
-                self._handle_gui_command(command)
-
-            # Clear processed commands
-            with open(self.command_file, 'w') as f:
-                json.dump([], f)
-
-    def _handle_gui_command(self, command: dict[str, Any]) -> None:
-        """Handle a specific command from the GUI."""
-        command_type = command.get('type')
-
-        if command_type == 'set_parameter':
-            parameter = command.get('parameter')
-            value = command.get('value')
-            if parameter and value is not None:
-                self.set_parameters[parameter] = value
-                print(f"🎛️ Parameter set via GUI: {parameter} = {value}")
-
-        else:
-            print(f"⚠️ Unknown GUI command: {command_type}")
+    def _process_commands(self):
+        response = requests.get(f"{self.broker_url}/internal/commands")
+        commands = response.json().get("commands", [])
+        
+        for command in commands:
+            if command.get("type") == "set_parameter":
+                microgrid = command.get("microgrid")
+                parameter = command.get("parameter")
+                value = command.get("value")
+                if microgrid and parameter and value is not None:
+                    key = f"{microgrid}:{parameter}"
+                    self.set_parameters[key] = value
 
     def finalize(self) -> None:
         """Clean up resources when simulation ends."""
-        # Terminate streamlit process
-        if self.streamlit_process and self.streamlit_process.is_alive():
-            self.streamlit_process.terminate()
-            self.streamlit_process.join(timeout=5)
-            if self.streamlit_process.is_alive():
-                self.streamlit_process.kill()
+        if self.broker_process and self.broker_process.is_alive():
+            self.broker_process.terminate()
+            self.broker_process.join(timeout=2)
 
-        # Clean up temp files
-        if self.data_file.exists():
-            self.data_file.unlink()
-        if self.command_file.exists():
-            self.command_file.unlink()
-        if self.temp_dir.exists():
-            self.temp_dir.rmdir()
-
-        print("🛑 GUI dashboard process terminated")
-
-
-def _run_streamlit_subprocess(port, microgrid_names):
-    """Run streamlit as a proper subprocess."""
-    import subprocess
-    import sys
-    from pathlib import Path
-
-    # Get the path to the GUI app
-    app_path = Path(__file__).parent / "gui" / "app.py"
-
-    # Run streamlit with the app
-    subprocess.run([
-        sys.executable, "-m", "streamlit", "run", str(app_path),
-        "--server.port", str(port),
-        "--server.headless", "true",
-        "--", str(port), ",".join(microgrid_names)
-    ])
+        print("🛑 API broker terminated")
 
 
 class _ControllerSim(mosaik_api_v3.Simulator):
