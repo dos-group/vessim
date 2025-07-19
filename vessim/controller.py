@@ -8,6 +8,10 @@ from csv import DictWriter
 from itertools import count
 from collections.abc import Iterator
 from typing import Any, MutableMapping, Optional, Callable, TYPE_CHECKING
+import multiprocessing
+import time
+import json
+import tempfile
 
 import mosaik_api_v3  # type: ignore
 
@@ -128,18 +132,18 @@ class Monitor(Controller):
     def _get_microgrid_records(self, microgrid_name: str) -> list[dict]:
         """Extract records for a specific microgrid."""
         records = []
-        for time, microgrids in self.log.items():
+        for timestamp, microgrids in self.log.items():
             if microgrid_name in microgrids:
-                record = {"time": time}
+                record = {"time": timestamp}
                 record.update(_flatten_dict(microgrids[microgrid_name]))
                 records.append(record)
         return records
 
     def to_csv(self, outdir: Optional[str]):
         """Export logs to CSV."""
-        for time, microgrids in self.log.items():
+        for timestamp, microgrids in self.log.items():
             for mg_name, log_entry in microgrids.items():
-                self._write_microgrid_csv(time, mg_name, log_entry, outdir=outdir)
+                self._write_microgrid_csv(timestamp, mg_name, log_entry, outdir=outdir)
 
 
 def _flatten_dict(d: MutableMapping, parent_key: str = "") -> MutableMapping:
@@ -151,6 +155,163 @@ def _flatten_dict(d: MutableMapping, parent_key: str = "") -> MutableMapping:
         else:
             items.append((new_key, v))
     return dict(items)
+
+
+class Gui(Controller):
+    """Streamlit-based real-time dashboard controller for microgrid visualization."""
+
+    def __init__(
+        self, microgrids: list["Microgrid"], step_size: Optional[int] = None, port: int = 8501
+    ):
+        super().__init__(microgrids, step_size=step_size)
+        self.port = port
+
+        # File-based communication for GUI
+        self.temp_dir = Path(tempfile.gettempdir()) / f"vessim_gui_{self.port}"
+        self.temp_dir.mkdir(exist_ok=True)
+        self.data_file = self.temp_dir / "data.json"
+        self.command_file = self.temp_dir / "commands.json"
+        self.streamlit_process: Optional[multiprocessing.Process] = None
+        self.app_started = False
+        self.data_history: dict[str, list[dict[str, Any]]] = {}
+
+        # Simulation state that can be controlled from GUI
+        self.parameter_overrides: dict[str, Any] = {}
+
+        # Initialize data files
+        self._initialize_data_files()
+
+        # Start streamlit app
+        self._start_streamlit_app()
+
+    def _initialize_data_files(self) -> None:
+        """Initialize the data and command files."""
+        # Initialize empty data file
+        with open(self.data_file, 'w') as f:
+            json.dump({}, f)
+
+        # Initialize empty command file
+        with open(self.command_file, 'w') as f:
+            json.dump([], f)
+
+    def _start_streamlit_app(self) -> None:
+        """Start the streamlit app in a background process."""
+        self.streamlit_process = multiprocessing.Process(
+            target=_run_streamlit_subprocess,
+            args=(self.port, list(self.microgrids.keys())),
+            daemon=True
+        )
+        self.streamlit_process.start()
+
+        # Give streamlit time to start
+        time.sleep(3)
+        self.app_started = True
+        print(f"🌐 Streamlit dashboard available at: http://localhost:{self.port}")
+
+    def step(self, time: datetime, microgrid_states: dict[str, dict[str, Any]]) -> None:
+        """Update the dashboard with new microgrid data and process GUI commands."""
+        if not self.app_started:
+            return
+
+        # Process commands from GUI first
+        self._process_gui_commands()
+
+        # Prepare data for file-based communication
+        for mg_name, mg_state in microgrid_states.items():
+            # Create a flattened entry that includes timestamp
+            entry: dict[str, Any] = {
+                'time': time.isoformat(),
+                'p_delta': mg_state['p_delta'],
+                'p_grid': mg_state['p_grid']
+            }
+            entry.update(mg_state['state'])
+
+            # Add to data history
+            if mg_name not in self.data_history:
+                self.data_history[mg_name] = []
+            self.data_history[mg_name].append(entry)
+
+            # Keep only last 100 entries per microgrid
+            if len(self.data_history[mg_name]) > 100:
+                self.data_history[mg_name] = self.data_history[mg_name][-100:]
+
+        # Write data to file for dashboard
+        self._write_data_file()
+
+    def _write_data_file(self) -> None:
+        """Write current data to file for dashboard access."""
+        with open(self.data_file, 'w') as f:
+            json.dump(self.data_history, f)
+
+    def _process_gui_commands(self) -> None:
+        """Process commands received from the GUI."""
+        if self.command_file.exists():
+            with open(self.command_file, 'r') as f:
+                commands = json.load(f)
+
+            # Process all commands
+            for command in commands:
+                self._handle_gui_command(command)
+
+            # Clear processed commands
+            with open(self.command_file, 'w') as f:
+                json.dump([], f)
+
+    def _handle_gui_command(self, command: dict[str, Any]) -> None:
+        """Handle a specific command from the GUI."""
+        command_type = command.get('type')
+
+        if command_type == 'set_parameter':
+            parameter = command.get('parameter')
+            value = command.get('value')
+            if parameter and value is not None:
+                self.set_parameters[parameter] = value
+                print(f"🎛️ Parameter set via GUI: {parameter} = {value}")
+
+        elif command_type == 'export_data':
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"vessim_gui_export_{timestamp}.csv"
+            print(f"📊 Export requested: {filename} (not implemented)")
+
+        else:
+            print(f"⚠️ Unknown GUI command: {command_type}")
+
+    def finalize(self) -> None:
+        """Clean up resources when simulation ends."""
+        # Terminate streamlit process
+        if self.streamlit_process and self.streamlit_process.is_alive():
+            self.streamlit_process.terminate()
+            self.streamlit_process.join(timeout=5)
+            if self.streamlit_process.is_alive():
+                self.streamlit_process.kill()
+
+        # Clean up temp files
+        if self.data_file.exists():
+            self.data_file.unlink()
+        if self.command_file.exists():
+            self.command_file.unlink()
+        if self.temp_dir.exists():
+            self.temp_dir.rmdir()
+
+        print("🛑 GUI dashboard process terminated")
+
+
+def _run_streamlit_subprocess(port, microgrid_names):
+    """Run streamlit as a proper subprocess."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    # Get the path to the GUI app
+    app_path = Path(__file__).parent / "gui" / "app.py"
+
+    # Run streamlit with the app
+    subprocess.run([
+        sys.executable, "-m", "streamlit", "run", str(app_path),
+        "--server.port", str(port),
+        "--server.headless", "true",
+        "--", str(port), ",".join(microgrid_names)
+    ])
 
 
 class _ControllerSim(mosaik_api_v3.Simulator):

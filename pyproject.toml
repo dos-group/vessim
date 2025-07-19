@@ -67,6 +67,10 @@ examples = [
     "nbconvert",
     "plotly",
 ]
+vis = [
+    "streamlit>=1.28.0",
+    "plotly>=5.0.0",
+]
 
 
 [build-system]

@@ -29,7 +29,7 @@ try:
 
     __all__.extend(["PrometheusActor"])
 except ImportError:
-    # SiL components require optional dependencies
+    # SiL components require optional dependencies: pip install vessim[sil]
     pass
 
 try:
@@ -37,4 +37,12 @@ try:
 
     __all__.extend(["plot_trace", "plot_microgrid_trace"])
 except ImportError:
+    pass
+
+try:
+    from vessim.controller import Gui  # noqa: F401
+
+    __all__.extend(["Gui"])
+except ImportError:
+    # GUI controller requires optional dependencies: pip install vessim[vis]
     pass

@@ -11,7 +11,7 @@ Vessim is a co-simulation testbed for carbon-aware applications and systems. It 
 ### Environment Setup
 ```bash
 # Install with development dependencies
-uv pip install -e ".[dev,docs,sil,examples]"
+uv pip install -e ".[dev,docs,sil,examples,vis]"
 ```
 
 ### Code Quality
@@ -119,3 +119,8 @@ environment.run(until=24 * 3600)  # 24 hours
 - Actors must implement the `p(now)` method returning current power consumption/production
 - Step sizes must be multiples of the microgrid's step size
 - SiL features require additional dependencies and are optional
+
+## Development Guidelines
+
+- **Minimal error handling**: Avoid excessive try-catch blocks and error handling unless explicitly requested. Let exceptions bubble up naturally.
+- **Keep it simple**: Don't add unnecessary complexity or defensive programming patterns unless specifically asked.
