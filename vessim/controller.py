@@ -268,11 +268,6 @@ class Gui(Controller):
                 self.set_parameters[parameter] = value
                 print(f"🎛️ Parameter set via GUI: {parameter} = {value}")
 
-        elif command_type == 'export_data':
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"vessim_gui_export_{timestamp}.csv"
-            print(f"📊 Export requested: {filename} (not implemented)")
-
         else:
             print(f"⚠️ Unknown GUI command: {command_type}")
 
