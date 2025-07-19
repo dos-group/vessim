@@ -40,7 +40,7 @@ def disable_rt_warnings(behind_threshold: float):
         is_warning = record["level"].name == "WARNING"
         is_mosaik_log = record["name"].startswith("mosaik")
         is_below_threshold = (
-            record["function"] == "rt_check"
+            record["function"] == "user_warning"
             and float(record["message"].split(" - ")[1].split("s")[0]) < behind_threshold
         )
         return not (is_warning and is_mosaik_log and is_below_threshold)
