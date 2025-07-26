@@ -230,4 +230,3 @@ class _ActorSim(mosaik_api_v3.Simulator):
 
     def get_data(self, outputs):
         return {self.eid: {"p": self.p, "state": self.state}}
-

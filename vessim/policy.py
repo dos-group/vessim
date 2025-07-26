@@ -1,10 +1,12 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Optional, Literal, Any
+from typing import TYPE_CHECKING, Optional, Literal, Any
 
 from loguru import logger
 
-from vessim.storage import Storage
+if TYPE_CHECKING:
+    from vessim.storage import Storage
 
 
 class MicrogridPolicy(ABC):

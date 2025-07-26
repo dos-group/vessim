@@ -89,5 +89,5 @@ def set_min_soc(name: str, value: dict[str, float]):
     return {"status": "command queued"}
 
 
-def run_broker(port: int = 8502):
+def run_broker(port: int = 8700):
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="warning")

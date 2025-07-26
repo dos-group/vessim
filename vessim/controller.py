@@ -192,10 +192,8 @@ class RestInterface(Controller):
             data = {
                 'microgrid': mg_name,
                 'time': time.isoformat(),
-                'p_delta': mg_state['p_delta'],
-                'p_grid': mg_state['p_grid']
+                **mg_state
             }
-            data.update(mg_state['state'])
             self.requests.post(f"{self.broker_url}/internal/data/{mg_name}", json=data)
 
     def _process_commands(self):
@@ -226,9 +224,8 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         "models": {
             "Controller": {
                 "public": True,
-                "any_inputs": True,
                 "params": ["controller", "microgrid_names"],
-                "attrs": ["set_parameters"],
+                "attrs": ["p_delta", "p_grid", "actor_state", "policy_state", "storage_state", "set_parameters"],
             },
         },
     }
@@ -260,28 +257,18 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         assert self.step_size is not None
         now = self.clock.to_datetime(time)
 
-        microgrid_states = defaultdict(lambda: {"p_delta": 0.0, "p_grid": 0.0, "state": {}})
-
-        # Add actor values
-        for k, v in inputs[self.eid].items():
-            if k in ['p_delta', 'p_grid', 'state']:
-                continue
-            microgrid = k.split('.')[0]
-            microgrid_states[microgrid]["state"][k] = list(v.values())[0]  # e.g. {'p': -400}
-
-        # Add p_delta and p_grid
-        for metric in ['p_delta', 'p_grid']:
-            for full_key, value in inputs[self.eid][metric].items():
-                microgrid = full_key.split('.')[0]
-                microgrid_states[microgrid][metric] = value
-
-        # Add storage state
-        for full_key, value in inputs[self.eid]['state'].items():
-            microgrid = full_key.split('.')[0]
-            microgrid_states[microgrid]["state"][full_key] = value
+        data = inputs[self.eid]
+        microgrids = [key.split(".grid.Grid")[0] for key in data["p_delta"].keys()]
+        microgrid_states = {name: {
+            "p_delta": data["p_delta"][f"{name}.grid.Grid"],
+            "p_grid": data["p_grid"][f"{name}.storage.Storage"],
+            "actor_state": {k.split(".")[-1]: data["actor_state"][k] for k in data["actor_state"].keys() if k.startswith(f"{name}.actor.")},
+            "storage_state": next((v for k, v in data["storage_state"].items() if k.startswith(f"{name}.storage.Storage")), None),
+            "policy_state": next(v for k, v in data["policy_state"].items() if k.startswith(f"{name}.storage.Storage")),
+        } for name in microgrids}
 
         # Call controller with all microgrid states
-        self.controller.step(now, dict(microgrid_states))
+        self.controller.step(now, microgrid_states)
 
         self.set_parameters = self.controller.set_parameters.copy()
         self.controller.set_parameters = {}

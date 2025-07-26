@@ -26,11 +26,11 @@ class Microgrid:
     ):
         self.name = name or f"microgrid_{id(self)}"
         self.actors = actors
-        self.storage = storage
         self.policy = policy
+        self.storage = storage
         self.step_size = step_size
 
-        actor_names_and_entities = []
+        self.actor_entities = {}
         for actor in actors:
             actor_step_size = actor.step_size if actor.step_size else step_size
             if actor_step_size % step_size != 0:
@@ -43,37 +43,16 @@ class Microgrid:
             )
             # We initialize all actors before the grid simulation to make sure that
             # there is already a valid p_delta at step 0
-            actor_entity = actor_sim.Actor(actor=actor)
-            actor_names_and_entities.append((actor.name, actor_entity))
+            self.actor_entities[actor.name] = actor_sim.Actor(actor=actor)
 
         grid_sim = world.start("Grid", sim_id=f"{self.name}.grid", step_size=step_size)
-        grid_entity = grid_sim.Grid()
-        for actor_name, actor_entity in actor_names_and_entities:
-            world.connect(actor_entity, grid_entity, "p")
-
-        # Store grid and actor entities for later controller connections
-        self.grid_entity = grid_entity
-        self.actor_entities = actor_names_and_entities
+        self.grid_entity = grid_sim.Grid()
+        for actor_name, actor_entity in self.actor_entities.items():
+            world.connect(actor_entity, self.grid_entity, "p")
 
         storage_sim = world.start("Storage", sim_id=f"{self.name}.storage", step_size=step_size)
-        storage_entity = storage_sim.Storage(storage=storage, policy=policy)
-        world.connect(grid_entity, storage_entity, "p_delta")
-        self.storage_entity = storage_entity
-
-        initial_state = {}
-        initial_state["policy"] = policy.state()
-        if storage:
-            initial_state["storage"] = storage.state()
-        self.initial_state = initial_state
-
-        # Controllers are now managed at Environment level, not per microgrid
-
-    def __getstate__(self) -> dict:
-        """Returns a Dict with the current state of the microgrid for monitoring."""
-        state = copy(self.__dict__)
-        state["controllers"] = []  # controllers are not needed and often not pickleable
-        state["actors"] = []  # actor info can be supplied through Actor.state()
-        return state
+        self.storage_entity = storage_sim.Storage(storage=storage, policy=policy)
+        world.connect(self.grid_entity, self.storage_entity, "p_delta")
 
     def finalize(self):
         """Clean up in case the simulation was interrupted.
@@ -90,7 +69,7 @@ class Environment:
         "Actor": {"python": "vessim.actor:_ActorSim"},
         "Controller": {"python": "vessim.controller:_ControllerSim"},
         "Grid": {"python": "vessim.cosim:_GridSim"},
-        "Storage": {"python": "vessim.cosim:_StorageSim"},
+        "Storage": {"python": "vessim.storage:_StorageSim"},
     }
 
     def __init__(self, sim_start, step_size: int = 1):
@@ -158,11 +137,11 @@ class Environment:
                 self.world.connect(microgrid.grid_entity, controller_entity, "p_delta")
 
                 # Connect to actors for state
-                for actor_name, actor_entity in microgrid.actor_entities:
+                for actor_name, actor_entity in microgrid.actor_entities.items():
                     self.world.connect(
                         actor_entity,
                         controller_entity,
-                        ("state", f"{microgrid.name}.actor.{actor_name}"),
+                        ("state", "actor_state"),
                     )
 
                 # Connect to storage for set_parameters and state/energy feedback
@@ -177,10 +156,18 @@ class Environment:
                 self.world.connect(
                     microgrid.storage_entity,
                     controller_entity,
-                    "state",
+                    "policy_state",
                     time_shifted=True,
-                    initial_data={"state": microgrid.initial_state},
+                    initial_data={"policy_state": microgrid.policy.state()},
                 )
+                if microgrid.storage:
+                    self.world.connect(
+                        microgrid.storage_entity,
+                        controller_entity,
+                        "storage_state",
+                        time_shifted=True,
+                        initial_data={"storage_state": microgrid.storage.state()},
+                    )
 
     def run(
         self,
@@ -255,57 +242,3 @@ class _GridSim(mosaik_api_v3.Simulator):
 
     def get_data(self, outputs):
         return {self.eid: {"p_delta": self.p_delta}}
-
-
-class _StorageSim(mosaik_api_v3.Simulator):  # TODO Move this to vessim.storage
-    META = {
-        "type": "time-based",
-        "models": {
-            "Storage": {
-                "public": True,
-                "params": ["storage", "policy"],
-                "attrs": ["p_delta", "set_parameters", "p_grid", "state"],
-            },
-        },
-    }
-
-    def __init__(self) -> None:
-        super().__init__(self.META)
-        self.eid: str = "Storage"
-
-    def init(self, sid: str, time_resolution: float = 1.0, **sim_params):
-        self.step_size: int = sim_params["step_size"]
-        self.p_grid: float = 0.0
-        self.state: dict = {}
-        return self.meta
-
-    def create(self, num: int, model, **model_params):
-        assert num == 1, "Only one instance per simulation is supported"
-        self.storage: Optional[Storage] = model_params["storage"]
-        self.policy: MicrogridPolicy = model_params["policy"]
-        return [{"eid": self.eid, "type": model}]
-
-    def step(self, time, inputs, max_advance):
-        p_delta = list(inputs[self.eid]["p_delta"].values())[0]
-        if "set_parameters" in inputs[self.eid].keys():
-            for parameters in inputs[self.eid]["set_parameters"].values():
-                for key, value in parameters.items():
-                    key_split = key.split(":", 1)
-                    if key_split[0] == "policy":
-                        self.policy.set_parameter(key_split[1], value)
-                    elif key_split[0] == "storage":
-                        assert self.storage is not None
-                        self.storage.set_parameter(key_split[1], value)
-                    else:
-                        raise ValueError(
-                            f"Invalid parameter: {key}. Has to start with 'policy:' or 'storage:'."
-                        )
-
-        self.p_grid = self.policy.apply(p_delta, duration=self.step_size, storage=self.storage)
-        self.state["policy"] = self.policy.state()
-        if self.storage:
-            self.state["storage"] = self.storage.state()
-        return time + self.step_size
-
-    def get_data(self, outputs):
-        return {self.eid: {"p_grid": self.p_grid, "state": self.state}}

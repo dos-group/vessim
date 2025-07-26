@@ -1,9 +1,14 @@
 from __future__ import annotations
-from abc import ABC, abstractmethod
-from typing import Optional, Any
 
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Optional, Any
+
+import mosaik_api_v3
 import numpy as np
 from loguru import logger
+
+if TYPE_CHECKING:
+    from vessim import MicrogridPolicy
 
 
 class Storage(ABC):
@@ -284,4 +289,63 @@ class ClcBattery(Storage):
             "charge_level": self.charge_level * self.number_of_cells,
             "capacity": self.v_2 * self.number_of_cells,
             "min_soc": self.min_soc
+        }
+
+
+class _StorageSim(mosaik_api_v3.Simulator):
+    META = {
+        "type": "time-based",
+        "models": {
+            "Storage": {
+                "public": True,
+                "params": ["storage", "policy"],
+                "attrs": ["p_delta", "set_parameters", "p_grid", "storage_state", "policy_state"],
+            },
+        },
+    }
+
+    def __init__(self) -> None:
+        super().__init__(self.META)
+        self.eid: str = "Storage"
+
+    def init(self, sid: str, time_resolution: float = 1.0, **sim_params):
+        self.step_size: int = sim_params["step_size"]
+        self.p_grid: float = 0.0
+        self.storage_state: dict = {}
+        self.policy_state: dict = {}
+        return self.meta
+
+    def create(self, num: int, model, **model_params):
+        assert num == 1, "Only one instance per simulation is supported"
+        self.storage: Optional[Storage] = model_params["storage"]
+        self.policy: MicrogridPolicy = model_params["policy"]
+        return [{"eid": self.eid, "type": model}]
+
+    def step(self, time, inputs, max_advance):
+        p_delta = list(inputs[self.eid]["p_delta"].values())[0]
+        if "set_parameters" in inputs[self.eid].keys():
+            for parameters in inputs[self.eid]["set_parameters"].values():
+                for key, value in parameters.items():
+                    key_split = key.split(":", 1)
+                    if key_split[0] == "policy":
+                        self.policy.set_parameter(key_split[1], value)
+                    elif key_split[0] == "storage":
+                        assert self.storage is not None
+                        self.storage.set_parameter(key_split[1], value)
+                    else:
+                        raise ValueError(
+                            f"Invalid parameter: {key}. Has to start with 'policy:' or 'storage:'."
+                        )
+
+        self.p_grid = self.policy.apply(p_delta, duration=self.step_size, storage=self.storage)
+        if self.storage:
+            self.storage_state = self.storage.state()
+            self.policy_state = self.policy.state()
+        return time + self.step_size
+
+    def get_data(self, outputs):
+        return {self.eid: {
+            "p_grid": self.p_grid,
+            "storage_state": self.storage_state,
+            "policy_state": self.policy_state}
         }
