@@ -428,29 +428,3 @@ class ConstantSignal(Signal):
 
     def now(self, at: Optional[DatetimeLike] = None, **kwargs):
         return self._v
-
-
-class CollectorSignal(Signal, ABC):
-    def __init__(self, interval: int = 1):
-        super().__init__()
-        self.interval = interval
-        self._v = 0.0
-        self._stop_event = Event()
-        self._thread = Thread(target=self._collect_loop, daemon=True)
-        self._thread.start()
-
-    def now(self, at=None, **_) -> float:
-        return self._v
-
-    @abstractmethod
-    def collect(self) -> float:
-        pass
-
-    def _collect_loop(self) -> None:
-        while not self._stop_event.is_set():
-            self._v = self.collect()
-            time.sleep(self.interval)
-
-    def finalize(self) -> None:
-        self._stop_event.set()
-        self._thread.join()
