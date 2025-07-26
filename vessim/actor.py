@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Optional
 
@@ -29,6 +30,26 @@ class Actor:
     def finalize(self) -> None:
         self.signal.finalize()
 
+
+class SilActor(ABC):
+    """Marker base class for Software-in-the-Loop actors.
+
+    The Environment class uses this to sanity check that
+    SilActor are only used in real-time simulations.
+    """
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    @abstractmethod
+    def p(self, now: datetime) -> float:
+        """Current power consumption/production."""
+
+    @abstractmethod
+    def state(self, now: datetime) -> dict:
+        """Current state of the actor which is passed to controllers on every step."""
+
+    def finalize(self) -> None:
+        """Finalize the actor, e.g., close connections."""
 
 
 class _ActorSim(mosaik_api_v3.Simulator):
@@ -75,11 +96,3 @@ class _ActorSim(mosaik_api_v3.Simulator):
     def get_data(self, outputs):
         return {self.eid: {"p": self.p, "state": self.state}}
 
-
-class SilActor(Actor):
-    """Marker base class for Software-in-the-Loop actors.
-
-    The Environment class uses this to sanity check that
-    SilActor are only used in real-time simulations.
-    """
-    pass

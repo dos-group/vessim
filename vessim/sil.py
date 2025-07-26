@@ -41,10 +41,7 @@ class PrometheusActor(SilActor):
             username: Username for HTTP Basic Authentication (optional)
             password: Password for HTTP Basic Authentication (optional)
         """
-        # Create a dummy signal since PrometheusActor doesn't use it
-        from vessim.signal import ConstantSignal
-        dummy_signal = ConstantSignal(value=0.0)
-        super().__init__(name, dummy_signal)
+        super().__init__(name)
 
         self.prometheus_url = prometheus_url.rstrip("/")
         self.query = query
