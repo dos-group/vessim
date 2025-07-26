@@ -144,23 +144,11 @@ class Monitor(Controller):
                 self._write_microgrid_csv(timestamp, mg_name, log_entry, outdir=outdir)
 
 
-def _flatten_dict(d: MutableMapping, parent_key: str = "") -> MutableMapping:
-    items: list[tuple[str, Any]] = []
-    for k, v in d.items():
-        new_key = parent_key + "." + k if parent_key else k
-        if isinstance(v, MutableMapping):
-            items.extend(_flatten_dict(v, str(new_key)).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
-
-
 class RestInterface(Controller):
     """REST API interface for microgrid data and control."""
 
-    def __init__(
-        self, microgrids: list["Microgrid"], step_size: Optional[int] = None, broker_port: int = 8700
-    ):
+    def __init__(self, microgrids: list["Microgrid"], step_size: Optional[int] = None,
+                 broker_port: int = 8700):
         try:
             import requests
             self.requests = requests
@@ -324,3 +312,13 @@ class _ControllerSim(mosaik_api_v3.Simulator):
 
 def _get_val(inputs: dict, key: str) -> Any:
     return list(inputs[key].values())[0]
+
+def _flatten_dict(d: MutableMapping, parent_key: str = "") -> MutableMapping:
+    items: list[tuple[str, Any]] = []
+    for k, v in d.items():
+        new_key = parent_key + "." + k if parent_key else k
+        if isinstance(v, MutableMapping):
+            items.extend(_flatten_dict(v, str(new_key)).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
