@@ -1,6 +1,5 @@
-from datetime import datetime
 import threading
-from collections import defaultdict, deque
+from collections import defaultdict
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
@@ -10,22 +9,16 @@ import uvicorn
 class Broker:
     def __init__(self):
         self.microgrids: dict[str, dict] = {}
-        self.history: dict[str, deque] = defaultdict(lambda: deque(maxlen=1000))
+        self.history: dict[str, list] = defaultdict(list)
         self.commands: list[dict] = []
         self.lock = threading.Lock()
-        self.status = "stopped"
-        self.sim_start_time = None
 
     def add_microgrid(self, name: str, config: dict[str, Any]):
-        with self.lock:
-            self.microgrids[name] = config
+        self.microgrids[name] = config
 
     def push_data(self, microgrid_name: str, data: dict[str, Any]):
         with self.lock:
             self.history[microgrid_name].append(data)
-            self.status = "running"
-            if not self.sim_start_time:
-                self.sim_start_time = datetime.now()
 
     def get_commands(self) -> list[dict]:
         with self.lock:
@@ -60,9 +53,9 @@ def get_commands():
 @app.get("/api")
 def get_status():
     return {
-        "status": broker.status,
-        "sim_start_time": broker.sim_start_time.isoformat() if broker.sim_start_time else None,
-        "microgrids": list(broker.microgrids.keys())
+        "microgrids": list(broker.microgrids.keys()),
+        "history_length": len(broker.history),
+        "commands_queued": len(broker.commands),
     }
 
 @app.get("/api/microgrids")
