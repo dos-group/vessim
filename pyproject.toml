@@ -34,7 +34,6 @@ dependencies = [
     "mosaik>=3.3.0",
     "mosaik-api-v3>=3.0.4",
     "loguru>=0.6.0",
-    "docopt-ng>=0.6.2",
 ]
 
 [project.optional-dependencies]
