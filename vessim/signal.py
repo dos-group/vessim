@@ -18,9 +18,6 @@ from vessim._util import DatetimeLike
 class Signal(ABC):
     """Abstract base class for signals."""
 
-    def __init__(self, name: Optional[str] = None) -> None:
-        self.name = name
-
     @abstractmethod
     def now(self, at: Optional[DatetimeLike] = None, **kwargs) -> float:
         """Retrieves actual data point at given time."""
@@ -67,6 +64,7 @@ class Trace(Signal):
         forecast: Optional[pd.Series | pd.DataFrame] = None,
         fill_method: Literal["ffill", "bfill"] = "ffill",
         column: Optional[str] = None,
+        repr_: Optional[str] = None,
     ):
         if isinstance(actual, pd.DataFrame) and forecast is not None:
             if isinstance(forecast, pd.DataFrame):
@@ -75,8 +73,10 @@ class Trace(Signal):
             else:
                 raise ValueError("Forecast has to be a DataFrame if actual is a DataFrame.")
 
-        self.default_column = column
         self._fill_method = fill_method
+        self.default_column = column
+        self.repr_ = repr_
+
         # Unpack index of actual dataframe
         actual_times = actual.index.to_numpy(dtype="datetime64[ns]", copy=True)
         actual_times_sorter = actual_times.argsort()
@@ -137,6 +137,9 @@ class Trace(Signal):
                 self._forecast[str(col)] = (req_times, forecast_times[nan_mask], values[nan_mask])
         elif forecast is not None:
             raise ValueError(f"Incompatible type {type(forecast)} for 'forecast'.")
+
+    def __repr__(self):
+        return f"Trace({self.repr_ or ''})"
 
     @classmethod
     def load(
@@ -414,14 +417,14 @@ def _abs_path(data_dir: Optional[str | Path]) -> Path:
         raise ValueError(f"Path {data_dir} not valid. Has to be absolute or None.")
 
 
-class ConstantSignal(Signal):
+class StaticSignal(Signal):
     _ids = count(0)
 
-    def __init__(self, value: float, name: Optional[str] = None) -> None:
-        if name is None:
-            name = f"ConstantSignal-{next(self._ids)}"
-        super().__init__(name)
+    def __init__(self, value: float) -> None:
         self._v = value
+
+    def __repr__(self):
+        return f"StaticSignal({self._v})"
 
     def set_value(self, value: float) -> None:
         self._v = value

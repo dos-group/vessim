@@ -73,12 +73,9 @@ def list_microgrids() -> list[str]:
 def get_microgrid_config(name: str):
     if name not in broker.microgrids:
         raise HTTPException(404, "Microgrid not found")
-    return broker.microgrids[name]
-
-@app.get("/api/microgrids/{name}/latest")
-def get_latest_data(name: str):
     if name not in broker.history or not broker.history[name]:
         raise HTTPException(404, "No data available")
+    # return broker.microgrids[name]
     return broker.history[name][-1]
 
 @app.get("/api/microgrids/{name}/history")

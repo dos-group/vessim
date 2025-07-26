@@ -33,7 +33,7 @@ environment = vs.Environment(sim_start="2022-06-15", step_size=300)  # 5 minute 
 microgrid = environment.add_microgrid(
     name="datacenter",
     actors=[
-        vs.Actor(name="server", signal=vs.ConstantSignal(value=-700)),  # negative = consumes power
+        vs.Actor(name="server", signal=vs.StaticSignal(value=-700)),  # negative = consumes power
         vs.Actor(name="solar_panel", signal=vs.Trace.load("solcast2022_global", column="Berlin", params={"scale": 5000})),  # 5kW maximum
     ],
     storage=vs.SimpleBattery(capacity=100),

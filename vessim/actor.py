@@ -26,6 +26,8 @@ class Actor:
     def state(self, now: datetime) -> dict:
         """Current state of the actor which is passed to controllers on every step."""
         return {
+            "name": self.name,
+            "signal": str(self.signal),
             "p": self.p(now),
         }
 
@@ -46,11 +48,9 @@ class SilActor(ABC):
     def p(self, now: datetime) -> float:
         """Current power consumption/production."""
 
+    @abstractmethod
     def state(self, now: datetime) -> dict:
         """Current state of the actor which is passed to controllers on every step."""
-        return {
-            "p": self.p(now),
-        }
 
     def finalize(self) -> None:
         """Finalize the actor, e.g., close connections."""
@@ -170,6 +170,14 @@ else:
                 Current power value in watts (negative for consumption, positive for production)
             """
             return self._cached_value
+
+        def state(self, now: datetime) -> dict:
+            return {
+                "prometheus_url": self.prometheus_url,
+                "query": self.query,
+                "update_interval": self.update_interval,
+                "p": self.p(now),
+            }
 
         def finalize(self) -> None:
             """Stop background polling and clean up resources."""

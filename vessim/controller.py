@@ -202,6 +202,7 @@ class RestInterface(Controller):
 
         for mg_name, mg_state in microgrid_states.items():
             data = {
+                'microgrid': mg_name,
                 'time': time.isoformat(),
                 'p_delta': mg_state['p_delta'],
                 'p_grid': mg_state['p_grid']

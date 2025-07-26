@@ -4,7 +4,7 @@ from vessim.actor import Actor
 from vessim.controller import Controller, Monitor
 from vessim.cosim import Microgrid, Environment
 from vessim.policy import MicrogridPolicy, DefaultMicrogridPolicy
-from vessim.signal import Signal, Trace, ConstantSignal
+from vessim.signal import Signal, Trace, StaticSignal
 from vessim.storage import Storage, SimpleBattery, ClcBattery
 
 __all__ = [
@@ -15,7 +15,7 @@ __all__ = [
     "Environment",
     "MicrogridPolicy",
     "DefaultMicrogridPolicy",
-    "ConstantSignal",
+    "StaticSignal",
     "Signal",
     "Trace",
     "Storage",

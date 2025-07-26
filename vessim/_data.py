@@ -89,6 +89,7 @@ def load_dataset(dataset: str, dir_path: Path, params: Optional[dict] = None) ->
         actual=actual,
         forecast=None if not use_forecast else forecast,
         fill_method=dataset_config.get("fill_method", "ffill"),
+        repr=f"{dataset}, scale={scale}, start_time={start_time}, use_forecast={use_forecast}",
     )
 
 
