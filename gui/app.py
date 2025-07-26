@@ -2,11 +2,16 @@ import streamlit as st
 import pandas as pd
 import requests
 import time
-from typing import Dict, Any
-
-API_BASE = "http://localhost:8502"
+import argparse
+import sys
 
 def main():
+    parser = argparse.ArgumentParser(description="Vessim Dashboard")
+    parser.add_argument("--api", default="http://localhost:8700", help="Vessim API base URL")
+    args = parser.parse_args()
+
+    api_base = args.api
+
     st.set_page_config(
         page_title="Vessim Dashboard",
         page_icon="⚡",
@@ -17,7 +22,7 @@ def main():
     st.title("⚡ Vessim Dashboard")
 
     # Get microgrids from API
-    microgrids = get_microgrids()
+    microgrids = get_microgrids(api_base)
     
     with st.sidebar:
         st.header("Control Panel")
@@ -25,7 +30,6 @@ def main():
         if microgrids:
             # Microgrid selection
             if len(microgrids) > 1:
-                st.subheader("🏢 Select Microgrid")
                 selected_microgrid = st.selectbox(
                     "Choose microgrid to control:",
                     microgrids,
@@ -39,12 +43,12 @@ def main():
                 
                 min_soc_target = st.slider("Min SoC (%)", 0, 100, 20, 5)
                 if st.button("Set Min SoC", key="set_min_soc_btn"):
-                    set_min_soc(selected_microgrid, min_soc_target / 100.0)
+                    set_min_soc(api_base, selected_microgrid, min_soc_target / 100.0)
                     st.success(f"Min SoC set to {min_soc_target}%")
 
         # Status
         st.subheader("ℹ️ Status")
-        status = get_status()
+        status = get_status(api_base)
         if status:
             st.json(status)
 
@@ -54,32 +58,31 @@ def main():
             tabs = st.tabs([mg.replace('_', ' ').title() for mg in microgrids])
             for i, microgrid in enumerate(microgrids):
                 with tabs[i]:
-                    display_microgrid(microgrid)
+                    display_microgrid(api_base, microgrid)
         else:
-            display_microgrid(microgrids[0])
+            display_microgrid(api_base, microgrids[0])
 
     time.sleep(1)
     st.rerun()
 
-def get_microgrids():
-    response = requests.get(f"{API_BASE}/api/microgrids")
+def get_microgrids(api_base: str):
+    response = requests.get(f"{api_base}/api/microgrids")
     if response.status_code == 200:
-        return response.json().get("microgrids", [])
-    return []
+        return response.json()
 
-def get_status():
-    response = requests.get(f"{API_BASE}/api/status")
+def get_status(api_base: str):
+    response = requests.get(f"{api_base}/api/status")
     if response.status_code == 200:
         return response.json()
     return None
 
-def set_min_soc(microgrid: str, value: float):
-    requests.put(f"{API_BASE}/api/microgrids/{microgrid}/storage/min_soc", 
+def set_min_soc(api_base: str, microgrid: str, value: float):
+    requests.put(f"{api_base}/api/microgrids/{microgrid}/storage/min_soc",
                 json={"min_soc": value})
 
-def display_microgrid(microgrid: str):
+def display_microgrid(api_base: str, microgrid: str):
     # Get latest data
-    response = requests.get(f"{API_BASE}/api/microgrids/{microgrid}/latest")
+    response = requests.get(f"{api_base}/api/microgrids/{microgrid}/latest")
     if response.status_code == 200:
         latest = response.json()
         
@@ -102,7 +105,7 @@ def display_microgrid(microgrid: str):
                 st.metric("System Efficiency", f"{efficiency:.1f}%")
 
         # History chart
-        history_response = requests.get(f"{API_BASE}/api/microgrids/{microgrid}/history")
+        history_response = requests.get(f"{api_base}/api/microgrids/{microgrid}/history")
         if history_response.status_code == 200:
             history_data = history_response.json().get("data", [])
             if history_data:

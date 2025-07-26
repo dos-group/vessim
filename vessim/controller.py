@@ -159,7 +159,7 @@ class RestInterface(Controller):
     """REST API interface for microgrid data and control."""
 
     def __init__(
-        self, microgrids: list["Microgrid"], step_size: Optional[int] = None, broker_port: int = 8502
+        self, microgrids: list["Microgrid"], step_size: Optional[int] = None, broker_port: int = 8700
     ):
         try:
             import requests
