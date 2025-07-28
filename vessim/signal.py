@@ -5,7 +5,6 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Any, Optional, Literal
 from itertools import count
-from threading import Event, Thread
 
 import time
 import pandas as pd
@@ -431,3 +430,149 @@ class StaticSignal(Signal):
 
     def now(self, at: Optional[DatetimeLike] = None, **kwargs):
         return self._v
+
+
+class WatttimeSignal(Signal):
+    """Real-time carbon intensity signal from WattTime API.
+
+    This signal fetches real-time marginal carbon intensity data from the WattTime API.
+    It requires username and password. If the login fails (e.g., user doesn't exist),
+    it will prompt the user to confirm auto-registration and request an email address.
+
+    Args:
+        username: WattTime API username
+        password: WattTime API password
+        region: Grid region (balancing authority) code, e.g., 'CAISO_NORTH'
+        organization: Organization name for registration (optional, defaults to 'vessim-user')
+        base_url: Base URL for WattTime API, defaults to 'https://api.watttime.org'
+    """
+
+    def __init__(
+        self,
+        username: str,
+        password: str,
+        region: str = "CAISO_NORTH",
+        organization: str = "vessim-user",
+        base_url: str = "https://api.watttime.org"
+    ) -> None:
+        try:
+            import requests
+            from requests.auth import HTTPBasicAuth
+        except ImportError:
+            raise ImportError(
+                "WatttimeSignal requires 'requests' package. "
+                "Install with: pip install 'vessim[sil]'"
+            )
+
+        self._requests = requests
+        self._auth = HTTPBasicAuth(username, password)
+        self._username = username
+        self._password = password
+        self._organization = organization
+        self._region = region
+        self._base_url = base_url
+        self._token: Optional[str] = None
+        self._token_expires: Optional[float] = None
+
+        # Try to get initial token (will auto-register if needed)
+        self._get_token()
+
+    def _get_token(self) -> str:
+        """Obtain or refresh authentication token, auto-registering if needed."""
+        current_time = time.time()
+
+        # Check if token is still valid (expires after 30 minutes)
+        if self._token and self._token_expires and current_time < self._token_expires:
+            return self._token
+
+        # Try to get new token
+        login_url = f"{self._base_url}/login"
+        try:
+            response = self._requests.get(login_url, auth=self._auth)
+            response.raise_for_status()
+
+            self._token = response.json()["token"]
+            # Token expires in 30 minutes, refresh 5 minutes early
+            self._token_expires = current_time + (25 * 60)
+
+            return self._token
+
+        except self._requests.HTTPError as e:
+            if e.response.status_code == 403:
+                # Login failed, try to register
+                self._register_user()
+                # Retry login after registration
+                response = self._requests.get(login_url, auth=self._auth)
+                response.raise_for_status()
+
+                self._token = response.json()["token"]
+                self._token_expires = current_time + (25 * 60)
+
+                return self._token
+            else:
+                # Re-raise other HTTP errors
+                raise
+
+    def _register_user(self) -> None:
+        """Register a new user account with interactive email prompt."""
+        print(f"\nUser '{self._username}' not found in WattTime API.")
+
+        # Ask user for confirmation
+        confirm = input(
+            "Would you like to register a new WattTime account? (y/n): "
+        ).strip().lower()
+        if confirm not in ['y', 'yes']:
+            raise RuntimeError("Registration cancelled by user")
+
+        # Ask for email address
+        email = input("Please enter your email address for registration: ").strip()
+        if not email or '@' not in email:
+            raise ValueError("Valid email address is required for registration")
+
+        print(f"Registering new WattTime account for '{self._username}'...")
+
+        register_url = f"{self._base_url}/register"
+
+        registration_data = {
+            "username": self._username,
+            "password": self._password,
+            "email": email,
+            "org": self._organization
+        }
+
+        response = self._requests.post(register_url, json=registration_data)
+        response.raise_for_status()
+
+        print("✓ Registration successful!")
+
+    def now(self, at: Optional[DatetimeLike] = None, **kwargs) -> float:
+        """Retrieves current carbon intensity for the configured region.
+
+        Args:
+            at: Timestamp parameter (ignored for real-time data)
+            **kwargs: Additional parameters (ignored)
+
+        Returns:
+            Current marginal carbon intensity in lbs CO2/MWh
+
+        Raises:
+            requests.HTTPError: If API request fails
+            KeyError: If expected data is not in API response
+
+        Example:
+            # Create signal with auto-registration if needed
+            >>> signal = WatttimeSignal("myuser", "mypass", "CAISO_NORTH")
+            >>> carbon_intensity = signal.now()
+        """
+        token = self._get_token()
+
+        # Get current carbon intensity
+        index_url = f"{self._base_url}/v3/signal-index"
+        headers = {"Authorization": f"Bearer {token}"}
+        params = {"region": self._region, "signal_type": "co2_moer"}
+
+        response = self._requests.get(index_url, headers=headers, params=params)
+        response.raise_for_status()
+
+        data = response.json()
+        return data["data"][0]["value"]

@@ -39,3 +39,11 @@ try:
 except ImportError:
     # GUI controller requires optional dependencies: pip install vessim[vis]
     pass
+
+try:
+    from vessim.signal import WatttimeSignal  # noqa: F401
+
+    __all__.extend(["WatttimeSignal"])
+except ImportError:
+    # WatttimeSignal requires optional dependencies: pip install vessim[sil]
+    pass

@@ -11,6 +11,7 @@ from vessim.controller import Controller
 from vessim.storage import Storage
 from vessim.policy import MicrogridPolicy, DefaultMicrogridPolicy
 from vessim._util import Clock, disable_rt_warnings
+from vessim.signal import Signal
 
 
 class Environment:
@@ -31,8 +32,9 @@ class Environment:
     def add_microgrid(
         self,
         actors: list[Actor],
-        storage: Optional[Storage] = None,
         policy: Optional[MicrogridPolicy] = None,
+        storage: Optional[Storage] = None,
+        grid_signals: Optional[dict[str, Signal]] = None,
         name: Optional[str] = None,
     ):
         if not actors:
@@ -45,6 +47,7 @@ class Environment:
             actors=actors,
             policy=policy if policy is not None else DefaultMicrogridPolicy(),
             storage=storage,
+            grid_signals=grid_signals,
             name=name,
         )
         self.microgrids.append(microgrid)
