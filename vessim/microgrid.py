@@ -18,6 +18,7 @@ class MicrogridState(TypedDict):
 
     This state is passed to controllers on every step.
     """
+
     p_delta: float  # Current power delta in W
     p_grid: float  # Last step's power exchange with the public grid in W
     actor_states: dict[str, dict]  # States of all actors in the microgrid
@@ -59,7 +60,9 @@ class Microgrid:
             # there is already a valid p_delta at step 0
             self.actor_entities[actor.name] = actor_sim.Actor(actor=actor)
 
-        grid_sim = world.start("Grid", sim_id=f"{self.name}.grid", step_size=step_size, grid_signals=grid_signals)
+        grid_sim = world.start(
+            "Grid", sim_id=f"{self.name}.grid", step_size=step_size, grid_signals=grid_signals
+        )
         self.grid_entity = grid_sim.Grid()
         for actor_name, actor_entity in self.actor_entities.items():
             world.connect(actor_entity, self.grid_entity, "p")
@@ -114,5 +117,7 @@ class _GridSim(mosaik_api_v3.Simulator):
     def get_data(self, outputs):
         data = {"p_delta": self.p_delta}
         if self.grid_signals:
-            data["grid_signals"] = {signal_name: signal.now() for signal_name, signal in self.grid_signals.items()}
+            data["grid_signals"] = {
+                signal_name: signal.now() for signal_name, signal in self.grid_signals.items()
+            }
         return {self.eid: data}

@@ -138,6 +138,7 @@ class Trace(Signal):
             raise ValueError(f"Incompatible type {type(forecast)} for 'forecast'.")
 
     def __repr__(self):
+        """Returns a string representation of the Trace."""
         return f"Trace({self.repr_ or ''})"
 
     @classmethod
@@ -423,6 +424,7 @@ class StaticSignal(Signal):
         self._v = value
 
     def __repr__(self):
+        """Returns a string representation of the StaticSignal."""
         return f"StaticSignal({self._v})"
 
     def set_value(self, value: float) -> None:
@@ -457,7 +459,7 @@ class WatttimeSignal(Signal):
         region: Optional[str] = None,
         location: Optional[tuple[float, float]] = None,
         organization: str = "vessim-user",
-        base_url: str = "https://api.watttime.org"
+        base_url: str = "https://api.watttime.org",
     ) -> None:
         try:
             import requests
@@ -490,6 +492,8 @@ class WatttimeSignal(Signal):
         if location is not None:
             self._region = self._get_region_from_location(location)
         else:
+            # region is guaranteed to be not None due to validation above
+            assert region is not None
             self._region = region
 
     def _get_token(self) -> str:
@@ -533,15 +537,15 @@ class WatttimeSignal(Signal):
         print(f"\nUser '{self._username}' not found in WattTime API.")
 
         # Ask user for confirmation
-        confirm = input(
-            "Would you like to register a new WattTime account? (y/n): "
-        ).strip().lower()
-        if confirm not in ['y', 'yes']:
+        confirm = (
+            input("Would you like to register a new WattTime account? (y/n): ").strip().lower()
+        )
+        if confirm not in ["y", "yes"]:
             raise RuntimeError("Registration cancelled by user")
 
         # Ask for email address
         email = input("Please enter your email address for registration: ").strip()
-        if not email or '@' not in email:
+        if not email or "@" not in email:
             raise ValueError("Valid email address is required for registration")
 
         print(f"Registering new WattTime account for '{self._username}'...")
@@ -552,7 +556,7 @@ class WatttimeSignal(Signal):
             "username": self._username,
             "password": self._password,
             "email": email,
-            "org": self._organization
+            "org": self._organization,
         }
 
         response = self._requests.post(register_url, json=registration_data)
@@ -564,7 +568,11 @@ class WatttimeSignal(Signal):
         """Get region code from latitude/longitude coordinates."""
         region_url = f"{self._base_url}/v3/region-from-loc"
         headers = {"Authorization": f"Bearer {self._get_token()}"}
-        params = {"latitude": location[0], "longitude": location[1], "signal_type": "co2_moer"}
+        params = {
+            "latitude": str(location[0]),
+            "longitude": str(location[1]),
+            "signal_type": "co2_moer",
+        }
 
         response = self._requests.get(region_url, headers=headers, params=params)
         response.raise_for_status()

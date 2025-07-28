@@ -210,7 +210,7 @@ class ClcBattery(Storage):
         self.v_2 = v_2
         assert 0 <= initial_soc <= 1, "Invalid initial state-of-charge. Has to be between 0 and 1."
         self._soc = initial_soc
-        self.charge_level = self.v_2 * initial_soc # Charge level of one cell
+        self.charge_level = self.v_2 * initial_soc  # Charge level of one cell
         assert 0 <= min_soc <= 1, "Invalid minimum state-of-charge. Has to be between 0 and 1."
         self.min_soc = min_soc
         self.nom_voltage = nom_voltage
@@ -288,7 +288,7 @@ class ClcBattery(Storage):
             "soc": self._soc,
             "charge_level": self.charge_level * self.number_of_cells,
             "capacity": self.v_2 * self.number_of_cells,
-            "min_soc": self.min_soc
+            "min_soc": self.min_soc,
         }
 
 
@@ -344,8 +344,10 @@ class _StorageSim(mosaik_api_v3.Simulator):
         return time + self.step_size
 
     def get_data(self, outputs):
-        return {self.eid: {
-            "p_grid": self.p_grid,
-            "storage_state": self.storage_state,
-            "policy_state": self.policy_state}
+        return {
+            self.eid: {
+                "p_grid": self.p_grid,
+                "storage_state": self.storage_state,
+                "policy_state": self.policy_state,
+            }
         }

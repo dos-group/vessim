@@ -34,20 +34,24 @@ class Broker:
 broker = Broker()
 app = FastAPI()
 
+
 # Simulation-facing API
 @app.post("/internal/data/{microgrid_name}")
 def push_data(microgrid_name: str, data: dict[str, Any]):
     broker.push_data(microgrid_name, data)
     return {"status": "ok"}
 
+
 @app.post("/internal/microgrids/{name}")
 def register_microgrid(name: str, config: dict[str, Any]):
     broker.add_microgrid(name, config)
     return {"status": "ok"}
 
+
 @app.get("/internal/commands")
 def get_commands():
     return {"commands": broker.get_commands()}
+
 
 # User-facing API
 @app.get("/api")
@@ -58,9 +62,11 @@ def get_status():
         "commands_queued": len(broker.commands),
     }
 
+
 @app.get("/api/microgrids")
 def list_microgrids() -> list[str]:
     return list(broker.microgrids.keys())
+
 
 @app.get("/api/microgrids/{name}")
 def get_microgrid_config(name: str):
@@ -71,6 +77,7 @@ def get_microgrid_config(name: str):
     # return broker.microgrids[name]
     return broker.history[name][-1]
 
+
 @app.get("/api/microgrids/{name}/history")
 def get_history(name: str, limit: int = 100):
     if name not in broker.history:
@@ -78,14 +85,17 @@ def get_history(name: str, limit: int = 100):
     history = list(broker.history[name])
     return {"data": history[-limit:] if limit else history}
 
+
 @app.put("/api/microgrids/{name}/storage/min_soc")
 def set_min_soc(name: str, value: dict[str, float]):
-    broker.add_command({
-        "type": "set_parameter",
-        "microgrid": name,
-        "parameter": "storage:min_soc",
-        "value": value["min_soc"]
-    })
+    broker.add_command(
+        {
+            "type": "set_parameter",
+            "microgrid": name,
+            "parameter": "storage:min_soc",
+            "value": value["min_soc"],
+        }
+    )
     return {"status": "command queued"}
 
 

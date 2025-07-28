@@ -7,7 +7,7 @@ from pathlib import Path
 from csv import DictWriter
 from itertools import count
 from collections.abc import Iterator
-from typing import Any, MutableMapping, Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 import multiprocessing
 import time
 
@@ -54,25 +54,25 @@ class Monitor(Controller):
         outfile: Optional[str | Path] = None,
     ):
         super().__init__(microgrids, step_size=step_size)
-        self.outfile: Optional[Path] = Path(outfile)
+        self.outfile: Optional[Path] = Path(outfile) if outfile else None
         self._fieldnames: dict[str, Optional[list]] = {}  # Per microgrid fieldnames
         self.log: dict[datetime, dict[str, MicrogridState]] = defaultdict(dict)
 
-    def step(self, time: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
-        self.log[time] = microgrid_states
-        if self.outfile:
-            self._write_microgrid_csv(time, microgrid_states, outfile=self.outfile)
+    def step(self, t: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
+        self.log[t] = microgrid_states
+        if self.outfile is not None:
+            self._write_microgrid_csv(t, microgrid_states, outfile=self.outfile)
 
-    def to_csv(self, outfile: Optional[str]):
+    def to_csv(self, outfile: str | Path):
         """Export current log to a CSV file."""
-        for time, migrogrid_states in self.log.items():
-            self._write_microgrid_csv(time, migrogrid_states, outfile=outfile)
+        for t, migrogrid_states in self.log.items():
+            self._write_microgrid_csv(t, migrogrid_states, outfile=Path(outfile))
 
     def _write_microgrid_csv(
         self,
         time: datetime,
         microgrid_states: dict[str, MicrogridState],
-        outfile: Path = None
+        outfile: Path,
     ) -> None:
         """Append microgrid states to CSV file."""
         outfile.parent.mkdir(exist_ok=True, parents=True)
@@ -80,7 +80,7 @@ class Monitor(Controller):
             log_entry = {
                 "microgrid": mg_name,
                 "time": time,
-                **_flatten_dict(migrogrid_state)
+                **_flatten_dict(dict(migrogrid_state))
             }
 
             if mg_name not in self._fieldnames:  # First time: create file with header
@@ -89,7 +89,7 @@ class Monitor(Controller):
             else:
                 mode, write_header = "a", False
 
-            with outfile.open(mode, newline='') as csvfile:
+            with outfile.open(mode, newline="") as csvfile:
                 fieldnames = self._fieldnames[mg_name]
                 assert fieldnames is not None
                 writer = DictWriter(csvfile, fieldnames=fieldnames)
@@ -101,14 +101,18 @@ class Monitor(Controller):
 class RestInterface(Controller):
     """REST API interface for microgrid data and control."""
 
-    def __init__(self, microgrids: list[Microgrid], step_size: Optional[int] = None,
-                 broker_port: int = 8700):
+    def __init__(
+        self, microgrids: list[Microgrid], step_size: Optional[int] = None, broker_port: int = 8700
+    ):
         try:
             import requests
+
             self.requests = requests
         except ImportError:
-            raise ImportError("RestInterface requires 'requests' package. Install with: pip install requests")
-        
+            raise ImportError(
+                "RestInterface requires 'requests' package. " "Install with: pip install requests"
+            )
+
         super().__init__(microgrids, step_size=step_size)
         self.broker_port = broker_port
         self.broker_url = f"http://localhost:{broker_port}"
@@ -119,6 +123,7 @@ class RestInterface(Controller):
 
     def _start_broker(self):
         from vessim._broker import run_broker
+
         self.broker_process = multiprocessing.Process(
             target=run_broker,
             args=(self.broker_port,),
@@ -133,7 +138,7 @@ class RestInterface(Controller):
             config = {
                 "name": mg_name,
                 "actors": [actor.name for actor in mg.actors],
-                "storage": mg.storage.__class__.__name__ if mg.storage else None
+                "storage": mg.storage.__class__.__name__ if mg.storage else None,
             }
             self.requests.post(f"{self.broker_url}/internal/microgrids/{mg_name}", json=config)
 
@@ -152,7 +157,7 @@ class RestInterface(Controller):
     def _process_commands(self):
         response = self.requests.get(f"{self.broker_url}/internal/commands")
         commands = response.json().get("commands", [])
-        
+
         for command in commands:
             if command.get("type") == "set_parameter":
                 microgrid = command.get("microgrid")
@@ -178,8 +183,15 @@ class _ControllerSim(mosaik_api_v3.Simulator):
             "Controller": {
                 "public": True,
                 "params": ["controller", "microgrid_names"],
-                "attrs": ["p_delta", "p_grid", "actor_states", "policy_state",
-                          "storage_state", "grid_signals", "set_parameters"],
+                "attrs": [
+                    "p_delta",
+                    "p_grid",
+                    "actor_states",
+                    "policy_state",
+                    "storage_state",
+                    "grid_signals",
+                    "set_parameters",
+                ],
             },
         },
     }
@@ -215,10 +227,10 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         microgrid_states: dict[str, MicrogridState] = {name: {
             "p_delta": data["p_delta"][f"{name}.grid.Grid"],
             "p_grid": data["p_grid"][f"{name}.storage.Storage"],
-            "actor_states": {k.split(".")[-1]: data["actor_states"][k] for k in data["actor_states"].keys() if k.startswith(f"{name}.actor.")},
-            "policy_state": next(v for k, v in data["policy_state"].items() if k.startswith(f"{name}.storage.Storage")),
-            "storage_state": next((v for k, v in data["storage_state"].items() if k.startswith(f"{name}.storage.Storage")), None),
-            "grid_signals": next((v for k, v in data["grid_signals"].items() if k.startswith(f"{name}.grid.Grid")), None),
+            "actor_states": {k.split(".")[-1]: data["actor_states"][k] for k  in data["actor_states"].keys() if k.startswith(f"{name}.actor.")},  # noqa: E501
+            "policy_state": next(v for k, v in data["policy_state"].items() if k.startswith(f"{name}.storage.Storage")),  # noqa: E501
+            "storage_state": next((v for k, v in data["storage_state"].items() if k.startswith(f"{name}.storage.Storage")), None),  # noqa: E501
+            "grid_signals": next((v for k, v in data["grid_signals"].items() if k.startswith(f"{name}.grid.Grid")), None),  # noqa: E501
         } for name in microgrids}
 
         now = self.clock.to_datetime(time)
@@ -254,11 +266,11 @@ class _ControllerSim(mosaik_api_v3.Simulator):
 def _get_val(inputs: dict, key: str) -> Any:
     return list(inputs[key].values())[0]
 
-def _flatten_dict(d: MutableMapping, parent_key: str = "") -> MutableMapping:
+def _flatten_dict(d: dict, parent_key: str = "") -> dict:
     items: list[tuple[str, Any]] = []
     for k, v in d.items():
         new_key = parent_key + "." + k if parent_key else k
-        if isinstance(v, MutableMapping):
+        if isinstance(v, dict):
             items.extend(_flatten_dict(v, str(new_key)).items())
         else:
             items.append((new_key, v))

@@ -160,12 +160,8 @@ def plot_microgrid_trace(
 
     # Format first subplot
     fig.update_yaxes(title_text="Power (W)", row=1, col=1)
-    fig.update_xaxes(
-        showgrid=True, gridwidth=1, gridcolor="rgba(128,128,128,0.3)", row=1, col=1
-    )
-    fig.update_yaxes(
-        showgrid=True, gridwidth=1, gridcolor="rgba(128,128,128,0.3)", row=1, col=1
-    )
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor="rgba(128,128,128,0.3)", row=1, col=1)
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor="rgba(128,128,128,0.3)", row=1, col=1)
 
     # 2. System Power Plot (Row 2)
     if "p_delta" in df.columns:
@@ -195,26 +191,24 @@ def plot_microgrid_trace(
         )
 
     fig.update_yaxes(title_text="Power (W)", row=2, col=1)
-    fig.update_xaxes(
-        showgrid=True, gridwidth=1, gridcolor="rgba(128,128,128,0.3)", row=2, col=1
-    )
-    fig.update_yaxes(
-        showgrid=True, gridwidth=1, gridcolor="rgba(128,128,128,0.3)", row=2, col=1
-    )
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor="rgba(128,128,128,0.3)", row=2, col=1)
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor="rgba(128,128,128,0.3)", row=2, col=1)
 
     # 3. Battery State of Charge Plot (Row 3)
     # Find SoC columns (handle both old and new naming patterns)
-    soc_columns = [col for col in df.columns
-                   if col.endswith('.storage.soc') or col == 'storage.soc']
-    min_soc_columns = [col for col in df.columns
-                       if col.endswith('.storage.min_soc') or col == 'storage.min_soc']
+    soc_columns = [
+        col for col in df.columns if col.endswith(".storage.soc") or col == "storage.soc"
+    ]
+    min_soc_columns = [
+        col for col in df.columns if col.endswith(".storage.min_soc") or col == "storage.min_soc"
+    ]
 
     if soc_columns:
         # Plot SoC traces for each storage system
         for soc_col in soc_columns:
             # Extract microgrid name from column if hierarchical naming
-            if '.' in soc_col and soc_col != 'storage.soc':
-                mg_name = soc_col.split('.')[0]
+            if "." in soc_col and soc_col != "storage.soc":
+                mg_name = soc_col.split(".")[0]
                 display_name = f"{mg_name} Battery SoC"
             else:
                 display_name = "Battery SoC"

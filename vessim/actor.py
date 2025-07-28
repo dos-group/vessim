@@ -41,6 +41,7 @@ class SilActor(ABC):
     The Environment class uses this to sanity check that
     SilActor are only used in real-time simulations.
     """
+
     def __init__(self, name: str, step_size: Optional[int] = None) -> None:
         self.name = name
         self.step_size = step_size
@@ -61,15 +62,15 @@ class PrometheusActor(SilActor):
     """Actor that pulls energy usage data from a Prometheus instance."""
 
     def __init__(
-            self,
-            name: str,
-            prometheus_url: str,
-            query: str,
-            update_interval: float = 5.0,
-            timeout: float = 10.0,
-            consumer: bool = True,
-            username: Optional[str] = None,
-            password: Optional[str] = None,
+        self,
+        name: str,
+        prometheus_url: str,
+        query: str,
+        update_interval: float = 5.0,
+        timeout: float = 10.0,
+        consumer: bool = True,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
     ):
         """Initialize the PrometheusActor.
 
@@ -85,10 +86,12 @@ class PrometheusActor(SilActor):
         """
         try:
             import requests
+
             self.requests = requests
         except ImportError:
             raise ImportError(
-                "PrometheusActor requires 'requests' package. Install with: pip install requests")
+                "PrometheusActor requires 'requests' package. Install with: pip install requests"
+            )
 
         super().__init__(name)
 
@@ -108,6 +111,7 @@ class PrometheusActor(SilActor):
         self._auth = None
         if username and password:
             import requests.auth
+
             self._auth = requests.auth.HTTPBasicAuth(username, password)
 
         # Validate Prometheus connection
@@ -122,7 +126,7 @@ class PrometheusActor(SilActor):
             f"{self.prometheus_url}/api/v1/query",
             params={"query": "up"},
             timeout=self.timeout,
-            auth=self._auth
+            auth=self._auth,
         )
         response.raise_for_status()
 
@@ -132,7 +136,7 @@ class PrometheusActor(SilActor):
             f"{self.prometheus_url}/api/v1/query",
             params={"query": self.query},
             timeout=self.timeout,
-            auth=self._auth
+            auth=self._auth,
         )
         response.raise_for_status()
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Optional, Literal
 
 import mosaik  # type: ignore
-import mosaik_api_v3  # type: ignore
 
 from vessim.microgrid import Microgrid
 from vessim.actor import Actor, SilActor
@@ -79,8 +78,7 @@ class Environment:
                 step_size=self.step_size,
             )
             controller_entity = controller_sim.Controller(
-                controller=controller,
-                microgrid_names=list(controller.microgrids.keys())
+                controller=controller, microgrid_names=list(controller.microgrids.keys())
             )
 
             # Connect controller to all managed microgrids
@@ -160,5 +158,3 @@ class Environment:
                 if isinstance(actor, SilActor):
                     return True
         return False
-
-
