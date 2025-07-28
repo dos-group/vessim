@@ -442,7 +442,10 @@ class WatttimeSignal(Signal):
     Args:
         username: WattTime API username
         password: WattTime API password
-        region: Grid region (balancing authority) code, e.g., 'CAISO_NORTH'
+        region: Grid region (balancing authority) code, e.g., 'CAISO_NORTH'.
+            Must be provided if location is not specified.
+        location: Tuple of (latitude, longitude) coordinates to automatically determine region.
+            Alternative to specifying region directly.
         organization: Organization name for registration (optional, defaults to 'vessim-user')
         base_url: Base URL for WattTime API, defaults to 'https://api.watttime.org'
     """
@@ -451,7 +454,8 @@ class WatttimeSignal(Signal):
         self,
         username: str,
         password: str,
-        region: str = "CAISO_NORTH",
+        region: Optional[str] = None,
+        location: Optional[tuple[float, float]] = None,
         organization: str = "vessim-user",
         base_url: str = "https://api.watttime.org"
     ) -> None:
@@ -464,18 +468,29 @@ class WatttimeSignal(Signal):
                 "Install with: pip install 'vessim[sil]'"
             )
 
+        # Validate that not both region and location are provided
+        if region is not None and location is not None:
+            raise ValueError("Cannot provide both 'region' and 'location'.")
+        elif region is None and location is None:
+            raise ValueError("Either 'region' or 'location' must be provided.")
+
         self._requests = requests
         self._auth = HTTPBasicAuth(username, password)
         self._username = username
         self._password = password
         self._organization = organization
-        self._region = region
         self._base_url = base_url
         self._token: Optional[str] = None
         self._token_expires: Optional[float] = None
 
         # Try to get initial token (will auto-register if needed)
         self._get_token()
+
+        # Determine region from coordinates if location is provided
+        if location is not None:
+            self._region = self._get_region_from_location(location)
+        else:
+            self._region = region
 
     def _get_token(self) -> str:
         """Obtain or refresh authentication token, auto-registering if needed."""
@@ -545,6 +560,23 @@ class WatttimeSignal(Signal):
 
         print("✓ Registration successful!")
 
+    def _get_region_from_location(self, location: tuple[float, float]) -> str:
+        """Get region code from latitude/longitude coordinates."""
+        region_url = f"{self._base_url}/v3/region-from-loc"
+        headers = {"Authorization": f"Bearer {self._get_token()}"}
+        params = {"latitude": location[0], "longitude": location[1], "signal_type": "co2_moer"}
+
+        response = self._requests.get(region_url, headers=headers, params=params)
+        response.raise_for_status()
+
+        data = response.json()
+        region = data.get("region")
+        if not region:
+            raise ValueError(f"No region found for coordinates ({location})")
+
+        print(f"Detected region '{region}' for coordinates ({location})")
+        return region
+
     def now(self, at: Optional[DatetimeLike] = None, **kwargs) -> float:
         """Retrieves current carbon intensity for the configured region.
 
@@ -560,8 +592,12 @@ class WatttimeSignal(Signal):
             KeyError: If expected data is not in API response
 
         Example:
-            # Create signal with auto-registration if needed
-            >>> signal = WatttimeSignal("myuser", "mypass", "CAISO_NORTH")
+            # Create signal with explicit region
+            >>> signal = WatttimeSignal("myuser", "mypass", region="CAISO_NORTH")
+            >>> carbon_intensity = signal.now()
+
+            # Create signal with lat/long coordinates (auto-detects region)
+            >>> signal = WatttimeSignal("myuser", "mypass", location=(37.7749, -122.4194))
             >>> carbon_intensity = signal.now()
         """
         token = self._get_token()
