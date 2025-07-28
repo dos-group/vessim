@@ -84,6 +84,7 @@ class Environment:
             for microgrid in controller.microgrids.values():
                 # Connect to grid for p_delta
                 self.world.connect(microgrid.grid_entity, controller_entity, "p_delta")
+                self.world.connect(microgrid.grid_entity, controller_entity, "grid_signals")
 
                 # Connect to actors for state
                 for actor_name, actor_entity in microgrid.actor_entities.items():

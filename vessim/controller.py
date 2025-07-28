@@ -7,13 +7,11 @@ from pathlib import Path
 from csv import DictWriter
 from itertools import count
 from collections.abc import Iterator
-from typing import Any, MutableMapping, Optional, Callable, TYPE_CHECKING
+from typing import Any, MutableMapping, Optional, TYPE_CHECKING
 import multiprocessing
 import time
 
 import mosaik_api_v3  # type: ignore
-
-from vessim.signal import Signal
 
 if TYPE_CHECKING:
     from vessim.microgrid import Microgrid, MicrogridState
@@ -54,39 +52,19 @@ class Monitor(Controller):
         microgrids: list[Microgrid],
         step_size: Optional[int] = None,
         outfile: Optional[str | Path] = None,
-        grid_signals: Optional[dict[str, Signal]] = None,
     ):
         super().__init__(microgrids, step_size=step_size)
         self.outfile: Optional[Path] = Path(outfile)
         self._fieldnames: dict[str, Optional[list]] = {}  # Per microgrid fieldnames
-
-        # Hierarchical log: datetime -> microgrid_name -> entry
-        self.log: dict[datetime, dict[str, dict]] = defaultdict(dict)
-        self.custom_monitor_fns: list[Callable] = []
-
-        if grid_signals is not None:
-            for signal_name, signal_api in grid_signals.items():
-
-                def fn(time):
-                    return {signal_name: signal_api.now(time)}
-
-                self.add_monitor_fn(fn)
-
-    def add_monitor_fn(self, fn: Callable[[float], dict[str, Any]]):
-        self.custom_monitor_fns.append(fn)
+        self.log: dict[datetime, dict[str, MicrogridState]] = defaultdict(dict)
 
     def step(self, time: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
         self.log[time] = microgrid_states
-
-        # TODO reimplement custom monitor functions
-        # for monitor_fn in self.custom_monitor_fns:
-        #     log_entry.update(monitor_fn(time))
-
         if self.outfile:
             self._write_microgrid_csv(time, microgrid_states, outfile=self.outfile)
 
     def to_csv(self, outfile: Optional[str]):
-        """Export logs to CSV."""
+        """Export current log to a CSV file."""
         for time, migrogrid_states in self.log.items():
             self._write_microgrid_csv(time, migrogrid_states, outfile=outfile)
 
@@ -105,8 +83,7 @@ class Monitor(Controller):
                 **_flatten_dict(migrogrid_state)
             }
 
-            if mg_name not in self._fieldnames:
-                # First time writing this microgrid - create file with header
+            if mg_name not in self._fieldnames:  # First time: create file with header
                 self._fieldnames[mg_name] = list(log_entry.keys())
                 mode, write_header = "w", True
             else:
@@ -201,7 +178,8 @@ class _ControllerSim(mosaik_api_v3.Simulator):
             "Controller": {
                 "public": True,
                 "params": ["controller", "microgrid_names"],
-                "attrs": ["p_delta", "p_grid", "actor_states", "policy_state", "storage_state", "set_parameters"],
+                "attrs": ["p_delta", "p_grid", "actor_states", "policy_state",
+                          "storage_state", "grid_signals", "set_parameters"],
             },
         },
     }
@@ -238,8 +216,9 @@ class _ControllerSim(mosaik_api_v3.Simulator):
             "p_delta": data["p_delta"][f"{name}.grid.Grid"],
             "p_grid": data["p_grid"][f"{name}.storage.Storage"],
             "actor_states": {k.split(".")[-1]: data["actor_states"][k] for k in data["actor_states"].keys() if k.startswith(f"{name}.actor.")},
-            "storage_state": next((v for k, v in data["storage_state"].items() if k.startswith(f"{name}.storage.Storage")), None),
             "policy_state": next(v for k, v in data["policy_state"].items() if k.startswith(f"{name}.storage.Storage")),
+            "storage_state": next((v for k, v in data["storage_state"].items() if k.startswith(f"{name}.storage.Storage")), None),
+            "grid_signals": next((v for k, v in data["grid_signals"].items() if k.startswith(f"{name}.grid.Grid")), None),
         } for name in microgrids}
 
         now = self.clock.to_datetime(time)
