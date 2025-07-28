@@ -2,7 +2,8 @@
 
 from vessim.actor import Actor, PrometheusActor
 from vessim.controller import Controller, Monitor
-from vessim.cosim import Microgrid, Environment
+from vessim.environment import Environment
+from vessim.microgrid import Microgrid
 from vessim.policy import MicrogridPolicy, DefaultMicrogridPolicy
 from vessim.signal import Signal, Trace, StaticSignal
 from vessim.storage import Storage, SimpleBattery, ClcBattery

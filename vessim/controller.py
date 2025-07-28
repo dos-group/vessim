@@ -16,7 +16,7 @@ import mosaik_api_v3  # type: ignore
 from vessim.signal import Signal
 
 if TYPE_CHECKING:
-    from vessim.cosim import Microgrid
+    from vessim.microgrid import Microgrid, MicrogridState
 
 
 class Controller(ABC):
@@ -27,15 +27,15 @@ class Controller(ABC):
         super().__init_subclass__(**kwargs)
         cls._counters[cls] = count()
 
-    def __init__(self, microgrids: list["Microgrid"], step_size: Optional[int] = None) -> None:
+    def __init__(self, microgrids: list[Microgrid], step_size: Optional[int] = None) -> None:
         cls = self.__class__
         self.name: str = f"{cls.__name__}-{next(cls._counters[cls])}"
         self.step_size = step_size
         self.set_parameters: dict[str, Any] = {}
-        self.microgrids: dict[str, "Microgrid"] = {mg.name: mg for mg in microgrids}
+        self.microgrids: dict[str, Microgrid] = {mg.name: mg for mg in microgrids}
 
     @abstractmethod
-    def step(self, time: datetime, microgrid_states: dict[str, dict[str, Any]]) -> None:
+    def step(self, time: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
         """Performs a simulation step across all managed microgrids.
 
         Args:
@@ -56,7 +56,7 @@ class Controller(ABC):
 class Monitor(Controller):
     def __init__(
         self,
-        microgrids: list["Microgrid"],
+        microgrids: list[Microgrid],
         step_size: Optional[int] = None,
         outdir: Optional[str | Path] = None,
         grid_signals: Optional[dict[str, Signal]] = None,
@@ -85,7 +85,7 @@ class Monitor(Controller):
     def add_monitor_fn(self, fn: Callable[[float], dict[str, Any]]):
         self.custom_monitor_fns.append(fn)
 
-    def step(self, time: datetime, microgrid_states: dict[str, dict[str, Any]]) -> None:
+    def step(self, time: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
         # Build hierarchical log structure: datetime -> microgrid_name -> entry
         for mg_name, mg_state in microgrid_states.items():
             log_entry = dict(
@@ -147,7 +147,7 @@ class Monitor(Controller):
 class RestInterface(Controller):
     """REST API interface for microgrid data and control."""
 
-    def __init__(self, microgrids: list["Microgrid"], step_size: Optional[int] = None,
+    def __init__(self, microgrids: list[Microgrid], step_size: Optional[int] = None,
                  broker_port: int = 8700):
         try:
             import requests
@@ -184,7 +184,7 @@ class RestInterface(Controller):
             }
             self.requests.post(f"{self.broker_url}/internal/microgrids/{mg_name}", json=config)
 
-    def step(self, time: datetime, microgrid_states: dict[str, dict[str, Any]]) -> None:
+    def step(self, time: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
         """Push data to broker and process commands."""
         self._process_commands()
 
@@ -225,7 +225,7 @@ class _ControllerSim(mosaik_api_v3.Simulator):
             "Controller": {
                 "public": True,
                 "params": ["controller", "microgrid_names"],
-                "attrs": ["p_delta", "p_grid", "actor_state", "policy_state", "storage_state", "set_parameters"],
+                "attrs": ["p_delta", "p_grid", "actor_states", "policy_state", "storage_state", "set_parameters"],
             },
         },
     }
@@ -255,19 +255,18 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         assert self.controller is not None
         assert self.clock is not None
         assert self.step_size is not None
-        now = self.clock.to_datetime(time)
 
         data = inputs[self.eid]
         microgrids = [key.split(".grid.Grid")[0] for key in data["p_delta"].keys()]
-        microgrid_states = {name: {
+        microgrid_states: dict[str, MicrogridState] = {name: {
             "p_delta": data["p_delta"][f"{name}.grid.Grid"],
             "p_grid": data["p_grid"][f"{name}.storage.Storage"],
-            "actor_state": {k.split(".")[-1]: data["actor_state"][k] for k in data["actor_state"].keys() if k.startswith(f"{name}.actor.")},
+            "actor_states": {k.split(".")[-1]: data["actor_states"][k] for k in data["actor_states"].keys() if k.startswith(f"{name}.actor.")},
             "storage_state": next((v for k, v in data["storage_state"].items() if k.startswith(f"{name}.storage.Storage")), None),
             "policy_state": next(v for k, v in data["policy_state"].items() if k.startswith(f"{name}.storage.Storage")),
         } for name in microgrids}
 
-        # Call controller with all microgrid states
+        now = self.clock.to_datetime(time)
         self.controller.step(now, microgrid_states)
 
         self.set_parameters = self.controller.set_parameters.copy()
