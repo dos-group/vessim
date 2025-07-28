@@ -86,22 +86,15 @@ class Monitor(Controller):
         self.custom_monitor_fns.append(fn)
 
     def step(self, time: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
-        # Build hierarchical log structure: datetime -> microgrid_name -> entry
-        for mg_name, mg_state in microgrid_states.items():
-            log_entry = dict(
-                p_delta=mg_state["p_delta"],
-                p_grid=mg_state["p_grid"],
-            )
-            log_entry.update(mg_state["state"])
-            for monitor_fn in self.custom_monitor_fns:
-                log_entry.update(monitor_fn(time))
+        self.log[time] = microgrid_states
 
-            # Store in hierarchical structure
-            self.log[time][mg_name] = log_entry
+        # TODO reimplement custom monitor functions
+        # for monitor_fn in self.custom_monitor_fns:
+        #     log_entry.update(monitor_fn(time))
 
-            # Write separate CSV per microgrid if output directory specified
-            if self.outdir:
-                self._write_microgrid_csv(time, mg_name, log_entry)
+        if self.outdir:
+            for mg_name, mg_state in microgrid_states.items():
+                self._write_microgrid_csv(time, mg_name, mg_state)
 
     def _write_microgrid_csv(self, time: datetime, mg_name: str, log_entry: dict,
                              outdir: Optional[str | Path] = None) -> None:
@@ -109,12 +102,11 @@ class Monitor(Controller):
         if outdir is None:
             outdir = self.outdir
         csv_path = f"{outdir}/{mg_name}.csv"
-        log_dict = _flatten_dict(log_entry)
-        log_dict["time"] = time
+        log_entry = {"time": time, **_flatten_dict(log_entry)}
 
         if mg_name not in self._fieldnames:
             # First time writing this microgrid - create file with header
-            self._fieldnames[mg_name] = ["time"] + list(log_dict.keys())
+            self._fieldnames[mg_name] = list(log_entry.keys())
             mode, write_header = "w", True
         else:
             mode, write_header = "a", False
@@ -125,17 +117,7 @@ class Monitor(Controller):
             writer = DictWriter(csvfile, fieldnames=fieldnames)
             if write_header:
                 writer.writeheader()
-            writer.writerow(log_dict)
-
-    def _get_microgrid_records(self, microgrid_name: str) -> list[dict]:
-        """Extract records for a specific microgrid."""
-        records = []
-        for timestamp, microgrids in self.log.items():
-            if microgrid_name in microgrids:
-                record = {"time": timestamp}
-                record.update(_flatten_dict(microgrids[microgrid_name]))
-                records.append(record)
-        return records
+            writer.writerow(log_entry)
 
     def to_csv(self, outdir: Optional[str]):
         """Export logs to CSV."""
