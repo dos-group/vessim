@@ -58,16 +58,11 @@ class Monitor(Controller):
         self,
         microgrids: list[Microgrid],
         step_size: Optional[int] = None,
-        outdir: Optional[str | Path] = None,
+        outfile: Optional[str | Path] = None,
         grid_signals: Optional[dict[str, Signal]] = None,
     ):
         super().__init__(microgrids, step_size=step_size)
-        self.outdir: Optional[Path] = None
-
-        if outdir:
-            self.outdir = Path(outdir).expanduser()
-            self.outdir.mkdir(parents=True, exist_ok=True)
-
+        self.outfile: Optional[Path] = Path(outfile)
         self._fieldnames: dict[str, Optional[list]] = {}  # Per microgrid fieldnames
 
         # Hierarchical log: datetime -> microgrid_name -> entry
@@ -92,38 +87,43 @@ class Monitor(Controller):
         # for monitor_fn in self.custom_monitor_fns:
         #     log_entry.update(monitor_fn(time))
 
-        if self.outdir:
-            for mg_name, mg_state in microgrid_states.items():
-                self._write_microgrid_csv(time, mg_name, mg_state)
+        if self.outfile:
+            self._write_microgrid_csv(time, microgrid_states, outfile=self.outfile)
 
-    def _write_microgrid_csv(self, time: datetime, mg_name: str, log_entry: dict,
-                             outdir: Optional[str | Path] = None) -> None:
-        """Write log entry to a microgrid-specific CSV file."""
-        if outdir is None:
-            outdir = self.outdir
-        csv_path = f"{outdir}/{mg_name}.csv"
-        log_entry = {"time": time, **_flatten_dict(log_entry)}
-
-        if mg_name not in self._fieldnames:
-            # First time writing this microgrid - create file with header
-            self._fieldnames[mg_name] = list(log_entry.keys())
-            mode, write_header = "w", True
-        else:
-            mode, write_header = "a", False
-
-        with Path(csv_path).open(mode, newline='') as csvfile:
-            fieldnames = self._fieldnames[mg_name]
-            assert fieldnames is not None
-            writer = DictWriter(csvfile, fieldnames=fieldnames)
-            if write_header:
-                writer.writeheader()
-            writer.writerow(log_entry)
-
-    def to_csv(self, outdir: Optional[str]):
+    def to_csv(self, outfile: Optional[str]):
         """Export logs to CSV."""
-        for timestamp, microgrids in self.log.items():
-            for mg_name, log_entry in microgrids.items():
-                self._write_microgrid_csv(timestamp, mg_name, log_entry, outdir=outdir)
+        for time, migrogrid_states in self.log.items():
+            self._write_microgrid_csv(time, migrogrid_states, outfile=outfile)
+
+    def _write_microgrid_csv(
+        self,
+        time: datetime,
+        microgrid_states: dict[str, MicrogridState],
+        outfile: Path = None
+    ) -> None:
+        """Append microgrid states to CSV file."""
+        outfile.parent.mkdir(exist_ok=True, parents=True)
+        for mg_name, migrogrid_state in microgrid_states.items():
+            log_entry = {
+                "microgrid": mg_name,
+                "time": time,
+                **_flatten_dict(migrogrid_state)
+            }
+
+            if mg_name not in self._fieldnames:
+                # First time writing this microgrid - create file with header
+                self._fieldnames[mg_name] = list(log_entry.keys())
+                mode, write_header = "w", True
+            else:
+                mode, write_header = "a", False
+
+            with outfile.open(mode, newline='') as csvfile:
+                fieldnames = self._fieldnames[mg_name]
+                assert fieldnames is not None
+                writer = DictWriter(csvfile, fieldnames=fieldnames)
+                if write_header:
+                    writer.writeheader()
+                writer.writerow(log_entry)
 
 
 class RestInterface(Controller):
@@ -142,7 +142,6 @@ class RestInterface(Controller):
         self.broker_url = f"http://localhost:{broker_port}"
         self.broker_process: Optional[multiprocessing.Process] = None
 
-        # Start broker
         self._start_broker()
         self._register_microgrids()
 
