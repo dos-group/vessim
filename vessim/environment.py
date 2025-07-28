@@ -39,13 +39,13 @@ class Environment:
             raise ValueError("There should be at least one actor in the Microgrid.")
 
         microgrid = Microgrid(
-            self.world,
-            self.clock,
-            actors,
-            policy if policy is not None else DefaultMicrogridPolicy(),
-            storage,
-            self.step_size,
-            name,
+            world=self.world,
+            clock=self.clock,
+            step_size=self.step_size,
+            actors=actors,
+            policy=policy if policy is not None else DefaultMicrogridPolicy(),
+            storage=storage,
+            name=name,
         )
         self.microgrids.append(microgrid)
         return microgrid

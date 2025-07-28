@@ -27,17 +27,17 @@ class Microgrid:
         self,
         world: mosaik.World,
         clock: Clock,
+        step_size: int,
         actors: list[Actor],
         policy: MicrogridPolicy,
         storage: Optional[Storage] = None,
-        step_size: int = 1,  # global default
         name: Optional[str] = None,
     ):
-        self.name = name or f"microgrid_{id(self)}"
+        self.step_size = step_size
         self.actors = actors
         self.policy = policy
         self.storage = storage
-        self.step_size = step_size
+        self.name = name or f"microgrid_{id(self)}"
 
         self.actor_entities = {}
         for actor in actors:
