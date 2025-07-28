@@ -40,16 +40,11 @@ class Controller(ABC):
 
         Args:
             time: Current datetime.
-            microgrid_states: Dictionary mapping microgrid names to their state dictionaries.
-                Each state dictionary contains:
-                - "p_delta": Power delta in W based on consumption and production of all actors
-                - "p_grid": Power in W drawn from/fed to the utility grid in the previous step
-                - "state": Dictionary containing actor states, policy state, and storage state
-                    The keys are actor names, "policy", and "storage" respectively.
+            microgrid_states: Maps microgrid names to their current state.
         """
 
     def finalize(self) -> None:
-        """Function to be executed after simulation has ended. Can be overridden for clean-up."""
+        """Executed after simulation has ended. Can be overridden for clean-up."""
         pass
 
 

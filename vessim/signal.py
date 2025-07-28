@@ -192,7 +192,7 @@ class Trace(Signal):
             ValueError: If there is no available data at zone or time, or extra kwargs specified.
         """
         if at is None:
-            raise ValueError("Argument dt cannot be None.")
+            raise ValueError("Argument at cannot be None.")
         if kwargs:
             raise ValueError(f"Invalid arguments: {kwargs.keys()}")
         if column is None:
