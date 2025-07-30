@@ -1,6 +1,6 @@
 import threading
 from collections import defaultdict
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import HTMLResponse
@@ -114,11 +114,10 @@ def read_root():
         <body style="font-family: Arial, sans-serif; margin: 20px;">
             <h1>Vessim API</h1>
             <p>
-                Full API documentation: 
-                <a href="/docs">Swagger UI</a> / 
-                <a href="/redoc">ReDoc</a>
+                Full API documentation:
+                <a href="/docs">Swagger UI</a> / <a href="/redoc">ReDoc</a>
             </p>
-            <p>Run the GUI via: 
+            <p>Run the GUI via:
             <code style="background: #333; color: #fff; padding: 4px; border-radius: 4px;">
                 streamlit run gui/app.py
             </code>
