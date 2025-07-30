@@ -8,12 +8,77 @@ import uvicorn
 from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATEST
 
 
+class PrometheusMetrics:
+    """Encapsulates all Prometheus metrics for Vessim."""
+
+    def __init__(self):
+        self.microgrid_p_delta = Gauge(
+            'vessim_microgrid_p_delta',
+            'Current power consumption/production of microgrid',
+            ['microgrid']
+        )
+        self.microgrid_p_grid = Gauge(
+            'vessim_microgrid_p_grid',
+            'Current grid power exchange',
+            ['microgrid']
+        )
+        self.microgrid_battery_soc = Gauge(
+            'vessim_microgrid_battery_soc',
+            'Battery state of charge (0-1)',
+            ['microgrid']
+        )
+        self.microgrid_battery_capacity_wh = Gauge(
+            'vessim_microgrid_battery_capacity_wh',
+            'Battery capacity in Wh',
+            ['microgrid']
+        )
+        self.microgrid_p_actor = Gauge(
+            'vessim_microgrid_p_actor',
+            'Power consumption/production by actor',
+            ['microgrid', 'actor']
+        )
+        self.data_points_total = Counter(
+            'vessim_data_points_total',
+            'Total number of data points received',
+            ['microgrid']
+        )
+
+    def update_from_data(self, microgrid_name: str, data: dict[str, Any]):
+        """Update all metrics from incoming simulation data."""
+        # Update data points counter
+        self.data_points_total.labels(microgrid=microgrid_name).inc()
+
+        # Update power metrics
+        if 'p_delta' in data:
+            self.microgrid_p_delta.labels(microgrid=microgrid_name).set(data['p_delta'])
+        if 'p_grid' in data:
+            self.microgrid_p_grid.labels(microgrid=microgrid_name).set(data['p_grid'])
+
+        # Update battery metrics
+        for key, value in data.items():
+            if key.endswith('.storage.Storage') and isinstance(value, dict):
+                storage_data = value.get('storage', {})
+                if 'soc' in storage_data:
+                    self.microgrid_battery_soc.labels(microgrid=microgrid_name).set(storage_data['soc'])
+                if 'capacity' in storage_data:
+                    self.microgrid_battery_capacity_wh.labels(microgrid=microgrid_name).set(storage_data['capacity'])
+
+        # Update actor power metrics
+        for key, value in data.items():
+            if '.actor.' in key and isinstance(value, dict) and 'p' in value:
+                actor_name = key.split('.actor.')[1] if '.actor.' in key else key
+                self.microgrid_p_actor.labels(
+                    microgrid=microgrid_name, actor=actor_name
+                ).set(value['p'])
+
+
 class Broker:
     def __init__(self):
         self.microgrids: dict[str, dict] = {}
         self.history: dict[str, list] = defaultdict(list)
         self.commands: list[dict] = []
         self.lock = threading.Lock()
+        self.metrics = PrometheusMetrics()
 
     def add_microgrid(self, name: str, config: dict[str, Any]):
         self.microgrids[name] = config
@@ -21,34 +86,7 @@ class Broker:
     def push_data(self, microgrid_name: str, data: dict[str, Any]):
         with self.lock:
             self.history[microgrid_name].append(data)
-            self._update_prometheus_metrics(microgrid_name, data)
-
-    def _update_prometheus_metrics(self, microgrid_name: str, data: dict[str, Any]):
-        # Update data points counter
-        data_points_total.labels(microgrid=microgrid_name).inc()
-
-        # Update power metrics
-        if 'p_delta' in data:
-            microgrid_p_delta.labels(microgrid=microgrid_name).set(data['p_delta'])
-        if 'p_grid' in data:
-            microgrid_p_grid.labels(microgrid=microgrid_name).set(data['p_grid'])
-
-        # Update battery metrics
-        for key, value in data.items():
-            if key.endswith('.storage.Storage') and isinstance(value, dict):
-                storage_data = value.get('storage', {})
-                if 'soc' in storage_data:
-                    microgrid_battery_soc.labels(microgrid=microgrid_name).set(storage_data['soc'])
-                if 'capacity' in storage_data:
-                    microgrid_battery_capacity_wh.labels(microgrid=microgrid_name).set(storage_data['capacity'])
-
-        # Update actor power metrics
-        for key, value in data.items():
-            if '.actor.' in key and isinstance(value, dict) and 'p' in value:
-                actor_name = key.split('.actor.')[1] if '.actor.' in key else key
-                microgrid_p_actor.labels(
-                    microgrid=microgrid_name, actor=actor_name
-                ).set(value['p'])
+            self.metrics.update_from_data(microgrid_name, data)
 
     def get_commands(self) -> list[dict]:
         with self.lock:
@@ -63,26 +101,6 @@ class Broker:
 
 broker = Broker()
 app = FastAPI(title="Vessim API")
-
-# Prometheus metrics
-microgrid_p_delta = Gauge('vessim_microgrid_p_delta',
-                          'Current power consumption/production of microgrid',
-                          ['microgrid'])
-microgrid_p_grid = Gauge('vessim_microgrid_p_grid',
-                         'Current grid power exchange',
-                         ['microgrid'])
-microgrid_battery_soc = Gauge('vessim_microgrid_battery_soc',
-                              'Battery state of charge (0-1)',
-                              ['microgrid'])
-microgrid_battery_capacity_wh = Gauge('vessim_microgrid_battery_capacity_wh',
-                                      'Battery capacity in Wh',
-                                      ['microgrid'])
-microgrid_p_actor = Gauge('vessim_microgrid_p_actor',
-                           'Power consumption/production by actor',
-                           ['microgrid', 'actor'])
-data_points_total = Counter('vessim_data_points_total',
-                           'Total number of data points received',
-                           ['microgrid'])
 
 
 
