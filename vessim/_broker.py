@@ -1,17 +1,18 @@
 import threading
 from collections import defaultdict
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import HTMLResponse
 import uvicorn
-from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATEST
 
 
 class PrometheusMetrics:
     """Encapsulates all Prometheus metrics for Vessim."""
 
     def __init__(self):
+        from prometheus_client import Counter, Gauge
+
         self.microgrid_p_delta = Gauge(
             'vessim_microgrid_p_delta',
             'Current power consumption/production of microgrid',
@@ -73,12 +74,12 @@ class PrometheusMetrics:
 
 
 class Broker:
-    def __init__(self):
+    def __init__(self, prometheus: bool = False):
         self.microgrids: dict[str, dict] = {}
         self.history: dict[str, list] = defaultdict(list)
         self.commands: list[dict] = []
         self.lock = threading.Lock()
-        self.metrics = PrometheusMetrics()
+        self.metrics = PrometheusMetrics() if prometheus else None
 
     def add_microgrid(self, name: str, config: dict[str, Any]):
         self.microgrids[name] = config
@@ -86,7 +87,8 @@ class Broker:
     def push_data(self, microgrid_name: str, data: dict[str, Any]):
         with self.lock:
             self.history[microgrid_name].append(data)
-            self.metrics.update_from_data(microgrid_name, data)
+            if self.metrics:
+                self.metrics.update_from_data(microgrid_name, data)
 
     def get_commands(self) -> list[dict]:
         with self.lock:
@@ -166,6 +168,9 @@ def set_min_soc(name: str, value: dict[str, float]):
 # Prometheus metrics endpoint
 @app.get("/metrics")
 def get_prometheus_metrics():
+    if broker.metrics is None:
+        raise HTTPException(404, "Prometheus metrics not enabled")
+    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
@@ -187,5 +192,7 @@ def get_commands():
     return {"commands": broker.get_commands()}
 
 
-def run_broker(port: int = 8700):
+def run_broker(port: int = 8700, prometheus: bool = False):
+    global broker
+    broker = Broker(prometheus=prometheus)
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="warning")

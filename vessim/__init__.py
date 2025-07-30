@@ -33,9 +33,9 @@ except ImportError:
     pass
 
 try:
-    from vessim.controller import RestInterface  # noqa: F401
+    from vessim.controller import Api  # noqa: F401
 
-    __all__.extend(["RestInterface"])
+    __all__.extend(["Api"])
 except ImportError:
     # GUI controller requires optional dependencies: pip install vessim[vis]
     pass

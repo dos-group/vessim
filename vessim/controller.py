@@ -98,11 +98,15 @@ class Monitor(Controller):
                 writer.writerow(log_entry)
 
 
-class RestInterface(Controller):
+class Api(Controller):
     """REST API interface for microgrid data and control."""
 
     def __init__(
-        self, microgrids: list[Microgrid], step_size: Optional[int] = None, broker_port: int = 8700
+        self,
+        microgrids: list[Microgrid],
+        step_size: Optional[int] = None,
+        prometheus: bool = False,
+        broker_port: int = 8700,
     ):
         try:
             import requests
@@ -117,6 +121,7 @@ class RestInterface(Controller):
         self.broker_port = broker_port
         self.broker_url = f"http://localhost:{broker_port}"
         self.broker_process: Optional[multiprocessing.Process] = None
+        self.prometheus = prometheus
 
         self._start_broker()
         self._register_microgrids()
@@ -126,12 +131,13 @@ class RestInterface(Controller):
 
         self.broker_process = multiprocessing.Process(
             target=run_broker,
-            args=(self.broker_port,),
+            args=(self.broker_port,self.prometheus),
             daemon=True
         )
         self.broker_process.start()
         time.sleep(2)
-        print(f"🌐 API available at: {self.broker_url}")
+        prometheus_str = " (including Prometheus exporter)" if self.prometheus else ""
+        print(f"🌐 API{prometheus_str} available at: {self.broker_url}")
 
     def _register_microgrids(self):
         for mg_name, mg in self.microgrids.items():
