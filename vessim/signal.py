@@ -25,78 +25,21 @@ class Signal(ABC):
         """Perform necessary finalization tasks of a signal."""
 
 
-class SilSignal(Signal):
-    """Base class for Software-in-the-Loop signals with background polling.
+class StaticSignal(Signal):
+    _ids = count(0)
 
-    This class provides common functionality for signals that need to periodically
-    fetch data from external sources (APIs, databases, etc.) and cache the results.
+    def __init__(self, value: float) -> None:
+        self._v = value
 
-    Args:
-        update_interval: Interval in seconds between data updates
-        timeout: Request timeout in seconds for external calls
-    """
+    def __repr__(self):
+        """Returns a string representation of the StaticSignal."""
+        return f"StaticSignal({self._v})"
 
-    def __init__(self, update_interval: float = 5.0, timeout: float = 10.0):
-        try:
-            from threading import Timer
-        except ImportError:
-            raise ImportError("SilSignal requires threading support")
+    def set_value(self, value: float) -> None:
+        self._v = value
 
-        self.Timer = Timer
-        self.update_interval = update_interval
-        self.timeout = timeout
-
-        self._last_update: Optional[float] = None
-        self._cached_value: float = 0.0
-        self._stop_polling = False
-
-        # Start background polling
-        self._start_background_polling()
-
-    @abstractmethod
-    def _fetch_current_value(self) -> float:
-        """Fetch the current value from the external source.
-
-        This method should be implemented by subclasses to define how to
-        retrieve data from their specific external source.
-
-        Returns:
-            Current value from the external source
-
-        Raises:
-            Exception: Any exception that occurs during data fetching
-        """
-
-    def _start_background_polling(self) -> None:
-        """Start background polling in a separate thread."""
-
-        def poll():
-            if not self._stop_polling:
-                try:
-                    self._cached_value = self._fetch_current_value()
-                    self._last_update = time.time()
-                except Exception:
-                    pass  # Keep using cached value
-                # Schedule next poll
-                self.Timer(self.update_interval, poll).start()
-
-        self.Timer(0, poll).start()  # Start immediately
-
-    def now(self, at: Optional[DatetimeLike] = None, **kwargs) -> float:
-        """Return the current cached value.
-
-        Args:
-            at: Current simulation time (ignored for real-time data)
-            **kwargs: Additional parameters (ignored)
-
-        Returns:
-            Current cached value
-        """
-        return self._cached_value
-
-    def finalize(self) -> None:
-        """Stop background polling and clean up resources."""
-        self._stop_polling = True
+    def now(self, at: Optional[DatetimeLike] = None, **kwargs):
+        return self._v
 
 
 class Trace(Signal):
@@ -491,21 +434,78 @@ def _abs_path(data_dir: Optional[str | Path]) -> Path:
         raise ValueError(f"Path {data_dir} not valid. Has to be absolute or None.")
 
 
-class StaticSignal(Signal):
-    _ids = count(0)
+class SilSignal(Signal):
+    """Base class for Software-in-the-Loop signals with background polling.
 
-    def __init__(self, value: float) -> None:
-        self._v = value
+    This class provides common functionality for signals that need to periodically
+    fetch data from external sources (APIs, databases, etc.) and cache the results.
 
-    def __repr__(self):
-        """Returns a string representation of the StaticSignal."""
-        return f"StaticSignal({self._v})"
+    Args:
+        update_interval: Interval in seconds between data updates
+        timeout: Request timeout in seconds for external calls
+    """
 
-    def set_value(self, value: float) -> None:
-        self._v = value
+    def __init__(self, update_interval: float = 5.0, timeout: float = 10.0):
+        try:
+            from threading import Timer
+        except ImportError:
+            raise ImportError("SilSignal requires threading support")
 
-    def now(self, at: Optional[DatetimeLike] = None, **kwargs):
-        return self._v
+        self.Timer = Timer
+        self.update_interval = update_interval
+        self.timeout = timeout
+
+        self._last_update: Optional[float] = None
+        self._cached_value: float = 0.0
+        self._stop_polling = False
+
+        # Start background polling
+        self._start_background_polling()
+
+    @abstractmethod
+    def _fetch_current_value(self) -> float:
+        """Fetch the current value from the external source.
+
+        This method should be implemented by subclasses to define how to
+        retrieve data from their specific external source.
+
+        Returns:
+            Current value from the external source
+
+        Raises:
+            Exception: Any exception that occurs during data fetching
+        """
+
+    def _start_background_polling(self) -> None:
+        """Start background polling in a separate thread."""
+
+        def poll():
+            if not self._stop_polling:
+                try:
+                    self._cached_value = self._fetch_current_value()
+                    self._last_update = time.time()
+                except Exception:
+                    pass  # Keep using cached value
+                # Schedule next poll
+                self.Timer(self.update_interval, poll).start()
+
+        self.Timer(0, poll).start()  # Start immediately
+
+    def now(self, at: Optional[DatetimeLike] = None, **kwargs) -> float:
+        """Return the current cached value.
+
+        Args:
+            at: Current simulation time (ignored for real-time data)
+            **kwargs: Additional parameters (ignored)
+
+        Returns:
+            Current cached value
+        """
+        return self._cached_value
+
+    def finalize(self) -> None:
+        """Stop background polling and clean up resources."""
+        self._stop_polling = True
 
 
 class PrometheusSignal(SilSignal):
@@ -525,11 +525,11 @@ class PrometheusSignal(SilSignal):
         self,
         prometheus_url: str,
         query: str,
-        update_interval: float = 5.0,
-        timeout: float = 10.0,
         consumer: bool = True,
         username: Optional[str] = None,
         password: Optional[str] = None,
+        update_interval: float = 10,
+        timeout: float = 10,
     ):
         try:
             import requests
@@ -551,11 +551,10 @@ class PrometheusSignal(SilSignal):
         if username and password:
             self._auth = requests.auth.HTTPBasicAuth(username, password)
 
-        # Validate Prometheus connection
-        self._validate_connection()
-
         # Initialize parent class (starts background polling)
         super().__init__(update_interval=update_interval, timeout=timeout)
+
+        self._validate_connection()
 
     def _validate_connection(self) -> None:
         """Validate that we can connect to the Prometheus server."""
@@ -604,9 +603,9 @@ class WatttimeSignal(SilSignal):
             Must be provided if location is not specified.
         location: Tuple of (latitude, longitude) coordinates to automatically determine region.
             Alternative to specifying region directly.
-        organization: Organization name for registration (optional, defaults to 'vessim-user')
         base_url: Base URL for WattTime API, defaults to 'https://api.watttime.org'
-        update_interval: Interval in seconds between API calls (default: 300 seconds = 5 minutes)
+        update_interval: Interval in seconds between API calls (default: 300 seconds as
+            WattTime updates every 5 minutes)
         timeout: Request timeout in seconds
     """
 
@@ -616,10 +615,9 @@ class WatttimeSignal(SilSignal):
         password: str,
         region: Optional[str] = None,
         location: Optional[tuple[float, float]] = None,
-        organization: str = "vessim-user",
         base_url: str = "https://api.watttime.org",
-        update_interval: float = 300.0,  # 5 minutes default (WattTime updates every 5 minutes)
-        timeout: float = 30.0,
+        update_interval: float = 300,
+        timeout: float = 10,
     ) -> None:
         try:
             import requests
@@ -640,7 +638,6 @@ class WatttimeSignal(SilSignal):
         self._auth = HTTPBasicAuth(username, password)
         self._username = username
         self._password = password
-        self._organization = organization
         self._base_url = base_url
         self._token: Optional[str] = None
         self._token_expires: Optional[float] = None
@@ -719,7 +716,6 @@ class WatttimeSignal(SilSignal):
             "username": self._username,
             "password": self._password,
             "email": email,
-            "org": self._organization,
         }
 
         response = self._requests.post(register_url, json=registration_data)

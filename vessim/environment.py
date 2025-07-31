@@ -5,12 +5,12 @@ from typing import Optional, Literal
 import mosaik  # type: ignore
 
 from vessim.microgrid import Microgrid
-from vessim.actor import Actor, SilActor
+from vessim.actor import Actor
 from vessim.controller import Controller
 from vessim.storage import Storage
 from vessim.policy import MicrogridPolicy, DefaultMicrogridPolicy
 from vessim._util import Clock, disable_rt_warnings
-from vessim.signal import Signal
+from vessim.signal import Signal, SilSignal
 
 
 class Environment:
@@ -136,7 +136,7 @@ class Environment:
         self._initialize_controllers()
 
         # Check if SiL actors are present and fail if the simulation is not in real-time mode
-        if self._has_sil_actors() and rt_factor is None:
+        if self._contains_sil_signals() and rt_factor is None:
             raise RuntimeError(
                 "SiL actors detected but not running in real-time mode. "
                 "Use rt_factor > 0 for real-time simulation."
@@ -151,10 +151,10 @@ class Environment:
                 microgrid.finalize()
             raise
 
-    def _has_sil_actors(self) -> bool:
+    def _contains_sil_signals(self) -> bool:
         """Check if any microgrid contains SiL actors."""
         for microgrid in self.microgrids:
             for actor in microgrid.actors:
-                if isinstance(actor, SilActor):
+                if isinstance(actor.signal, SilSignal):
                     return True
         return False
