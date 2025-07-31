@@ -1,6 +1,6 @@
 """A simulator for carbon-aware applications and systems."""
 
-from vessim.actor import Actor, PrometheusActor
+from vessim.actor import Actor
 from vessim.controller import Controller, Monitor
 from vessim.environment import Environment
 from vessim.microgrid import Microgrid
@@ -10,7 +10,6 @@ from vessim.storage import Storage, SimpleBattery, ClcBattery
 
 __all__ = [
     "Actor",
-    "PrometheusActor",
     "Controller",
     "Monitor",
     "Microgrid",
@@ -41,9 +40,9 @@ except ImportError:
     pass
 
 try:
-    from vessim.signal import WatttimeSignal  # noqa: F401
+    from vessim.signal import WatttimeSignal, PrometheusSignal  # noqa: F401
 
-    __all__.extend(["WatttimeSignal"])
+    __all__.extend(["WatttimeSignal", "PrometheusSignal"])
 except ImportError:
-    # WatttimeSignal requires optional dependencies: pip install vessim[sil]
+    # WatttimeSignal and PrometheusSignal require optional dependencies: pip install vessim[sil]
     pass
