@@ -74,12 +74,12 @@ class PrometheusMetrics:
 
 
 class Broker:
-    def __init__(self, prometheus: bool = False):
+    def __init__(self, export_prometheus: bool = False):
         self.microgrids: dict[str, dict] = {}
         self.history: dict[str, list] = defaultdict(list)
         self.commands: list[dict] = []
         self.lock = threading.Lock()
-        self.metrics = PrometheusMetrics() if prometheus else None
+        self.metrics = PrometheusMetrics() if export_prometheus else None
 
     def add_microgrid(self, name: str, config: dict[str, Any]):
         self.microgrids[name] = config
@@ -191,7 +191,7 @@ def get_commands():
     return {"commands": broker.get_commands()}
 
 
-def run_broker(port: int = 8700, prometheus: bool = False):
+def run_broker(port: int = 8700, export_prometheus: bool = False):
     global broker
-    broker = Broker(prometheus=prometheus)
+    broker = Broker(export_prometheus=export_prometheus)
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="warning")

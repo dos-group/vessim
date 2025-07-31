@@ -105,7 +105,7 @@ class Api(Controller):
         self,
         microgrids: list[Microgrid],
         step_size: Optional[int] = None,
-        prometheus: bool = False,
+        export_prometheus: bool = False,
         broker_port: int = 8700,
     ):
         try:
@@ -121,7 +121,7 @@ class Api(Controller):
         self.broker_port = broker_port
         self.broker_url = f"http://localhost:{broker_port}"
         self.broker_process: Optional[multiprocessing.Process] = None
-        self.prometheus = prometheus
+        self.export_prometheus = export_prometheus
 
         self._start_broker()
         self._register_microgrids()
@@ -131,12 +131,12 @@ class Api(Controller):
 
         self.broker_process = multiprocessing.Process(
             target=run_broker,
-            args=(self.broker_port,self.prometheus),
+            args=(self.broker_port, self.export_prometheus),
             daemon=True
         )
         self.broker_process.start()
         time.sleep(2)
-        prometheus_str = " (including Prometheus exporter)" if self.prometheus else ""
+        prometheus_str = " (incl. Prometheus exporter)" if self.export_prometheus else ""
         print(f"🌐 API{prometheus_str} available at: {self.broker_url}")
 
     def _register_microgrids(self):
