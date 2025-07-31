@@ -115,9 +115,8 @@ class _GridSim(mosaik_api_v3.Simulator):
         return time + self.step_size
 
     def get_data(self, outputs):
-        data = {"p_delta": self.p_delta}
-        if self.grid_signals:
-            data["grid_signals"] = {
-                signal_name: signal.now() for signal_name, signal in self.grid_signals.items()
-            }
-        return {self.eid: data}
+        grid_signals = (
+            {name: signal.now() for name, signal in self.grid_signals.items()}
+            if self.grid_signals else None
+        )
+        return {self.eid: {"p_delta": self.p_delta, "grid_signals": grid_signals}}
