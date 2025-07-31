@@ -40,9 +40,9 @@ except ImportError:
     pass
 
 try:
-    from vessim.signal import WatttimeSignal, PrometheusSignal  # noqa: F401
+    from vessim.signal import SilSignal, WatttimeSignal, PrometheusSignal  # noqa: F401
 
-    __all__.extend(["WatttimeSignal", "PrometheusSignal"])
+    __all__.extend(["SilSignal", "WatttimeSignal", "PrometheusSignal"])
 except ImportError:
     # WatttimeSignal and PrometheusSignal require optional dependencies: pip install vessim[sil]
     pass

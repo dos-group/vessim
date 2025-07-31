@@ -25,6 +25,80 @@ class Signal(ABC):
         """Perform necessary finalization tasks of a signal."""
 
 
+class SilSignal(Signal):
+    """Base class for Software-in-the-Loop signals with background polling.
+
+    This class provides common functionality for signals that need to periodically
+    fetch data from external sources (APIs, databases, etc.) and cache the results.
+
+    Args:
+        update_interval: Interval in seconds between data updates
+        timeout: Request timeout in seconds for external calls
+    """
+
+    def __init__(self, update_interval: float = 5.0, timeout: float = 10.0):
+        try:
+            from threading import Timer
+        except ImportError:
+            raise ImportError("SilSignal requires threading support")
+
+        self.Timer = Timer
+        self.update_interval = update_interval
+        self.timeout = timeout
+
+        self._last_update: Optional[float] = None
+        self._cached_value: float = 0.0
+        self._stop_polling = False
+
+        # Start background polling
+        self._start_background_polling()
+
+    @abstractmethod
+    def _fetch_current_value(self) -> float:
+        """Fetch the current value from the external source.
+
+        This method should be implemented by subclasses to define how to
+        retrieve data from their specific external source.
+
+        Returns:
+            Current value from the external source
+
+        Raises:
+            Exception: Any exception that occurs during data fetching
+        """
+
+    def _start_background_polling(self) -> None:
+        """Start background polling in a separate thread."""
+
+        def poll():
+            if not self._stop_polling:
+                try:
+                    self._cached_value = self._fetch_current_value()
+                    self._last_update = time.time()
+                except Exception:
+                    pass  # Keep using cached value
+                # Schedule next poll
+                self.Timer(self.update_interval, poll).start()
+
+        self.Timer(0, poll).start()  # Start immediately
+
+    def now(self, at: Optional[DatetimeLike] = None, **kwargs) -> float:
+        """Return the current cached value.
+
+        Args:
+            at: Current simulation time (ignored for real-time data)
+            **kwargs: Additional parameters (ignored)
+
+        Returns:
+            Current cached value
+        """
+        return self._cached_value
+
+    def finalize(self) -> None:
+        """Stop background polling and clean up resources."""
+        self._stop_polling = True
+
+
 class Trace(Signal):
     """Simulates a signal for time-series data like solar irradiance or carbon intensity.
 
@@ -434,7 +508,7 @@ class StaticSignal(Signal):
         return self._v
 
 
-class PrometheusSignal(Signal):
+class PrometheusSignal(SilSignal):
     """Signal that pulls energy usage data from a Prometheus instance.
 
     Args:
@@ -460,25 +534,17 @@ class PrometheusSignal(Signal):
         try:
             import requests
             import requests.auth
-            from threading import Timer
         except ImportError:
             raise ImportError(
                 "PrometheusSignal requires 'requests' package. Install with: pip install requests"
             )
 
         self.requests = requests
-        self.Timer = Timer
         self.prometheus_url = prometheus_url.rstrip("/")
         self.query = query
-        self.update_interval = update_interval
-        self.timeout = timeout
         self.consumer = consumer
         self.username = username
         self.password = password
-
-        self._last_update: Optional[float] = None
-        self._cached_value: float = 0.0
-        self._stop_polling = False
 
         # Set up authentication if provided
         self._auth = None
@@ -488,8 +554,8 @@ class PrometheusSignal(Signal):
         # Validate Prometheus connection
         self._validate_connection()
 
-        # Start background polling
-        self._start_background_polling()
+        # Initialize parent class (starts background polling)
+        super().__init__(update_interval=update_interval, timeout=timeout)
 
     def _validate_connection(self) -> None:
         """Validate that we can connect to the Prometheus server."""
@@ -523,39 +589,8 @@ class PrometheusSignal(Signal):
         value = float(results[0]["value"][1])
         return -value if self.consumer else value
 
-    def _start_background_polling(self) -> None:
-        """Start background polling in a separate thread."""
 
-        def poll():
-            if not self._stop_polling:
-                try:
-                    self._cached_value = self._fetch_current_value()
-                    self._last_update = time.time()
-                except Exception:
-                    pass  # Keep using cached value
-                # Schedule next poll
-                self.Timer(self.update_interval, poll).start()
-
-        self.Timer(0, poll).start()  # Start immediately
-
-    def now(self, at: Optional[DatetimeLike] = None, **kwargs) -> float:
-        """Return the current power consumption/production.
-
-        Args:
-            at: Current simulation time (ignored for real-time data)
-            **kwargs: Additional parameters (ignored)
-
-        Returns:
-            Current power value in watts (negative for consumption, positive for production)
-        """
-        return self._cached_value
-
-    def finalize(self) -> None:
-        """Stop background polling and clean up resources."""
-        self._stop_polling = True
-
-
-class WatttimeSignal(Signal):
+class WatttimeSignal(SilSignal):
     """Real-time carbon intensity signal from WattTime API.
 
     This signal fetches real-time marginal carbon intensity data from the WattTime API.
@@ -571,6 +606,8 @@ class WatttimeSignal(Signal):
             Alternative to specifying region directly.
         organization: Organization name for registration (optional, defaults to 'vessim-user')
         base_url: Base URL for WattTime API, defaults to 'https://api.watttime.org'
+        update_interval: Interval in seconds between API calls (default: 300 seconds = 5 minutes)
+        timeout: Request timeout in seconds
     """
 
     def __init__(
@@ -581,6 +618,8 @@ class WatttimeSignal(Signal):
         location: Optional[tuple[float, float]] = None,
         organization: str = "vessim-user",
         base_url: str = "https://api.watttime.org",
+        update_interval: float = 300.0,  # 5 minutes default (WattTime updates every 5 minutes)
+        timeout: float = 30.0,
     ) -> None:
         try:
             import requests
@@ -616,6 +655,9 @@ class WatttimeSignal(Signal):
             # region is guaranteed to be not None due to validation above
             assert region is not None
             self._region = region
+
+        # Initialize parent class (starts background polling)
+        super().__init__(update_interval=update_interval, timeout=timeout)
 
     def _get_token(self) -> str:
         """Obtain or refresh authentication token, auto-registering if needed."""
@@ -706,12 +748,8 @@ class WatttimeSignal(Signal):
         print(f"Detected region '{region}' for coordinates ({location})")
         return region
 
-    def now(self, at: Optional[DatetimeLike] = None, **kwargs) -> float:
-        """Retrieves current carbon intensity for the configured region.
-
-        Args:
-            at: Timestamp parameter (ignored for real-time data)
-            **kwargs: Additional parameters (ignored)
+    def _fetch_current_value(self) -> float:
+        """Fetch current carbon intensity from WattTime API.
 
         Returns:
             Current marginal carbon intensity in lbs CO2/MWh
@@ -719,15 +757,6 @@ class WatttimeSignal(Signal):
         Raises:
             requests.HTTPError: If API request fails
             KeyError: If expected data is not in API response
-
-        Example:
-            # Create signal with explicit region
-            >>> signal = WatttimeSignal("myuser", "mypass", region="CAISO_NORTH")
-            >>> carbon_intensity = signal.now()
-
-            # Create signal with lat/long coordinates (auto-detects region)
-            >>> signal = WatttimeSignal("myuser", "mypass", location=(37.7749, -122.4194))
-            >>> carbon_intensity = signal.now()
         """
         token = self._get_token()
 
@@ -736,7 +765,9 @@ class WatttimeSignal(Signal):
         headers = {"Authorization": f"Bearer {token}"}
         params = {"region": self._region, "signal_type": "co2_moer"}
 
-        response = self._requests.get(index_url, headers=headers, params=params)
+        response = self._requests.get(
+            index_url, headers=headers, params=params, timeout=self.timeout
+        )
         response.raise_for_status()
 
         data = response.json()
