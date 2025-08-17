@@ -1,0 +1,1 @@
+This directory contains some example **frontends** which can be used in combination with the WebSocket controller. 
