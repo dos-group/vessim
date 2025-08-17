@@ -10,6 +10,7 @@ from collections.abc import Iterator
 from typing import Any, Optional, TYPE_CHECKING
 import multiprocessing
 import time
+import queue
 
 import mosaik_api_v3  # type: ignore
 
@@ -180,6 +181,117 @@ class Api(Controller):
             self.broker_process.join(timeout=2)
 
         print("🛑 API broker terminated")
+
+
+class WebSocket(Controller):
+    """
+    Provides an - as far as practical - async implementation providing WebSocket connectivity for frontends. 
+    """
+
+
+    from datetime import datetime
+
+    def __init__(
+            self,
+            step_size: Optional[int] = None
+    ):
+        import threading
+        import socketio
+        from flask import Flask
+
+        super().__init__(step_size=step_size)
+
+        self._shutdown = threading.Event()
+        self._server = None
+        self._server_thread: Optional[threading.Thread] = None
+        self._broadcast_thread: Optional[threading.Thread] = None
+
+        self.update_queue = queue.Queue()
+
+        self.sio = socketio.Server(async_mode="gevent", cors_allowed_origins="*")
+        app = Flask(__name__)
+        self.app = socketio.WSGIApp(self.sio, app)
+
+        @self.sio.on("ping")
+        def _ping(_sid):
+            pass
+
+    def _run_server(self):
+        from gevent import pywsgi
+        from geventwebsocket.handler import WebSocketHandler
+
+        self._server = pywsgi.WSGIServer(
+            ("0.0.0.0", 5000),
+            self.app,
+            handler_class=WebSocketHandler,
+        )
+
+        self._server.serve_forever()
+
+    def _broadcast_loop(self):
+        while not self._shutdown.is_set():
+            try:
+                update = self.update_queue.get(timeout=0.5)
+            except queue.Empty:
+                continue
+
+            if update is None:
+                break
+
+            try:
+                self.sio.emit("step_update", update)
+            except Exception:
+                if self._shutdown.is_set():
+                    break
+
+    def start(self, microgrid: Microgrid) -> None:
+        import threading
+
+        self._shutdown.clear()
+
+        self._server_thread = threading.Thread(target=self._run_server, daemon=True, name="ws-server")
+        self._server_thread.start()
+
+        self._broadcast_thread = threading.Thread(target=self._broadcast_loop, daemon=True, name="ws-broadcast")
+        self._broadcast_thread.start()
+
+    def step(self, time: datetime, p_delta: float, e_delta: float, state: dict) -> None:
+        if self._shutdown.is_set():
+            return
+
+        update = {
+            "time": time.isoformat(),
+            "p_delta": p_delta,
+            "e_delta": e_delta,
+            "state": state,
+        }
+
+        self.update_queue.put(update)
+
+    def finalize(self) -> None:
+        """Stop broadcast loop, stop the gevent server, and join threads."""
+        self._shutdown.set()
+        self.update_queue.put(None)
+
+        srv = self._server
+        if srv is not None:
+            try:
+                srv.stop(timeout=1)
+            except Exception:
+                pass
+            try:
+                srv.close()
+            except Exception:
+                pass
+            self._server = None
+
+        if self._broadcast_thread is not None:
+            self._broadcast_thread.join(timeout=2)
+            self._broadcast_thread = None
+
+        if self._server_thread is not None:
+            self._server_thread.join(timeout=2)
+            self._server_thread = None
 
 
 class _ControllerSim(mosaik_api_v3.Simulator):
