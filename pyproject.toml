@@ -35,6 +35,12 @@ dependencies = [
     "mosaik-api-v3>=3.0.4",
     "loguru>=0.6.0",
     "docopt-ng>=0.9.0",  # mosaik-api-v3 depends on an outdated version of docopt, doctopt-ng is a maintained fork
+
+    # Required for WebSockets
+    "flask>=3.0.3",
+    "python-socketio[client]>=5.13.0",
+    "gevent>=25.5.1",
+    "gevent-websocket>=0.10.1",
 ]
 
 [project.optional-dependencies]
