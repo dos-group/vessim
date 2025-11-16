@@ -77,3 +77,5 @@ crash.log
 
 # Sphinx
 _build
+# Ignore playground and all its contents
+vessim-playground/
