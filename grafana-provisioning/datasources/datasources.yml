@@ -1,0 +1,19 @@
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB2
+    type: influxdb
+    uid: influxdb2
+    access: proxy
+    url: http://influxdb2:8086
+    isDefault: true
+
+    jsonData:
+      version: Flux             # Important: Flux for InfluxDB 2.x
+      httpMode: POST
+      organization: vessim_org  # Must match DOCKER_INFLUXDB_INIT_ORG
+      defaultBucket: vessim_bucket
+      tlsSkipVerify: true
+
+    secureJsonData:
+      token: ${INFLUX_TOKEN}  # Use environment variable for security

@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  # A provider defines where Grafana finds dashboard JSON files
+  - name: 'vessim-dashboards'
+    folder: 'vessim-folder' # Optional: name of the folder in the Grafana UI
+    type: file
+    disableDeletion: false
+    editable: true
+    # This is the path INSIDE the Docker container
+    options:
+      path: /etc/grafana/provisioning/dashboards

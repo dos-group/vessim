@@ -1,0 +1,51 @@
+services:
+  influxdb2:
+    container_name: influxdb2
+    image: influxdb:2
+    ports:
+      - "8086:8086"
+    volumes:
+      # Mount named volumes for persistence of data and configuration
+      - influxdb_data:/var/lib/influxdb2
+      - influxdb_config:/etc/influxdb2
+    environment:
+      # **IMPORTANT**: Set initial credentials for InfluxDB 2
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=admin123
+      - DOCKER_INFLUXDB_INIT_ORG=vessim_org
+      - DOCKER_INFLUXDB_INIT_BUCKET=vessim_bucket
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN="${INFLUX_TOKEN}"
+      - DOCKER_INFLUXDB_INIT_RETENTION=
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8086/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - INFLUX_TOKEN=${INFLUX_TOKEN}    # <– ganz wichtig
+    depends_on:
+      - influxdb2
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - grafana_logs:/var/log/grafana
+      - grafana_config:/etc/grafana
+      - ./grafana-provisioning:/etc/grafana/provisioning
+    restart: unless-stopped
+
+volumes:
+  # Define named volumes managed by Docker for persistent storage
+  influxdb_data:
+  influxdb_config:
+  grafana_data:
+  grafana_logs:
+  grafana_config:

@@ -77,3 +77,4 @@ crash.log
 
 # Sphinx
 _build
+results.csv
