@@ -7,11 +7,16 @@ from datetime import datetime, timezone
 import pandas as pd
 import numpy as np
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # UPDATED INFLUXDB 2 CONFIGURATION ---
-INFLUX_URL = "http://127.0.0.1:8086/"
+INFLUX_URL = "http://127.0.0.1:8086"
 INFLUX_ORG = "vessim_org"
 INFLUX_BUCKET = "vessim_bucket"
-INFLUX_TOKEN = "MEgDXakKxHbqmQEL9OdRkr9UDFmBjqb1ZVC3ZSReiJAIc8Uc0-8XYcfsaRwSqrnQVoikeBMYLov9-FKAfpRtMg=="
+INFLUX_TOKEN = os.getenv("INFLUX_TOKEN")
 
 # ---------------------------------------------------------
 # Berlin-Winddaten als Trace (synthetisch, 5-Minuten-Raster)
