@@ -64,7 +64,7 @@ def main():
         actors=[
             vs.Actor(name="server", signal=vs.StaticSignal(value=-2000)),
             vs.Actor(
-                tag="solar"
+                #tag="solar"
                 name="solar_panel",
                 signal=vs.Trace.load(
                     "solcast2022_global",
