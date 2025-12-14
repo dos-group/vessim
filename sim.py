@@ -64,29 +64,45 @@ def main():
     # Wind-Trace erzeugen
     wind_trace = make_berlin_wind_trace()
 
-    microgrid = env.add_microgrid(
+    datacenter = env.add_microgrid(
         name="datacenter",
         actors=[
             vs.Actor(name="server", signal=vs.StaticSignal(value=-2000)),
             vs.Actor(
-                #tag="solar"
                 name="solar_panel",
                 signal=vs.Trace.load(
                     "solcast2022_global",
                     column="Berlin",
                     params={"scale": 8500},
-                ),  # 8.5 kW max (aus deinem Beispiel)
+                ),
             ),
             vs.Actor(
                 name="wind_turbine",
-                signal=wind_trace,  # hier hängt der neue Wind-Trace
+                signal=wind_trace,
             ),
         ],
         storage=vs.SimpleBattery(capacity=50000),
     )
 
+    office = env.add_microgrid(
+        name="office",
+        actors=[
+            vs.Actor(name="office_load", signal=vs.StaticSignal(value=-1200)),
+            vs.Actor(
+                name="solar_panel",
+                signal=vs.Trace.load(
+                    "solcast2022_global",
+                    column="Berlin",
+                    params={"scale": 5000},
+                ),
+            ),
+        ],
+        storage=vs.SimpleBattery(capacity=20000),
+    )
+
+    # Monitor für beide Microgrids
     monitor = vs.Monitor(
-        [microgrid],
+        [datacenter, office],  # <-- hier beide übergeben
         outfile="./results.csv",
         influx_url=INFLUX_URL,
         influx_org=INFLUX_ORG,
