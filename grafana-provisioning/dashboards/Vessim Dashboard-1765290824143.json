@@ -89,7 +89,7 @@
         ]
       },
       "gridPos": {
-        "h": 10,
+        "h": 11,
         "w": 5,
         "x": 0,
         "y": 0
@@ -122,7 +122,7 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
-          "query": "// 1. Basis-Datenquelle\r\ndata = from(bucket: \"vessim_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r._measurement == \"vessim\")\r\n\r\n// 2. Solar + Wind summieren\r\nsolar_wind_sum = data\r\n  |> filter(fn: (r) =>\r\n    r._field == \"power_solar\" or\r\n    r._field == \"power_wind_turbine\"\r\n  )\r\n  |> group(columns: [\"_field\"])\r\n  |> sum(column: \"_value\")\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _field:\r\n        if r._field == \"power_solar\" then \"Solar-Gesamtenergie\"\r\n        else \"Wind-Gesamtenergie\"\r\n  }))\r\n  |> rename(columns: {_value: \"\"})\r\n  |> keep(columns: [\"_field\", \"\"])\r\n\r\n// 3. Netzbezug (nur negative Werte, invertieren)\r\np_grid_imported = data\r\n  |> filter(fn: (r) => r._field == \"p_grid\")\r\n  |> filter(fn: (r) => r._value < 0)\r\n  |> sum(column: \"_value\")\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _value: r._value * -1.0,\r\n      _field: \"Bezug-Gesamtenergie\"\r\n  }))\r\n    |> rename(columns: {_value: \"\"})\r\n    |> keep(columns: [\"_field\", \"\"])\r\n\r\n// 4. Zusammenführen\r\nunion(tables: [solar_wind_sum, p_grid_imported])\r\n",
+          "query": "// 1. Basis-Datenquelle\r\ndata = from(bucket: \"vessim_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r._measurement == \"vessim\")\r\n\r\n// 2. Solar + Wind summieren\r\nsolar_wind_sum = data\r\n  |> filter(fn: (r) =>\r\n    r._field == \"power_solar_panel\" or\r\n    r._field == \"power_wind_turbine\"\r\n  )\r\n  |> group(columns: [\"_field\"])\r\n  |> sum(column: \"_value\")\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _field:\r\n        if r._field == \"power_solar_panel\" then \"Solar-Gesamtenergie\"\r\n        else \"Wind-Gesamtenergie\"\r\n  }))\r\n  |> rename(columns: {_value: \"\"})\r\n  |> keep(columns: [\"_field\", \"\"])\r\n\r\n// 3. Netzbezug (nur negative Werte, invertieren)\r\np_grid_imported = data\r\n  |> filter(fn: (r) => r._field == \"p_grid\")\r\n  |> filter(fn: (r) => r._value < 0)\r\n  |> sum(column: \"_value\")\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _value: r._value * -1.0,\r\n      _field: \"Bezug-Gesamtenergie\"\r\n  }))\r\n    |> rename(columns: {_value: \"\"})\r\n    |> keep(columns: [\"_field\", \"\"])\r\n\r\n// 4. Zusammenführen\r\nunion(tables: [solar_wind_sum, p_grid_imported])\r\n",
           "refId": "A"
         }
       ],
@@ -252,7 +252,7 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
-          "query": "from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"vessim\" and\n    r._field == \"power_solar\"\n  )\n  |> aggregateWindow(every: 1d, fn: mean, createEmpty: false)\n  |> map(fn: (r) => ({ r with _value: r._value * 24.0 / 1000.0 }))\n  |> rename(columns: {_value: \"avg_power_solar\"})\n  ",
+          "query": "from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"vessim\" and\n    r._field == \"power_solar_panel\"\n  )\n  |> aggregateWindow(every: 1d, fn: mean, createEmpty: false)\n  |> map(fn: (r) => ({ r with _value: r._value * 24.0 / 1000.0 }))\n  |> rename(columns: {_value: \"avg_power_solar\"})\n  ",
           "queryType": "flux",
           "refId": "A"
         }
@@ -632,11 +632,11 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
-          "query": "from(bucket: \"vessim_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n    r._measurement == \"vessim\" and\r\n    r._field == \"power_solar\"\r\n  )",
+          "query": "from(bucket: \"vessim_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n    r._measurement == \"vessim\" and\r\n    r._field == \"power_solar_panel\"\r\n  )",
           "refId": "A"
         }
       ],
-      "title": "Wind energy output",
+      "title": "Solarenergie",
       "transparent": true,
       "type": "timeseries"
     },
@@ -768,7 +768,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Vessim Dashboard",
+  "title": "Energy sources dashboard",
   "uid": "adg5j9l",
-  "version": 3
+  "version": 2
 }
