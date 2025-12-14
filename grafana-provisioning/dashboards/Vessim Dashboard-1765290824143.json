@@ -380,7 +380,6 @@
         {
           "query": "from(bucket: \"vessim_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n    r._measurement == \"vessim\" and\r\n    r._field == \"power_wind_turbine\" and\r\n    r.microgrid == \"$microgrid\"\r\n  )",
           "refId": "A"
-
         }
       ],
       "title": "Windenergie",
@@ -763,15 +762,39 @@
   "templating": {
     "list": [
       {
-        "name": "microgrid",
-        "label": "Microgrid",
-        "type": "query",
-        "query": "datacenter,office",
-        "current": { "text": "datacenter", "value": "datacenter" },
-        "multi": false,
+        "allowCustomValue": false,
+        "current": {
+          "text": "datacenter",
+          "value": "datacenter"
+        },
+        "definition": "from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"vessim\")\n  |> keep(columns: [\"microgrid\"])\n  |> distinct(column: \"microgrid\")",
         "includeAll": false,
+        "label": "Microgrid",
+        "name": "microgrid",
+        "options": [],
+        "query": {
+          "0": "d",
+          "1": "a",
+          "2": "t",
+          "3": "a",
+          "4": "c",
+          "5": "e",
+          "6": "n",
+          "7": "t",
+          "8": "e",
+          "9": "r",
+          "10": ",",
+          "11": "o",
+          "12": "f",
+          "13": "f",
+          "14": "i",
+          "15": "c",
+          "16": "e",
+          "query": "from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"vessim\")\n  |> keep(columns: [\"microgrid\"])\n  |> distinct(column: \"microgrid\")"
+        },
         "refresh": 1,
-        "hide": 0
+        "sort": 1,
+        "type": "query"
       }
     ]
   },
@@ -781,7 +804,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Energy sources dashboard",  
+  "title": "Energy sources dashboard",
   "uid": "adg5j9l",
-  "version": 2
+  "version": 17
 }
