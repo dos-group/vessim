@@ -100,9 +100,25 @@ def main():
         storage=vs.SimpleBattery(capacity=20000),
     )
 
+    factory = env.add_microgrid(
+        name="factory",
+        actors=[
+            vs.Actor(name="factory_load", signal=vs.StaticSignal(value=-3000)),
+            vs.Actor(
+                name="solar_panel",
+                signal=vs.Trace.load(
+                    "solcast2022_global",
+                    column="Berlin",
+                    params={"scale": 10000},
+                ),
+            ),
+        ],
+        storage=vs.SimpleBattery(capacity=30000),
+    )
+
     # Monitor für beide Microgrids
     monitor = vs.Monitor(
-        [datacenter, office],  # <-- hier beide übergeben
+        [datacenter, office, factory],  # <-- hier beide übergeben
         outfile="./results.csv",
         influx_url=INFLUX_URL,
         influx_org=INFLUX_ORG,
