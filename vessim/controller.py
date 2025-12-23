@@ -234,7 +234,7 @@ class _ControllerSim(mosaik_api_v3.Simulator):
             "p_delta": data["p_delta"][f"{name}.grid.Grid"],
             "p_grid": data["p_grid"][f"{name}.storage.Storage"],
             "actor_states": {k.split(".")[-1]: data["actor_states"][k] for k  in data["actor_states"].keys() if k.startswith(f"{name}.actor.")},  # noqa: E501
-            "policy_state": next(v for k, v in data["policy_state"].items() if k.startswith(f"{name}.storage.Storage")),  # noqa: E501
+            "policy_state": next((v for k, v in data["policy_state"].items() if k.startswith(f"{name}.storage.Storage")), {}),  # noqa: E501
             "storage_state": next((v for k, v in data["storage_state"].items() if k.startswith(f"{name}.storage.Storage")), None),  # noqa: E501
             "grid_signals": next((v for k, v in data["grid_signals"].items() if k.startswith(f"{name}.grid.Grid")), None),  # noqa: E501
         } for name in microgrids}

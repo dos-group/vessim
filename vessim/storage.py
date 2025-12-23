@@ -338,9 +338,9 @@ class _StorageSim(mosaik_api_v3.Simulator):
                         )
 
         self.p_grid = self.policy.apply(p_delta, duration=self.step_size, storage=self.storage)
+        self.policy_state = self.policy.state()
         if self.storage:
             self.storage_state = self.storage.state()
-            self.policy_state = self.policy.state()
         return time + self.step_size
 
     def get_data(self, outputs):

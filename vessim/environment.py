@@ -111,14 +111,13 @@ class Environment:
                     time_shifted=True,
                     initial_data={"policy_state": microgrid.policy.state()},
                 )
-                if microgrid.storage:
-                    self.world.connect(
-                        microgrid.storage_entity,
-                        controller_entity,
-                        "storage_state",
-                        time_shifted=True,
-                        initial_data={"storage_state": microgrid.storage.state()},
-                    )
+                self.world.connect(
+                    microgrid.storage_entity,
+                    controller_entity,
+                    "storage_state",
+                    time_shifted=True,
+                    initial_data={"storage_state": microgrid.storage.state() if microgrid.storage else {}},
+                )
 
     def run(
         self,
