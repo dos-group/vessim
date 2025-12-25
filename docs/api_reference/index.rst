@@ -12,19 +12,19 @@ Signal Module
     signal
 
 
-Co-Simulation Module
---------------------
+Environment Module
+------------------
 .. toctree::
     :maxdepth: 2
 
-    cosim
+    environment
 
-Actor Module
-------------
+Microgrid Module
+----------------
 .. toctree::
     :maxdepth: 2
 
-    actor
+    microgrid
 
 Controller Module
 -----------------
