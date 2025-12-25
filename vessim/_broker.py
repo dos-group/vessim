@@ -11,7 +11,13 @@ class PrometheusMetrics:
     """Encapsulates all Prometheus metrics for Vessim."""
 
     def __init__(self):
-        from prometheus_client import Counter, Gauge
+        try:
+            from prometheus_client import Counter, Gauge
+        except ImportError as e:
+            raise ImportError(
+                "prometheus_client is required for Prometheus metrics export. "
+                "Install with: pip install vessim[sil]"
+            ) from e
 
         self.microgrid_p_delta = Gauge(
             'vessim_microgrid_p_delta',
@@ -169,7 +175,13 @@ def set_min_soc(name: str, value: dict[str, float]):
 def get_prometheus_metrics():
     if broker.metrics is None:
         raise HTTPException(404, "Prometheus metrics not enabled")
-    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+    try:
+        from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+    except ImportError as e:
+        raise ImportError(
+            "prometheus_client is required for Prometheus metrics export. "
+            "Install with: pip install vessim[sil]"
+        ) from e
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 

@@ -41,7 +41,8 @@ dependencies = [
 sil = [
     "requests>=2.26.0",
     "fastapi>=0.104.0",
-    "uvicorn>=0.23.0"
+    "uvicorn>=0.23.0",
+    "prometheus_client>0.22.0",
 ]
 dev = [
     "pytest",
