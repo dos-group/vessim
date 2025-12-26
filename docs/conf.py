@@ -39,7 +39,6 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",
     "sphinx_copybutton",
-    "nbsphinx",
 ]
 
 autodoc_member_order = "bysource"
@@ -67,25 +66,10 @@ source_suffix = ".rst"
 # The master toctree document.
 master_doc = "index"
 
-exclude_patterns = ["_build", "experimental_tutorials", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 pygments_style = "default"
 pygments_dark_style = "gruvbox-dark"
 
 # -- Options for HTML output ------
 html_theme = "furo"
-
-nbsphinx_prolog = r"""
-.. raw:: html
-
-    <script src='https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js'></script>
-    <script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>
-    <script>
-        require.config({
-            paths: {
-                'plotly': 'https://cdn.plot.ly/plotly-2.27.0.min.js'
-            }
-        });
-    </script>
-
-"""

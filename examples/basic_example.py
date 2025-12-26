@@ -16,8 +16,8 @@ microgrid = environment.add_microgrid(
         vs.Actor(
             name="solar_panel",
             signal=vs.Trace.load(
-                "solcast2022_global", 
-                column="Berlin", 
+                "solcast2022_global",
+                column="Berlin",
                 params={"scale": 5000}  # 5kW maximum
             ),
         ),

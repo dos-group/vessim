@@ -3,7 +3,6 @@ import pandas as pd
 import requests
 import time
 import argparse
-import sys
 
 def main():
     parser = argparse.ArgumentParser(description="Vessim Dashboard")

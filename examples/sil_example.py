@@ -7,7 +7,7 @@ def main():
 
     # Software-in-the-Loop examples often require real credentials and running services.
     # This example demonstrates the setup but mocks the signals for runnability.
-    
+
     # 1. Prometheus Signal (Commented out as it requires a running Prometheus instance)
     # server_signal = vs.PrometheusSignal(
     #     prometheus_url="http://localhost:30826/prometheus",
@@ -19,7 +19,7 @@ def main():
     server_signal = vs.StaticSignal(value=-500)
 
     server = vs.Actor(name="gpu", signal=server_signal)
-    
+
     solar = vs.Actor(name="solar", signal=vs.Trace.load(
         dataset="solcast2022_global",
         column="Berlin",
@@ -38,7 +38,7 @@ def main():
     #     location=(52.5200, 13.4050),
     # )
     # For demonstration, we use None (or a Mock signal if we had one implemented)
-    grid_signals = {} 
+    grid_signals = {}
 
     microgrid = environment.add_microgrid(
         name="gpu_cluster",
@@ -59,7 +59,7 @@ def main():
     # rt_factor=1 runs the simulation in real-time (1 simulation second = 1 real second)
     print("Starting simulation... (Press Ctrl+C to stop)")
     try:
-        environment.run(until=3600*24, rt_factor=1) 
+        environment.run(until=3600*24, rt_factor=1)
     except KeyboardInterrupt:
         print("Simulation stopped.")
 

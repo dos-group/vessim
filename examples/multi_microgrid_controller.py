@@ -27,7 +27,7 @@ def main():
         storage=vs.SimpleBattery(capacity=700, initial_soc=0.7),
     )
 
-    # Mumbai datacenter  
+    # Mumbai datacenter
     mumbai = environment.add_microgrid(
         name="Mumbai",
         actors=[

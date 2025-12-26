@@ -58,14 +58,6 @@ docs = [
     "sphinx",
     "furo",
     "sphinx-copybutton",
-    "nbsphinx",
-    "pandoc",
-    "ipython",
-    "plotly",
-]
-examples = [
-    "jupyter",
-    "nbconvert",
     "plotly",
 ]
 vis = [
