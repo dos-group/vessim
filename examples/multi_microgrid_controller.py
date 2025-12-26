@@ -3,8 +3,8 @@ import vessim as vs
 
 class CustomController(vs.Controller):
     """A custom controller that monitors multiple microgrids."""
-    
-    def step(self, time: datetime, microgrid_states: dict[str, dict]) -> None:
+
+    def step(self, now: datetime, microgrid_states: dict[str, dict]) -> None:
         berlin = microgrid_states["Berlin"]
         mumbai = microgrid_states["Mumbai"]
 

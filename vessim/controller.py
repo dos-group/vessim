@@ -33,11 +33,11 @@ class Controller(ABC):
         self.microgrids: dict[str, Microgrid] = {mg.name: mg for mg in microgrids}
 
     @abstractmethod
-    def step(self, time: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
+    def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
         """Performs a simulation step across all managed microgrids.
 
         Args:
-            time: Current datetime.
+            now: Current datetime.
             microgrid_states: Maps microgrid names to their current state.
         """
 
@@ -58,10 +58,10 @@ class Monitor(Controller):
         self._fieldnames: dict[str, Optional[list]] = {}  # Per microgrid fieldnames
         self.log: dict[datetime, dict[str, MicrogridState]] = defaultdict(dict)
 
-    def step(self, t: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
-        self.log[t] = microgrid_states
+    def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
+        self.log[now] = microgrid_states
         if self.outfile is not None:
-            self._write_microgrid_csv(t, microgrid_states, outfile=self.outfile)
+            self._write_microgrid_csv(now, microgrid_states, outfile=self.outfile)
 
     def to_csv(self, outfile: str | Path):
         """Export current log to a CSV file."""
@@ -124,7 +124,6 @@ class Api(Controller):
         self.export_prometheus = export_prometheus
 
         self._start_broker()
-        self._register_microgrids()
 
     def _start_broker(self):
         from vessim._broker import run_broker
@@ -139,7 +138,7 @@ class Api(Controller):
         prometheus_str = " (incl. Prometheus exporter)" if self.export_prometheus else ""
         print(f"🌐 API{prometheus_str} available at: {self.broker_url}")
 
-    def _register_microgrids(self):
+        print("Registering microgrids with API broker...")
         for mg_name, mg in self.microgrids.items():
             config = {
                 "name": mg_name,
@@ -148,14 +147,14 @@ class Api(Controller):
             }
             self.requests.post(f"{self.broker_url}/internal/microgrids/{mg_name}", json=config)
 
-    def step(self, time: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
+    def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
         """Push data to broker and process commands."""
         self._process_commands()
 
         for mg_name, mg_state in microgrid_states.items():
             data = {
                 'microgrid': mg_name,
-                'time': time.isoformat(),
+                'time': now.isoformat(),
                 **mg_state
             }
             self.requests.post(f"{self.broker_url}/internal/data/{mg_name}", json=data)
