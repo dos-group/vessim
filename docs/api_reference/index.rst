@@ -11,7 +11,6 @@ Signal Module
 
     signal
 
-
 Environment Module
 ------------------
 .. toctree::
@@ -25,6 +24,13 @@ Microgrid Module
     :maxdepth: 2
 
     microgrid
+
+Actor Module
+------------
+.. toctree::
+    :maxdepth: 2
+
+    actor
 
 Controller Module
 -----------------

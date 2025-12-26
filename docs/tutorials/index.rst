@@ -8,13 +8,9 @@ Tutorials
     1_first_steps
     2_signals_and_datasets
     3_controller
-
-
-.. note::
-
-    More tutorials, e.g. on Software-in-the-Loop simulation, will be added in the future.
+    4_sil
 
 .. note::
 
-    All tutorials are available as executable Jupyter Notebooks in the 
-    `docs/tutorials directory <https://github.com/dos-group/vessim/tree/main/docs/tutorials>`_.
+    All tutorials are available as executable Python scripts in the 
+    `examples directory <https://github.com/dos-group/vessim/tree/main/examples>`_.

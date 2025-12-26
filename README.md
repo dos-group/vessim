@@ -51,42 +51,7 @@ environment.add_controller(monitor)
 environment.run(until=24 * 3600)  # 24h simulated time
 ```
 
-
-## Software-in-the-loop scenario
-
-Vessim can simulate the energy systems of real applications and hardware.
-The following example 
-
-1. pulls energy consumption data from a Prometheus monitoring system
-2. exposes the simulated microgrid via a REST API, including the current marginal carbon intensity of the public grid (provided by [Watttime](https://watttime.org/)).
-
-```python
-import vessim as vs
-
-environment = vs.Environment(sim_start="2022-06-15", step_size=5)  # 5 second step size
-
-microgrid = environment.add_microgrid(
-    name=f"gpu_cluster_in_berlin",
-    actors=[
-        vs.Actor(name="gpu_cluster", signal=vs.PrometheusSignal(
-            prometheus_url="http://localhost:30826/prometheus",
-            query=f"sum(DCGM_FI_DEV_POWER_USAGE)",  # sum of all GPUs' power consumption
-            username="username",
-            password="xxxxxxxxxx"
-        ))
-    ],
-    grid_signals={"mci_index": vs.WatttimeSignal(
-        username="username",
-        password="xxxxxxxxxx",
-        location=(52.5200, 13.4050),  # Berlin coordinates
-    )},
-)
-
-rest_api = vs.Api([microgrid], export_prometheus=True)
-environment.add_controller(rest_api)
-
-environment.run(until=24 * 3600, rt_factor=1)  # 24h in real-time mode
-```
+You can find this and more executable examples in the [`examples/`](examples/) directory.
 
 
 ## Installation
@@ -103,19 +68,6 @@ If you require software-in-the-loop (SiL) capabilities, you should additionally 
 ```
 pip install vessim[sil]
 ```
-
-
-## Work in progress
-
-Our team at the [Distributed and Operating Systems](https://distributedsystems.berlin/) group at TU Berlin is actively working to improve Vessim.
-We are currently working on the following aspects and features:
-
-- **Vessim X Exalsius**: We are working on integrating Vessim into [Exalsius](https://www.exalsius.ai/)' GPU provisioning and scheduling.
-- **Vessim X Flower**: We are working on integrating Vessim into the federated learning framework [Flower](https://flower.ai).
-- **Vessim X Vidur**: We are working on integrating Vessim into the LLM simulator [Vidur](https://github.com/microsoft/vidur).
-- **System Advisor Model (SAM)**: We are working on integrating NREL's [SAM](https://sam.nrel.gov/) as a subsystem in Vessim, allowing for better simulation of solar arrays, wind farms, and other types of renewable energy generators.
-- **Battery degradation**: We are working on integrating NREL's [BLAST-Lite](https://github.com/NREL/BLAST-Lite) for modeling battery lifetime and degradation
-- **Calibration**: We are working on a methodology for calibrating Vessim simulations on real hardware testbeds.
 
 
 ## Datasets

@@ -82,6 +82,20 @@ Publications using Vessim
 
 
 
+Roadmap
+=======
+
+Our team at the `Distributed and Operating Systems <https://distributedsystems.berlin/>`_ group at TU Berlin is actively working to improve Vessim.
+We are currently working on the following aspects and features:
+
+- **Vessim X Exalsius**: We are working on integrating Vessim into `Exalsius <https://www.exalsius.ai/>`_' GPU provisioning and scheduling.
+- **Vessim X Flower**: We are working on integrating Vessim into the federated learning framework `Flower <https://flower.ai>`_.
+- **Vessim X Vidur**: We are working on integrating Vessim into the LLM simulator `Vidur <https://github.com/microsoft/vidur>`_.
+- **System Advisor Model (SAM)**: We are working on integrating NREL's `SAM <https://sam.nrel.gov/>`_ as a subsystem in Vessim, allowing for better simulation of solar arrays, wind farms, and other types of renewable energy generators.
+- **Battery degradation**: We are working on integrating NREL's `BLAST-Lite <https://github.com/NREL/BLAST-Lite>`_ for modeling battery lifetime and degradation
+- **Calibration**: We are working on a methodology for calibrating Vessim simulations on real hardware testbeds.
+
+
 License
 =======
 
