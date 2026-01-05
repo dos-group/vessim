@@ -22,6 +22,16 @@ class Environment:
     }
 
     def __init__(self, sim_start, step_size: int = 1):
+        """Environment for a Vessim co-simulation.
+
+        This class manages the simulation time, the interaction between different components,
+        and the execution of the `Mosaik <https://mosaik.offis.de/>`_ co-simulation.
+
+        Args:
+            sim_start: The start time of the simulation. Can be a datetime object or a
+                string in the format "YYYY-MM-DD HH:MM:SS".
+            step_size: The step size of the simulation in seconds. Defaults to 1.
+        """
         self.clock = Clock(sim_start)
         self.step_size = step_size
         self.microgrids: list[Microgrid] = []
@@ -31,11 +41,24 @@ class Environment:
     def add_microgrid(
         self,
         actors: list[Actor],
-        policy: Optional[MicrogridPolicy] = None,
+        policy: Optional[Policy] = None,
         storage: Optional[Storage] = None,
         grid_signals: Optional[dict[str, Signal]] = None,
         name: Optional[str] = None,
     ):
+        """Add a microgrid to the environment.
+
+        Args:
+            actors: A list of actors that are part of the microgrid.
+            policy: The policy that controls the energy management of the microgrid.
+                If None, a DefaultPolicy is used.
+            storage: An optional energy storage system (e.g., a battery).
+            grid_signals: Optional signals from the public grid (e.g., carbon intensity).
+            name: An optional name for the microgrid.
+
+        Returns:
+            The created Microgrid instance.
+        """
         if not actors:
             raise ValueError("There should be at least one actor in the Microgrid.")
 
@@ -127,6 +150,18 @@ class Environment:
         print_progress: bool | Literal["individual"] = True,
         behind_threshold: float = float("inf"),
     ):
+        """Run the simulation.
+
+        Args:
+            until: The end time of the simulation in seconds. If None, the simulation
+                runs indefinitely.
+            rt_factor: The real-time factor. 1.0 means the simulation runs in real-time.
+                0.5 means it runs twice as fast as real-time. If None, the simulation
+                runs as fast as possible.
+            print_progress: Whether to print a progress bar.
+            behind_threshold: The threshold in seconds for issuing warnings when the
+                simulation falls behind real-time (only used if rt_factor is set).
+        """
         if until is None:
             # there is no integer representing infinity in python
             until = float("inf")  # type: ignore

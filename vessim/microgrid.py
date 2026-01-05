@@ -39,6 +39,21 @@ class Microgrid:
         grid_signals: Optional[dict[str, Signal]] = None,
         name: Optional[str] = None,
     ):
+        """A simulated energy system.
+
+        A microgrid is a collection of actors (consumers and producers), energy storage,
+        and a policy that governs their interaction. It can also be connected to the public grid.
+
+        Args:
+            world: The mosaik world instance.
+            clock: The simulation clock.
+            step_size: The step size of the simulation in seconds.
+            actors: The actors in the microgrid.
+            policy: The policy that controls the microgrid.
+            storage: Optional energy storage.
+            grid_signals: Optional signals from the public grid.
+            name: Optional name for the microgrid.
+        """
         self.step_size = step_size
         self.actors = actors
         self.policy = policy

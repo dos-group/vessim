@@ -42,6 +42,7 @@ extensions = [
 ]
 
 autodoc_member_order = "bysource"
+autoclass_content = "init"
 
 html_css_files = ["custom.css"]
 html_static_path = ["_static"]
