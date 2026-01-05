@@ -8,7 +8,7 @@ from vessim.microgrid import Microgrid
 from vessim.actor import Actor
 from vessim.controller import Controller
 from vessim.storage import Storage
-from vessim.policy import MicrogridPolicy, DefaultMicrogridPolicy
+from vessim.policy import Policy, DefaultPolicy
 from vessim._util import Clock, disable_rt_warnings
 from vessim.signal import Signal, SilSignal
 
@@ -67,7 +67,7 @@ class Environment:
             clock=self.clock,
             step_size=self.step_size,
             actors=actors,
-            policy=policy if policy is not None else DefaultMicrogridPolicy(),
+            policy=policy if policy is not None else DefaultPolicy(),
             storage=storage,
             grid_signals=grid_signals,
             name=name,

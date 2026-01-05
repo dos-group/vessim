@@ -8,7 +8,7 @@ import numpy as np
 from loguru import logger
 
 if TYPE_CHECKING:
-    from vessim import MicrogridPolicy
+    from vessim import Policy
 
 
 class Storage(ABC):
@@ -318,7 +318,7 @@ class _StorageSim(mosaik_api_v3.Simulator):
     def create(self, num: int, model, **model_params):
         assert num == 1, "Only one instance per simulation is supported"
         self.storage: Optional[Storage] = model_params["storage"]
-        self.policy: MicrogridPolicy = model_params["policy"]
+        self.policy: Policy = model_params["policy"]
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):

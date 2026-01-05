@@ -9,14 +9,14 @@ if TYPE_CHECKING:
     from vessim.storage import Storage
 
 
-class MicrogridPolicy(ABC):
+class Policy(ABC):
     """Policy that describes how the microgrid deals with specific power deltas.
 
     The policy manages energy excess and shortage of a microgrid. It can model the
     (dis-)charging of a vessim `Storage`, the exchange of energy with the public grid, and things
     like curtailment of energy.
     Every `Microgrid` in a vessim co-simulation has a policy, and if not specified, the
-    `DefaultMicrogridPolicy` is used. The policy is thereby applied at every time-step with the
+    `DefaultPolicy` is used. The policy is thereby applied at every time-step with the
     current power-delta and the duration of the time-step.
     """
 
@@ -53,7 +53,7 @@ class MicrogridPolicy(ABC):
         return {}
 
 
-class DefaultMicrogridPolicy(MicrogridPolicy):
+class DefaultPolicy(Policy):
     """Policy that is used as default for simulations.
 
     Policy tries to (dis)charge as much of the delta as possible using the storage if available.

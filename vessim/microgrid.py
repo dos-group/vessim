@@ -7,7 +7,7 @@ import mosaik_api_v3
 
 if TYPE_CHECKING:
     from vessim.actor import Actor
-    from vessim.policy import MicrogridPolicy
+    from vessim.policy import Policy
     from vessim.storage import Storage
     from vessim._util import Clock
     from vessim.signal import Signal
@@ -34,7 +34,7 @@ class Microgrid:
         clock: Clock,
         step_size: int,
         actors: list[Actor],
-        policy: MicrogridPolicy,
+        policy: Policy,
         storage: Optional[Storage] = None,
         grid_signals: Optional[dict[str, Signal]] = None,
         name: Optional[str] = None,
