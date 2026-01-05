@@ -37,7 +37,7 @@ You can install our `latest release <https://pypi.org/project/vessim/>`_ via
     pip install vessim
 
 If you require software-in-the-loop (SiL) capabilities, you can install the
-`sil`` extra:
+`sil` extra:
 
 .. code-block:: console
 

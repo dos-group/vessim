@@ -2,27 +2,17 @@
 About Vessim
 ============
 
-Vessim is being developed at the research group for `Distributed and Operating
-Systems (DOS) <https://www.dos.tu-berlin.de>`_ at TU Berlin.
-Development is funded by the `Federal Ministry of Education and Research (BMBF) <https://www.bmbf.de/>`_ as part of the Software Campus project `SYNERGY <https://softwarecampus.de/en/projekt/synergy-synergies-of-distributed-artificial-intelligence-and-renewable-energy-generation/>`_ under the lead of `Philipp Wiesner <https://philippwiesner.org>`_.
+Most research on energy-aware and carbon-aware computing relies on simulations, as globally distributed hardware testbeds are rare and costly.
+Vessim addresses this gap by simplifying and unifying simulation-based evaluations and enabling continuous testing of emerging applications.
 
-After researching on energy-aware and carbon-aware computing systems for several years, we noticed how almost all scientific evaluations are simulation-based, as (globally distributed) hardware testbeds are rare and expensive to build and maintain.
-Vessim tries to simplify and unify such evaluations and enables the continuous testing of new applications.
-Active development of Vessim started in March 2023.
+Vessim is developed at the `Distributed and Operating Systems (DOS) <https://www.dos.tu-berlin.de>`_ group at TU Berlin and is led by `Philipp Wiesner <https://philippwiesner.org>`_.
+Active development began in March 2023 with initial funding from the `German Federal Ministry of Education and Research (BMBF) <https://www.bmbf.de/>`_ as part of the Software Campus project `SYNERGY <https://softwarecampus.de/en/projekt/synergy-synergies-of-distributed-artificial-intelligence-and-renewable-energy-generation/>`_.
 
-Many thanks to our team which worked on Vessim for more than a year now:
-
-- Marvin Steinke
-- Paul Kilian
-- Amanda Malkowski
-
-In case of questions, please reach out to `Philipp Wiesner
-<https://philippwiesner.org>`_.
+We thank everyone who has contributed to Vessim over the past years, especially Marvin Steinke, Paul Kilian, and Amanda Malkowski.
 
 
 Publications
 ============
-
 
 If you use Vessim in your research, please cite our paper:
 
@@ -77,18 +67,17 @@ For details in Vessim's software-in-the-loop simulation methodology, refer to ou
 Publications using Vessim
 =========================
 
+- Julius Irion, Philipp Wiesner, Jonathan Bader, and Odej Kao. "`Optimizing Microgrid Composition for Sustainable Data Centers <https://dl.acm.org/doi/full/10.1145/3731599.3767562>`_". Sustainable Supercomputing Workshop at SC. 2025.
+- Miray Özcan, Philipp Wiesner, Philipp Weiß, and Odej Kao. "`Quantifying the Energy Consumption and Carbon Emissions of LLM Inference via Simulations <https://arxiv.org/pdf/2507.11417>`_". Workshop on Performance and Energy Efficiency in Concurrent and Distributed Systems (PECS) at Euro-PAR. 2025.
 - Paul Kilian, Philipp Wiesner, and Odej Kao. "`Choosing the Right Battery Model for Data Center Simulations <https://arxiv.org/pdf/2506.17739>`_". 1st International Workshop on Low Carbon Computing (LOCO). 2024.
 - Philipp Wiesner, Ramin Khalili, Dennis Grinwald, Pratik Agrawal, Lauritz Thamsen, and Odej Kao. "`FedZero: Leveraging Renewable Excess Energy in Federated Learning <https://dl.acm.org/doi/10.1145/3632775.3639589>`_". 15th ACM International Conference on Future and Sustainable Energy Systems (e-Energy). 2024.
-
 
 
 Roadmap
 =======
 
-Our team at the `Distributed and Operating Systems <https://distributedsystems.berlin/>`_ group at TU Berlin is actively working to improve Vessim.
 We are currently working on the following aspects and features:
 
-- **Vessim X Exalsius**: We are working on integrating Vessim into `Exalsius <https://www.exalsius.ai/>`_' GPU provisioning and scheduling.
 - **Vessim X Flower**: We are working on integrating Vessim into the federated learning framework `Flower <https://flower.ai>`_.
 - **Vessim X Vidur**: We are working on integrating Vessim into the LLM simulator `Vidur <https://github.com/microsoft/vidur>`_.
 - **System Advisor Model (SAM)**: We are working on integrating NREL's `SAM <https://sam.nrel.gov/>`_ as a subsystem in Vessim, allowing for better simulation of solar arrays, wind farms, and other types of renewable energy generators.
