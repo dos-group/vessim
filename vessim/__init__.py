@@ -25,24 +25,18 @@ __all__ = [
 ]
 
 try:
+    from vessim.controller import Api  # noqa: F401
+    from vessim.signal import SilSignal, WatttimeSignal, PrometheusSignal  # noqa: F401
+
+    __all__.extend(["Api", "SilSignal", "WatttimeSignal", "PrometheusSignal"])
+except ImportError:
+    # Requires optional dependencies: pip install vessim[sil]
+    pass
+
+try:
     from vessim.plot import plot_trace, plot_microgrid_trace  # noqa: F401
 
     __all__.extend(["plot_trace", "plot_microgrid_trace"])
 except ImportError:
-    pass
-
-try:
-    from vessim.controller import Api  # noqa: F401
-
-    __all__.extend(["Api"])
-except ImportError:
-    # GUI controller requires optional dependencies: pip install vessim[vis]
-    pass
-
-try:
-    from vessim.signal import SilSignal, WatttimeSignal, PrometheusSignal  # noqa: F401
-
-    __all__.extend(["SilSignal", "WatttimeSignal", "PrometheusSignal"])
-except ImportError:
-    # WatttimeSignal and PrometheusSignal require optional dependencies: pip install vessim[sil]
+    # Requires optional dependencies: pip install vessim[vis]
     pass

@@ -148,21 +148,9 @@ class Api(Controller):
             self.requests.post(f"{self.broker_url}/internal/microgrids/{mg_name}", json=config)
 
     def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
-        """Push data to broker and process commands."""
-        self._process_commands()
-
-        for mg_name, mg_state in microgrid_states.items():
-            data = {
-                'microgrid': mg_name,
-                'time': now.isoformat(),
-                **mg_state
-            }
-            self.requests.post(f"{self.broker_url}/internal/data/{mg_name}", json=data)
-
-    def _process_commands(self):
+        """Process commands and push microgrid states to broker."""
         response = self.requests.get(f"{self.broker_url}/internal/commands")
         commands = response.json().get("commands", [])
-
         for command in commands:
             if command.get("type") == "set_parameter":
                 microgrid = command.get("microgrid")
@@ -171,6 +159,13 @@ class Api(Controller):
                 if microgrid and parameter and value is not None:
                     key = f"{microgrid}:{parameter}"
                     self.set_parameters[key] = value
+
+        for mg_name, mg_state in microgrid_states.items():
+            self.requests.post(f"{self.broker_url}/internal/data/{mg_name}", json={
+                'microgrid': mg_name,
+                'time': now.isoformat(),
+                **mg_state
+            })
 
     def finalize(self) -> None:
         """Clean up resources when simulation ends."""
