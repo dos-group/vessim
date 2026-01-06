@@ -10,15 +10,16 @@ from vessim.signal import Signal
 
 
 class Actor:
-    def __init__(self, name: str, signal: Signal, step_size: Optional[int] = None) -> None:
-        """Consumer or producer based on a Signal.
+    """Consumer or producer based on a Signal.
 
-        Args:
-            name: The name of the actor.
-            signal: The signal that determines the power consumption/production.
-            step_size: The step size of the actor in seconds. If None, the step size
-                of the microgrid is used.
-        """
+    Args:
+        name: The name of the actor.
+        signal: The signal that determines the power consumption/production.
+        step_size: The step size of the actor in seconds. If None, the step size
+            of the microgrid is used.
+    """
+
+    def __init__(self, name: str, signal: Signal, step_size: Optional[int] = None) -> None:
         self.name = name
         self.step_size = step_size
         self.signal = signal

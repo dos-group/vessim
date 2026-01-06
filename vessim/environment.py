@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Optional, Literal
 
 import mosaik  # type: ignore
@@ -14,6 +15,17 @@ from vessim.signal import Signal, SilSignal
 
 
 class Environment:
+    """Environment for a Vessim co-simulation.
+
+    This class manages the simulation time, the interaction between different components,
+    and the execution of the `Mosaik <https://mosaik.offis.de/>`_ co-simulation.
+
+    Args:
+        sim_start: The start time of the simulation. Can be a datetime object or a
+            string in the format "YYYY-MM-DD HH:MM:SS".
+        step_size: The step size of the simulation in seconds. Defaults to 1.
+    """
+
     COSIM_CONFIG: mosaik.SimConfig = {
         "Actor": {"python": "vessim.actor:_ActorSim"},
         "Controller": {"python": "vessim.controller:_ControllerSim"},
@@ -21,17 +33,7 @@ class Environment:
         "Storage": {"python": "vessim.storage:_StorageSim"},
     }
 
-    def __init__(self, sim_start, step_size: int = 1):
-        """Environment for a Vessim co-simulation.
-
-        This class manages the simulation time, the interaction between different components,
-        and the execution of the `Mosaik <https://mosaik.offis.de/>`_ co-simulation.
-
-        Args:
-            sim_start: The start time of the simulation. Can be a datetime object or a
-                string in the format "YYYY-MM-DD HH:MM:SS".
-            step_size: The step size of the simulation in seconds. Defaults to 1.
-        """
+    def __init__(self, sim_start: str | datetime, step_size: int = 1):
         self.clock = Clock(sim_start)
         self.step_size = step_size
         self.microgrids: list[Microgrid] = []
@@ -45,7 +47,7 @@ class Environment:
         storage: Optional[Storage] = None,
         grid_signals: Optional[dict[str, Signal]] = None,
         name: Optional[str] = None,
-    ):
+    ) -> Microgrid:
         """Add a microgrid to the environment.
 
         Args:

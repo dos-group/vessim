@@ -191,7 +191,10 @@ class Trace(Signal):
         return list(self._actual.keys())
 
     def now(
-        self, at: Optional[DatetimeLike] = None, column: Optional[str] = None, **kwargs
+        self,
+        at: Optional[DatetimeLike] = None,
+        column: Optional[str] = None,
+        **kwargs: dict[str, Any],
     ) -> float:
         """Retrieves actual data point of zone at given time.
 
@@ -491,7 +494,7 @@ class SilSignal(Signal):
 
         self.Timer(0, poll).start()  # Start immediately
 
-    def now(self, at: Optional[DatetimeLike] = None, **kwargs) -> float:
+    def now(self, at: Optional[DatetimeLike] = None, **kwargs: dict[str, Any]) -> float:
         """Return the current cached value.
 
         Args:
