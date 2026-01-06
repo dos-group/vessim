@@ -17,6 +17,11 @@ if TYPE_CHECKING:
 
 
 class Controller(ABC):
+    """Abstract base class for all controllers in the simulation.
+
+    Controllers are used to monitor the simulation state and to control the
+    behavior of the microgrids. They are executed at every simulation step.
+    """
 
     def start(self, microgrids: dict[str, Microgrid]) -> None:
         """Executed before the simulation starts.
@@ -31,7 +36,7 @@ class Controller(ABC):
         """Performs a simulation step.
 
         Args:
-            now: Current datetime.
+            now: Current datetime in the simulation.
             microgrid_states: Maps microgrid names to their current state.
         """
 
@@ -41,6 +46,16 @@ class Controller(ABC):
 
 
 class Monitor(Controller):
+    """Controller that logs the state of the simulation.
+
+    The Monitor stores the state of all simulated microgrids in an internal dictionary
+    and optionally write these states to a CSV file.
+
+    Args:
+        outfile: Optional path to a CSV file. If provided, the monitor appends the
+            microgrid states to this file at each simulation step.
+    """
+
     def __init__(
         self,
         outfile: Optional[str | Path] = None,
@@ -90,7 +105,16 @@ class Monitor(Controller):
 
 
 class Api(Controller):
-    """REST API interface for microgrid data and control."""
+    """REST API interface for microgrid data and control.
+
+    The API controller starts a background process with a FastAPI-based broker
+    that exposes endpoints to query the current state of the microgrids and to
+    send control commands to them.
+
+    Args:
+        export_prometheus: Whether to export metrics to Prometheus. Defaults to False.
+        broker_port: The port on which the API broker should run. Defaults to 8700.
+    """
 
     def __init__(
         self,

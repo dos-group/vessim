@@ -3,8 +3,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Optional, Literal, Any
 
-from loguru import logger
-
 if TYPE_CHECKING:
     from vessim.storage import Storage
 
