@@ -41,33 +41,6 @@ class Actor:
         self.signal.finalize()
 
 
-class SilActor(ABC):
-    def __init__(self, name: str, step_size: Optional[int] = None) -> None:
-        """Marker base class for Software-in-the-Loop actors.
-
-        The Environment class uses this to sanity check that
-        SilActor are only used in real-time simulations.
-
-        Args:
-            name: The name of the actor.
-            step_size: The step size of the actor in seconds. If None, the step size
-                of the microgrid is used.
-        """
-        self.name = name
-        self.step_size = step_size
-
-    @abstractmethod
-    def p(self, now: datetime) -> float:
-        """Current power consumption/production."""
-
-    @abstractmethod
-    def state(self, now: datetime) -> dict:
-        """Current state of the actor which is passed to controllers on every step."""
-
-    def finalize(self) -> None:
-        """Finalize the actor, e.g., close connections."""
-
-
 class _ActorSim(mosaik_api_v3.Simulator):
     META = {
         "type": "time-based",
