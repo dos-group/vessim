@@ -1,6 +1,7 @@
 from datetime import datetime
 import vessim as vs
 
+
 def main():
     sim_start = datetime.now()
     environment = vs.Environment(sim_start=sim_start, step_size=10)
@@ -20,16 +21,16 @@ def main():
 
     server = vs.Actor(name="gpu", signal=server_signal)
 
-    solar = vs.Actor(name="solar", signal=vs.Trace.load(
-        dataset="solcast2022_global",
-        column="Berlin",
-        params={"scale": 200, "start_time": sim_start} # Scale to 200W
-    ))
-
-    battery = vs.SimpleBattery(
-        capacity=1000,
-        initial_soc=0.6  # Start at 60% charge
+    solar = vs.Actor(
+        name="solar",
+        signal=vs.Trace.load(
+            dataset="solcast2022_global",
+            column="Berlin",
+            params={"scale": 200, "start_time": sim_start},  # Scale to 200W
+        ),
     )
+
+    battery = vs.SimpleBattery(capacity=1000, initial_soc=0.6)  # Start at 60% charge
 
     # 2. WattTime Signal (Commented out as it requires API credentials)
     # grid_signal = vs.WatttimeSignal(
@@ -59,9 +60,10 @@ def main():
     # rt_factor=1 runs the simulation in real-time (1 simulation second = 1 real second)
     print("Starting simulation... (Press Ctrl+C to stop)")
     try:
-        environment.run(until=3600*24, rt_factor=1)
+        environment.run(until=3600 * 24, rt_factor=1)
     except KeyboardInterrupt:
         print("Simulation stopped.")
+
 
 if __name__ == "__main__":
     main()

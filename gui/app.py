@@ -4,6 +4,7 @@ import requests
 import time
 import argparse
 
+
 def main():
     parser = argparse.ArgumentParser(description="Vessim Dashboard")
     parser.add_argument("--api", default="http://localhost:8700", help="Vessim API base URL")
@@ -15,7 +16,7 @@ def main():
         page_title="Vessim Dashboard",
         page_icon="⚡",
         # layout="wide",
-        initial_sidebar_state="expanded"
+        initial_sidebar_state="expanded",
     )
 
     st.title("Vessim Dashboard")
@@ -126,14 +127,16 @@ def main():
     time.sleep(10)
     st.rerun()
 
+
 def get_microgrids(api_base: str):
     response = requests.get(f"{api_base}/microgrids")
     if response.status_code == 200:
         return response.json()
 
+
 def set_min_soc(api_base: str, microgrid: str, value: float):
-    requests.put(f"{api_base}/microgrids/{microgrid}/storage/min_soc",
-                json={"min_soc": value})
+    requests.put(f"{api_base}/microgrids/{microgrid}/storage/min_soc", json={"min_soc": value})
+
 
 def display_microgrid(api_base: str, microgrid: str):
     # Get latest data
@@ -144,19 +147,19 @@ def display_microgrid(api_base: str, microgrid: str):
         # Metrics
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            if 'p_delta' in latest:
+            if "p_delta" in latest:
                 st.metric("Net Power", f"{latest['p_delta']:.1f} W")
         with col2:
-            if 'p_grid' in latest:
+            if "p_grid" in latest:
                 st.metric("Grid Power", f"{latest['p_grid']:.1f} W")
         with col3:
-            soc_keys = [k for k in latest.keys() if 'soc' in k and 'min_soc' not in k]
+            soc_keys = [k for k in latest.keys() if "soc" in k and "min_soc" not in k]
             if soc_keys:
                 soc_value = latest[soc_keys[0]] * 100
                 st.metric("Battery SoC", f"{soc_value:.1f}%")
         with col4:
-            if 'p_delta' in latest and 'p_grid' in latest:
-                efficiency = (1 - abs(latest['p_grid']) / (abs(latest['p_delta']) + 1e-6)) * 100
+            if "p_delta" in latest and "p_grid" in latest:
+                efficiency = (1 - abs(latest["p_grid"]) / (abs(latest["p_delta"]) + 1e-6)) * 100
                 st.metric("System Efficiency", f"{efficiency:.1f}%")
 
         # History chart
@@ -165,15 +168,16 @@ def display_microgrid(api_base: str, microgrid: str):
             history_data = history_response.json().get("data", [])
             if history_data:
                 df = pd.DataFrame(history_data)
-                df['time'] = pd.to_datetime(df['time'])
-                df.set_index('time', inplace=True)
+                df["time"] = pd.to_datetime(df["time"])
+                df.set_index("time", inplace=True)
 
                 # Plot key metrics
-                chart_data = df[['p_delta', 'p_grid']].dropna()
+                chart_data = df[["p_delta", "p_grid"]].dropna()
                 if not chart_data.empty:
                     st.line_chart(chart_data)
     else:
         st.info(f"⏳ Waiting for data from {microgrid.replace('_', ' ').title()}...")
+
 
 if __name__ == "__main__":
     main()

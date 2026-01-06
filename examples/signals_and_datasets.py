@@ -15,7 +15,7 @@ print(f"Static signal value: {static_signal.now(0)}")
 solar_signal = vs.Trace.load(
     dataset="solcast2022_global",
     column="Berlin",
-    params={"scale": 1000}  # Scale the normalized (0-1) data to 1000W peak
+    params={"scale": 1000},  # Scale the normalized (0-1) data to 1000W peak
 )
 
 print(f"Solar signal at start: {solar_signal.now('2022-06-15 12:00')}")

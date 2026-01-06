@@ -5,8 +5,7 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from csv import DictWriter
-from collections.abc import Iterator
-from typing import Any, Optional, TYPE_CHECKING, MutableMapping
+from typing import Any, Optional, TYPE_CHECKING
 import multiprocessing
 import time
 
@@ -86,7 +85,7 @@ class Monitor(Controller):
             log_entry = {
                 "microgrid": mg_name,
                 "time": time,
-                **_flatten_dict(dict(migrogrid_state))
+                **_flatten_dict(dict(migrogrid_state)),
             }
 
             if mg_name not in self._fieldnames:  # First time: create file with header
@@ -170,7 +169,7 @@ class Api(Controller):
                 microgrid_name = cmd.get("microgrid")
                 if microgrid_name not in self.microgrids:
                     continue
-                
+
                 mg = self.microgrids[microgrid_name]
                 target = cmd.get("target")
                 prop = cmd.get("property")
@@ -187,11 +186,10 @@ class Api(Controller):
                         actor.signal.set_value(val)
 
         for mg_name, mg_state in microgrid_states.items():
-            self.requests.post(f"{self.broker_url}/internal/data/{mg_name}", json={
-                'microgrid': mg_name,
-                'time': now.isoformat(),
-                **mg_state
-            })
+            self.requests.post(
+                f"{self.broker_url}/internal/data/{mg_name}",
+                json={"microgrid": mg_name, "time": now.isoformat(), **mg_state},
+            )
 
     def finalize(self) -> None:
         """Clean up resources when simulation ends."""

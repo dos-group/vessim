@@ -133,6 +133,7 @@ class _GridSim(mosaik_api_v3.Simulator):
     def get_data(self, outputs):
         grid_signals = (
             {name: signal.now() for name, signal in self.grid_signals.items()}
-            if self.grid_signals else None
+            if self.grid_signals
+            else None
         )
         return {self.eid: {"p_delta": self.p_delta, "grid_signals": grid_signals}}

@@ -1,6 +1,7 @@
 from datetime import datetime
 import vessim as vs
 
+
 class CustomController(vs.Controller):
     """A custom controller that monitors multiple microgrids."""
 
@@ -64,6 +65,7 @@ def main():
 
     # Run simulation for 12 hours
     environment.run(until=12 * 3600)
+
 
 if __name__ == "__main__":
     main()
