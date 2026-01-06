@@ -30,7 +30,7 @@ microgrid = environment.add_microgrid(
 )
 
 # Add monitoring using the simplified controller API
-monitor = vs.Monitor([microgrid], outfile="./results.csv")
+monitor = vs.Monitor(outfile="./results.csv")
 environment.add_controller(monitor)
 
 # Run the simulation for 24 hours

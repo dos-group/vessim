@@ -27,16 +27,12 @@ class Controller(ABC):
         pass
 
     @abstractmethod
-    def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> Optional[dict[str, Any]]:
+    def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
         """Performs a simulation step.
 
         Args:
             now: Current datetime.
             microgrid_states: Maps microgrid names to their current state.
-
-        Returns:
-            A dictionary of set_points/commands (e.g. {"microgrid_name:storage": "charge"})
-            or None.
         """
 
     def finalize(self) -> None:
@@ -114,8 +110,10 @@ class Api(Controller):
         self.broker_url = f"http://localhost:{broker_port}"
         self.broker_process: Optional[multiprocessing.Process] = None
         self.export_prometheus = export_prometheus
+        self.microgrids: dict[str, Microgrid] = {}
 
     def start(self, microgrids: dict[str, Microgrid]) -> None:
+        self.microgrids = microgrids
         self._start_broker()
         print("Registering microgrids with API broker...")
         for mg_name, mg in microgrids.items():
@@ -139,19 +137,30 @@ class Api(Controller):
         prometheus_str = " (incl. Prometheus exporter)" if self.export_prometheus else ""
         print(f"🌐 API{prometheus_str} available at: {self.broker_url}")
 
-    def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> dict[str, Any]:
+    def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
         """Process commands and push microgrid states to broker."""
-        set_parameters = {}
         response = self.requests.get(f"{self.broker_url}/internal/commands")
         commands = response.json().get("commands", [])
-        for command in commands:
-            if command.get("type") == "set_parameter":
-                microgrid = command.get("microgrid")
-                parameter = command.get("parameter")
-                value = command.get("value")
-                if microgrid and parameter and value is not None:
-                    key = f"{microgrid}:{parameter}"
-                    set_parameters[key] = value
+        for cmd in commands:
+            if cmd.get("type") == "set_parameter":
+                microgrid_name = cmd.get("microgrid")
+                if microgrid_name not in self.microgrids:
+                    continue
+                
+                mg = self.microgrids[microgrid_name]
+                target = cmd.get("target")
+                prop = cmd.get("property")
+                val = cmd.get("value")
+
+                if target == "storage" and mg.storage:
+                    setattr(mg.storage, prop, val)
+                elif target == "policy":
+                    setattr(mg.policy, prop, val)
+                elif target == "actor":
+                    actor_name = cmd.get("target_name")
+                    actor = next((a for a in mg.actors if a.name == actor_name), None)
+                    if actor and hasattr(actor.signal, "set_value"):
+                        actor.signal.set_value(val)
 
         for mg_name, mg_state in microgrid_states.items():
             self.requests.post(f"{self.broker_url}/internal/data/{mg_name}", json={
@@ -159,8 +168,6 @@ class Api(Controller):
                 'time': now.isoformat(),
                 **mg_state
             })
-        
-        return set_parameters
 
     def finalize(self) -> None:
         """Clean up resources when simulation ends."""
@@ -185,7 +192,6 @@ class _ControllerSim(mosaik_api_v3.Simulator):
                     "policy_state",
                     "storage_state",
                     "grid_signals",
-                    "set_parameters",
                 ],
             },
         },
@@ -225,25 +231,16 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         } for name in microgrids}
 
         now = self.clock.to_datetime(time)
-        self.set_parameters = {}
         for controller in self.controllers:
-            result = controller.step(now, microgrid_states)
-            if result:
-                self.set_parameters.update(result)
+            controller.step(now, microgrid_states)
 
         return time + self.step_size
-
-    def get_data(self, outputs):
-        return {self.eid: {"set_parameters": self.set_parameters}}
 
     def finalize(self) -> None:
         """Stops the api server and the collector thread when the simulation finishes."""
         for controller in self.controllers:
             controller.finalize()
 
-
-def _get_val(inputs: dict, key: str) -> Any:
-    return list(inputs[key].values())[0]
 
 def _flatten_dict(d: dict, parent_key: str = "") -> dict:
     items: list[tuple[str, Any]] = []

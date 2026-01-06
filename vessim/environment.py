@@ -117,8 +117,7 @@ class Environment:
                     ("state", "actor_states"),
                 )
 
-            # Connect to storage for set_parameters and state/energy feedback
-            self.world.connect(controller_entity, microgrid.storage_entity, "set_parameters")
+            # Connect to storage for state/energy feedback
             self.world.connect(
                 microgrid.storage_entity,
                 controller_entity,

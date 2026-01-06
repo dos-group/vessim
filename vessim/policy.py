@@ -38,16 +38,6 @@ class Policy(ABC):
             the public grid during the last step.
         """
 
-    def set_parameter(self, key: str, value: Any) -> None:
-        """Fuction to let a controller update a policy parameter during a simulation using Mosaik.
-
-        In the default case, the attribute with the name of the key is set on the policy object.
-        The function can be subclassed to allow other ways of setting parameters.
-        """
-        if not hasattr(self, key):
-            logger.warning(f"Attribute {key} of policy was never previously set.")
-        setattr(self, key, value)
-
     def state(self) -> dict:
         """Returns information about the current state of the policy. Should be overridden."""
         return {}

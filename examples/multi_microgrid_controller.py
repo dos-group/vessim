@@ -11,7 +11,10 @@ class CustomController(vs.Controller):
         # Print the power delta (p_delta) for both microgrids
         # p_delta > 0: Microgrid has excess power (needs to charge battery or export)
         # p_delta < 0: Microgrid needs power (needs to discharge battery or import)
-        print(f"{time.strftime('%H:%M')}: Berlin: {berlin['p_delta']:.0f}W, Mumbai: {mumbai['p_delta']:.0f}W")
+        print(
+            f"{now.strftime('%H:%M')}: Berlin: {berlin['p_delta']:.0f}W, "
+            f"Mumbai: {mumbai['p_delta']:.0f}W"
+        )
 
 
 def main():
@@ -22,7 +25,14 @@ def main():
         name="Berlin",
         actors=[
             vs.Actor(name="server", signal=vs.StaticSignal(value=-800)),
-            vs.Actor(name="solar", signal=vs.Trace.load("solcast2022_global", column="Berlin", params={"scale": 2000})),
+            vs.Actor(
+                name="solar",
+                signal=vs.Trace.load(
+                    "solcast2022_global",
+                    column="Berlin",
+                    params={"scale": 2000}
+                ),
+            ),
         ],
         storage=vs.SimpleBattery(capacity=700, initial_soc=0.7),
     )
@@ -32,17 +42,24 @@ def main():
         name="Mumbai",
         actors=[
             vs.Actor(name="server", signal=vs.StaticSignal(value=-700)),
-            vs.Actor(name="solar", signal=vs.Trace.load("solcast2022_global", column="Mumbai", params={"scale": 1800})),
+            vs.Actor(
+                name="solar",
+                signal=vs.Trace.load(
+                    "solcast2022_global",
+                    column="Mumbai",
+                    params={"scale": 1800}
+                ),
+            ),
         ],
         storage=vs.SimpleBattery(capacity=500),
     )
 
     # Add monitoring
-    monitor = vs.Monitor([berlin, mumbai], outfile="./results.csv")
+    monitor = vs.Monitor(outfile="./results.csv")
     environment.add_controller(monitor)
 
     # Add our custom controller
-    load_balancer = CustomController([berlin, mumbai])
+    load_balancer = CustomController()
     environment.add_controller(load_balancer)
 
     # Run simulation for 12 hours

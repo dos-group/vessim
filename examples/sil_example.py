@@ -50,7 +50,7 @@ def main():
     # Expose the microgrid state via REST API and export metrics to Prometheus
     # (Requires 'vessim[sil]' installed)
     try:
-        environment.add_controller(vs.Api([microgrid], export_prometheus=True))
+        environment.add_controller(vs.Api(export_prometheus=True))
     except ImportError:
         print("Vessim SiL extension not installed. Skipping API controller.")
         print("Install with: pip install vessim[sil]")
