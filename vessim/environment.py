@@ -81,69 +81,66 @@ class Environment:
         """Add a controller to the environment.
 
         Args:
-            controller: The controller instance (already initialized with microgrids)
+            controller: The controller instance.
         """
-        if controller not in self.controllers:
-            self.controllers.append(controller)
-
-        # Validate that all microgrids are part of this environment
-        for microgrid in controller.microgrids.values():
-            if microgrid not in self.microgrids:
-                raise ValueError(f"Microgrid '{microgrid.name}' is not part of this environment")
+        self.controllers.append(controller)
 
     def _initialize_controllers(self):
         """Initialize all controllers after all microgrids have been added."""
+        if not self.controllers:
+            return
+
+        # Execute start() method on all controllers
+        microgrids_dict = {mg.name: mg for mg in self.microgrids}
         for controller in self.controllers:
+            controller.start(microgrids_dict)
 
-            # Create controller simulator
-            controller_sim = self.world.start(
-                "Controller",
-                sim_id=controller.name,
-                clock=self.clock,
-                step_size=self.step_size,
+        # Create one global controller simulator
+        controller_sim = self.world.start(
+            "Controller",
+            clock=self.clock,
+            step_size=self.step_size,
+        )
+        controller_entity = controller_sim.Controller(controllers=self.controllers)
+
+        # Connect global controller to all microgrids
+        for microgrid in self.microgrids:
+            # Connect to grid for p_delta
+            self.world.connect(microgrid.grid_entity, controller_entity, "p_delta")
+            self.world.connect(microgrid.grid_entity, controller_entity, "grid_signals")
+
+            # Connect to actors for state
+            for actor_entity in microgrid.actor_entities.values():
+                self.world.connect(
+                    actor_entity,
+                    controller_entity,
+                    ("state", "actor_states"),
+                )
+
+            # Connect to storage for set_parameters and state/energy feedback
+            self.world.connect(controller_entity, microgrid.storage_entity, "set_parameters")
+            self.world.connect(
+                microgrid.storage_entity,
+                controller_entity,
+                "p_grid",
+                time_shifted=True,
+                initial_data={"p_grid": 0.0},
             )
-            controller_entity = controller_sim.Controller(
-                controller=controller, microgrid_names=list(controller.microgrids.keys())
+            self.world.connect(
+                microgrid.storage_entity,
+                controller_entity,
+                "policy_state",
+                time_shifted=True,
+                initial_data={"policy_state": microgrid.policy.state()},
             )
-
-            # Connect controller to all managed microgrids
-            for microgrid in controller.microgrids.values():
-                # Connect to grid for p_delta
-                self.world.connect(microgrid.grid_entity, controller_entity, "p_delta")
-                self.world.connect(microgrid.grid_entity, controller_entity, "grid_signals")
-
-                # Connect to actors for state
-                for actor_name, actor_entity in microgrid.actor_entities.items():
-                    self.world.connect(
-                        actor_entity,
-                        controller_entity,
-                        ("state", "actor_states"),
-                    )
-
-                # Connect to storage for set_parameters and state/energy feedback
-                self.world.connect(controller_entity, microgrid.storage_entity, "set_parameters")
+            if microgrid.storage:
                 self.world.connect(
                     microgrid.storage_entity,
                     controller_entity,
-                    "p_grid",
+                    "storage_state",
                     time_shifted=True,
-                    initial_data={"p_grid": 0.0},
+                    initial_data={"storage_state": microgrid.storage.state()},
                 )
-                self.world.connect(
-                    microgrid.storage_entity,
-                    controller_entity,
-                    "policy_state",
-                    time_shifted=True,
-                    initial_data={"policy_state": microgrid.policy.state()},
-                )
-                if microgrid.storage:
-                    self.world.connect(
-                        microgrid.storage_entity,
-                        controller_entity,
-                        "storage_state",
-                        time_shifted=True,
-                        initial_data={"storage_state": microgrid.storage.state()},
-                    )
 
     def run(
         self,
