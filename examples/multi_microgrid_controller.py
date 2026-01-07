@@ -56,7 +56,7 @@ def main():
     )
 
     # Add monitoring
-    monitor = vs.Monitor(outfile="./results.csv")
+    monitor = vs.CsvLogger(outfile="./results.csv")
     environment.add_controller(monitor)
 
     # Add our custom controller

@@ -11,6 +11,8 @@ import time
 
 import mosaik_api_v3  # type: ignore
 
+from vessim._util import flatten_dict
+
 if TYPE_CHECKING:
     from vessim.microgrid import Microgrid, MicrogridState
 
@@ -44,60 +46,81 @@ class Controller(ABC):
         pass
 
 
-class Monitor(Controller):
-    """Controller that logs the state of the simulation.
+class MemoryLogger(Controller):
+    """Controller that logs the state of the simulation in memory.
 
-    The Monitor stores the state of all simulated microgrids in an internal dictionary
-    and optionally write these states to a CSV file.
-
-    Args:
-        outfile: Optional path to a CSV file. If provided, the monitor appends the
-            microgrid states to this file at each simulation step.
+    The logged state can be retrieved as a dictionary or a pandas DataFrame.
     """
 
-    def __init__(
-        self,
-        outfile: Optional[str | Path] = None,
-    ):
-        self.outfile: Optional[Path] = Path(outfile) if outfile else None
-        self._fieldnames: dict[str, Optional[list]] = {}  # Per microgrid fieldnames
+    def __init__(self):
         self.log: dict[datetime, dict[str, MicrogridState]] = defaultdict(dict)
 
     def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
         self.log[now] = microgrid_states
-        if self.outfile is not None:
-            self._write_microgrid_csv(now, microgrid_states, outfile=self.outfile)
 
-    def to_csv(self, outfile: str | Path):
-        """Export current log to a CSV file."""
-        for t, migrogrid_states in self.log.items():
-            self._write_microgrid_csv(t, migrogrid_states, outfile=Path(outfile))
+    def to_dict(self) -> dict[datetime, dict[str, MicrogridState]]:
+        """Returns the logged data as a dictionary."""
+        return dict(self.log)
 
-    def _write_microgrid_csv(
-        self,
-        time: datetime,
-        microgrid_states: dict[str, MicrogridState],
-        outfile: Path,
-    ) -> None:
-        """Append microgrid states to CSV file."""
-        outfile.parent.mkdir(exist_ok=True, parents=True)
-        for mg_name, migrogrid_state in microgrid_states.items():
+    def to_dataframe(self):
+        """Returns the logged data as a pandas DataFrame.
+
+        The DataFrame has a MultiIndex (time, microgrid) and columns for each
+        state variable. Requires 'pandas' to be installed.
+        """
+        try:
+            import pandas as pd
+        except ImportError:
+            raise ImportError(
+                "MemoryLogger.to_dataframe() requires 'pandas'. "
+                "Install with: pip install pandas"
+            )
+
+        data = []
+        for time, microgrid_states in self.log.items():
+            for mg_name, state in microgrid_states.items():
+                row = flatten_dict(state)
+                row["time"] = time
+                row["microgrid"] = mg_name
+                data.append(row)
+
+        df = pd.DataFrame(data)
+        if not df.empty:
+            df = df.set_index(["time", "microgrid"])
+        return df
+
+
+class CsvLogger(Controller):
+    """Controller that writes the state of the simulation to a CSV file.
+
+    The state is written to the file at each simulation step (streaming), so
+    it doesn't consume memory for the history.
+
+    Args:
+        outfile: Path to the CSV file.
+    """
+
+    def __init__(self, outfile: str | Path):
+        self.filepath = Path(outfile)
+        self.fieldnames: dict[str, list] = {}
+        self.filepath.parent.mkdir(exist_ok=True, parents=True)
+
+    def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
+        for mg_name, mg_state in microgrid_states.items():
             log_entry = {
                 "microgrid": mg_name,
-                "time": time,
-                **_flatten_dict(dict(migrogrid_state)),
+                "time": now,
+                **flatten_dict(dict(mg_state)),
             }
 
-            if mg_name not in self._fieldnames:  # First time: create file with header
-                self._fieldnames[mg_name] = list(log_entry.keys())
+            if mg_name not in self.fieldnames:
+                self.fieldnames[mg_name] = list(log_entry.keys())
                 mode, write_header = "w", True
             else:
                 mode, write_header = "a", False
 
-            with outfile.open(mode, newline="") as csvfile:
-                fieldnames = self._fieldnames[mg_name]
-                assert fieldnames is not None
-                writer = DictWriter(csvfile, fieldnames=fieldnames)
+            with self.filepath.open(mode, newline="") as csvfile:
+                writer = DictWriter(csvfile, fieldnames=self.fieldnames[mg_name])
                 if write_header:
                     writer.writeheader()
                 writer.writerow(log_entry)
@@ -262,14 +285,3 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         """Stops the api server and the collector thread when the simulation finishes."""
         for controller in self.controllers:
             controller.finalize()
-
-
-def _flatten_dict(d: dict, parent_key: str = "") -> dict:
-    items: list[tuple[str, Any]] = []
-    for k, v in d.items():
-        new_key = parent_key + "." + k if parent_key else k
-        if isinstance(v, dict):
-            items.extend(_flatten_dict(v, str(new_key)).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)

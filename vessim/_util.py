@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Union
+from typing import Union, Any
 from loguru import logger
 import sys
 
@@ -50,3 +50,14 @@ def disable_rt_warnings(behind_threshold: float):
     # Add the filter to the logger
     logger.remove()
     logger.add(sys.stdout, filter=filter_record)
+
+
+def flatten_dict(d: dict, parent_key: str = "") -> dict:
+    items: list[tuple[str, Any]] = []
+    for k, v in d.items():
+        new_key = parent_key + "." + k if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, str(new_key)).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)

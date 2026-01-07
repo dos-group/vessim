@@ -45,8 +45,7 @@ microgrid = environment.add_microgrid(
 )
 
 # Write results to CSV
-monitor = vs.Monitor(outfile="./results.csv")
-environment.add_controller(monitor)
+environment.add_controller(vs.CsvLogger("./results.csv"))
 
 environment.run(until=24 * 3600)  # 24h simulated time
 ```
