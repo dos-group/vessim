@@ -55,10 +55,9 @@ dev = [
 ]
 docs = [
     "setuptools",
-    "sphinx",
-    "furo",
-    "sphinx-copybutton",
     "plotly",
+    "mkdocs-material",
+    "mkdocstrings[python]",
 ]
 vis = [
     "streamlit>=1.28.0",
