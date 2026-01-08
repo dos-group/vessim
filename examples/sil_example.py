@@ -1,69 +1,49 @@
-from datetime import datetime
+"""
+This example acts as a playground for the "Software-in-the-Loop" tutorial:
+https://vessim.readthedocs.io/en/latest/tutorials/4_sil/
+"""
 import vessim as vs
-
+from datetime import datetime
 
 def main():
-    sim_start = datetime.now()
-    environment = vs.Environment(sim_start=sim_start, step_size=10)
+    # 1. Setup Environment
+    # We use a real-time factor of 1.0, meaning 1 simulation second = 1 real second.
+    environment = vs.Environment(sim_start=datetime.now(), step_size=1)
 
-    # Software-in-the-Loop examples often require real credentials and running services.
-    # This example demonstrates the setup but mocks the signals for runnability.
+    # 2. Define Components
+    # In a Software-in-the-Loop scenario, you'd typically use real-time signals 
+    # (like PrometheusSignal) to fetch data from your actual systems.
+    server_load = vs.StaticSignal(-1000) 
+    server = vs.Actor(name="server", signal=server_load)
 
-    # 1. Prometheus Signal (Commented out as it requires a running Prometheus instance)
-    # server_signal = vs.PrometheusSignal(
-    #     prometheus_url="http://localhost:30826/prometheus",
-    #     query="sum(DCGM_FI_DEV_POWER_USAGE)",
-    #     username="username",
-    #     password="password"
-    # )
-    # For demonstration, we use a StaticSignal instead:
-    server_signal = vs.StaticSignal(value=-500)
-
-    server = vs.Actor(name="gpu", signal=server_signal)
-
+    # Solar simulation based on historical trace data
     solar = vs.Actor(
         name="solar",
-        signal=vs.Trace.load(
-            dataset="solcast2022_global",
-            column="Berlin",
-            params={"scale": 200, "start_time": sim_start},  # Scale to 200W
-        ),
+        signal=vs.Trace.load("solcast2022_global", "Berlin", params={"scale": 2000})
     )
 
-    battery = vs.SimpleBattery(capacity=1000, initial_soc=0.6)  # Start at 60% charge
+    battery = vs.SimpleBattery(capacity=5000, initial_soc=0.5)
 
-    # 2. WattTime Signal (Commented out as it requires API credentials)
-    # grid_signal = vs.WatttimeSignal(
-    #     username="username",
-    #     password="password",
-    #     location=(52.5200, 13.4050),
-    # )
-    # For demonstration, we use None (or a Mock signal if we had one implemented)
-    grid_signals = {}
-
-    microgrid = environment.add_microgrid(
-        name="gpu_cluster",
+    # 3. Create Microgrid
+    environment.add_microgrid(
+        name="datacenter",
         actors=[server, solar],
-        storage=battery,
-        grid_signals=grid_signals,
+        storage=battery
     )
 
-    # Expose the microgrid state via REST API and export metrics to Prometheus
-    # (Requires 'vessim[sil]' installed)
-    try:
-        environment.add_controller(vs.Api(export_prometheus=True))
-    except ImportError:
-        print("Vessim SiL extension not installed. Skipping API controller.")
-        print("Install with: pip install vessim[sil]")
+    # 4. Add API Controller
+    # This starts a local web server (FastAPI) that exposes the simulation state.
+    # External tools can query this API or send control commands.
+    # Setting export_prometheus=True also enables a /metrics endpoint.
+    environment.add_controller(vs.Api(export_prometheus=True))
 
-    # Run simulation
-    # rt_factor=1 runs the simulation in real-time (1 simulation second = 1 real second)
-    print("Starting simulation... (Press Ctrl+C to stop)")
-    try:
-        environment.run(until=3600 * 24, rt_factor=1)
-    except KeyboardInterrupt:
-        print("Simulation stopped.")
-
+    print("Starting simulation...")
+    print("API available at http://localhost:8700")
+    print("Metrics available at http://localhost:8700/metrics")
+    
+    # Run the simulation in real-time. 
+    # You can now use 'curl' or other tools to interact with the API.
+    environment.run(rt_factor=1.0)
 
 if __name__ == "__main__":
     main()
