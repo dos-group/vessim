@@ -1,5 +1,5 @@
-"""
-This example acts as a playground for the "First Steps" tutorial:
+"""This example acts as a playground for the "First Steps" tutorial.
+
 https://vessim.readthedocs.io/en/latest/tutorials/1_basic_example/
 """
 import vessim as vs

@@ -40,12 +40,6 @@ theme:
 
 plugins:
   - search
-  - mkdocs-jupyter:
-      execute: true
-      include_requirejs: true
-      remove_tag_config:
-        remove_input_tags:
-          - hide
   - mkdocstrings:
       handlers:
         python:

@@ -2,9 +2,9 @@ import threading
 from collections import defaultdict
 from typing import Any
 
+import uvicorn
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import HTMLResponse
-import uvicorn
 
 
 class PrometheusMetrics:

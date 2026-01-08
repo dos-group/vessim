@@ -1,14 +1,13 @@
 """Plotting utilities for Vessim datasets and signals."""
 
-from typing import Optional, Dict, Union
-from collections import defaultdict
+from typing import Any, Optional, cast
+
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.graph_objects import Figure
 from plotly.subplots import make_subplots
 
 from vessim.signal import Trace
-from vessim._util import flatten_dict
 
 
 def plot_trace(
@@ -107,7 +106,7 @@ def plot_result_df(
     """
     # Detect microgrid name if not provided
     if microgrid_name is None:
-        microgrids = None
+        microgrids: Any = None
         if "microgrid" in df.index.names:
             microgrids = df.index.get_level_values("microgrid").unique()
         elif "microgrid" in df.columns:
@@ -125,7 +124,7 @@ def plot_result_df(
     # Extract specific microgrid data
     if microgrid_name is not None:
         try:
-            df = df.xs(microgrid_name, level="microgrid")
+            df = cast(pd.DataFrame, df.xs(microgrid_name, level="microgrid"))
         except (KeyError, ValueError):
             # Fallback for dataframes that are not multi-indexed by (time, microgrid)
             # e.g. if the user manually filtered or loaded from CSV without multi-index

@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+import time
 from abc import ABC, abstractmethod
 from datetime import timedelta
+from itertools import count
 from pathlib import Path
 from typing import Any, Optional, Literal
-from itertools import count
 
-import time
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 from vessim._data import load_dataset
 from vessim._util import DatetimeLike

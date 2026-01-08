@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from collections import defaultdict
-from datetime import datetime
-from pathlib import Path
-from csv import DictWriter
-from typing import Any, Optional, TYPE_CHECKING
 import multiprocessing
 import time
+from abc import ABC, abstractmethod
+from collections import defaultdict
+from csv import DictWriter
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Optional, TYPE_CHECKING
 
 import mosaik_api_v3  # type: ignore
 
@@ -77,10 +77,10 @@ class MemoryLogger(Controller):
             )
 
         data = []
-        for time, microgrid_states in self.log.items():
+        for t, microgrid_states in self.log.items():
             for mg_name, state in microgrid_states.items():
                 row = flatten_dict(state)
-                row["time"] = time
+                row["time"] = t
                 row["microgrid"] = mg_name
                 data.append(row)
 

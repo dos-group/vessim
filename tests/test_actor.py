@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 from datetime import datetime
 from vessim.actor import Actor
 from vessim.signal import Signal

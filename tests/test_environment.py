@@ -1,7 +1,5 @@
 import pytest
 from unittest.mock import Mock, patch
-from datetime import datetime
-import vessim.environment
 from vessim.environment import Environment
 from vessim.actor import Actor
 from vessim.signal import Signal, SilSignal
@@ -32,12 +30,12 @@ class TestEnvironment:
         mock_actor = Mock(spec=Actor)
         mock_actor.step_size = None
         mock_actor.name = "test_actor"
-        
+
         # We need to patch Microgrid init because it interacts with mosaik world
         with patch("vessim.environment.Microgrid") as mock_microgrid_cls:
             mg_instance = mock_microgrid_cls.return_value
             mg = environment.add_microgrid(actors=[mock_actor])
-            
+
             assert mg == mg_instance
             assert mg in environment.microgrids
             mock_microgrid_cls.assert_called_once()
@@ -51,14 +49,14 @@ class TestEnvironment:
         # Create a mock microgrid with a mock actor having a SilSignal
         mock_actor = Mock(spec=Actor)
         mock_actor.signal = DummySilSignal()
-        
+
         # We can't easily mock the internal state of Environment without adding a microgrid.
         # So we add a mocked microgrid.
-        
+
         mg = Mock(spec=Microgrid)
         mg.actors = [mock_actor]
         environment.microgrids = [mg]
-        
+
         # Should raise RuntimeError if rt_factor is None
         with pytest.raises(RuntimeError, match="SiL actors detected"):
             environment.run(until=100)
@@ -67,21 +65,21 @@ class TestEnvironment:
         mg = Mock(spec=Microgrid)
         actor1 = Mock(spec=Actor)
         actor1.signal = Mock(spec=Signal) # Not SilSignal
-        
+
         actor2 = Mock(spec=Actor)
-        
+
         class DummySilSignal(SilSignal):
             def __init__(self): pass
             def _fetch_current_value(self): return 0
             def finalize(self): pass
-            
+
         actor2.signal = DummySilSignal()
-        
+
         mg.actors = [actor1, actor2]
         environment.microgrids = [mg]
-        
+
         assert environment._contains_sil_signals() is True
-        
+
         # Check negative case
         mg.actors = [actor1]
         assert environment._contains_sil_signals() is False

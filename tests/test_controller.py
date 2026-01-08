@@ -1,11 +1,10 @@
 import pytest
-from unittest.mock import Mock, patch
 from datetime import datetime
 import pandas as pd
 import tempfile
 import os
 import csv
-from vessim.controller import MemoryLogger, CsvLogger, Api
+from vessim.controller import MemoryLogger, CsvLogger
 from vessim.microgrid import MicrogridState
 
 class TestMemoryLogger:
@@ -41,7 +40,7 @@ class TestMemoryLogger:
         now, states = sample_data
         logger.step(now, states)
         df = logger.to_df()
-        
+
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 1
         # Check index
@@ -71,13 +70,13 @@ class TestCsvLogger:
             "storage_state": None,
             "grid_signals": None,
         }
-        
+
         logger.step(now, {"mg1": state})
-        
+
         with open(temp_file, "r") as f:
             reader = csv.DictReader(f)
             rows = list(reader)
-            
+
         assert len(rows) == 1
         assert rows[0]["microgrid"] == "mg1"
         assert rows[0]["time"] == str(now)
@@ -96,14 +95,14 @@ class TestCsvLogger:
             "storage_state": None,
             "grid_signals": None,
         }
-        
+
         logger.step(now1, {"mg1": state})
         logger.step(now2, {"mg1": state})
-        
+
         with open(temp_file, "r") as f:
             reader = csv.DictReader(f)
             rows = list(reader)
-            
+
         assert len(rows) == 2
         assert rows[0]["time"] == str(now1)
         assert rows[1]["time"] == str(now2)
