@@ -1,0 +1,7 @@
+/* Hide input and output prompts in Jupyter Notebooks */
+.jupyter-wrapper .jp-CodeCell .jp-Cell-inputWrapper .jp-InputPrompt.jp-InputArea-prompt {
+    display: none !important;
+}
+.jupyter-wrapper .jp-CodeCell .jp-Cell-inputWrapper .jp-OutputPrompt.jp-InputArea-prompt {
+    display: none !important;
+}
