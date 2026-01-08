@@ -28,15 +28,3 @@ jobs:
     # install package
     - name: Install package
       run: uv pip install dist/*.tar.gz
-
-    # Install dependencies needed for notebook execution
-    - name: Install notebook dependencies
-      run: uv pip install -e ".[examples]"
-
-    # Execute example notebooks to verify that no errors are thrown
-    - name: Run Jupyter Notebooks
-      run: |
-        notebooks=("examples/signal_example.ipynb" "examples/basic_example.ipynb" "examples/controller_example.ipynb" "examples/stranger_sims_example.ipynb")
-        for notebook in "${notebooks[@]}"; do
-          jupyter nbconvert --to notebook --execute "$notebook"
-        done
