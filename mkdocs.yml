@@ -4,6 +4,7 @@ repo_url: https://github.com/dos-group/vessim
 
 extra_javascript:
   - javascripts/mathjax.js
+  - javascripts/readthedocs.js
   - https://polyfill.io/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 
@@ -28,6 +29,7 @@ theme:
   name: material
   #logo: assets/logo.png
   #favicon: assets/logo.png
+  custom_dir: docs/overrides
   features:
     - content.code.copy
     - content.code.annotate

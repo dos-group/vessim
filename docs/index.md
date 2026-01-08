@@ -37,7 +37,7 @@ pip install vessim[sil]
 
 ## How Vessim Works
 
-Vessim creates simulated "microgrids" - small energy systems that combine computing equipment with renewable energy sources and batteries.
+Vessim can simulate the local energy systems (we call them "microgrids") that combine computing equipment with renewable energy sources and batteries.
 
 ![Vessim Overview](assets/vessim_overview.png)
 
@@ -54,7 +54,7 @@ Vessim has the following core components:
     - Vessim already implements analytical models for realistic Li-ion battery modeling
     - Configurable charging/discharging policies based on your strategy
 
-- **Controllers** (yellow): Enable logging, monitoring, REST APIs, and custom control strategies
-    - Monitors can track the energy system state and carbon emissions over time, e.g. in a CSV file
+- **Controller** (yellow): Enable logging, monitoring, REST APIs, and custom control strategies
+    - Loggers can track the energy system state and carbon emissions over time in memory or, e.g., in a CSV file
     - REST APIs can provide real-time visibility and control over the simulated energy system
     - You can implement custom control strategies to e.g. schedule computing workloads based on energy availability
