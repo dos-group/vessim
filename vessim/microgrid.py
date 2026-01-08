@@ -81,7 +81,7 @@ class Microgrid:
         )
         self.grid_entity = grid_sim.Grid()
         for actor_name, actor_entity in self.actor_entities.items():
-            world.connect(actor_entity, self.grid_entity, "p")
+            world.connect(actor_entity, self.grid_entity, "power")
 
         storage_sim = world.start("Storage", sim_id=f"{self.name}.storage", step_size=step_size)
         self.storage_entity = storage_sim.Storage(storage=storage, policy=policy)
@@ -104,7 +104,7 @@ class _GridSim(mosaik_api_v3.Simulator):
             "Grid": {
                 "public": True,
                 "params": ["grid_signals"],
-                "attrs": ["p", "p_delta", "grid_signals"],
+                "attrs": ["power", "p_delta", "grid_signals"],
             },
         },
     }
@@ -126,7 +126,7 @@ class _GridSim(mosaik_api_v3.Simulator):
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
-        self.p_delta = sum(inputs[self.eid]["p"].values())
+        self.p_delta = sum(inputs[self.eid]["power"].values())
         assert self.step_size is not None
         return time + self.step_size
 

@@ -24,7 +24,7 @@ class Actor:
         self.step_size = step_size
         self.signal = signal
 
-    def p(self, now: datetime) -> float:
+    def power(self, now: datetime) -> float:
         """Current power consumption/production."""
         return self.signal.now(at=now)
 
@@ -33,7 +33,7 @@ class Actor:
         return {
             "name": self.name,
             "signal": str(self.signal),
-            "p": self.p(now),
+            "power": self.power(now),
         }
 
     def finalize(self) -> None:
@@ -48,7 +48,7 @@ class _ActorSim(mosaik_api_v3.Simulator):
             "Actor": {
                 "public": True,
                 "params": ["actor"],
-                "attrs": ["p", "state"],
+                "attrs": ["power", "state"],
             },
         },
     }
@@ -59,7 +59,7 @@ class _ActorSim(mosaik_api_v3.Simulator):
         self.step_size = None
         self.clock = None
         self.actor = None
-        self.p = 0
+        self.power = 0
         self.state = {}
 
     def init(self, sid, time_resolution=1.0, **sim_params):
@@ -77,10 +77,10 @@ class _ActorSim(mosaik_api_v3.Simulator):
         assert self.clock is not None
         now = self.clock.to_datetime(time)
         assert self.actor is not None
-        self.p = self.actor.p(now)
+        self.power = self.actor.power(now)
         self.state = self.actor.state(now)
         assert self.step_size is not None
         return time + self.step_size
 
     def get_data(self, outputs):
-        return {self.eid: {"p": self.p, "state": self.state}}
+        return {self.eid: {"power": self.power, "state": self.state}}
