@@ -35,9 +35,9 @@ except ImportError:
     pass
 
 try:
-    from vessim.plot import plot_trace, plot_microgrid_trace  # noqa: F401
+    from vessim.plot import plot_trace, plot_result_df  # noqa: F401
 
-    __all__.extend(["plot_trace", "plot_microgrid_trace"])
+    __all__.extend(["plot_trace", "plot_result_df"])
 except ImportError:
     # Requires optional dependencies: pip install vessim[vis]
     pass

@@ -62,7 +62,7 @@ class MemoryLogger(Controller):
         """Returns the logged data as a dictionary."""
         return dict(self.log)
 
-    def to_dataframe(self):
+    def to_df(self):
         """Returns the logged data as a pandas DataFrame.
 
         The DataFrame has a MultiIndex (time, microgrid) and columns for each
@@ -72,7 +72,7 @@ class MemoryLogger(Controller):
             import pandas as pd
         except ImportError:
             raise ImportError(
-                "MemoryLogger.to_dataframe() requires 'pandas'. "
+                "MemoryLogger.to_df() requires 'pandas'. "
                 "Install with: pip install pandas"
             )
 
