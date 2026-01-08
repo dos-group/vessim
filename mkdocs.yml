@@ -27,9 +27,9 @@ nav:
 
 theme:
   name: material
-  #logo: assets/logo.png
-  #favicon: assets/logo.png
   custom_dir: docs/overrides
+  logo: assets/logo_menu.png
+  favicon: assets/logo_favicon.png
   features:
     - content.code.copy
     - content.code.annotate
