@@ -78,8 +78,8 @@ environment.add_controller(vs.Api(export_prometheus=True, broker_port=8700))
 Once the simulation is running, the following endpoints are available at `http://localhost:8700`:
 
 *   **GET /**: List of available microgrids and their actors.
-*   **GET /<microgrid_name>**: Get the current state of a microgrid (power flows, battery SoC, etc.).
-*   **PUT /<microgrid_name>**: Send control commands.
+*   **GET /microgrid_name**: Get the current state of a microgrid (power flows, battery SoC, etc.).
+*   **PUT /microgrid_name**: Send control commands.
 
 **Example: Reading State**
 ```bash
@@ -93,7 +93,7 @@ curl http://localhost:8700/my_microgrid
   "p_delta": -500.0,
   "p_grid": -500.0,
   "storage": { "soc": 0.8 },
-  "actors": { "server": { "p": -500.0 } }
+  "actors": { "server": { "power": -500.0 } }
 }
 ```
 
@@ -163,11 +163,7 @@ if __name__ == "__main__":
 
 ## Next Steps
 
-Congratulations! You've completed the Vessim tutorials. You now know how to:
-
-1.  Run basic simulations.
-2.  Use historical data traces.
-3.  Implement custom control logic.
-4.  Connect your simulation to real-world systems.
+Congratulations! You've completed the Vessim tutorials.
 
 For more details on specific components, check out the **API Reference** section in the navigation menu.
+In case of questions, feel free to reach out via our [GitHub Discussions](https://github.com/dos-group/vessim/discussions).
