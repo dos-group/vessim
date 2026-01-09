@@ -1,0 +1,6 @@
+pydantic-settings
+sqlmodel
+fastapi
+uvicorn
+
+packaging
