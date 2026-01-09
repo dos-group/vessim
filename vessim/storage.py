@@ -47,7 +47,7 @@ class SimpleBattery(Storage):
             If current SoC is below or equal to the minimum SoC, battery is not discharged further.
             Defaults to 0. Can be altered during simulation.
         c_rate: Optional C-rate, which defines the charge and discharge rate of the battery.
-            For more information on C-rate, see `C-rate explanation <https://www.batterydesign.net/electrical/c-rate/>`_.
+            For more information on C-rate, see [C-rate explanation](https://www.batterydesign.net/electrical/c-rate/).
             Defaults to None.
     """
 
@@ -138,7 +138,7 @@ class ClcBattery(Storage):
     This class implements the C-L-C model as described in:
         Kazhamiaka, F., Rosenberg, C. & Keshav, S.
         Tractable lithium-ion storage models for optimizing energy systems.
-        Energy Inform 2, 4 (2019). https://doi.org/10.1186/s42162-019-0070-6
+        Energy Inform 2, 4 (2019). [doi:10.1186/s42162-019-0070-6](https://doi.org/10.1186/s42162-019-0070-6)
 
     The default parameterization models a pack of LGM50 21700 rechargable lithium-ion cells.
     This model should not be used in combination with large step sizes.

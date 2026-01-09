@@ -45,7 +45,7 @@ class StaticSignal(Signal):
 class Trace(Signal):
     """Simulates a signal for time-series data like solar irradiance or carbon intensity.
 
-    The Trace can also deal with unsorted or incomplete data.
+    The `Trace` can also deal with unsorted or incomplete data.
 
     Args:
         actual: The actual time-series data to be used. It should contain a datetime-like
@@ -166,11 +166,11 @@ class Trace(Signal):
         data_dir: Optional[str | Path] = None,
         params: Optional[dict[Any, Any]] = None,
     ):
-        """Creates a Trace from a vessim dataset, handling downloading and unpacking.
+        """Creates a `Trace` from a Vessim dataset, handling downloading and unpacking.
 
         Args:
             dataset: Name of the dataset to be downloaded.
-            column: Default column to use for calling Trace.at().
+            column: Default column to use for calling `Trace.at()`.
                 Default to None.
             data_dir: Absoulute path to the directory where the data should be loaded.
                 If not specified, the path `~/.cache/vessim` is used. Defaults to None.

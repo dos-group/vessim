@@ -11,9 +11,9 @@ class Policy(ABC):
     """Policy that describes how the microgrid deals with specific power deltas.
 
     The policy manages energy excess and shortage of a microgrid. It can model the
-    (dis-)charging of a vessim `Storage`, the exchange of energy with the public grid, and things
+    (dis-)charging of a `Storage`, the exchange of energy with the public grid, and things
     like curtailment of energy.
-    Every `Microgrid` in a vessim co-simulation has a policy, and if not specified, the
+    Every `Microgrid` in a Vessim co-simulation has a policy, and if not specified, the
     `DefaultPolicy` is used. The policy is thereby applied at every time-step with the
     current power-delta and the duration of the time-step.
     """
@@ -26,7 +26,7 @@ class Policy(ABC):
             p_delta: Power in W that the has to be served/stored. If positive, there is excess
                 power and if negative, there is a lack of power. This is the power delta of all
                 actors inside a simulation.
-            duration: Time that the power delta is valid for. This is the microgrid step_size
+            duration: Time that the power delta is valid for. This is the microgrid `step_size`
                 inside a simulation.
             storage: Optional storage that can be used to (dis)charge. This is the storage of the
                 microgrid inside a simulation.

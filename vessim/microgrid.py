@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 class MicrogridState(TypedDict):
     """State of a microgrid.
 
-    This state is passed to controllers on every step.
+    This state is passed to `Controller`s on every step.
     """
 
     p_delta: float  # Current power delta in W
@@ -38,7 +38,7 @@ class Microgrid:
         clock: The simulation clock.
         step_size: The step size of the simulation in seconds.
         actors: The actors in the microgrid.
-        policy: The policy that controls the microgrid.
+        policy: The `Policy` that controls the microgrid.
         storage: Optional energy storage.
         grid_signals: Optional signals from the public grid.
         name: Optional name for the microgrid.

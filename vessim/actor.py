@@ -9,11 +9,11 @@ from vessim.signal import Signal
 
 
 class Actor:
-    """Consumer or producer based on a Signal.
+    """Consumer or producer based on a `Signal`.
 
     Args:
         name: The name of the actor.
-        signal: The signal that determines the power consumption/production.
+        signal: The `Signal` that determines the power consumption/production.
         step_size: The step size of the actor in seconds. If None, the step size
             of the microgrid is used.
     """
@@ -28,7 +28,7 @@ class Actor:
         return self.signal.now(at=now)
 
     def state(self, now: datetime) -> dict:
-        """Current state of the actor which is passed to controllers on every step."""
+        """Current state of the actor which is passed to `Controller`s on every step."""
         return {
             "name": self.name,
             "signal": str(self.signal),

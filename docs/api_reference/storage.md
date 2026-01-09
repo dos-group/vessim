@@ -1,2 +1,3 @@
-::: vessim.Policy
-::: vessim.DefaultPolicy
+::: vessim.Storage
+::: vessim.SimpleBattery
+::: vessim.ClcBattery

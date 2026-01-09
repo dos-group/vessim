@@ -28,7 +28,7 @@ class Controller(ABC):
         """Executed before the simulation starts.
 
         Can be overridden to inspect the simulation topology or perform initialization
-        that requires access to the microgrid objects.
+        that requires access to the `Microgrid` objects.
         """
         pass
 

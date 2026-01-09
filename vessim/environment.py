@@ -18,10 +18,10 @@ class Environment:
     """Environment for a Vessim co-simulation.
 
     This class manages the simulation time, the interaction between different components,
-    and the execution of the `Mosaik <https://mosaik.offis.de/>`_ co-simulation.
+    and the execution of the [Mosaik](https://mosaik.offis.de/) co-simulation.
 
     Args:
-        sim_start: The start time of the simulation. Can be a datetime object or a
+        sim_start: The start time of the simulation. Can be a `datetime` object or a
             string in the format "YYYY-MM-DD HH:MM:SS".
         step_size: The step size of the simulation in seconds. Defaults to 1.
     """
@@ -53,13 +53,13 @@ class Environment:
         Args:
             actors: A list of actors that are part of the microgrid.
             policy: The policy that controls the energy management of the microgrid.
-                If None, a DefaultPolicy is used.
+                If None, a `DefaultPolicy` is used.
             storage: An optional energy storage system (e.g., a battery).
             grid_signals: Optional signals from the public grid (e.g., carbon intensity).
             name: An optional name for the microgrid.
 
         Returns:
-            The created Microgrid instance.
+            The created `Microgrid` instance.
         """
         if not actors:
             raise ValueError("There should be at least one actor in the Microgrid.")
@@ -158,7 +158,7 @@ class Environment:
                 runs as fast as possible.
             print_progress: Whether to print a progress bar.
             behind_threshold: The threshold in seconds for issuing warnings when the
-                simulation falls behind real-time (only used if rt_factor is set).
+                simulation falls behind real-time (only used if `rt_factor` is set).
         """
         if until is None:
             # there is no integer representing infinity in python
