@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+import time
 from abc import ABC, abstractmethod
 from datetime import timedelta
+from itertools import count
 from pathlib import Path
 from typing import Any, Optional, Literal
-from itertools import count
 
-import time
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 from vessim._data import load_dataset
 from vessim._util import DatetimeLike
@@ -191,7 +191,10 @@ class Trace(Signal):
         return list(self._actual.keys())
 
     def now(
-        self, at: Optional[DatetimeLike] = None, column: Optional[str] = None, **kwargs
+        self,
+        at: Optional[DatetimeLike] = None,
+        column: Optional[str] = None,
+        **kwargs: dict[str, Any],
     ) -> float:
         """Retrieves actual data point of zone at given time.
 
@@ -491,7 +494,7 @@ class SilSignal(Signal):
 
         self.Timer(0, poll).start()  # Start immediately
 
-    def now(self, at: Optional[DatetimeLike] = None, **kwargs) -> float:
+    def now(self, at: Optional[DatetimeLike] = None, **kwargs: dict[str, Any]) -> float:
         """Return the current cached value.
 
         Args:

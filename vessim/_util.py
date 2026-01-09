@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from typing import Union
-from loguru import logger
 import sys
+from datetime import datetime, timedelta
+from typing import Union, Any
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+from loguru import logger
 
 DatetimeLike = Union[str, datetime, np.datetime64]
 
@@ -50,3 +50,14 @@ def disable_rt_warnings(behind_threshold: float):
     # Add the filter to the logger
     logger.remove()
     logger.add(sys.stdout, filter=filter_record)
+
+
+def flatten_dict(d: dict, parent_key: str = "") -> dict:
+    items: list[tuple[str, Any]] = []
+    for k, v in d.items():
+        new_key = parent_key + "." + k if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, str(new_key)).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)

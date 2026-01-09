@@ -2,16 +2,22 @@ import threading
 from collections import defaultdict
 from typing import Any
 
+import uvicorn
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import HTMLResponse
-import uvicorn
 
 
 class PrometheusMetrics:
     """Encapsulates all Prometheus metrics for Vessim."""
 
     def __init__(self):
-        from prometheus_client import Counter, Gauge
+        try:
+            from prometheus_client import Counter, Gauge
+        except ImportError as e:
+            raise ImportError(
+                "prometheus_client is required for Prometheus metrics export. "
+                "Install with: pip install vessim[sil]"
+            ) from e
 
         self.microgrid_p_delta = Gauge(
             'vessim_microgrid_p_delta',
@@ -151,16 +157,40 @@ def get_history(name: str, limit: int = 100):
     return {"data": history[-limit:] if limit else history}
 
 
-@app.put("/microgrids/{name}/storage/min_soc")  # TODO experimental
-def set_min_soc(name: str, value: dict[str, float]):
-    broker.add_command(
-        {
-            "type": "set_parameter",
-            "microgrid": name,
-            "parameter": "storage:min_soc",
-            "value": value["min_soc"],
-        }
-    )
+@app.put("/microgrids/{name}/storage/{prop}")
+def set_storage_prop(name: str, prop: str, value: Any):
+    broker.add_command({
+        "type": "set_parameter",
+        "microgrid": name,
+        "target": "storage",
+        "property": prop,
+        "value": value,
+    })
+    return {"status": "command queued"}
+
+
+@app.put("/microgrids/{name}/policy/{prop}")
+def set_policy_prop(name: str, prop: str, value: Any):
+    broker.add_command({
+        "type": "set_parameter",
+        "microgrid": name,
+        "target": "policy",
+        "property": prop,
+        "value": value,
+    })
+    return {"status": "command queued"}
+
+
+@app.put("/microgrids/{name}/actors/{actor_name}/signal")
+def set_actor_signal(name: str, actor_name: str, value: float):
+    broker.add_command({
+        "type": "set_parameter",
+        "microgrid": name,
+        "target": "actor",
+        "target_name": actor_name,
+        "property": "value",
+        "value": value,
+    })
     return {"status": "command queued"}
 
 
@@ -169,7 +199,13 @@ def set_min_soc(name: str, value: dict[str, float]):
 def get_prometheus_metrics():
     if broker.metrics is None:
         raise HTTPException(404, "Prometheus metrics not enabled")
-    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+    try:
+        from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+    except ImportError as e:
+        raise ImportError(
+            "prometheus_client is required for Prometheus metrics export. "
+            "Install with: pip install vessim[sil]"
+        ) from e
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 

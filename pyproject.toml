@@ -41,7 +41,8 @@ dependencies = [
 sil = [
     "requests>=2.26.0",
     "fastapi>=0.104.0",
-    "uvicorn>=0.23.0"
+    "uvicorn>=0.23.0",
+    "prometheus_client>0.22.0",
 ]
 dev = [
     "pytest",
@@ -54,18 +55,9 @@ dev = [
 ]
 docs = [
     "setuptools",
-    "sphinx",
-    "furo",
-    "sphinx-copybutton",
-    "nbsphinx",
-    "pandoc",
-    "ipython",
     "plotly",
-]
-examples = [
-    "jupyter",
-    "nbconvert",
-    "plotly",
+    "mkdocs-material",
+    "mkdocstrings[python]",
 ]
 vis = [
     "streamlit>=1.28.0",

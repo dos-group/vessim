@@ -23,7 +23,7 @@ jobs:
       run: uv pip install hatch-vcs
 
     - name: Install dependencies
-      run: uv pip install -e ".[dev,sil]"
+      run: uv pip install -e ".[dev,sil,vis]"
 
     # type checking
     - name: Run type checker

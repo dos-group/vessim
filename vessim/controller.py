@@ -1,43 +1,43 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from collections import defaultdict
-from datetime import datetime
-from pathlib import Path
-from csv import DictWriter
-from itertools import count
-from collections.abc import Iterator
-from typing import Any, Optional, TYPE_CHECKING
 import multiprocessing
 import time
+from abc import ABC, abstractmethod
+from collections import defaultdict
+from csv import DictWriter
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Optional, TYPE_CHECKING
 
 import mosaik_api_v3  # type: ignore
+
+from vessim._util import flatten_dict
 
 if TYPE_CHECKING:
     from vessim.microgrid import Microgrid, MicrogridState
 
 
 class Controller(ABC):
-    _counters: dict[type[Controller], Iterator[int]] = {}
+    """Abstract base class for all controllers in the simulation.
 
-    def __init_subclass__(cls, **kwargs) -> None:
-        """Initializes the subclass and sets up a counter for naming."""
-        super().__init_subclass__(**kwargs)
-        cls._counters[cls] = count()
+    Controllers are used to monitor the simulation state and to control the
+    behavior of the microgrids. They are executed at every simulation step.
+    """
 
-    def __init__(self, microgrids: list[Microgrid], step_size: Optional[int] = None) -> None:
-        cls = self.__class__
-        self.name: str = f"{cls.__name__}-{next(cls._counters[cls])}"
-        self.step_size = step_size
-        self.set_parameters: dict[str, Any] = {}
-        self.microgrids: dict[str, Microgrid] = {mg.name: mg for mg in microgrids}
+    def start(self, microgrids: dict[str, Microgrid]) -> None:
+        """Executed before the simulation starts.
+
+        Can be overridden to inspect the simulation topology or perform initialization
+        that requires access to the microgrid objects.
+        """
+        pass
 
     @abstractmethod
-    def step(self, time: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
-        """Performs a simulation step across all managed microgrids.
+    def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
+        """Performs a simulation step.
 
         Args:
-            time: Current datetime.
+            now: Current datetime in the simulation.
             microgrid_states: Maps microgrid names to their current state.
         """
 
@@ -46,65 +46,100 @@ class Controller(ABC):
         pass
 
 
-class Monitor(Controller):
-    def __init__(
-        self,
-        microgrids: list[Microgrid],
-        step_size: Optional[int] = None,
-        outfile: Optional[str | Path] = None,
-    ):
-        super().__init__(microgrids, step_size=step_size)
-        self.outfile: Optional[Path] = Path(outfile) if outfile else None
-        self._fieldnames: dict[str, Optional[list]] = {}  # Per microgrid fieldnames
+class MemoryLogger(Controller):
+    """Controller that logs the state of the simulation in memory.
+
+    The logged state can be retrieved as a dictionary or a pandas DataFrame.
+    """
+
+    def __init__(self):
         self.log: dict[datetime, dict[str, MicrogridState]] = defaultdict(dict)
 
-    def step(self, t: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
-        self.log[t] = microgrid_states
-        if self.outfile is not None:
-            self._write_microgrid_csv(t, microgrid_states, outfile=self.outfile)
+    def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
+        self.log[now] = microgrid_states
 
-    def to_csv(self, outfile: str | Path):
-        """Export current log to a CSV file."""
-        for t, migrogrid_states in self.log.items():
-            self._write_microgrid_csv(t, migrogrid_states, outfile=Path(outfile))
+    def to_dict(self) -> dict[datetime, dict[str, MicrogridState]]:
+        """Returns the logged data as a dictionary."""
+        return dict(self.log)
 
-    def _write_microgrid_csv(
-        self,
-        time: datetime,
-        microgrid_states: dict[str, MicrogridState],
-        outfile: Path,
-    ) -> None:
-        """Append microgrid states to CSV file."""
-        outfile.parent.mkdir(exist_ok=True, parents=True)
-        for mg_name, migrogrid_state in microgrid_states.items():
+    def to_df(self):
+        """Returns the logged data as a pandas DataFrame.
+
+        The DataFrame has a MultiIndex (time, microgrid) and columns for each
+        state variable. Requires 'pandas' to be installed.
+        """
+        try:
+            import pandas as pd
+        except ImportError:
+            raise ImportError(
+                "MemoryLogger.to_df() requires 'pandas'. "
+                "Install with: pip install pandas"
+            )
+
+        data = []
+        for t, microgrid_states in self.log.items():
+            for mg_name, state in microgrid_states.items():
+                row = flatten_dict(state)
+                row["time"] = t
+                row["microgrid"] = mg_name
+                data.append(row)
+
+        df = pd.DataFrame(data)
+        if not df.empty:
+            df = df.set_index(["time", "microgrid"])
+        return df
+
+
+class CsvLogger(Controller):
+    """Controller that writes the state of the simulation to a CSV file.
+
+    The state is written to the file at each simulation step (streaming), so
+    it doesn't consume memory for the history.
+
+    Args:
+        outfile: Path to the CSV file.
+    """
+
+    def __init__(self, outfile: str | Path):
+        self.filepath = Path(outfile)
+        self.fieldnames: dict[str, list] = {}
+        self.filepath.parent.mkdir(exist_ok=True, parents=True)
+
+    def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
+        for mg_name, mg_state in microgrid_states.items():
             log_entry = {
                 "microgrid": mg_name,
-                "time": time,
-                **_flatten_dict(dict(migrogrid_state))
+                "time": now,
+                **flatten_dict(dict(mg_state)),
             }
 
-            if mg_name not in self._fieldnames:  # First time: create file with header
-                self._fieldnames[mg_name] = list(log_entry.keys())
+            if mg_name not in self.fieldnames:
+                self.fieldnames[mg_name] = list(log_entry.keys())
                 mode, write_header = "w", True
             else:
                 mode, write_header = "a", False
 
-            with outfile.open(mode, newline="") as csvfile:
-                fieldnames = self._fieldnames[mg_name]
-                assert fieldnames is not None
-                writer = DictWriter(csvfile, fieldnames=fieldnames)
+            with self.filepath.open(mode, newline="") as csvfile:
+                writer = DictWriter(csvfile, fieldnames=self.fieldnames[mg_name])
                 if write_header:
                     writer.writeheader()
                 writer.writerow(log_entry)
 
 
 class Api(Controller):
-    """REST API interface for microgrid data and control."""
+    """REST API interface for microgrid data and control.
+
+    The API controller starts a background process with a FastAPI-based broker
+    that exposes endpoints to query the current state of the microgrids and to
+    send control commands to them.
+
+    Args:
+        export_prometheus: Whether to export metrics to Prometheus. Defaults to False.
+        broker_port: The port on which the API broker should run. Defaults to 8700.
+    """
 
     def __init__(
         self,
-        microgrids: list[Microgrid],
-        step_size: Optional[int] = None,
         export_prometheus: bool = False,
         broker_port: int = 8700,
     ):
@@ -117,14 +152,23 @@ class Api(Controller):
                 "RestInterface requires 'requests' package. " "Install with: pip install requests"
             )
 
-        super().__init__(microgrids, step_size=step_size)
         self.broker_port = broker_port
         self.broker_url = f"http://localhost:{broker_port}"
         self.broker_process: Optional[multiprocessing.Process] = None
         self.export_prometheus = export_prometheus
+        self.microgrids: dict[str, Microgrid] = {}
 
+    def start(self, microgrids: dict[str, Microgrid]) -> None:
+        self.microgrids = microgrids
         self._start_broker()
-        self._register_microgrids()
+        print("Registering microgrids with API broker...")
+        for mg_name, mg in microgrids.items():
+            config = {
+                "name": mg_name,
+                "actors": [actor.name for actor in mg.actors],
+                "storage": mg.storage.__class__.__name__ if mg.storage else None,
+            }
+            self.requests.post(f"{self.broker_url}/internal/microgrids/{mg_name}", json=config)
 
     def _start_broker(self):
         from vessim._broker import run_broker
@@ -139,39 +183,36 @@ class Api(Controller):
         prometheus_str = " (incl. Prometheus exporter)" if self.export_prometheus else ""
         print(f"🌐 API{prometheus_str} available at: {self.broker_url}")
 
-    def _register_microgrids(self):
-        for mg_name, mg in self.microgrids.items():
-            config = {
-                "name": mg_name,
-                "actors": [actor.name for actor in mg.actors],
-                "storage": mg.storage.__class__.__name__ if mg.storage else None,
-            }
-            self.requests.post(f"{self.broker_url}/internal/microgrids/{mg_name}", json=config)
-
-    def step(self, time: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
-        """Push data to broker and process commands."""
-        self._process_commands()
-
-        for mg_name, mg_state in microgrid_states.items():
-            data = {
-                'microgrid': mg_name,
-                'time': time.isoformat(),
-                **mg_state
-            }
-            self.requests.post(f"{self.broker_url}/internal/data/{mg_name}", json=data)
-
-    def _process_commands(self):
+    def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
+        """Process commands and push microgrid states to broker."""
         response = self.requests.get(f"{self.broker_url}/internal/commands")
         commands = response.json().get("commands", [])
+        for cmd in commands:
+            if cmd.get("type") == "set_parameter":
+                microgrid_name = cmd.get("microgrid")
+                if microgrid_name not in self.microgrids:
+                    continue
 
-        for command in commands:
-            if command.get("type") == "set_parameter":
-                microgrid = command.get("microgrid")
-                parameter = command.get("parameter")
-                value = command.get("value")
-                if microgrid and parameter and value is not None:
-                    key = f"{microgrid}:{parameter}"
-                    self.set_parameters[key] = value
+                mg = self.microgrids[microgrid_name]
+                target = cmd.get("target")
+                prop = cmd.get("property")
+                val = cmd.get("value")
+
+                if target == "storage" and mg.storage:
+                    setattr(mg.storage, prop, val)
+                elif target == "policy":
+                    setattr(mg.policy, prop, val)
+                elif target == "actor":
+                    actor_name = cmd.get("target_name")
+                    actor = next((a for a in mg.actors if a.name == actor_name), None)
+                    if actor and hasattr(actor.signal, "set_value"):
+                        actor.signal.set_value(val)
+
+        for mg_name, mg_state in microgrid_states.items():
+            self.requests.post(
+                f"{self.broker_url}/internal/data/{mg_name}",
+                json={"microgrid": mg_name, "time": now.isoformat(), **mg_state},
+            )
 
     def finalize(self) -> None:
         """Clean up resources when simulation ends."""
@@ -188,7 +229,7 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         "models": {
             "Controller": {
                 "public": True,
-                "params": ["controller", "microgrid_names"],
+                "params": ["controllers"],
                 "attrs": [
                     "p_delta",
                     "p_grid",
@@ -196,7 +237,6 @@ class _ControllerSim(mosaik_api_v3.Simulator):
                     "policy_state",
                     "storage_state",
                     "grid_signals",
-                    "set_parameters",
                 ],
             },
         },
@@ -207,10 +247,8 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         self.eid = "Controller"
         self.step_size = None
         self.clock = None
-        self.controller = None
-        self.microgrid_names = []
+        self.controllers: list[Controller] = []
         self.microgrid_states: dict[str, dict[str, Any]] = {}
-        self.last_step_time = None
 
     def init(self, sid, time_resolution=1.0, **sim_params):
         self.step_size = sim_params["step_size"]
@@ -219,12 +257,10 @@ class _ControllerSim(mosaik_api_v3.Simulator):
 
     def create(self, num, model, **model_params):
         assert num == 1, "Only one instance per simulation is supported"
-        self.controller = model_params["controller"]
-        self.microgrid_names = model_params["microgrid_names"]
+        self.controllers = model_params["controllers"]
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
-        assert self.controller is not None
         assert self.clock is not None
         assert self.step_size is not None
 
@@ -233,51 +269,19 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         microgrid_states: dict[str, MicrogridState] = {name: {
             "p_delta": data["p_delta"][f"{name}.grid.Grid"],
             "p_grid": data["p_grid"][f"{name}.storage.Storage"],
-            "actor_states": {k.split(".")[-1]: data["actor_states"][k] for k  in data["actor_states"].keys() if k.startswith(f"{name}.actor.")},  # noqa: E501
-            "policy_state": next(v for k, v in data["policy_state"].items() if k.startswith(f"{name}.storage.Storage")),  # noqa: E501
-            "storage_state": next((v for k, v in data["storage_state"].items() if k.startswith(f"{name}.storage.Storage")), None),  # noqa: E501
+            "actor_states": {k.split(".")[-1]: data["actor_states"][k] for k in data["actor_states"].keys() if k.startswith(f"{name}.actor.")},  # noqa: E501
+            "policy_state": next((v for k, v in data["policy_state"].items() if k.startswith(f"{name}.storage.Storage")), {}),  # noqa: E501
+            "storage_state": next((v for k, v in data.get("storage_state", {}).items() if k.startswith(f"{name}.storage.Storage")), None),  # noqa: E501
             "grid_signals": next((v for k, v in data["grid_signals"].items() if k.startswith(f"{name}.grid.Grid")), None),  # noqa: E501
         } for name in microgrids}
 
         now = self.clock.to_datetime(time)
-        self.controller.step(now, microgrid_states)
+        for controller in self.controllers:
+            controller.step(now, microgrid_states)
 
-        self.set_parameters = self.controller.set_parameters.copy()
-        self.controller.set_parameters = {}
         return time + self.step_size
-
-    def get_data(self, outputs):
-        return {self.eid: {"set_parameters": self.set_parameters}}
 
     def finalize(self) -> None:
         """Stops the api server and the collector thread when the simulation finishes."""
-        assert self.controller is not None
-        self.controller.finalize()
-
-    def _parse_controller_inputs(
-        self, inputs: dict[str, dict[str, Any]]
-    ) -> tuple[float, float, dict]:
-        p_delta = _get_val(inputs, "p_delta")
-        p_grid = _get_val(inputs, "p_grid")
-        actor_keys = [k for k in inputs.keys() if k.startswith("actor")]
-        actors: defaultdict[str, Any] = defaultdict(dict)
-        for k in actor_keys:
-            _, actor_name = k.split(".")
-            actors[actor_name] = _get_val(inputs, k)
-        state = dict(actors)
-        state.update(_get_val(inputs, "state"))
-        return p_delta, p_grid, state
-
-
-def _get_val(inputs: dict, key: str) -> Any:
-    return list(inputs[key].values())[0]
-
-def _flatten_dict(d: dict, parent_key: str = "") -> dict:
-    items: list[tuple[str, Any]] = []
-    for k, v in d.items():
-        new_key = parent_key + "." + k if parent_key else k
-        if isinstance(v, dict):
-            items.extend(_flatten_dict(v, str(new_key)).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
+        for controller in self.controllers:
+            controller.finalize()

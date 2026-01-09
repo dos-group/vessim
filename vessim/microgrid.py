@@ -7,7 +7,7 @@ import mosaik_api_v3
 
 if TYPE_CHECKING:
     from vessim.actor import Actor
-    from vessim.policy import MicrogridPolicy
+    from vessim.policy import Policy
     from vessim.storage import Storage
     from vessim._util import Clock
     from vessim.signal import Signal
@@ -28,13 +28,29 @@ class MicrogridState(TypedDict):
 
 
 class Microgrid:
+    """A simulated energy system.
+
+    A microgrid is a collection of actors (consumers and producers), energy storage,
+    and a policy that governs their interaction. It can also be connected to the public grid.
+
+    Args:
+        world: The mosaik world instance.
+        clock: The simulation clock.
+        step_size: The step size of the simulation in seconds.
+        actors: The actors in the microgrid.
+        policy: The policy that controls the microgrid.
+        storage: Optional energy storage.
+        grid_signals: Optional signals from the public grid.
+        name: Optional name for the microgrid.
+    """
+
     def __init__(
         self,
         world: mosaik.World,
         clock: Clock,
         step_size: int,
         actors: list[Actor],
-        policy: MicrogridPolicy,
+        policy: Policy,
         storage: Optional[Storage] = None,
         grid_signals: Optional[dict[str, Signal]] = None,
         name: Optional[str] = None,
@@ -65,7 +81,7 @@ class Microgrid:
         )
         self.grid_entity = grid_sim.Grid()
         for actor_name, actor_entity in self.actor_entities.items():
-            world.connect(actor_entity, self.grid_entity, "p")
+            world.connect(actor_entity, self.grid_entity, "power")
 
         storage_sim = world.start("Storage", sim_id=f"{self.name}.storage", step_size=step_size)
         self.storage_entity = storage_sim.Storage(storage=storage, policy=policy)
@@ -88,7 +104,7 @@ class _GridSim(mosaik_api_v3.Simulator):
             "Grid": {
                 "public": True,
                 "params": ["grid_signals"],
-                "attrs": ["p", "p_delta", "grid_signals"],
+                "attrs": ["power", "p_delta", "grid_signals"],
             },
         },
     }
@@ -110,13 +126,14 @@ class _GridSim(mosaik_api_v3.Simulator):
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
-        self.p_delta = sum(inputs[self.eid]["p"].values())
+        self.p_delta = sum(inputs[self.eid]["power"].values())
         assert self.step_size is not None
         return time + self.step_size
 
     def get_data(self, outputs):
         grid_signals = (
             {name: signal.now() for name, signal in self.grid_signals.items()}
-            if self.grid_signals else None
+            if self.grid_signals
+            else None
         )
         return {self.eid: {"p_delta": self.p_delta, "grid_signals": grid_signals}}
