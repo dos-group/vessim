@@ -37,7 +37,7 @@ pip install vessim[sil]
 
 ## How Vessim Works
 
-Vessim can simulate the local energy systems (we call them "microgrids") that combine computing equipment with renewable energy sources and batteries.
+Vessim can simulate local energy systems (we call them "microgrids") that combine computing equipment with renewable energy sources and batteries.
 
 ![Vessim Overview](assets/vessim_overview.png)
 
