@@ -14,7 +14,7 @@ data/
 │   │   ├── models.py            # plugin-specific tables for db
 │   │   ├── api.py               # plugin-specific api endpoints
 │   │   ├── entsoe_service.py    # main logic
-|   |   └── requierements.txt    # plugin-specific requierements
+│   │   └── requierements.txt    # plugin-specific requierements
 └── requirements.txt
 ```
 
