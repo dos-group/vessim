@@ -10,7 +10,7 @@ from sqlmodel import Session, select
 from dotenv import load_dotenv
 
 from core.database import get_managed_session
-from .entsoe_service import EntsoeService, fill_missing_timestamps
+from .service import EntsoeService, fill_missing_timestamps
 from .models import EntsoePrice, EntsoePriceCreate, EntsoePricePublic
 
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
