@@ -29,129 +29,6 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 24,
-        "w": 10,
-        "x": 0,
-        "y": 0
-      },
-      "id": 9,
-      "options": {
-        "basemap": {
-          "config": {},
-          "name": "Layer 0",
-          "noRepeat": false,
-          "type": "default"
-        },
-        "controls": {
-          "mouseWheelZoom": true,
-          "showAttribution": true,
-          "showDebug": false,
-          "showMeasure": false,
-          "showScale": false,
-          "showZoom": true
-        },
-        "layers": [
-          {
-            "config": {
-              "showLegend": true,
-              "style": {
-                "color": {
-                  "fixed": "dark-green"
-                },
-                "opacity": 1,
-                "rotation": {
-                  "fixed": 0,
-                  "max": 360,
-                  "min": -360,
-                  "mode": "mod"
-                },
-                "size": {
-                  "fixed": 5,
-                  "max": 15,
-                  "min": 2
-                },
-                "symbol": {
-                  "fixed": "img/icons/marker/circle.svg",
-                  "mode": "fixed"
-                },
-                "symbolAlign": {
-                  "horizontal": "center",
-                  "vertical": "center"
-                },
-                "textConfig": {
-                  "fontSize": 12,
-                  "offsetX": 0,
-                  "offsetY": 0,
-                  "textAlign": "center",
-                  "textBaseline": "middle"
-                }
-              }
-            },
-            "location": {
-              "mode": "auto"
-            },
-            "name": "Layer 1",
-            "tooltip": true,
-            "type": "markers"
-          }
-        ],
-        "tooltip": {
-          "mode": "details"
-        },
-        "view": {
-          "allLayers": true,
-          "id": "fit",
-          "lat": 52.518165,
-          "lon": 9.285107,
-          "noRepeat": false,
-          "zoom": 15
-        }
-      },
-      "pluginVersion": "12.3.0",
-      "targets": [
-        {
-          "query": "from(bucket: \"vessim_bucket\")\r\n  |> range(start: 0)\r\n  |> filter(fn: (r) => r._measurement == \"vessim\")\r\n  |> filter(fn: (r) => r._field == \"latitude\" or r._field == \"longitude\")\r\n  |> last()\r\n  // Wichtig: Alles in eine Tabelle werfen, damit wir schemas mischen können\r\n  |> group(columns: [\"_measurement\"])\r\n  // Fehlendes actor-Tag mit \"Node\" oder \"Microgrid\" auffüllen\r\n  |> map(fn: (r) => ({ r with actor: if exists r.actor then r.actor else \"Microgrid\" }))\r\n  |> pivot(\r\n      rowKey: [\"_time\", \"microgrid\", \"actor\"],\r\n      columnKey: [\"_field\"],\r\n      valueColumn: \"_value\"\r\n  )\r\n  // Am Ende alles aufräumen\r\n  |> group()\r\n  |> keep(columns: [\"microgrid\", \"actor\", \"latitude\", \"longitude\"])",
-          "refId": "A"
-        }
-      ],
-      "title": "New panel",
-      "type": "geomap"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "influxdb2"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
             "mode": "palette-classic"
           },
           "custom": {
@@ -212,10 +89,10 @@
         ]
       },
       "gridPos": {
-        "h": 11,
-        "w": 5,
+        "h": 10,
+        "w": 6,
         "x": 0,
-        "y": 24
+        "y": 0
       },
       "id": 7,
       "options": {
@@ -252,6 +129,150 @@
       "title": "Zusammensetzung Energieproduktion",
       "transparent": true,
       "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb2"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [
+            {
+              "options": {
+                "solar_panel": {
+                  "color": "yellow",
+                  "index": 1
+                },
+                "wind_turbine": {
+                  "color": "light-blue",
+                  "index": 0
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 18,
+        "x": 6,
+        "y": 0
+      },
+      "id": 10,
+      "options": {
+        "basemap": {
+          "config": {},
+          "name": "Layer 0",
+          "noRepeat": false,
+          "type": "default"
+        },
+        "controls": {
+          "mouseWheelZoom": true,
+          "showAttribution": true,
+          "showDebug": false,
+          "showMeasure": false,
+          "showScale": false,
+          "showZoom": true
+        },
+        "layers": [
+          {
+            "config": {
+              "showLegend": false,
+              "style": {
+                "color": {
+                  "field": "actor",
+                  "fixed": "dark-green"
+                },
+                "opacity": 1,
+                "rotation": {
+                  "fixed": 0,
+                  "max": 360,
+                  "min": -360,
+                  "mode": "mod"
+                },
+                "size": {
+                  "fixed": 5,
+                  "max": 15,
+                  "min": 2
+                },
+                "symbol": {
+                  "fixed": "img/icons/marker/circle.svg",
+                  "mode": "fixed"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "text": {
+                  "field": "actor",
+                  "fixed": "",
+                  "mode": "field"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "offsetX": 0,
+                  "offsetY": 4,
+                  "textAlign": "center",
+                  "textBaseline": "top"
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "name": "Layer 1",
+            "tooltip": true,
+            "type": "markers"
+          }
+        ],
+        "tooltip": {
+          "mode": "details"
+        },
+        "view": {
+          "allLayers": true,
+          "id": "fit",
+          "lat": 52.518165,
+          "lon": 9.285107,
+          "noRepeat": false,
+          "zoom": 15
+        }
+      },
+      "pluginVersion": "12.3.0",
+      "targets": [
+        {
+          "query": "from(bucket: \"vessim_bucket\")\r\n  |> range(start: 0)\r\n  |> filter(fn: (r) => r._measurement == \"vessim\")\r\n  // Hier nutzen wir deine funktionierende Variable\r\n  |> filter(fn: (r) => r.microgrid == \"${microgrid}\")\r\n  // Wir nehmen p dazu, damit wir die Leistung sehen\r\n  |> filter(fn: (r) => r._field == \"latitude\" or r._field == \"longitude\" or r._field == \"p\")\r\n  |> last()\r\n  |> group(columns: [\"_measurement\"])\r\n  |> map(fn: (r) => ({ r with actor: if exists r.actor then r.actor else \"Microgrid\" }))\r\n  |> pivot(\r\n      rowKey: [\"_time\", \"microgrid\", \"actor\"],\r\n      columnKey: [\"_field\"],\r\n      valueColumn: \"_value\"\r\n  )\r\n  |> group()\r\n  // Wir behalten p im keep, damit du es visualisieren kannst\r\n  |> keep(columns: [\"microgrid\", \"actor\", \"latitude\", \"longitude\", \"p\"])",
+          "refId": "A"
+        }
+      ],
+      "title": "Kartenansicht",
+      "transparent": true,
+      "type": "geomap"
     },
     {
       "datasource": {
@@ -311,7 +332,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "#FFEE52",
+                  "fixedColor": "yellow",
                   "mode": "fixed"
                 }
               }
@@ -344,10 +365,10 @@
         ]
       },
       "gridPos": {
-        "h": 11,
-        "w": 19,
-        "x": 5,
-        "y": 24
+        "h": 9,
+        "w": 14,
+        "x": 0,
+        "y": 10
       },
       "id": 3,
       "options": {
@@ -479,10 +500,10 @@
         ]
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 35
+        "h": 9,
+        "w": 10,
+        "x": 14,
+        "y": 10
       },
       "id": 5,
       "options": {
@@ -506,6 +527,121 @@
         }
       ],
       "title": "Windenergie",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "InfluxDB2"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 13,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "displayName": "Batterie Ladestand in %",
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Batterie Ladestand in %"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "light-green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 19
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.3.0",
+      "targets": [
+        {
+          "query": "from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"vessim\" and\n    r._field == \"soc\" and\n    r.microgrid == \"$microgrid\"\n  )",
+          "queryType": "flux",
+          "refId": "A"
+        }
+      ],
+      "title": "Ladestand Batterie",
       "transparent": true,
       "type": "timeseries"
     },
@@ -610,7 +746,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 35
+        "y": 19
       },
       "id": 6,
       "options": {
@@ -735,8 +871,8 @@
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 0,
-        "y": 43
+        "x": 6,
+        "y": 27
       },
       "id": 8,
       "options": {
@@ -760,121 +896,6 @@
         }
       ],
       "title": "Solarenergie",
-      "transparent": true,
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "influxdb",
-        "uid": "InfluxDB2"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 13,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineStyle": {
-              "fill": "solid"
-            },
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "showValues": false,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "displayName": "Batterie Ladestand in %",
-          "fieldMinMax": false,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "percentunit"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Batterie Ladestand in %"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "light-green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 43
-      },
-      "id": 2,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "12.3.0",
-      "targets": [
-        {
-          "query": "from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"vessim\" and\n    r._field == \"soc\" and\n    r.microgrid == \"$microgrid\"\n  )",
-          "queryType": "flux",
-          "refId": "A"
-        }
-      ],
-      "title": "Ladestand Batterie",
       "transparent": true,
       "type": "timeseries"
     }
@@ -929,5 +950,5 @@
   "timezone": "browser",
   "title": "Energy sources dashboard",
   "uid": "adg5j9l",
-  "version": 7
+  "version": 6
 }
