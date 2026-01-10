@@ -36,7 +36,7 @@ def create_price_entry(
         session: Session = Depends(get_managed_session)
 ):
     """Store a single price data point in the cache. Useful for manual updates."""
-    db_price = EntsoePrice.from_orm(price)
+    db_price = EntsoePrice.model_validate(price)
     session.add(db_price)
     session.commit()
     session.refresh(db_price)
