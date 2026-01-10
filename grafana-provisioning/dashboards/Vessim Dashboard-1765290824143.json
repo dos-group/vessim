@@ -29,6 +29,129 @@
       "fieldConfig": {
         "defaults": {
           "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 24,
+        "w": 10,
+        "x": 0,
+        "y": 0
+      },
+      "id": 9,
+      "options": {
+        "basemap": {
+          "config": {},
+          "name": "Layer 0",
+          "noRepeat": false,
+          "type": "default"
+        },
+        "controls": {
+          "mouseWheelZoom": true,
+          "showAttribution": true,
+          "showDebug": false,
+          "showMeasure": false,
+          "showScale": false,
+          "showZoom": true
+        },
+        "layers": [
+          {
+            "config": {
+              "showLegend": true,
+              "style": {
+                "color": {
+                  "fixed": "dark-green"
+                },
+                "opacity": 1,
+                "rotation": {
+                  "fixed": 0,
+                  "max": 360,
+                  "min": -360,
+                  "mode": "mod"
+                },
+                "size": {
+                  "fixed": 5,
+                  "max": 15,
+                  "min": 2
+                },
+                "symbol": {
+                  "fixed": "img/icons/marker/circle.svg",
+                  "mode": "fixed"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "offsetX": 0,
+                  "offsetY": 0,
+                  "textAlign": "center",
+                  "textBaseline": "middle"
+                }
+              }
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "name": "Layer 1",
+            "tooltip": true,
+            "type": "markers"
+          }
+        ],
+        "tooltip": {
+          "mode": "details"
+        },
+        "view": {
+          "allLayers": true,
+          "id": "fit",
+          "lat": 52.518165,
+          "lon": 9.285107,
+          "noRepeat": false,
+          "zoom": 15
+        }
+      },
+      "pluginVersion": "12.3.0",
+      "targets": [
+        {
+          "query": "from(bucket: \"vessim_bucket\")\r\n  |> range(start: 0)\r\n  |> filter(fn: (r) => r._measurement == \"vessim\")\r\n  |> filter(fn: (r) => r._field == \"latitude\" or r._field == \"longitude\")\r\n  |> last()\r\n  // Wichtig: Alles in eine Tabelle werfen, damit wir schemas mischen können\r\n  |> group(columns: [\"_measurement\"])\r\n  // Fehlendes actor-Tag mit \"Node\" oder \"Microgrid\" auffüllen\r\n  |> map(fn: (r) => ({ r with actor: if exists r.actor then r.actor else \"Microgrid\" }))\r\n  |> pivot(\r\n      rowKey: [\"_time\", \"microgrid\", \"actor\"],\r\n      columnKey: [\"_field\"],\r\n      valueColumn: \"_value\"\r\n  )\r\n  // Am Ende alles aufräumen\r\n  |> group()\r\n  |> keep(columns: [\"microgrid\", \"actor\", \"latitude\", \"longitude\"])",
+          "refId": "A"
+        }
+      ],
+      "title": "New panel",
+      "type": "geomap"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb2"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
             "mode": "palette-classic"
           },
           "custom": {
@@ -92,7 +215,7 @@
         "h": 11,
         "w": 5,
         "x": 0,
-        "y": 0
+        "y": 24
       },
       "id": 7,
       "options": {
@@ -122,7 +245,7 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
-          "query": "// 1. Basis-Datenquelle\r\ndata = from(bucket: \"vessim_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r._measurement == \"vessim\" and r.microgrid == \"$microgrid\")\r\n\r\n// 2. Solar + Wind summieren\r\nsolar_wind_sum = data\r\n  |> filter(fn: (r) =>\r\n    r._field == \"power_solar_panel\" or\r\n    r._field == \"power_wind_turbine\"\r\n  )\r\n  |> group(columns: [\"_field\"])\r\n  |> sum(column: \"_value\")\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _field:\r\n        if r._field == \"power_solar_panel\" then \"Solar-Gesamtenergie\"\r\n        else \"Wind-Gesamtenergie\"\r\n  }))\r\n  |> rename(columns: {_value: \"\"})\r\n  |> keep(columns: [\"_field\", \"\"])\r\n\r\n// 3. Netzbezug (nur negative Werte, invertieren)\r\np_grid_imported = data\r\n  |> filter(fn: (r) => r._field == \"p_grid\")\r\n  |> filter(fn: (r) => r._value < 0)\r\n  |> sum(column: \"_value\")\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _value: r._value * -1.0,\r\n      _field: \"Bezug-Gesamtenergie\"\r\n  }))\r\n    |> rename(columns: {_value: \"\"})\r\n    |> keep(columns: [\"_field\", \"\"])\r\n\r\n// 4. Zusammenführen\r\nunion(tables: [solar_wind_sum, p_grid_imported])\r\n",
+          "query": "// 1. Basis-Datenquelle\r\ndata = from(bucket: \"vessim_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) => r._measurement == \"vessim\" and r.microgrid == \"$microgrid\")\r\n\r\n// 2. Solar + Wind summieren\r\nsolar_wind_sum = data\r\n  |> filter(fn: (r) =>\r\n    r._field == \"tag_sum_solar\" or\r\n    r._field == \"tag_sum_wind\"\r\n  )\r\n  |> group(columns: [\"_field\"])\r\n  |> sum(column: \"_value\")\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _field:\r\n        if r._field == \"tag_sum_solar\" then \"Solar-Gesamtenergie\"\r\n        else \"Wind-Gesamtenergie\"\r\n  }))\r\n  |> rename(columns: {_value: \"\"})\r\n  |> keep(columns: [\"_field\", \"\"])\r\n\r\n// 3. Netzbezug (nur negative Werte, invertieren)\r\np_grid_imported = data\r\n  |> filter(fn: (r) => r._field == \"p_grid\")\r\n  |> filter(fn: (r) => r._value < 0)\r\n  |> sum(column: \"_value\")\r\n  |> map(fn: (r) => ({\r\n      r with\r\n      _value: r._value * -1.0,\r\n      _field: \"Bezug-Gesamtenergie\"\r\n  }))\r\n    |> rename(columns: {_value: \"\"})\r\n    |> keep(columns: [\"_field\", \"\"])\r\n\r\n// 4. Zusammenführen\r\nunion(tables: [solar_wind_sum, p_grid_imported])\r\n",
           "refId": "A"
         }
       ],
@@ -224,7 +347,7 @@
         "h": 11,
         "w": 19,
         "x": 5,
-        "y": 0
+        "y": 24
       },
       "id": 3,
       "options": {
@@ -252,7 +375,7 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
-          "query": "from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"vessim\" and\n    r._field == \"power_solar_panel\" and\n r.microgrid == \"$microgrid\"\n  )\n  |> aggregateWindow(every: 1d, fn: mean, createEmpty: false)\n  |> map(fn: (r) => ({ r with _value: r._value * 24.0 / 1000.0 }))\n  |> rename(columns: {_value: \"avg_power_solar\"})\n  ",
+          "query": "from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"vessim\" and\n    r._field == \"tag_sum_solar\" and\n r.microgrid == \"$microgrid\"\n  )\n  |> aggregateWindow(every: 1d, fn: mean, createEmpty: false)\n  |> map(fn: (r) => ({ r with _value: r._value * 24.0 / 1000.0 }))\n  |> rename(columns: {_value: \"avg_power_solar\"})\n  ",
           "queryType": "flux",
           "refId": "A"
         }
@@ -359,7 +482,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 11
+        "y": 35
       },
       "id": 5,
       "options": {
@@ -378,7 +501,7 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
-          "query": "from(bucket: \"vessim_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n    r._measurement == \"vessim\" and\r\n    r._field == \"power_wind_turbine\" and\r\n    r.microgrid == \"$microgrid\"\r\n  )",
+          "query": "from(bucket: \"vessim_bucket\")\r\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\r\n  |> filter(fn: (r) =>\r\n    r._measurement == \"vessim\" and\r\n    r._field == \"tag_sum_wind\" and\r\n    r.microgrid == \"$microgrid\"\r\n  )",
           "refId": "A"
         }
       ],
@@ -487,7 +610,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 11
+        "y": 35
       },
       "id": 6,
       "options": {
@@ -613,7 +736,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 19
+        "y": 43
       },
       "id": 8,
       "options": {
@@ -632,7 +755,7 @@
       "pluginVersion": "12.3.0",
       "targets": [
         {
-          "query": "from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"vessim\" and\n    r._field == \"power_solar_panel\" and\n    r.microgrid == \"$microgrid\"\n  )",
+          "query": "from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"vessim\" and\n    r._field == \"tag_sum_solar\" and\n    r.microgrid == \"$microgrid\"\n  )",
           "refId": "A"
         }
       ],
@@ -727,7 +850,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 19
+        "y": 43
       },
       "id": 2,
       "options": {
@@ -806,5 +929,5 @@
   "timezone": "browser",
   "title": "Energy sources dashboard",
   "uid": "adg5j9l",
-  "version": 17
+  "version": 7
 }

@@ -66,8 +66,9 @@ def main():
 
     datacenter = env.add_microgrid(
         name="datacenter",
+        coords=(52.5200, 13.4050),
         actors=[
-            vs.Actor(name="server", signal=vs.StaticSignal(value=-2000)),
+            vs.Actor(name="server", signal=vs.StaticSignal(value=-2000), tag="load"),
             vs.Actor(
                 name="solar_panel",
                 signal=vs.Trace.load(
@@ -75,10 +76,14 @@ def main():
                     column="Berlin",
                     params={"scale": 8500},
                 ),
+                tag="solar",
+                coords=(52.5210, 13.4060),  # Slightly offset from datacenter
             ),
             vs.Actor(
                 name="wind_turbine",
                 signal=wind_trace,
+                tag="wind",
+                coords=(52.5190, 13.4040),  # Slightly offset from datacenter
             ),
         ],
         storage=vs.SimpleBattery(capacity=50000),
@@ -86,8 +91,9 @@ def main():
 
     office = env.add_microgrid(
         name="office",
+        coords=(48.1351, 11.5820),
         actors=[
-            vs.Actor(name="office_load", signal=vs.StaticSignal(value=-1200)),
+            vs.Actor(name="office_load", signal=vs.StaticSignal(value=-1200), tag="load"),
             vs.Actor(
                 name="solar_panel",
                 signal=vs.Trace.load(
@@ -95,6 +101,8 @@ def main():
                     column="Berlin",
                     params={"scale": 5000},
                 ),
+                tag="solar",
+                coords=(48.1360, 11.5830),  # Slightly offset from office
             ),
         ],
         storage=vs.SimpleBattery(capacity=20000),
@@ -102,8 +110,9 @@ def main():
 
     factory = env.add_microgrid(
         name="factory",
+        coords=(50.1109, 8.6821),
         actors=[
-            vs.Actor(name="factory_load", signal=vs.StaticSignal(value=-3000)),
+            vs.Actor(name="factory_load", signal=vs.StaticSignal(value=-3000), tag="load"),
             vs.Actor(
                 name="solar_panel",
                 signal=vs.Trace.load(
@@ -111,6 +120,8 @@ def main():
                     column="Berlin",
                     params={"scale": 10000},
                 ),
+                tag="solar",
+                coords=(50.1115, 8.6830),  # Slightly offset from factory
             ),
         ],
         storage=vs.SimpleBattery(capacity=30000),

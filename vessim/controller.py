@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from csv import DictWriter
+from csv import DictWriter, QUOTE_ALL
 from itertools import count
 from collections.abc import Iterator
 from typing import Any, Optional, TYPE_CHECKING
@@ -13,6 +13,7 @@ import time
 
 import mosaik_api_v3  # type: ignore
 import requests  # Used in Monitor.finalize
+
 
 # --- DEFAULTS FOR INFLUXDB 2 ---
 INFLUX_URL = "http://127.0.0.1:8086"
@@ -29,21 +30,21 @@ if TYPE_CHECKING:
 # =============================================================================
 
 class Controller(ABC):
-    _counters: dict[type[Controller], Iterator[int]] = {}
+    _counters: dict[type["Controller"], Iterator[int]] = {}
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
         cls._counters[cls] = count()
 
-    def __init__(self, microgrids: list[Microgrid], step_size: Optional[int] = None) -> None:
+    def __init__(self, microgrids: list["Microgrid"], step_size: Optional[int] = None) -> None:
         cls = self.__class__
         self.name: str = f"{cls.__name__}-{next(cls._counters[cls])}"
-        self.microgrids: dict[str, Microgrid] = {mg.name: mg for mg in microgrids}
+        self.microgrids: dict[str, "Microgrid"] = {mg.name: mg for mg in microgrids}
         self.step_size = step_size
         self.set_parameters: dict[str, Any] = {}
 
     @abstractmethod
-    def step(self, time: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
+    def step(self, time: datetime, microgrid_states: dict[str, "MicrogridState"]) -> None:
         pass
 
     def finalize(self) -> None:
@@ -57,7 +58,7 @@ class Controller(ABC):
 class Monitor(Controller):
     def __init__(
         self,
-        microgrids: list[Microgrid],
+        microgrids: list["Microgrid"],
         step_size: Optional[int] = None,
         outfile: Optional[str | Path] = None,
         influx_url: Optional[str] = None,
@@ -68,8 +69,11 @@ class Monitor(Controller):
         super().__init__(microgrids, step_size=step_size)
 
         self.outfile = Path(outfile) if outfile else None
-        self.log: dict[datetime, dict[str, MicrogridState]] = defaultdict(dict)
-        self._fieldnames: dict[str, Optional[list]] = {}
+        self.log: dict[datetime, dict[str, "MicrogridState"]] = defaultdict(dict)
+
+        # Single CSV file, stable schema (union header), rewrite-on-schema-change.
+        self._csv_fieldnames: list[str] = []
+        self._csv_rows: list[dict[str, Any]] = []
 
         # Influx config
         self.influx_url = influx_url or INFLUX_URL
@@ -79,7 +83,7 @@ class Monitor(Controller):
 
     # ---------------- CSV Logging -------------------
 
-    def step(self, t: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
+    def step(self, t: datetime, microgrid_states: dict[str, "MicrogridState"]) -> None:
         self.log[t] = microgrid_states
         if self.outfile is not None:
             self._write_microgrid_csv(t, microgrid_states, self.outfile)
@@ -87,31 +91,76 @@ class Monitor(Controller):
     def _write_microgrid_csv(
         self,
         time: datetime,
-        microgrid_states: dict[str, MicrogridState],
+        microgrid_states: dict[str, "MicrogridState"],
         outfile: Path,
     ) -> None:
         outfile.parent.mkdir(parents=True, exist_ok=True)
 
+        new_rows: list[dict[str, Any]] = []
         for mg_name, state in microgrid_states.items():
+            mg = self.microgrids.get(mg_name)
+            coords = {}
+            if mg and mg.coords:
+                coords = {"latitude": mg.coords[0], "longitude": mg.coords[1]}
+
+            # Calculate tag sums
+            tag_sums: dict[str, float] = defaultdict(float)
+            if "actor_states" in state:
+                for actor_state in state["actor_states"].values():
+                    tag = actor_state.get("tag")
+                    p = actor_state.get("p")
+                    if tag is not None and p is not None:
+                        tag_sums[tag] += p
+
+            tag_entries = {f"tag_sum.{tag}": value for tag, value in tag_sums.items()}
+
             entry = {
                 "microgrid": mg_name,
-                "time": time,
+                "time": time.isoformat(),
+                "latitude": coords.get("latitude"),
+                "longitude": coords.get("longitude"),
                 **_flatten_dict(dict(state)),
+                **tag_entries,
             }
+            new_rows.append(entry)
 
-            if mg_name not in self._fieldnames:
-                self._fieldnames[mg_name] = list(entry.keys())
-                mode = "w"
-                write_header = True
-            else:
-                mode = "a"
-                write_header = False
+        new_keys = set().union(*(r.keys() for r in new_rows))
+        old_keys = set(self._csv_fieldnames)
 
-            with outfile.open(mode, newline="") as f:
-                writer = DictWriter(f, fieldnames=self._fieldnames[mg_name])
-                if write_header:
-                    writer.writeheader()
-                writer.writerow(entry)
+        schema_changed = not old_keys.issuperset(new_keys)
+        self._csv_rows.extend(new_rows)
+
+        if schema_changed or not self._csv_fieldnames:
+            missing = sorted(new_keys - old_keys)
+            self._csv_fieldnames.extend(missing)
+            self._rewrite_full_csv(outfile)
+            return
+
+        with outfile.open("a", newline="", encoding="utf-8") as f:
+            writer = DictWriter(
+                f,
+                fieldnames=self._csv_fieldnames,
+                extrasaction="ignore",
+                quoting=QUOTE_ALL,
+            )
+            for r in new_rows:
+                writer.writerow(_fill_missing(r, self._csv_fieldnames))
+
+    def _rewrite_full_csv(self, outfile: Path) -> None:
+        base = ["microgrid", "time", "latitude", "longitude"]
+        rest = [c for c in self._csv_fieldnames if c not in base]
+        self._csv_fieldnames = base + rest
+
+        with outfile.open("w", newline="", encoding="utf-8") as f:
+            writer = DictWriter(
+                f,
+                fieldnames=self._csv_fieldnames,
+                extrasaction="ignore",
+                quoting=QUOTE_ALL,
+            )
+            writer.writeheader()
+            for r in self._csv_rows:
+                writer.writerow(_fill_missing(r, self._csv_fieldnames))
 
     # ---------------- InfluxDB Export -------------------
 
@@ -132,26 +181,62 @@ class Monitor(Controller):
                 policy_state = state.get("policy_state", {}) or {}
                 storage_state = state.get("storage_state", {}) or {}
 
-                # NEW: p_grid + p_delta exported
                 p_grid = state.get("p_grid")
                 p_delta = state.get("p_delta")
+
+                mg = self.microgrids.get(mg_name)
+                lat, lon = None, None
+                if mg and mg.coords:
+                    lat, lon = mg.coords
 
                 tags = [
                     f"microgrid={mg_name}",
                     f"grid_status={policy_state.get('mode', 'unknown')}",
                 ]
-
                 if actor_states:
                     tags.append("actors=" + "_".join(sorted(actor_states.keys())))
 
-                fields = []
+                fields: list[str] = []
 
-                # Generic logging for all actors
+                # --- Coordinates written to Influx as numeric fields ---
+                if isinstance(lat, (int, float)):
+                    fields.append(f"latitude={float(lat)}")
+                if isinstance(lon, (int, float)):
+                    fields.append(f"longitude={float(lon)}")
+
+                # Generic actor powers (added to microgrid point)
                 for actor_name, a in actor_states.items():
                     p = a.get("p")
                     if isinstance(p, (int, float)):
                         safe = actor_name.replace(" ", "_")
                         fields.append(f"power_{safe}={float(p)}")
+                    
+                    # Generate separate point for actor if it has coordinates
+                    act_coords = a.get("coords")
+                    if act_coords and "latitude" in act_coords and "longitude" in act_coords:
+                         act_tags = [f"microgrid={mg_name}", f"actor={actor_name}"]
+                         act_fields = [
+                            f"p={float(p)}" if isinstance(p, (int, float)) else "",
+                            f"latitude={float(act_coords['latitude'])}",
+                            f"longitude={float(act_coords['longitude'])}"
+                         ]
+                         # Filter out empty fields (e.g. if p was None)
+                         act_fields = [f for f in act_fields if f]
+                         
+                         if act_fields:
+                             # Use same measurement 'vessim' but with actor tag
+                             lines.append(f"vessim,{','.join(act_tags)} {','.join(act_fields)} {ts}")
+
+                # Tag sums
+                tag_sums: dict[str, float] = defaultdict(float)
+                for a in actor_states.values():
+                    tag = a.get("tag")
+                    p = a.get("p")
+                    if tag is not None and isinstance(p, (int, float)):
+                        tag_sums[tag] += p
+                
+                for tag, value in tag_sums.items():
+                     fields.append(f"tag_sum_{tag}={float(value)}")
 
                 # Storage values
                 if isinstance(storage_state.get("soc"), (int, float)):
@@ -160,7 +245,7 @@ class Monitor(Controller):
                 if isinstance(storage_state.get("capacity"), (int, float)):
                     fields.append(f"energy={float(storage_state['capacity'])}")
 
-                # Export grid values
+                # Grid values
                 if isinstance(p_grid, (int, float)):
                     fields.append(f"p_grid={float(p_grid)}")
 
@@ -170,11 +255,7 @@ class Monitor(Controller):
                 if not fields:
                     continue
 
-                line = (
-                    f"vessim,{','.join(tags)} "
-                    f"{','.join(fields)} "
-                    f"{ts}"
-                )
+                line = f"vessim,{','.join(tags)} {','.join(fields)} {ts}"
                 lines.append(line)
 
         if not lines:
@@ -182,7 +263,6 @@ class Monitor(Controller):
             return
 
         payload = "\n".join(lines)
-
         url = f"{self.influx_url}/api/v2/write"
 
         r = requests.post(
@@ -205,7 +285,7 @@ class Monitor(Controller):
 class Api(Controller):
     def __init__(
         self,
-        microgrids: list[Microgrid],
+        microgrids: list["Microgrid"],
         step_size: Optional[int] = None,
         export_prometheus: bool = False,
         broker_port: int = 8700,
@@ -245,7 +325,7 @@ class Api(Controller):
             }
             self.requests.post(f"{self.broker_url}/internal/microgrids/{name}", json=cfg)
 
-    def step(self, time: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
+    def step(self, time: datetime, microgrid_states: dict[str, "MicrogridState"]) -> None:
         self._process_commands()
 
         for mg_name, mg_state in microgrid_states.items():
@@ -305,6 +385,7 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         self.microgrid_names = []
         self.step_size = None
         self.clock = None
+        self.set_parameters: dict[str, Any] = {}
 
     def init(self, sid, time_resolution=1.0, **sim_params):
         self.step_size = sim_params["step_size"]
@@ -326,7 +407,7 @@ class _ControllerSim(mosaik_api_v3.Simulator):
             for key in data["p_delta"].keys()
         ]
 
-        states: dict[str, MicrogridState] = {
+        states: dict[str, "MicrogridState"] = {
             name: {
                 "p_delta": data["p_delta"][f"{name}.grid.Grid"],
                 "p_grid": data["p_grid"][f"{name}.storage.Storage"],
@@ -374,8 +455,9 @@ class _ControllerSim(mosaik_api_v3.Simulator):
 def _get_val(inputs: dict, key: str) -> Any:
     return list(inputs[key].values())[0]
 
+
 def _flatten_dict(d: dict, parent: str = "") -> dict:
-    items = {}
+    items: dict[str, Any] = {}
     for k, v in d.items():
         nk = f"{parent}.{k}" if parent else k
         if isinstance(v, dict):
@@ -383,3 +465,7 @@ def _flatten_dict(d: dict, parent: str = "") -> dict:
         else:
             items[nk] = v
     return items
+
+
+def _fill_missing(row: dict[str, Any], fieldnames: list[str]) -> dict[str, Any]:
+    return {k: row.get(k, "") for k in fieldnames}

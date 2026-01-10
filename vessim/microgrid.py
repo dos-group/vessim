@@ -38,12 +38,14 @@ class Microgrid:
         storage: Optional[Storage] = None,
         grid_signals: Optional[dict[str, Signal]] = None,
         name: Optional[str] = None,
+        coords: Optional[tuple[float, float]] = None,
     ):
         self.step_size = step_size
         self.actors = actors
         self.policy = policy
         self.storage = storage
         self.name = name or f"microgrid_{id(self)}"
+        self.coords = coords
 
         self.actor_entities = {}
         for actor in actors:
