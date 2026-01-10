@@ -30,6 +30,21 @@ def startup():
 
 
 # --- API Endpoints ---
+
+@router.get("/")
+def get_overview():
+    """Returns an overview of available endpoints for the ENTSO-E plugin."""
+    return {
+        "message": "Welcome to the ENTSO-E API. Available endpoints:",
+        "endpoints": [
+            {"path": "/prices/", "method": "GET", "description": "Retrieve ENTSO-E price data for a given zone and time range. Fetches from cache or ENTSO-E API."},
+            {"path": "/prices/", "method": "POST", "description": "Manually store a single ENTSO-E price data point in the cache."},
+            {"path": "/prices/fetch-range/", "method": "POST", "description": "Trigger a background task to fetch and store a range of ENTSO-E price data."},
+            {"path": "/health", "method": "GET", "description": "Check the health status of the ENTSO-E plugin."}
+        ]
+    }
+
+
 @router.post("/prices/", response_model=EntsoePricePublic)
 def create_price_entry(
         price: EntsoePriceCreate,
