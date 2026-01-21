@@ -161,7 +161,6 @@ class Api(Controller):
     def start(self, microgrids: dict[str, Microgrid]) -> None:
         self.microgrids = microgrids
         self._start_broker()
-        print("Registering microgrids with API broker...")
         for mg_name, mg in microgrids.items():
             config = {
                 "name": mg_name,
@@ -169,6 +168,7 @@ class Api(Controller):
                 "storage": mg.storage.__class__.__name__ if mg.storage else None,
             }
             self.requests.post(f"{self.broker_url}/internal/microgrids/{mg_name}", json=config)
+        print(f"Registered {len(microgrids)} microgrids with API broker.")
 
     def _start_broker(self):
         from vessim._broker import run_broker
