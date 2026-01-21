@@ -70,7 +70,7 @@ class TestMicrogrid:
 
         # Check if grid is started
         mock_world.start.assert_any_call("Grid", sim_id=f"{mg.name}.grid", step_size=5,
-                                         grid_signals=None)
+                                         grid_signals=None, sim_start=mock_clock.sim_start)
 
         # Check if storage is started
         mock_world.start.assert_any_call("Storage", sim_id=f"{mg.name}.storage", step_size=5)

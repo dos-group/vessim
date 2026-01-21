@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional, TypedDict
+from datetime import timedelta
 
 import mosaik
 import mosaik_api_v3
@@ -77,7 +78,11 @@ class Microgrid:
             self.actor_entities[actor.name] = actor_sim.Actor(actor=actor)
 
         grid_sim = world.start(
-            "Grid", sim_id=f"{self.name}.grid", step_size=step_size, grid_signals=grid_signals
+            "Grid",
+            sim_id=f"{self.name}.grid",
+            step_size=step_size,
+            grid_signals=grid_signals,
+            sim_start=clock.sim_start,
         )
         self.grid_entity = grid_sim.Grid()
         for actor_name, actor_entity in self.actor_entities.items():
@@ -119,6 +124,7 @@ class _GridSim(mosaik_api_v3.Simulator):
     def init(self, sid, time_resolution=1.0, **sim_params):
         self.step_size = sim_params["step_size"]
         self.grid_signals = sim_params["grid_signals"]
+        self.sim_start = sim_params["sim_start"]
         return self.meta
 
     def create(self, num, model, **model_params):
@@ -126,14 +132,18 @@ class _GridSim(mosaik_api_v3.Simulator):
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
+        self._current_time = time
         self.p_delta = sum(inputs[self.eid]["power"].values())
         assert self.step_size is not None
         return time + self.step_size
 
     def get_data(self, outputs):
-        grid_signals = (
-            {name: signal.now() for name, signal in self.grid_signals.items()}
-            if self.grid_signals
-            else None
-        )
+        if self.grid_signals:
+            current_dt = self.sim_start + timedelta(seconds=self._current_time)
+            grid_signals = {
+                name: signal.now(at=current_dt)
+                for name, signal in self.grid_signals.items()
+            }
+        else:
+            grid_signals = None
         return {self.eid: {"p_delta": self.p_delta, "grid_signals": grid_signals}}
