@@ -80,14 +80,24 @@ def main():
         actors=[
             vs.Actor(name="server", signal=vs.StaticSignal(value=-2000), tag="load"),
             vs.Actor(
-                name="solar_panel",
+                name="solar_panel_1",
                 signal=vs.Trace.load(
                     "solcast2022_global",
                     column="Berlin",
                     params={"scale": 8500},
                 ),
                 tag="solar",
-                coords=(52.5210, 13.4060),  # Slightly offset from datacenter
+                coords=(52.5210, 13.4060),  # Rooftop solar
+            ),
+            vs.Actor(
+                name="solar_panel_2",
+                signal=vs.Trace.load(
+                    "solcast2022_global",
+                    column="Berlin",
+                    params={"scale": 5000},  # Smaller second panel
+                ),
+                tag="solar",
+                coords=(52.5205, 13.4070),  # Ground-mounted solar
             ),
             vs.Actor(
                 name="wind_turbine",

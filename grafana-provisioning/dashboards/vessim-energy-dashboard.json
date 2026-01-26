@@ -13,7 +13,8 @@
           "color": { "mode": "palette-classic" },
           "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } },
           "mappings": [],
-          "unit": "watth"
+          "unit": "watth",
+          "noValue": "Keine Daten"
         },
         "overrides": [
           { "matcher": { "id": "byName", "options": "Solar" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] },
@@ -32,35 +33,17 @@
       },
       "targets": [
         {
-          "query": "solar = from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sim\")\n  |> filter(fn: (r) => r.microgrid == \"${microgrid}\")\n  |> filter(fn: (r) => r.category == \"microgrid\")\n  |> filter(fn: (r) => r._field == \"tag_sum_solar\")\n  |> filter(fn: (r) => r._value > 0)\n  |> map(fn: (r) => ({ r with _value: r._value * 5.0 / 60.0 }))\n  |> sum()\n  |> map(fn: (r) => ({ r with _field: \"Solar\" }))\n\nwind = from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sim\")\n  |> filter(fn: (r) => r.microgrid == \"${microgrid}\")\n  |> filter(fn: (r) => r.category == \"microgrid\")\n  |> filter(fn: (r) => r._field == \"tag_sum_wind\")\n  |> filter(fn: (r) => r._value > 0)\n  |> map(fn: (r) => ({ r with _value: r._value * 5.0 / 60.0 }))\n  |> sum()\n  |> map(fn: (r) => ({ r with _field: \"Wind\" }))\n\nnetz = from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sim\")\n  |> filter(fn: (r) => r.microgrid == \"${microgrid}\")\n  |> filter(fn: (r) => r.category == \"microgrid\")\n  |> filter(fn: (r) => r._field == \"p_grid\")\n  |> filter(fn: (r) => r._value < 0)\n  |> map(fn: (r) => ({ r with _value: r._value * -1.0 * 5.0 / 60.0 }))\n  |> sum()\n  |> map(fn: (r) => ({ r with _field: \"Netz\" }))\n\nunion(tables: [solar, wind, netz])",
+          "query": "solar = from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sim\")\n  |> filter(fn: (r) => r.microgrid == \"${microgrid}\")\n  |> filter(fn: (r) => r.category == \"microgrid\")\n  |> filter(fn: (r) => r._field == \"tag_sum_solar\")\n  |> filter(fn: (r) => r._value > 0)\n  |> map(fn: (r) => ({ r with _value: r._value * 5.0 / 60.0 }))\n  |> sum()\n  |> set(key: \"source\", value: \"Solar\")\n  |> group(columns: [\"source\"])\n\nwind = from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sim\")\n  |> filter(fn: (r) => r.microgrid == \"${microgrid}\")\n  |> filter(fn: (r) => r.category == \"microgrid\")\n  |> filter(fn: (r) => r._field == \"tag_sum_wind\")\n  |> filter(fn: (r) => r._value > 0)\n  |> map(fn: (r) => ({ r with _value: r._value * 5.0 / 60.0 }))\n  |> sum()\n  |> set(key: \"source\", value: \"Wind\")\n  |> group(columns: [\"source\"])\n\nnetz = from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sim\")\n  |> filter(fn: (r) => r.microgrid == \"${microgrid}\")\n  |> filter(fn: (r) => r.category == \"microgrid\")\n  |> filter(fn: (r) => r._field == \"p_grid\")\n  |> filter(fn: (r) => r._value < 0)\n  |> map(fn: (r) => ({ r with _value: r._value * -1.0 * 5.0 / 60.0 }))\n  |> sum()\n  |> set(key: \"source\", value: \"Netz\")\n  |> group(columns: [\"source\"])\n\nunion(tables: [solar, wind, netz])\n  |> pivot(rowKey: [], columnKey: [\"source\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({\n      Solar: if exists r.Solar then r.Solar else 0.0,\n      Wind: if exists r.Wind then r.Wind else 0.0,\n      Netz: if exists r.Netz then r.Netz else 0.0\n    }))",
           "refId": "A"
         }
       ],
       "title": "Energiequellen",
       "transparent": true,
-      "type": "piechart"
+      "type": "piechart",
+      "hideWhenNoData": true
     },
     {
       "datasource": { "type": "influxdb", "uid": "influxdb2" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "thresholds" },
-          "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null }
-            ]
-          }
-        },
-        "overrides": [
-          { "matcher": { "id": "byName", "options": "solar" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] },
-          { "matcher": { "id": "byName", "options": "wind" }, "properties": [{ "id": "color", "value": { "fixedColor": "light-blue", "mode": "fixed" } }] },
-          { "matcher": { "id": "byName", "options": "load" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
-          { "matcher": { "id": "byName", "options": "microgrid" }, "properties": [{ "id": "color", "value": { "fixedColor": "dark-green", "mode": "fixed" } }] }
-        ]
-      },
       "gridPos": { "h": 10, "w": 8, "x": 8, "y": 0 },
       "id": 8,
       "options": {
@@ -71,40 +54,58 @@
             "config": {
               "showLegend": true,
               "style": {
-                "color": { "field": "category", "fixed": "dark-green" },
+                "color": {
+                  "field": "category",
+                  "fixed": "dark-green"
+                },
                 "opacity": 0.9,
                 "rotation": { "fixed": 0, "max": 360, "min": -360, "mode": "mod" },
-                "size": { "fixed": 8, "max": 15, "min": 5 },
+                "size": { "fixed": 10, "max": 15, "min": 5 },
                 "symbol": { "fixed": "img/icons/marker/circle.svg", "mode": "fixed" },
                 "symbolAlign": { "horizontal": "center", "vertical": "center" },
                 "text": { "field": "name", "fixed": "", "mode": "field" },
-                "textConfig": { "fontSize": 10, "offsetX": 0, "offsetY": 12, "textAlign": "center", "textBaseline": "top" }
+                "textConfig": { "fontSize": 10, "offsetX": 0, "offsetY": 14, "textAlign": "center", "textBaseline": "top" }
               }
             },
-            "location": { "latitude": "latitude", "longitude": "longitude", "mode": "coords" },
+            "location": { "latitude": "lat", "longitude": "lon", "mode": "coords" },
             "name": "Standorte",
             "tooltip": true,
             "type": "markers"
           }
         ],
         "tooltip": { "mode": "details" },
-        "view": { "allLayers": true, "id": "fit", "lat": 0, "lon": 0, "zoom": 10 }
+        "view": { "allLayers": true, "id": "fit", "lat": 0, "lon": 0, "zoom": 17, "padding": 5 }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "dark-green", "value": null }] },
+          "mappings": [
+            { "options": { "solar": { "color": "yellow", "index": 0 } }, "type": "value" },
+            { "options": { "wind": { "color": "light-blue", "index": 1 } }, "type": "value" },
+            { "options": { "load": { "color": "orange", "index": 2 } }, "type": "value" },
+            { "options": { "microgrid": { "color": "dark-green", "index": 3 } }, "type": "value" }
+          ],
+          "noValue": "Keine Daten"
+        },
+        "overrides": []
       },
       "targets": [
         {
-          "query": "from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sim\")\n  |> filter(fn: (r) => r.microgrid == \"${microgrid}\")\n  |> filter(fn: (r) => r._field == \"latitude\" or r._field == \"longitude\")\n  |> last()\n  |> pivot(rowKey: [\"_time\", \"name\", \"category\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> filter(fn: (r) => exists r.latitude and exists r.longitude)",
+          "query": "from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sim\")\n  |> filter(fn: (r) => r.microgrid == \"${microgrid}\")\n  |> filter(fn: (r) => exists r.lat and exists r.lon)\n  |> filter(fn: (r) => r._field == \"value\" or r._field == \"soc\")\n  |> last()\n  |> group()\n  |> unique(column: \"name\")\n  |> map(fn: (r) => ({ r with lat: float(v: r.lat), lon: float(v: r.lon) }))",
           "refId": "A"
         }
       ],
       "title": "Standorte - ${microgrid}",
       "transparent": true,
-      "type": "geomap"
+      "type": "geomap",
+      "hideWhenNoData": true
     },
     {
       "datasource": { "type": "influxdb", "uid": "influxdb2" },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": { "fixedColor": "green", "mode": "fixed" },
           "custom": {
             "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisPlacement": "auto",
             "drawStyle": "line", "fillOpacity": 30, "gradientMode": "opacity", "lineInterpolation": "smooth",
@@ -115,17 +116,16 @@
           "mappings": [],
           "max": 1,
           "min": 0,
-          "unit": "percentunit"
+          "unit": "percentunit",
+          "noValue": "Keine Daten"
         },
-        "overrides": [
-          { "matcher": { "id": "byFrameRefID", "options": "A" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
-        ]
+        "overrides": []
       },
       "gridPos": { "h": 10, "w": 8, "x": 16, "y": 0 },
       "id": 9,
       "options": {
-        "legend": { "calcs": ["mean", "min", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
+        "legend": { "calcs": ["mean", "last"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single", "sort": "none" }
       },
       "targets": [
         {
@@ -135,7 +135,8 @@
       ],
       "title": "Batterie SOC",
       "transparent": true,
-      "type": "timeseries"
+      "type": "timeseries",
+      "hideWhenNoData": true
     },
     {
       "datasource": { "type": "influxdb", "uid": "influxdb2" },
@@ -150,7 +151,8 @@
           },
           "displayName": "${__field.labels.name}",
           "mappings": [],
-          "unit": "watt"
+          "unit": "watt",
+          "noValue": "Keine Daten"
         },
         "overrides": [
           { "matcher": { "id": "byFrameRefID", "options": "A" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] }
@@ -170,7 +172,8 @@
       ],
       "title": "Solarenergie",
       "transparent": true,
-      "type": "timeseries"
+      "type": "timeseries",
+      "hideWhenNoData": true
     },
     {
       "datasource": { "type": "influxdb", "uid": "influxdb2" },
@@ -185,7 +188,8 @@
           },
           "displayName": "${__field.labels.name}",
           "mappings": [],
-          "unit": "watt"
+          "unit": "watt",
+          "noValue": "Keine Daten"
         },
         "overrides": [
           { "matcher": { "id": "byFrameRefID", "options": "A" }, "properties": [{ "id": "color", "value": { "fixedColor": "light-blue", "mode": "fixed" } }] }
@@ -205,7 +209,8 @@
       ],
       "title": "Windenergie",
       "transparent": true,
-      "type": "timeseries"
+      "type": "timeseries",
+      "hideWhenNoData": true
     },
     {
       "datasource": { "type": "influxdb", "uid": "influxdb2" },
@@ -220,7 +225,8 @@
           },
           "displayName": "${__field.labels.name}",
           "mappings": [],
-          "unit": "watt"
+          "unit": "watt",
+          "noValue": "Keine Daten"
         },
         "overrides": [
           { "matcher": { "id": "byFrameRefID", "options": "A" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] }
@@ -240,7 +246,8 @@
       ],
       "title": "Last (Verbrauch)",
       "transparent": true,
-      "type": "timeseries"
+      "type": "timeseries",
+      "hideWhenNoData": true
     },
     {
       "datasource": { "type": "influxdb", "uid": "influxdb2" },
@@ -255,7 +262,8 @@
           },
           "displayName": "Netzleistung",
           "mappings": [],
-          "unit": "watt"
+          "unit": "watt",
+          "noValue": "Keine Daten"
         },
         "overrides": [
           { "matcher": { "id": "byFrameRefID", "options": "A" }, "properties": [{ "id": "color", "value": { "fixedColor": "purple", "mode": "fixed" } }] }
@@ -275,7 +283,8 @@
       ],
       "title": "Netzleistung (p_grid)",
       "transparent": true,
-      "type": "timeseries"
+      "type": "timeseries",
+      "hideWhenNoData": true
     },
     {
       "datasource": { "type": "influxdb", "uid": "influxdb2" },
@@ -288,7 +297,8 @@
           },
           "displayName": "Solar kWh/Tag",
           "mappings": [],
-          "unit": "kwatth"
+          "unit": "kwatth",
+          "noValue": "Keine Daten"
         },
         "overrides": [
           { "matcher": { "id": "byFrameRefID", "options": "A" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] }
@@ -311,42 +321,8 @@
       ],
       "title": "Tägliche Solarproduktion",
       "transparent": true,
-      "type": "barchart"
-    },
-    {
-      "datasource": { "type": "influxdb", "uid": "influxdb2" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisPlacement": "auto",
-            "drawStyle": "line", "fillOpacity": 20, "gradientMode": "opacity", "lineInterpolation": "smooth",
-            "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "off" }
-          },
-          "mappings": [],
-          "unit": "watth"
-        },
-        "overrides": [
-          { "matcher": { "id": "byName", "options": "capacity" }, "properties": [{ "id": "color", "value": { "fixedColor": "semi-dark-blue", "mode": "fixed" } }, { "id": "displayName", "value": "Kapazität" }] },
-          { "matcher": { "id": "byName", "options": "charge_level" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }, { "id": "displayName", "value": "Ladestand" }] }
-        ]
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 26 },
-      "id": 11,
-      "options": {
-        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
-      },
-      "targets": [
-        {
-          "query": "from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sim\")\n  |> filter(fn: (r) => r.microgrid == \"${microgrid}\")\n  |> filter(fn: (r) => r.category == \"microgrid\")\n  |> filter(fn: (r) => r._field == \"capacity\" or r._field == \"charge_level\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
-          "refId": "A"
-        }
-      ],
-      "title": "Batteriespeicher",
-      "transparent": true,
-      "type": "timeseries"
+      "type": "barchart",
+      "hideWhenNoData": true
     }
   ],
   "schemaVersion": 42,

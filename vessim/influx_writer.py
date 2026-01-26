@@ -137,17 +137,15 @@ class InfluxWriter:
             if sim_id:
                 tags += f",sim_id={_escape(sim_id)}"
             
-            # Build fields: value + optional actor coords
-            fields_list = [f"value={fval}"]
+            # Add actor coords as tags (not fields)
             if hasattr(actor, 'coords') and actor.coords is not None and len(actor.coords) == 2:
                 try:
                     alat, alon = float(actor.coords[0]), float(actor.coords[1])
-                    fields_list.append(f"latitude={alat}")
-                    fields_list.append(f"longitude={alon}")
+                    tags += f",lat={alat},lon={alon}"
                 except (TypeError, ValueError):
                     pass
             
-            lines.append(f"{measurement},{tags} {','.join(fields_list)} {ts_ns}")
+            lines.append(f"{measurement},{tags} value={fval} {ts_ns}")
         
         # Write microgrid-level metrics (all fields from CSV)
         if microgrid:
@@ -155,6 +153,14 @@ class InfluxWriter:
             mg_tags += f",microgrid={_escape(microgrid)}"
             if sim_id:
                 mg_tags += f",sim_id={_escape(sim_id)}"
+            
+            # Add microgrid coords as tags
+            if coords is not None and len(coords) == 2:
+                try:
+                    lat, lon = float(coords[0]), float(coords[1])
+                    mg_tags += f",lat={lat},lon={lon}"
+                except (TypeError, ValueError):
+                    pass
             
             fields: list[str] = []
             
@@ -176,15 +182,6 @@ class InfluxWriter:
             add_float("charge_power", charge_power)
             add_float("min_soc", min_soc)
             add_float("c_rate", c_rate)
-            
-            # Coordinates
-            if coords is not None and len(coords) == 2:
-                try:
-                    lat, lon = float(coords[0]), float(coords[1])
-                    fields.append(f"latitude={lat}")
-                    fields.append(f"longitude={lon}")
-                except (TypeError, ValueError):
-                    pass
             
             # Mode as string field (quoted)
             if mode is not None:
