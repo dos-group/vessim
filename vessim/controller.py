@@ -14,15 +14,12 @@ import time
 import mosaik_api_v3  # type: ignore
 import requests  # Used in Monitor.finalize
 
+from vessim.influx_writer import InfluxConfig, InfluxWriter
 
-# --- DEFAULTS FOR INFLUXDB 2 ---
-INFLUX_URL = "http://127.0.0.1:8086"
-INFLUX_ORG = "vessim_org"
-INFLUX_BUCKET = "vessim_bucket"
-INFLUX_TOKEN = "supersecrettoken"
 
 if TYPE_CHECKING:
     from vessim.microgrid import Microgrid, MicrogridState
+    from vessim.actor import Actor
 
 
 # =============================================================================
@@ -65,28 +62,60 @@ class Monitor(Controller):
         influx_bucket: Optional[str] = None,
         influx_token: Optional[str] = None,
         influx_org: Optional[str] = None,
+        influx_config: Optional[InfluxConfig] = None,
+        sim_id: Optional[str] = None,
+        write_csv: bool = True,
     ):
         super().__init__(microgrids, step_size=step_size)
 
         self.outfile = Path(outfile) if outfile else None
+        self.write_csv = write_csv
+        self.sim_id = sim_id
         self.log: dict[datetime, dict[str, "MicrogridState"]] = defaultdict(dict)
 
         # Single CSV file, stable schema (union header), rewrite-on-schema-change.
         self._csv_fieldnames: list[str] = []
         self._csv_rows: list[dict[str, Any]] = []
 
-        # Influx config
-        self.influx_url = influx_url or INFLUX_URL
-        self.influx_bucket = influx_bucket or INFLUX_BUCKET
-        self.influx_token = influx_token or INFLUX_TOKEN
-        self.influx_org = influx_org or INFLUX_ORG
+        # Influx config - supports both legacy args and new InfluxConfig
+        # Keep provided values as-is. If caller does not provide these (None),
+        # the existing finalize() check will skip export. This avoids silently
+        # falling back to hard-coded defaults when arguments are omitted.
+        self.influx_url = influx_url
+        self.influx_bucket = influx_bucket
+        self.influx_token = influx_token
+        self.influx_org = influx_org
+
+        # Initialize InfluxWriter for real-time streaming
+        self._influx_writer: Optional[InfluxWriter] = None
+        if influx_config is not None:
+            self._influx_writer = InfluxWriter(influx_config)
+        elif influx_url and influx_bucket and influx_token and influx_org:
+            # Create config from legacy args
+            self._influx_writer = InfluxWriter(InfluxConfig(
+                url=influx_url,
+                token=influx_token,
+                org=influx_org,
+                bucket=influx_bucket,
+            ))
+        
+        # Build actor lookup: {mg_name: {actor_name: Actor}}
+        self._actor_lookup: dict[str, dict[str, "Actor"]] = {}
+        for mg in microgrids:
+            self._actor_lookup[mg.name] = {actor.name: actor for actor in mg.actors}
 
     # ---------------- CSV Logging -------------------
 
     def step(self, t: datetime, microgrid_states: dict[str, "MicrogridState"]) -> None:
         self.log[t] = microgrid_states
-        if self.outfile is not None:
+        
+        # Write to CSV if enabled
+        if self.write_csv and self.outfile is not None:
             self._write_microgrid_csv(t, microgrid_states, self.outfile)
+        
+        # Stream actor values to InfluxDB in real-time
+        if self._influx_writer is not None and self._influx_writer.is_available:
+            self._write_actor_values_influx(t, microgrid_states)
 
     def _write_microgrid_csv(
         self,
@@ -162,10 +191,89 @@ class Monitor(Controller):
             for r in self._csv_rows:
                 writer.writerow(_fill_missing(r, self._csv_fieldnames))
 
-    # ---------------- InfluxDB Export -------------------
+    # ---------------- InfluxDB Real-Time Streaming -------------------
+
+    def _write_actor_values_influx(
+        self,
+        t: datetime,
+        microgrid_states: dict[str, "MicrogridState"],
+    ) -> None:
+        """Write all data to InfluxDB (same as CSV). Schema: measurement=sim, tags={microgrid,category,name}, fields=all"""
+        if self._influx_writer is None:
+            return
+        
+        for mg_name, state in microgrid_states.items():
+            actor_lookup = self._actor_lookup.get(mg_name, {})
+            if not actor_lookup:
+                continue
+            
+            actor_states = state.get("actor_states", {}) or {}
+            actor_values: dict = {}
+            tag_sums: dict[str, float] = defaultdict(float)
+            
+            for actor_name, a_state in actor_states.items():
+                p = a_state.get("p")
+                if p is None or not isinstance(p, (int, float)):
+                    continue
+                actor = actor_lookup.get(actor_name)
+                if actor is not None:
+                    actor_values[actor] = p
+                # Calculate tag sums
+                tag = a_state.get("tag")
+                if tag is not None:
+                    tag_sums[tag] += p
+            
+            # Extract all microgrid-level data (same as CSV)
+            storage_state = state.get("storage_state", {}) or {}
+            policy_state = state.get("policy_state", {}) or {}
+            
+            soc = storage_state.get("soc")
+            p_grid = state.get("p_grid")
+            p_delta = state.get("p_delta")
+            
+            # Storage state fields
+            capacity = storage_state.get("capacity")
+            charge_level = storage_state.get("charge_level")
+            min_soc = storage_state.get("min_soc")
+            c_rate = storage_state.get("c_rate")
+            
+            # Policy state fields
+            charge_power = policy_state.get("charge_power")
+            mode = policy_state.get("mode")
+            
+            # Get coordinates from microgrid
+            mg = self.microgrids.get(mg_name)
+            coords = mg.coords if mg else None
+            
+            self._influx_writer.write_batch(
+                t, 
+                actor_values, 
+                microgrid=mg_name, 
+                sim_id=self.sim_id,
+                soc=soc,
+                p_grid=p_grid,
+                p_delta=p_delta,
+                coords=coords,
+                capacity=capacity,
+                charge_level=charge_level,
+                charge_power=charge_power,
+                min_soc=min_soc,
+                c_rate=c_rate,
+                mode=mode,
+                tag_sums=dict(tag_sums) if tag_sums else None,
+            )
+
+    # ---------------- InfluxDB Batch Export (Legacy) -------------------
 
     def finalize(self) -> None:
         super().finalize()
+        
+        # Close the real-time InfluxWriter first
+        if self._influx_writer is not None:
+            self._influx_writer.close()
+            print(f"Monitor: {self._influx_writer.points_written} points streamed to InfluxDB")
+            # Skip legacy batch export if we used streaming
+            return
 
         if not (self.influx_url and self.influx_bucket and self.influx_token and self.influx_org):
             print("Monitor: InfluxDB config missing → skipping export")

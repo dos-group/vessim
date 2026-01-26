@@ -18,6 +18,16 @@ INFLUX_ORG = "vessim_org"
 INFLUX_BUCKET = "vessim_bucket"
 INFLUX_TOKEN = os.getenv("INFLUX_TOKEN")
 
+# Create InfluxConfig for real-time streaming
+influx_config = vs.InfluxConfig(
+    url=INFLUX_URL,
+    token=INFLUX_TOKEN,
+    org=INFLUX_ORG,
+    bucket=INFLUX_BUCKET,
+    batch_size=500,        # Größere Batches für bessere Performance
+    flush_interval_ms=1000,
+)
+
 # ---------------------------------------------------------
 # Berlin-Winddaten als Trace (synthetisch, 5-Minuten-Raster)
 # ---------------------------------------------------------
@@ -113,6 +123,10 @@ def main():
         coords=(50.1109, 8.6821),
         actors=[
             vs.Actor(name="factory_load", signal=vs.StaticSignal(value=-3000), tag="load"),
+
+
+
+            
             vs.Actor(
                 name="solar_panel",
                 signal=vs.Trace.load(
@@ -127,14 +141,13 @@ def main():
         storage=vs.SimpleBattery(capacity=30000),
     )
 
-    # Monitor für beide Microgrids
+    # Monitor für alle Microgrids mit InfluxDB Real-Time Streaming
     monitor = vs.Monitor(
-        [datacenter, office, factory],  # <-- hier beide übergeben
+        [datacenter, office, factory],
         outfile="./results.csv",
-        influx_url=INFLUX_URL,
-        influx_org=INFLUX_ORG,
-        influx_bucket=INFLUX_BUCKET,
-        influx_token=INFLUX_TOKEN,
+        influx_config=influx_config,  # Neue InfluxConfig für Streaming
+        sim_id="sim_run_001",         # Optional: Simulation-ID für Filterung
+        write_csv=True,               # CSV optional deaktivieren
     )
     env.add_controller(monitor)
 
