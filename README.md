@@ -47,7 +47,7 @@ microgrid = environment.add_microgrid(
 
 # Write results to InfluxDB, optionally to CSV
 monitor = vs.Monitor(
-        [datacenter, office, factory],
+        [datacenter],
         outfile="./results.csv",
         influx_config=influx_config,  # Neue InfluxConfig für Streaming
         sim_id="sim_run_001",         # Optional: Simulation-ID für Filterung
