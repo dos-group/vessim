@@ -45,9 +45,15 @@ microgrid = environment.add_microgrid(
     storage=vs.SimpleBattery(capacity=100),
 )
 
-# Write results to CSV
-monitor = vs.Monitor([microgrid], outfile="./results.csv")
-environment.add_controller(monitor)
+# Write results to InfluxDB, optionally to CSV
+monitor = vs.Monitor(
+        [datacenter, office, factory],
+        outfile="./results.csv",
+        influx_config=influx_config,  # Neue InfluxConfig für Streaming
+        sim_id="sim_run_001",         # Optional: Simulation-ID für Filterung
+        write_csv=True,               # CSV optional deaktivieren
+    )
+    environment.add_controller(monitor)
 
 environment.run(until=24 * 3600)  # 24h simulated time
 ```
