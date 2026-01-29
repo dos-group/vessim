@@ -28,7 +28,7 @@ You can test scenarios using historical data or connect real applications and ha
 
 The scenario below simulates a microgrid consisting of a simulated computing system (which consistently draws 700W), 
 a single producer (a solar power plant who's production is modelled based on a dataset provided by [Solcast](https://solcast.com/)), and a battery. 
-The *Monitor* periodically stores the energy system state in a CSV file.
+The *Monitor* periodically stores the energy system state in InfluxDB and optionally in a CSV file.
 
 ```python
 import vessim as vs
@@ -37,9 +37,10 @@ environment = vs.Environment(sim_start="2022-06-15", step_size=300)  # 5 minute 
 
 microgrid = environment.add_microgrid(
     name="datacenter",
+    coords=(52.5200, 13.4050),
     actors=[
         vs.Actor(name="server", signal=vs.StaticSignal(value=-700)),  # negative = consumes power
-        vs.Actor(name="solar_panel", signal=vs.Trace.load("solcast2022_global", column="Berlin", params={"scale": 5000})),  # 5kW maximum
+        vs.Actor(name="solar_panel", signal=vs.Trace.load("solcast2022_global", column="Berlin", params={"scale": 5000}), tag="solar", coords=(52.5190, 13.4040)),  # 5kW maximum
     ],
     storage=vs.SimpleBattery(capacity=100),
 )
@@ -50,6 +51,38 @@ environment.add_controller(monitor)
 
 environment.run(until=24 * 3600)  # 24h simulated time
 ```
+
+### Visualization with Grafana
+
+The Monitor streams simulation data in real-time directly to InfluxDB, which can then be visualized in Grafana.
+Actors are grouped by tags (e.g., `solar`, `compute`) for organized monitoring. We provide an example dashboard 
+that displays microgrid metrics per datacenter and includes a geographical map view for analyzing multiple distributed sites.
+
+**Setup instructions:**
+
+1. **Start InfluxDB and Grafana** using docker-compose:
+   ```bash
+   docker-compose up -d
+   ```
+   Default credentials for both services: username `admin`, password `admin123`
+
+2. **Configure InfluxDB**:
+   - Open InfluxDB UI at `http://localhost:8086` and login
+   - Navigate to API Tokens and generate an All Access API Token
+   - Copy the generated token
+
+3. **Create `.env` file** in your project directory:
+   ```
+   INFLUX_TOKEN=<your-generated-token>
+   ```
+
+4. **Restart services** to apply the token:
+   ```bash
+   docker-compose down
+   docker-compose up -d
+   ```
+
+5. **Open Grafana** at `http://localhost:3001`, login, and select the example dashboard to visualize your microgrids by datacenter and location
 
 
 ## Software-in-the-loop scenario
