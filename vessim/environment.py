@@ -35,6 +35,7 @@ class Environment:
         storage: Optional[Storage] = None,
         grid_signals: Optional[dict[str, Signal]] = None,
         name: Optional[str] = None,
+        coords: Optional[tuple[float, float]] = None,
     ):
         if not actors:
             raise ValueError("There should be at least one actor in the Microgrid.")
@@ -48,6 +49,7 @@ class Environment:
             storage=storage,
             grid_signals=grid_signals,
             name=name,
+            coords=coords,
         )
         self.microgrids.append(microgrid)
         return microgrid

@@ -12,10 +12,19 @@ from vessim.signal import Signal
 class Actor:
     """Consumer or producer based on a Signal."""
 
-    def __init__(self, name: str, signal: Signal, step_size: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        name: str,
+        signal: Signal,
+        step_size: Optional[int] = None,
+        tag: Optional[str] = None,
+        coords: Optional[tuple[float, float]] = None,
+    ) -> None:
         self.name = name
         self.step_size = step_size
         self.signal = signal
+        self.tag = tag
+        self.coords = coords
 
     def p(self, now: datetime) -> float:
         """Current power consumption/production."""
@@ -23,11 +32,15 @@ class Actor:
 
     def state(self, now: datetime) -> dict:
         """Current state of the actor which is passed to controllers on every step."""
-        return {
+        state = {
             "name": self.name,
             "signal": str(self.signal),
             "p": self.p(now),
+            "tag": self.tag,
         }
+        if self.coords:
+            state["coords"] = {"latitude": self.coords[0], "longitude": self.coords[1]}
+        return state
 
     def finalize(self) -> None:
         self.signal.finalize()

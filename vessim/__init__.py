@@ -7,6 +7,7 @@ from vessim.microgrid import Microgrid
 from vessim.policy import MicrogridPolicy, DefaultMicrogridPolicy
 from vessim.signal import Signal, Trace, StaticSignal
 from vessim.storage import Storage, SimpleBattery, ClcBattery
+from vessim.influx_writer import InfluxConfig, InfluxWriter
 
 __all__ = [
     "Actor",
@@ -22,6 +23,8 @@ __all__ = [
     "Storage",
     "ClcBattery",
     "SimpleBattery",
+    "InfluxConfig",
+    "InfluxWriter",
 ]
 
 try:

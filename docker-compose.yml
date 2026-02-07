@@ -8,6 +8,8 @@ services:
       # Mount named volumes for persistence of data and configuration
       - influxdb_data:/var/lib/influxdb2
       - influxdb_config:/etc/influxdb2
+    env_file:
+      - .env
     environment:
       # **IMPORTANT**: Set initial credentials for InfluxDB 2
       - DOCKER_INFLUXDB_INIT_MODE=setup
