@@ -1,10 +1,10 @@
 """A simulator for carbon-aware applications and systems."""
 
 from vessim.actor import Actor
-from vessim.controller import Controller, Monitor
+from vessim.controller import Controller, MemoryLogger, CsvLogger, Monitor
 from vessim.environment import Environment
 from vessim.microgrid import Microgrid
-from vessim.policy import MicrogridPolicy, DefaultMicrogridPolicy
+from vessim.policy import Policy, DefaultPolicy
 from vessim.signal import Signal, Trace, StaticSignal
 from vessim.storage import Storage, SimpleBattery, ClcBattery
 from vessim.influx_writer import InfluxConfig, InfluxWriter
@@ -12,11 +12,13 @@ from vessim.influx_writer import InfluxConfig, InfluxWriter
 __all__ = [
     "Actor",
     "Controller",
+    "MemoryLogger",
+    "CsvLogger",
     "Monitor",
     "Microgrid",
     "Environment",
-    "MicrogridPolicy",
-    "DefaultMicrogridPolicy",
+    "Policy",
+    "DefaultPolicy",
     "StaticSignal",
     "Signal",
     "Trace",
@@ -28,24 +30,18 @@ __all__ = [
 ]
 
 try:
-    from vessim.plot import plot_trace, plot_microgrid_trace  # noqa: F401
-
-    __all__.extend(["plot_trace", "plot_microgrid_trace"])
-except ImportError:
-    pass
-
-try:
     from vessim.controller import Api  # noqa: F401
-
-    __all__.extend(["Api"])
-except ImportError:
-    # GUI controller requires optional dependencies: pip install vessim[vis]
-    pass
-
-try:
     from vessim.signal import SilSignal, WatttimeSignal, PrometheusSignal  # noqa: F401
 
-    __all__.extend(["SilSignal", "WatttimeSignal", "PrometheusSignal"])
+    __all__.extend(["Api", "SilSignal", "WatttimeSignal", "PrometheusSignal"])
 except ImportError:
-    # WatttimeSignal and PrometheusSignal require optional dependencies: pip install vessim[sil]
+    # Requires optional dependencies: pip install vessim[sil]
+    pass
+
+try:
+    from vessim.plot import plot_trace, plot_result_df  # noqa: F401
+
+    __all__.extend(["plot_trace", "plot_result_df"])
+except ImportError:
+    # Requires optional dependencies: pip install vessim[vis]
     pass

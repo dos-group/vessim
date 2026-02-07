@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+import time
 from abc import ABC, abstractmethod
 from datetime import timedelta
+from itertools import count
 from pathlib import Path
 from typing import Any, Optional, Literal
-from itertools import count
 
-import time
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 from vessim._data import load_dataset
 from vessim._util import DatetimeLike
@@ -45,7 +45,7 @@ class StaticSignal(Signal):
 class Trace(Signal):
     """Simulates a signal for time-series data like solar irradiance or carbon intensity.
 
-    The Trace can also deal with unsorted or incomplete data.
+    The `Trace` can also deal with unsorted or incomplete data.
 
     Args:
         actual: The actual time-series data to be used. It should contain a datetime-like
@@ -166,11 +166,11 @@ class Trace(Signal):
         data_dir: Optional[str | Path] = None,
         params: Optional[dict[Any, Any]] = None,
     ):
-        """Creates a Trace from a vessim dataset, handling downloading and unpacking.
+        """Creates a `Trace` from a Vessim dataset, handling downloading and unpacking.
 
         Args:
             dataset: Name of the dataset to be downloaded.
-            column: Default column to use for calling Trace.at().
+            column: Default column to use for calling `Trace.at()`.
                 Default to None.
             data_dir: Absoulute path to the directory where the data should be loaded.
                 If not specified, the path `~/.cache/vessim` is used. Defaults to None.
@@ -191,7 +191,10 @@ class Trace(Signal):
         return list(self._actual.keys())
 
     def now(
-        self, at: Optional[DatetimeLike] = None, column: Optional[str] = None, **kwargs
+        self,
+        at: Optional[DatetimeLike] = None,
+        column: Optional[str] = None,
+        **kwargs: dict[str, Any],
     ) -> float:
         """Retrieves actual data point of zone at given time.
 
@@ -491,7 +494,7 @@ class SilSignal(Signal):
 
         self.Timer(0, poll).start()  # Start immediately
 
-    def now(self, at: Optional[DatetimeLike] = None, **kwargs) -> float:
+    def now(self, at: Optional[DatetimeLike] = None, **kwargs: dict[str, Any]) -> float:
         """Return the current cached value.
 
         Args:

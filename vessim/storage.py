@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Optional, Any
+from typing import TYPE_CHECKING, Optional
 
 import mosaik_api_v3
 import numpy as np
 from loguru import logger
 
 if TYPE_CHECKING:
-    from vessim import MicrogridPolicy
+    from vessim import Policy
 
 
 class Storage(ABC):
@@ -31,16 +31,6 @@ class Storage(ABC):
         Values should range between 0 (empty) and 1 (full).
         """
 
-    def set_parameter(self, key: str, value: Any) -> None:
-        """Fuction to let a controller update a storage parameter during a simulation using Mosaik.
-
-        In the default case, the attribute with the name of the key is set on the storage object.
-        The function can be subclassed to allow other ways of setting parameters.
-        """
-        if not hasattr(self, key):
-            logger.warning(f"Attribute {key} of storage was never previously set.")
-        setattr(self, key, value)
-
     def state(self) -> dict:
         """Returns information about the current state of the storage. Should be overridden."""
         return {}
@@ -57,7 +47,7 @@ class SimpleBattery(Storage):
             If current SoC is below or equal to the minimum SoC, battery is not discharged further.
             Defaults to 0. Can be altered during simulation.
         c_rate: Optional C-rate, which defines the charge and discharge rate of the battery.
-            For more information on C-rate, see `C-rate explanation <https://www.batterydesign.net/electrical/c-rate/>`_.
+            For more information on C-rate, see [C-rate explanation](https://www.batterydesign.net/electrical/c-rate/).
             Defaults to None.
     """
 
@@ -148,7 +138,7 @@ class ClcBattery(Storage):
     This class implements the C-L-C model as described in:
         Kazhamiaka, F., Rosenberg, C. & Keshav, S.
         Tractable lithium-ion storage models for optimizing energy systems.
-        Energy Inform 2, 4 (2019). https://doi.org/10.1186/s42162-019-0070-6
+        Energy Inform 2, 4 (2019). [doi:10.1186/s42162-019-0070-6](https://doi.org/10.1186/s42162-019-0070-6)
 
     The default parameterization models a pack of LGM50 21700 rechargable lithium-ion cells.
     This model should not be used in combination with large step sizes.
@@ -299,7 +289,7 @@ class _StorageSim(mosaik_api_v3.Simulator):
             "Storage": {
                 "public": True,
                 "params": ["storage", "policy"],
-                "attrs": ["p_delta", "set_parameters", "p_grid", "storage_state", "policy_state"],
+                "attrs": ["p_delta", "p_grid", "storage_state", "policy_state"],
             },
         },
     }
@@ -318,29 +308,16 @@ class _StorageSim(mosaik_api_v3.Simulator):
     def create(self, num: int, model, **model_params):
         assert num == 1, "Only one instance per simulation is supported"
         self.storage: Optional[Storage] = model_params["storage"]
-        self.policy: MicrogridPolicy = model_params["policy"]
+        self.policy: Policy = model_params["policy"]
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
         p_delta = list(inputs[self.eid]["p_delta"].values())[0]
-        if "set_parameters" in inputs[self.eid].keys():
-            for parameters in inputs[self.eid]["set_parameters"].values():
-                for key, value in parameters.items():
-                    key_split = key.split(":", 1)
-                    if key_split[0] == "policy":
-                        self.policy.set_parameter(key_split[1], value)
-                    elif key_split[0] == "storage":
-                        assert self.storage is not None
-                        self.storage.set_parameter(key_split[1], value)
-                    else:
-                        raise ValueError(
-                            f"Invalid parameter: {key}. Has to start with 'policy:' or 'storage:'."
-                        )
 
         self.p_grid = self.policy.apply(p_delta, duration=self.step_size, storage=self.storage)
+        self.policy_state = self.policy.state()
         if self.storage:
             self.storage_state = self.storage.state()
-            self.policy_state = self.policy.state()
         return time + self.step_size
 
     def get_data(self, outputs):
