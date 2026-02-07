@@ -23,9 +23,11 @@ coverage.xml
 # poetry cache
 poetry.lock
 
-# result.csv that is printed after each sim
+# monitoring stack
 result.csv
 results
+grafana-data/
+influxdb-data/
 
 # Terraform files
 *.tfstate

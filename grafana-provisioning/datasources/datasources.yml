@@ -9,7 +9,7 @@ datasources:
     isDefault: true
 
     jsonData:
-      version: Flux             # Important: Flux for InfluxDB 2.x
+      version: Flux
       httpMode: POST
       organization: vessim_org  # Must match DOCKER_INFLUXDB_INIT_ORG
       defaultBucket: vessim_bucket

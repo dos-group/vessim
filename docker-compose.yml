@@ -11,7 +11,6 @@ services:
     env_file:
       - .env
     environment:
-      # **IMPORTANT**: Set initial credentials for InfluxDB 2
       - DOCKER_INFLUXDB_INIT_MODE=setup
       - DOCKER_INFLUXDB_INIT_USERNAME=admin
       - DOCKER_INFLUXDB_INIT_PASSWORD=admin123
@@ -34,7 +33,7 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin123
-      - INFLUX_TOKEN=${INFLUX_TOKEN}    # <– ganz wichtig
+      - INFLUX_TOKEN=${INFLUX_TOKEN}
     depends_on:
       - influxdb2
     volumes:

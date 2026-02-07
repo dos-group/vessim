@@ -30,21 +30,29 @@ class Controller(ABC):
     _counters: dict[type["Controller"], Iterator[int]] = {}
 
     def __init_subclass__(cls, **kwargs) -> None:
+        """Initializes the subclass and sets up a counter for naming."""
         super().__init_subclass__(**kwargs)
         cls._counters[cls] = count()
 
     def __init__(self, microgrids: list["Microgrid"], step_size: Optional[int] = None) -> None:
         cls = self.__class__
         self.name: str = f"{cls.__name__}-{next(cls._counters[cls])}"
-        self.microgrids: dict[str, "Microgrid"] = {mg.name: mg for mg in microgrids}
         self.step_size = step_size
         self.set_parameters: dict[str, Any] = {}
+        self.microgrids: dict[str, "Microgrid"] = {mg.name: mg for mg in microgrids}
 
     @abstractmethod
     def step(self, time: datetime, microgrid_states: dict[str, "MicrogridState"]) -> None:
+        """Performs a simulation step across all managed microgrids.
+
+        Args:
+             time: Current datetime.
+             microgrid_states: Maps microgrid names to their current state.
+        """
         pass
 
     def finalize(self) -> None:
+        """Executed after simulation has ended. Can be overridden for clean-up."""
         pass
 
 
@@ -73,14 +81,9 @@ class Monitor(Controller):
         self.sim_id = sim_id
         self.log: dict[datetime, dict[str, "MicrogridState"]] = defaultdict(dict)
 
-        # Single CSV file, stable schema (union header), rewrite-on-schema-change.
         self._csv_fieldnames: list[str] = []
         self._csv_rows: list[dict[str, Any]] = []
 
-        # Influx config - supports both legacy args and new InfluxConfig
-        # Keep provided values as-is. If caller does not provide these (None),
-        # the existing finalize() check will skip export. This avoids silently
-        # falling back to hard-coded defaults when arguments are omitted.
         self.influx_url = influx_url
         self.influx_bucket = influx_bucket
         self.influx_token = influx_token
@@ -98,8 +101,7 @@ class Monitor(Controller):
                 org=influx_org,
                 bucket=influx_bucket,
             ))
-        
-        # Build actor lookup: {mg_name: {actor_name: Actor}}
+
         self._actor_lookup: dict[str, dict[str, "Actor"]] = {}
         for mg in microgrids:
             self._actor_lookup[mg.name] = {actor.name: actor for actor in mg.actors}
