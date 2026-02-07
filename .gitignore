@@ -16,6 +16,9 @@ vessim.egg-info
 venv
 dist
 
+# Docs
+site
+
 # code coverage files
 .coverage
 coverage.xml

@@ -119,7 +119,7 @@ def _read_data_from_csv(
     if isinstance(df.index, pd.MultiIndex):
         index: pd.MultiIndex = df.index
         for i, level in enumerate(index.levels):
-            index = index.set_levels(pd.to_datetime(level), level=i)
+            index = index.set_levels(pd.to_datetime(level), level=i)  # type: ignore[call-overload]
         df.index = index
     else:
         df.index = pd.to_datetime(df.index)
@@ -133,7 +133,7 @@ def _shift(df: pd.Series | pd.DataFrame, shift: timedelta) -> pd.Series | pd.Dat
     if isinstance(df.index, pd.MultiIndex):
         index: pd.MultiIndex = df.index
         for i, level in enumerate(index.levels):
-            index = index.set_levels(level + shift, level=i)
+            index = index.set_levels(level + shift, level=i)  # type: ignore[call-overload]
         df.index = index
     else:
         df.index += shift

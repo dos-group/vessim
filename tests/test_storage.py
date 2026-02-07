@@ -180,26 +180,26 @@ class TestClcBattery:
         assert battery_l_energy.state()["charge_level"] == exp_charge_level
 
 
-class TestDefaultMicrogridPolicy:
+class TestDefaultPolicy:
     @pytest.fixture
     def battery(self) -> vs.SimpleBattery:
         return vs.SimpleBattery(capacity=100, initial_soc=0.8, min_soc=0.1)
 
     @pytest.fixture
-    def policy(self) -> vs.DefaultMicrogridPolicy:
-        return vs.DefaultMicrogridPolicy()
+    def policy(self) -> vs.DefaultPolicy:
+        return vs.DefaultPolicy()
 
     @pytest.fixture
-    def policy_charge(self) -> vs.DefaultMicrogridPolicy:
-        return vs.DefaultMicrogridPolicy(charge_power=10)
+    def policy_charge(self) -> vs.DefaultPolicy:
+        return vs.DefaultPolicy(charge_power=10)
 
     @pytest.fixture
-    def policy_discharge(self) -> vs.DefaultMicrogridPolicy:
-        return vs.DefaultMicrogridPolicy(charge_power=-10)
+    def policy_discharge(self) -> vs.DefaultPolicy:
+        return vs.DefaultPolicy(charge_power=-10)
 
     @pytest.fixture
-    def policy_islanded(self) -> vs.DefaultMicrogridPolicy:
-        return vs.DefaultMicrogridPolicy(mode="islanded")
+    def policy_islanded(self) -> vs.DefaultPolicy:
+        return vs.DefaultPolicy(mode="islanded")
 
     @pytest.mark.parametrize(
         "power, duration, exp_delta, exp_soc",

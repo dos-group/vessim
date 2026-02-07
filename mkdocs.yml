@@ -1,0 +1,68 @@
+site_name: Vessim
+site_url: !ENV READTHEDOCS_CANONICAL_URL
+repo_url: https://github.com/dos-group/vessim
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - javascripts/readthedocs.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+nav:
+  - Overview: index.md
+  - Tutorials:
+    - First Steps: tutorials/1_basic_example.md
+    - Signals and Datasets: tutorials/2_signals_and_datasets.md
+    - Controllers: tutorials/3_controller.md
+    - Software-in-the-Loop: tutorials/4_sil.md
+  - API Reference:
+    - api_reference/environment.md
+    - Actors and Signals: api_reference/actors.md
+    - Controllers: api_reference/controllers.md
+    - Energy Storage: api_reference/storage.md
+    - Dispatch Policy: api_reference/policy.md
+    - Visualization: api_reference/visualization.md
+  - Publications: publications.md
+  - About: about.md
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+  logo: assets/logo_menu.png
+  favicon: assets/logo_favicon.png
+  features:
+    - content.code.copy
+    - content.code.annotate
+  palette:
+    - scheme: default
+      primary: teal
+      accent: teal
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_root_heading: true
+            show_root_full_path: false
+            show_signature: false
+            show_symbol_type_heading: true
+            show_labels: true
+            members_order: source
+            filters:
+              - "!^_"
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - pymdownx.highlight:
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - md_in_html
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.arithmatex:
+      generic: true

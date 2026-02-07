@@ -1,22 +1,20 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Optional, Literal, Any
-
-from loguru import logger
+from typing import TYPE_CHECKING, Optional, Literal
 
 if TYPE_CHECKING:
     from vessim.storage import Storage
 
 
-class MicrogridPolicy(ABC):
+class Policy(ABC):
     """Policy that describes how the microgrid deals with specific power deltas.
 
     The policy manages energy excess and shortage of a microgrid. It can model the
-    (dis-)charging of a vessim `Storage`, the exchange of energy with the public grid, and things
+    (dis-)charging of a `Storage`, the exchange of energy with the public grid, and things
     like curtailment of energy.
-    Every `Microgrid` in a vessim co-simulation has a policy, and if not specified, the
-    `DefaultMicrogridPolicy` is used. The policy is thereby applied at every time-step with the
+    Every `Microgrid` in a Vessim co-simulation has a policy, and if not specified, the
+    `DefaultPolicy` is used. The policy is thereby applied at every time-step with the
     current power-delta and the duration of the time-step.
     """
 
@@ -28,7 +26,7 @@ class MicrogridPolicy(ABC):
             p_delta: Power in W that the has to be served/stored. If positive, there is excess
                 power and if negative, there is a lack of power. This is the power delta of all
                 actors inside a simulation.
-            duration: Time that the power delta is valid for. This is the microgrid step_size
+            duration: Time that the power delta is valid for. This is the microgrid `step_size`
                 inside a simulation.
             storage: Optional storage that can be used to (dis)charge. This is the storage of the
                 microgrid inside a simulation.
@@ -38,22 +36,12 @@ class MicrogridPolicy(ABC):
             the public grid during the last step.
         """
 
-    def set_parameter(self, key: str, value: Any) -> None:
-        """Fuction to let a controller update a policy parameter during a simulation using Mosaik.
-
-        In the default case, the attribute with the name of the key is set on the policy object.
-        The function can be subclassed to allow other ways of setting parameters.
-        """
-        if not hasattr(self, key):
-            logger.warning(f"Attribute {key} of policy was never previously set.")
-        setattr(self, key, value)
-
     def state(self) -> dict:
         """Returns information about the current state of the policy. Should be overridden."""
         return {}
 
 
-class DefaultMicrogridPolicy(MicrogridPolicy):
+class DefaultPolicy(Policy):
     """Policy that is used as default for simulations.
 
     Policy tries to (dis)charge as much of the delta as possible using the storage if available.
