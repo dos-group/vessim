@@ -33,6 +33,7 @@ class TestActor:
             "name": "test_actor",
             "signal": "MockSignal",
             "power": 10.0,
+            "tag": None,
         }
         mock_signal.now.assert_called_once_with(at=now)
 
