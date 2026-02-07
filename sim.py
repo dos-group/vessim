@@ -67,12 +67,49 @@ def make_berlin_wind_trace():
     return vs.Trace(actual)
 
 
+def make_berlin_wind_trace_2():
+    """Zweiter Wind-Trace mit anderen Charakteristiken (stärkerer Wind, mehr Variabilität)"""
+    start = "2022-06-15 00:00:00"
+    end   = "2022-08-15 00:00:00"
+
+    idx = pd.date_range(start=start, end=end, freq="5min")
+
+    np.random.seed(123)  # Anderer Seed für unterschiedliche Zufallswerte
+
+    minutes_per_day = 24 * 60
+    t = np.arange(len(idx))
+    
+    # Stärkerer Tagesgang mit Phasenverschiebung (Peak am Nachmittag)
+    daily_cycle = 4 * np.sin(2 * np.pi * (t % minutes_per_day) / minutes_per_day + np.pi/4)
+
+    # Stärkerer Trend
+    trend = 1.0 * np.sin(2 * np.pi * t / (len(idx) * 1.5))
+
+    # Höheres Grundniveau + mehr Rauschen
+    base = 5.5
+    noise = np.random.normal(scale=1.5, size=len(idx))
+
+    wind = base + daily_cycle + trend + noise
+    wind = np.clip(wind, 0, None)
+
+    actual = pd.DataFrame(
+        {
+            "wind": wind,
+        },
+        index=idx,
+    )
+    actual.index.name = "timestamp"
+
+    return vs.Trace(actual)
+
+
 def main():
     # 300s = 5 Minuten
     env = vs.Environment(sim_start="2022-06-15", step_size=300)
 
     # Wind-Trace erzeugen
     wind_trace = make_berlin_wind_trace()
+    wind_trace_2 = make_berlin_wind_trace_2()
 
     datacenter = env.add_microgrid(
         name="datacenter",
@@ -104,6 +141,12 @@ def main():
                 signal=wind_trace,
                 tag="wind",
                 coords=(52.5190, 13.4040),  # Slightly offset from datacenter
+            ),
+            vs.Actor(
+                name="wind_turbine_2",
+                signal=wind_trace_2,
+                tag="wind",
+                coords=(52.5180, 13.4030),  # Second wind turbine location
             ),
         ],
         storage=vs.SimpleBattery(capacity=50000),
