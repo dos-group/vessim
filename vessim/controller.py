@@ -46,8 +46,8 @@ class Controller(ABC):
         """Performs a simulation step across all managed microgrids.
 
         Args:
-             time: Current datetime.
-             microgrid_states: Maps microgrid names to their current state.
+            time: Current datetime.
+            microgrid_states: Maps microgrid names to their current state.
         """
         pass
 
