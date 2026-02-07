@@ -195,7 +195,7 @@ class InfluxWriter:
             if fields:
                 lines.append(f"{measurement},{mg_tags} {','.join(fields)} {ts_ns}")
         
-        if lines:
+        if lines and self._write_api is not None:
             self._write_api.write(bucket=self._config.bucket, org=self._config.org, record="\n".join(lines))
     
     def close(self) -> None:
