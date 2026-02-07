@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class InfluxConfig:
     """InfluxDB connection and batching config."""
+
     url: str
     token: str
     org: str
@@ -40,17 +41,17 @@ class InfluxConfig:
 
 class InfluxWriter:
     """Batching writer for InfluxDB 2.x. Non-blocking, auto-flushes on close."""
-    
+
     def __init__(self, config: InfluxConfig) -> None:
         self._config = config
         self._client: Optional[Any] = None
         self._write_api: Optional[Any] = None
         self._closed = False
         self._points_written = 0
-        
+
         if not config.enabled or not INFLUX_AVAILABLE:
             return
-        
+
         self._client = InfluxDBClient(
             url=config.url, token=config.token, org=config.org, timeout=config.timeout_ms
         )
@@ -68,26 +69,33 @@ class InfluxWriter:
             retry_callback=self._on_retry,
         )
         logger.info(f"InfluxWriter: {config.url} bucket={config.bucket}")
-    
+
     def _on_success(self, conf: tuple, data: Any) -> None:
         if data:
             s = data.decode('utf-8') if isinstance(data, bytes) else str(data)
             self._points_written += s.count('\n') + 1
-    
+
     def _on_error(self, conf: tuple, data: Any, exc: Exception) -> None:
         logger.error(f"InfluxDB write failed: {exc}")
-    
+
     def _on_retry(self, conf: tuple, data: Any, exc: Exception) -> None:
         logger.warning(f"InfluxDB retry: {exc}")
-    
+
     @property
     def is_available(self) -> bool:
-        return self._config.enabled and INFLUX_AVAILABLE and self._write_api is not None and not self._closed
-    
+        """Check if writer is available."""
+        return (
+            self._config.enabled
+            and INFLUX_AVAILABLE
+            and self._write_api is not None
+            and not self._closed
+        )
+
     @property
     def points_written(self) -> int:
+        """Number of points written."""
         return self._points_written
-    
+
     def write_batch(
         self,
         ts: datetime,
@@ -110,14 +118,14 @@ class InfluxWriter:
         # Tag sums
         tag_sums: Optional[dict[str, float]] = None,
     ) -> None:
-        """Write actor values + full microgrid state. Schema: measurement=sim, tags={microgrid,category,name}, fields=..."""
+        """Write actor values and microgrid state to InfluxDB."""
         if not self.is_available:
             return
-        
+
         lines: list[str] = []
         measurement = self._config.measurement
         ts_ns = int(ts.timestamp() * 1e9)
-        
+
         # Write actor values (+ actor coords if available)
         for actor, value in actor_values.items():
             if value is None:
@@ -128,7 +136,7 @@ class InfluxWriter:
                     continue
             except (TypeError, ValueError):
                 continue
-            
+
             category = _escape(actor.tag) if actor.tag else "unknown"
             name = _escape(actor.name) if actor.name else "unknown"
             tags = f"category={category},name={name}"
@@ -136,24 +144,25 @@ class InfluxWriter:
                 tags += f",microgrid={_escape(microgrid)}"
             if sim_id:
                 tags += f",sim_id={_escape(sim_id)}"
-            
+
             # Add actor coords as tags (not fields)
-            if hasattr(actor, 'coords') and actor.coords is not None and len(actor.coords) == 2:
-                try:
-                    alat, alon = float(actor.coords[0]), float(actor.coords[1])
-                    tags += f",lat={alat},lon={alon}"
-                except (TypeError, ValueError):
-                    pass
-            
+            if hasattr(actor, 'coords') and actor.coords is not None:
+                if len(actor.coords) == 2:
+                    try:
+                        alat, alon = float(actor.coords[0]), float(actor.coords[1])
+                        tags += f",lat={alat},lon={alon}"
+                    except (TypeError, ValueError):
+                        pass
+
             lines.append(f"{measurement},{tags} value={fval} {ts_ns}")
-        
+
         # Write microgrid-level metrics (all fields from CSV)
         if microgrid:
             mg_tags = f"category=microgrid,name={_escape(microgrid)}"
             mg_tags += f",microgrid={_escape(microgrid)}"
             if sim_id:
                 mg_tags += f",sim_id={_escape(sim_id)}"
-            
+
             # Add microgrid coords as tags
             if coords is not None and len(coords) == 2:
                 try:
@@ -161,9 +170,9 @@ class InfluxWriter:
                     mg_tags += f",lat={lat},lon={lon}"
                 except (TypeError, ValueError):
                     pass
-            
+
             fields: list[str] = []
-            
+
             # Helper to add float field
             def add_float(name: str, val: Optional[float]) -> None:
                 if val is not None:
@@ -173,7 +182,7 @@ class InfluxWriter:
                             fields.append(f"{name}={fv}")
                     except (TypeError, ValueError):
                         pass
-            
+
             add_float("soc", soc)
             add_float("p_grid", p_grid)
             add_float("p_delta", p_delta)
@@ -182,28 +191,32 @@ class InfluxWriter:
             add_float("charge_power", charge_power)
             add_float("min_soc", min_soc)
             add_float("c_rate", c_rate)
-            
+
             # Mode as string field (quoted)
             if mode is not None:
                 fields.append(f'mode="{_escape(str(mode))}"')
-            
+
             # Tag sums
             if tag_sums:
                 for tag, val in tag_sums.items():
                     add_float(f"tag_sum_{_escape(tag)}", val)
-            
+
             if fields:
-                lines.append(f"{measurement},{mg_tags} {','.join(fields)} {ts_ns}")
-        
+                line = f"{measurement},{mg_tags} {','.join(fields)} {ts_ns}"
+                lines.append(line)
+
         if lines and self._write_api is not None:
-            self._write_api.write(bucket=self._config.bucket, org=self._config.org, record="\n".join(lines))
-    
+            record = "\n".join(lines)
+            self._write_api.write(
+                bucket=self._config.bucket, org=self._config.org, record=record
+            )
+
     def close(self) -> None:
         """Flush and close."""
         if self._closed:
             return
         self._closed = True
-        
+
         if self._write_api:
             self._write_api.close()
             logger.info(f"InfluxWriter closed: {self._points_written} points")
@@ -211,11 +224,13 @@ class InfluxWriter:
         if self._client:
             self._client.close()
             self._client = None
-    
+
     def __enter__(self) -> "InfluxWriter":
+        """Context manager entry."""
         return self
-    
+
     def __exit__(self, *args: Any) -> None:
+        """Context manager exit."""
         self.close()
 
 
@@ -223,4 +238,9 @@ def _escape(value: str) -> str:
     """Escape InfluxDB tag special chars."""
     if not value:
         return "unknown"
-    return str(value).replace("\\", "\\\\").replace(" ", "\\ ").replace(",", "\\,").replace("=", "\\=")
+    escaped = str(value)
+    escaped = escaped.replace("\\", "\\\\")
+    escaped = escaped.replace(" ", "\\ ")
+    escaped = escaped.replace(",", "\\,")
+    escaped = escaped.replace("=", "\\=")
+    return escaped

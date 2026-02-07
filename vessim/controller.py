@@ -5,7 +5,7 @@ import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from csv import DictWriter
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional, TYPE_CHECKING
 
@@ -132,9 +132,9 @@ class CsvLogger(Controller):
 
 class Monitor(Controller):
     """Controller that logs simulation data to InfluxDB and optionally to CSV.
-    
-    The Monitor streams simulation data in real-time directly to InfluxDB, 
-    which can then be visualized in Grafana. Actors are grouped by tags 
+
+    The Monitor streams simulation data in real-time directly to InfluxDB,
+    which can then be visualized in Grafana. Actors are grouped by tags
     (e.g., `solar`, `compute`) for organized monitoring.
 
     Args:
@@ -184,7 +184,7 @@ class Monitor(Controller):
         self.microgrids = microgrids
         for mg_name, mg in microgrids.items():
             self._actor_lookup[mg_name] = {actor.name: actor for actor in mg.actors}
-        
+
         if self.write_csv and self.outfile:
             self._csv_logger = CsvLogger(self.outfile)
 
