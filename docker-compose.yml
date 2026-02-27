@@ -16,7 +16,7 @@ services:
       - DOCKER_INFLUXDB_INIT_PASSWORD=admin123
       - DOCKER_INFLUXDB_INIT_ORG=vessim_org
       - DOCKER_INFLUXDB_INIT_BUCKET=vessim_bucket
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN="${INFLUX_TOKEN}"
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUX_TOKEN}
       - DOCKER_INFLUXDB_INIT_RETENTION=
     restart: unless-stopped
     healthcheck:
