@@ -64,7 +64,7 @@ environment.run(until=24 * 3600)  # 24h simulated time
 ```
 ### Need Help?
 
-When encountering problems running the example above, check out the ready-to-run simulation sim.py in the [`examples/`](examples/) folder.
+When encountering problems running the example above, check out the ready-to-run simulation grafana_example.py in the [`examples/`](examples/) folder.
 
 ### Visualization with Grafana
 
