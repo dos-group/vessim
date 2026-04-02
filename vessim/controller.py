@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any, Optional, TYPE_CHECKING
 
 import mosaik_api_v3  # type: ignore
-import requests
 
 from vessim._util import flatten_dict
 from vessim.influx_writer import InfluxConfig, InfluxWriter
@@ -270,7 +269,14 @@ class Api(Controller):
         export_prometheus: bool = False,
         broker_port: int = 8700,
     ):
-        self.requests = requests
+        try:
+            import requests
+
+            self.requests = requests
+        except ImportError:
+            raise ImportError(
+                "Api requires 'requests' package. Install with: pip install vessim[sil]"
+            )
         self.broker_port = broker_port
         self.broker_url = f"http://localhost:{broker_port}"
         self.export_prometheus = export_prometheus
