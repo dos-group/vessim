@@ -107,6 +107,51 @@ csv_logger = vs.CsvLogger("results.csv")
 environment.add_controller(csv_logger)
 ```
 
+### InfluxLogger (and Grafana monitoring)
+
+Streams simulation data to [InfluxDB](https://www.influxdata.com/) for real-time visualization with tools like [Grafana](https://grafana.com/). Unlike Prometheus (which is pull-based and only works for real-time simulations), InfluxDB accepts data with arbitrary timestamps — making it suitable for both real-time and faster-than-real-time simulations.
+
+Actors can be annotated with `tag` and `coords` metadata for grouping and geospatial dashboards:
+
+```python
+import vessim as vs
+
+environment = vs.Environment(sim_start="2022-06-15", step_size=300)
+
+environment.add_microgrid(
+    name="datacenter",
+    coords=(52.5200, 13.4050),
+    actors=[
+        vs.Actor(name="server", signal=vs.StaticSignal(value=-2000), tag="load"),
+        vs.Actor(
+            name="solar_panel",
+            signal=vs.Trace.load("solcast2022_global", column="Berlin", params={"scale": 8500}),
+            tag="solar",
+            coords=(52.5210, 13.4060),
+        ),
+    ],
+    storage=vs.SimpleBattery(capacity=50000),
+)
+
+influx_config = vs.InfluxConfig(
+    url="http://127.0.0.1:8086",
+    token="vessim-dev-token",
+    org="vessim_org",
+    bucket="vessim_bucket",
+)
+environment.add_controller(vs.InfluxLogger(influx_config=influx_config, sim_id="my_sim"))
+```
+
+**Quick start with Docker:**
+
+```bash
+pip install vessim[monitor]
+docker compose -f examples/grafana/docker-compose.yml up -d
+python examples/grafana_example.py
+```
+
+Then open Grafana at [http://localhost:3001](http://localhost:3001) (admin / admin123) and select the preconfigured dashboard. See [`examples/grafana_example.py`](https://github.com/dos-group/vessim/blob/main/examples/grafana_example.py) for a full multi-microgrid example.
+
 ## Advanced Control: Software-in-the-Loop
 
 For more complex scenarios, you might want to control the simulation from an external program or algorithm running in real-time. Vessim supports this via **Software-in-the-Loop (SiL)** simulation.

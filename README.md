@@ -23,87 +23,32 @@ You can test scenarios using historical data or connect real applications and ha
 
 ## Example
 
-The scenario below simulates a microgrid consisting of a simulated computing system in Berlin drawing 2000W, 
-a solar power plant (modelled based on a dataset provided by [Solcast](https://solcast.com/)), and a 50 kWh battery storage system. 
-The Monitor periodically stores the energy system state in InfluxDB and optionally in a CSV file.
+The scenario below simulates a microgrid with a computing system drawing 700W, a solar panel, and a 1.5 kWh battery.
 
 ```python
 import vessim as vs
 
-environment = vs.Environment(sim_start="2022-06-15", step_size=300)  # 5 minute step size
+environment = vs.Environment(sim_start="2022-06-09", step_size=300)
 
-datacenter = environment.add_microgrid(
-        name="datacenter",
-        coords=(52.5200, 13.4050),
-        actors=[
-            vs.Actor(name="server", signal=vs.StaticSignal(value=-2000), tag="load"),
-            vs.Actor(
-                name="solar_panel_1",
-                signal=vs.Trace.load(
-                    "solcast2022_global",
-                    column="Berlin",
-                    params={"scale": 8500},
-                ),
-                tag="solar",
-                coords=(52.5210, 13.4060),
-            )
-         ],
-         storage=vs.SimpleBattery(capacity=50000),
+environment.add_microgrid(
+    name="datacenter",
+    actors=[
+        vs.Actor(name="server", signal=vs.StaticSignal(value=-700)),
+        vs.Actor(name="solar_panel", signal=vs.Trace.load(
+            "solcast2022_global", column="Berlin", params={"scale": 5000}
+        )),
+    ],
+    storage=vs.SimpleBattery(capacity=1500, initial_soc=0.8, min_soc=0.3),
 )
 
-monitor = vs.Monitor(
-        [datacenter],
-        outfile="./results.csv",
-        influx_config=influx_config,
-        sim_id="sim_run_001",         # Optional: Simulation-ID für Filterung
-        write_csv=True,               # CSV optional deaktivieren
-    )
-environment.add_controller(monitor)
+logger = vs.MemoryLogger()
+environment.add_controller(logger)
 
-environment.run(until=24 * 3600)  # 24h simulated time
+environment.run(until=24 * 3600)
+vs.plot_result_df(logger.to_df())
 ```
-### Need Help?
 
-When encountering problems running the example above, check out the ready-to-run simulation grafana_example.py in the [`examples/`](examples/) folder.
-
-### Visualization with Grafana
-
-The Monitor streams simulation data in real-time directly to InfluxDB, which can then be visualized in Grafana.
-Actors are grouped by tags (e.g., `solar`, `compute`) for organized monitoring. We provide an example dashboard 
-that displays microgrid metrics per microgrid and includes a geographical map view for analyzing multiple distributed sites.
-
-**Setup instructions:**
-
-1. **Additional Dependencies** to enable streaming to InfluxDB:
-   ```bash
-   pip install influxdb-client
-   ```
-
-2. **Start InfluxDB and Grafana** using docker-compose:
-   ```bash
-   docker-compose up -d
-   ```
-   Default credentials for both services: username `admin`, password `admin123`
-
-3. **Configure InfluxDB**:
-   - Open InfluxDB UI at `http://localhost:8086` and login
-   - Navigate to API Tokens and generate an All Access API Token
-   - Copy the generated token
-
-4. **Create `.env` file** in your project directory and add created Token to file:
-   ```
-   INFLUX_TOKEN=<your-generated-token>
-   ```
-
-5. **Restart services** to apply the token:
-   ```bash
-   docker-compose down
-   docker-compose up -d
-   ```
-
-6. **Open Grafana** at `http://localhost:3001`, login, and select the example dashboard to visualize your microgrids and their location
-
-Check out the [tutorials](https://vessim.readthedocs.io/en/latest/tutorials/1_basic_example/) and [`examples/`](examples/)!
+Check out the [tutorials](https://vessim.readthedocs.io/en/latest/tutorials/1_basic_example/) and [`examples/`](examples/) for more, including multi-microgrid setups and real-time dashboards with InfluxDB and Grafana.
 
 
 ## Installation
@@ -119,6 +64,12 @@ If you require software-in-the-loop (SiL) capabilities, you should additionally 
 
 ```
 pip install vessim[sil]
+```
+
+For real-time monitoring with InfluxDB and Grafana, install the `monitor` extension:
+
+```
+pip install vessim[monitor]
 ```
 
 
