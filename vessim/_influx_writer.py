@@ -33,7 +33,6 @@ class InfluxConfig:
     token: str
     org: str
     bucket: str
-    enabled: bool = True
     batch_size: int = 500
     flush_interval_ms: int = 1000
     timeout_ms: int = 10_000
@@ -54,7 +53,7 @@ class InfluxWriter:
         self._closed = False
         self._points_written = 0
 
-        if not config.enabled or not INFLUX_AVAILABLE:
+        if not INFLUX_AVAILABLE:
             return
 
         self._client = InfluxDBClient(
@@ -73,7 +72,7 @@ class InfluxWriter:
             error_callback=self._on_error,
             retry_callback=self._on_retry,
         )
-        logger.info(f"InfluxWriter connected to {config.url} bucket={config.bucket}")
+        logger.info(f"InfluxWriter connected to InfluxDB at {config.url}")
 
     def _on_success(self, conf: tuple, data: Any) -> None:
         if data:
@@ -89,8 +88,7 @@ class InfluxWriter:
     @property
     def is_available(self) -> bool:
         return (
-            self._config.enabled
-            and INFLUX_AVAILABLE
+            INFLUX_AVAILABLE
             and self._write_api is not None
             and not self._closed
         )
@@ -192,13 +190,6 @@ class InfluxWriter:
         if self._client:
             self._client.close()
             self._client = None
-
-    def __enter__(self) -> "InfluxWriter":
-        return self
-
-    def __exit__(self, *args: Any) -> None:
-        self.close()
-
 
 def _to_float(value: Any) -> Optional[float]:
     """Convert to float, returning None for non-finite or invalid values."""

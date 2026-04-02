@@ -13,7 +13,7 @@ import mosaik_api_v3  # type: ignore
 from loguru import logger
 
 from vessim._util import flatten_dict
-from vessim.influx_writer import InfluxConfig, InfluxWriter
+from vessim._influx_writer import InfluxConfig, InfluxWriter
 
 if TYPE_CHECKING:
     from vessim.microgrid import Microgrid, MicrogridState
@@ -33,7 +33,6 @@ class Controller(ABC):
         Can be overridden to inspect the simulation topology or perform initialization
         that requires access to the `Microgrid` objects.
         """
-        pass
 
     @abstractmethod
     def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
@@ -43,11 +42,9 @@ class Controller(ABC):
             now: Current datetime in the simulation.
             microgrid_states: Maps microgrid names to their current state.
         """
-        pass
 
     def finalize(self) -> None:
         """Executed after simulation has ended. Can be overridden for clean-up."""
-        pass
 
 
 class MemoryLogger(Controller):
@@ -213,11 +210,12 @@ class Api(Controller):
             raise ImportError(
                 "Api requires 'requests' package. Install with: pip install vessim[sil]"
             )
+
         self.broker_port = broker_port
         self.broker_url = f"http://localhost:{broker_port}"
+        self.broker_process: Optional[multiprocessing.Process] = None
         self.export_prometheus = export_prometheus
         self.microgrids: dict[str, Microgrid] = {}
-        self.broker_process: Optional[multiprocessing.Process] = None
 
     def start(self, microgrids: dict[str, Microgrid]) -> None:
         self.microgrids = microgrids
@@ -280,6 +278,7 @@ class Api(Controller):
         if self.broker_process and self.broker_process.is_alive():
             self.broker_process.terminate()
             self.broker_process.join(timeout=2)
+
         print("🛑 API broker terminated")
 
 

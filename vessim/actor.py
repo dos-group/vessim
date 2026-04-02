@@ -16,6 +16,9 @@ class Actor:
         signal: The `Signal` that determines the power consumption/production.
         step_size: The step size of the actor in seconds. If None, the step size
             of the microgrid is used.
+        tag: Optional category tag (e.g., ``"solar"``, ``"wind"``, ``"load"``).
+            Used by controllers like ``InfluxLogger`` for grouping.
+        coords: Optional ``(latitude, longitude)`` tuple for geospatial annotation.
     """
 
     def __init__(

@@ -3,7 +3,7 @@
 1. pip install vessim[monitor]
 2. docker compose -f examples/grafana/docker-compose.yml up -d
 3. python examples/grafana_example.py
-4. Open Grafana at http://localhost:3001 (admin/admin123)
+4. Open Grafana at http://localhost:3001
 """
 import multiprocessing
 
@@ -121,6 +121,7 @@ def main():
     env.add_controller(vs.CsvLogger(outfile="./results.csv"))
 
     # Run simulation for 20 days
+    print("\nOpen Grafana dashboard: http://localhost:3001/d/vessim-simple/vessim-energy-dashboard")
     env.run(3600 * 24 * 20)
 
 
