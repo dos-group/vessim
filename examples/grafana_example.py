@@ -1,7 +1,7 @@
 """Example: Real-time simulation monitoring with InfluxDB and Grafana.
 
 1. pip install vessim[monitor]
-2. docker compose up -d
+2. docker compose -f examples/grafana/docker-compose.yml up -d
 3. python examples/grafana_example.py
 4. Open Grafana at http://localhost:3001 (admin/admin123)
 """
