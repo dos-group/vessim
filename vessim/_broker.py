@@ -123,11 +123,6 @@ def read_root():
                 Full API documentation:
                 <a href="/docs">Swagger UI</a> / <a href="/redoc">ReDoc</a>
             </p>
-            <p>Run the GUI via:
-            <code style="background: #333; color: #fff; padding: 4px; border-radius: 4px;">
-                streamlit run gui/app.py
-            </code>
-            </p>
         </body>
     </html>
     """

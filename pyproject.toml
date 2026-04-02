@@ -35,17 +35,16 @@ dependencies = [
     "mosaik-api-v3>=3.0.4",
     "loguru>=0.6.0",
     "docopt-ng>=0.9.0",  # mosaik-api-v3 depends on an outdated version of docopt, doctopt-ng is a maintained fork
+    "plotly>=5.0.0",
 ]
 
 [project.optional-dependencies]
 sil = [
-    "requests>=2.26.0",
-    "fastapi>=0.104.0",
-    "uvicorn>=0.23.0",
-    "prometheus_client>0.22.0",
-]
-monitor = [
-    "influxdb-client>=1.36.0",
+    "requests>=2.26.0",          # PrometheusSignal, WatttimeSignal, Api
+    "fastapi>=0.104.0",          # Api broker
+    "uvicorn>=0.23.0",           # Api broker
+    "prometheus_client>0.22.0",  # Api /metrics export
+    "influxdb-client>=1.36.0",   # InfluxLogger → Grafana
 ]
 dev = [
     "pytest",
@@ -58,13 +57,8 @@ dev = [
 ]
 docs = [
     "setuptools",
-    "plotly",
     "mkdocs-material",
     "mkdocstrings[python]",
-]
-vis = [
-    "streamlit>=1.28.0",
-    "plotly>=5.0.0",
 ]
 
 

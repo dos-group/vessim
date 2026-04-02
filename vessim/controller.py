@@ -13,7 +13,7 @@ import mosaik_api_v3  # type: ignore
 from loguru import logger
 
 from vessim._util import flatten_dict
-from vessim._influx_writer import InfluxConfig, InfluxWriter
+from vessim._influx_writer import InfluxWriter
 
 if TYPE_CHECKING:
     from vessim.microgrid import Microgrid, MicrogridState
@@ -128,16 +128,24 @@ class InfluxLogger(Controller):
     """Controller that logs the state of the simulation in InfluxDB.
 
     Args:
-        influx_config: InfluxDB connection and batching configuration.
+        url: InfluxDB server URL (e.g., 'http://localhost:8086').
+        token: InfluxDB authentication token.
+        org: InfluxDB organization.
+        bucket: InfluxDB bucket to write to.
         sim_id: Optional simulation ID for filtering in InfluxDB.
     """
 
     def __init__(
         self,
-        influx_config: InfluxConfig,
+        url: str,
+        token: str,
+        org: str,
+        bucket: str,
         sim_id: Optional[str] = None,
     ):
-        self._influx_writer = InfluxWriter(influx_config, sim_id=sim_id)
+        self._influx_writer = InfluxWriter(
+            url=url, token=token, org=org, bucket=bucket, sim_id=sim_id,
+        )
         self._microgrids: dict[str, Microgrid] = {}
         self._actor_lookup: dict[str, dict[str, Actor]] = {}
 

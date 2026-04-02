@@ -1,9 +1,16 @@
 """This example acts as a playground for the "Software-in-the-Loop" tutorial.
 
 https://vessim.readthedocs.io/en/latest/tutorials/4_sil/
+
+1. pip install vessim[sil]
+2. docker compose -f examples/grafana/docker-compose.yml up -d
+3. python examples/sil_example.py
+4. API available at http://localhost:8700
+5. Grafana dashboard at http://localhost:3001
 """
 import vessim as vs
 from datetime import datetime
+
 
 def main():
     # 1. Setup Environment
@@ -31,15 +38,22 @@ def main():
         storage=battery
     )
 
-    # 4. Add API Controller
-    # This starts a local web server (FastAPI) that exposes the simulation state.
-    # External tools can query this API or send control commands.
-    # Setting export_prometheus=True also enables a /metrics endpoint.
+    # 4. Add Controllers
+    # The API controller exposes REST endpoints for querying state and sending commands.
+    # Setting export_prometheus=True also enables a /metrics endpoint for Prometheus scraping.
     environment.add_controller(vs.Api(export_prometheus=True))
+
+    # The InfluxLogger streams simulation data to InfluxDB for live Grafana dashboards.
+    environment.add_controller(vs.InfluxLogger(
+        url="http://127.0.0.1:8086",
+        token="vessim-dev-token",
+        org="vessim_org",
+        bucket="vessim_bucket",
+    ))
 
     print("Starting simulation...")
     print("API available at http://localhost:8700")
-    print("Metrics available at http://localhost:8700/metrics")
+    print("Grafana dashboard at http://localhost:3001")
 
     # Run the simulation in real-time.
     # You can now use 'curl' or other tools to interact with the API.

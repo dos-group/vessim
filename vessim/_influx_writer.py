@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional, Any
 
@@ -23,30 +22,16 @@ _FLOAT_FIELD_KEYS = (
     "soc", "p_grid", "p_delta", "capacity",
     "charge_level", "charge_power", "min_soc", "c_rate",
 )
-
-
-@dataclass
-class InfluxConfig:
-    """InfluxDB connection and batching config."""
-
-    url: str
-    token: str
-    org: str
-    bucket: str
-    batch_size: int = 500
-    flush_interval_ms: int = 1000
-    timeout_ms: int = 10_000
-    retry_interval_ms: int = 5000
-    max_retries: int = 3
-    max_retry_delay_ms: int = 30_000
-    measurement: str = "sim"
+_MEASUREMENT = "sim"
 
 
 class InfluxWriter:
     """Batching writer for InfluxDB 2.x. Non-blocking, auto-flushes on close."""
 
-    def __init__(self, config: InfluxConfig, sim_id: Optional[str] = None) -> None:
-        self._config = config
+    def __init__(self, url: str, token: str, org: str, bucket: str,
+                 sim_id: Optional[str] = None) -> None:
+        self._org = org
+        self._bucket = bucket
         self._sim_id = sim_id
         self._client: Optional[Any] = None
         self._write_api: Optional[Any] = None
@@ -56,23 +41,21 @@ class InfluxWriter:
         if not INFLUX_AVAILABLE:
             return
 
-        self._client = InfluxDBClient(
-            url=config.url, token=config.token, org=config.org, timeout=config.timeout_ms
-        )
+        self._client = InfluxDBClient(url=url, token=token, org=org, timeout=10_000)
         self._write_api = self._client.write_api(
             write_options=WriteOptions(
                 write_type=WriteType.batching,
-                batch_size=config.batch_size,
-                flush_interval=config.flush_interval_ms,
-                retry_interval=config.retry_interval_ms,
-                max_retries=config.max_retries,
-                max_retry_delay=config.max_retry_delay_ms,
+                batch_size=500,
+                flush_interval=1_000,
+                retry_interval=5_000,
+                max_retries=3,
+                max_retry_delay=30_000,
             ),
             success_callback=self._on_success,
             error_callback=self._on_error,
             retry_callback=self._on_retry,
         )
-        logger.info(f"InfluxWriter connected to InfluxDB at {config.url}")
+        logger.info(f"InfluxWriter connected to InfluxDB at {url}")
 
     def _on_success(self, conf: tuple, data: Any) -> None:
         if data:
@@ -87,11 +70,7 @@ class InfluxWriter:
 
     @property
     def is_available(self) -> bool:
-        return (
-            INFLUX_AVAILABLE
-            and self._write_api is not None
-            and not self._closed
-        )
+        return INFLUX_AVAILABLE and self._write_api is not None and not self._closed
 
     @property
     def points_written(self) -> int:
@@ -111,15 +90,12 @@ class InfluxWriter:
             return
 
         lines: list[str] = []
-        measurement = self._config.measurement
         ts_ns = int(ts.timestamp() * 1e9)
 
-        # Actor-level points
         for actor, value in actor_values.items():
             fval = _to_float(value)
             if fval is None:
                 continue
-
             category = _escape(actor.tag) if actor.tag else "unknown"
             tags = f"category={category},name={_escape(actor.name)}"
             tags += f",microgrid={_escape(microgrid_name)}"
@@ -127,10 +103,8 @@ class InfluxWriter:
                 tags += f",sim_id={_escape(self._sim_id)}"
             if actor.coords is not None:
                 tags += f",lat={actor.coords[0]},lon={actor.coords[1]}"
+            lines.append(f"{_MEASUREMENT},{tags} value={fval} {ts_ns}")
 
-            lines.append(f"{measurement},{tags} value={fval} {ts_ns}")
-
-        # Microgrid-level point
         mg_tags = f"category=microgrid,name={_escape(microgrid_name)}"
         mg_tags += f",microgrid={_escape(microgrid_name)}"
         if self._sim_id:
@@ -168,13 +142,11 @@ class InfluxWriter:
                     fields.append(f"tag_sum_{_escape(tag)}={fval}")
 
         if fields:
-            lines.append(f"{measurement},{mg_tags} {','.join(fields)} {ts_ns}")
+            lines.append(f"{_MEASUREMENT},{mg_tags} {','.join(fields)} {ts_ns}")
 
         if lines and self._write_api is not None:
             self._write_api.write(
-                bucket=self._config.bucket,
-                org=self._config.org,
-                record="\n".join(lines),
+                bucket=self._bucket, org=self._org, record="\n".join(lines),
             )
 
     def close(self) -> None:
@@ -182,7 +154,6 @@ class InfluxWriter:
         if self._closed:
             return
         self._closed = True
-
         if self._write_api:
             self._write_api.close()
             logger.info(f"InfluxWriter closed: {self._points_written} points written")
@@ -191,15 +162,14 @@ class InfluxWriter:
             self._client.close()
             self._client = None
 
+
 def _to_float(value: Any) -> Optional[float]:
     """Convert to float, returning None for non-finite or invalid values."""
     if value is None:
         return None
     try:
         fval = float(value)
-        if math.isnan(fval) or math.isinf(fval):
-            return None
-        return fval
+        return None if math.isnan(fval) or math.isinf(fval) else fval
     except (TypeError, ValueError):
         return None
 
