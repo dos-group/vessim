@@ -3,11 +3,11 @@
 from vessim.actor import Actor
 from vessim.controller import Controller, MemoryLogger, CsvLogger, InfluxLogger
 from vessim.environment import Environment
+from vessim.influx_writer import InfluxConfig
 from vessim.microgrid import Microgrid
 from vessim.policy import Policy, DefaultPolicy
 from vessim.signal import Signal, Trace, StaticSignal
 from vessim.storage import Storage, SimpleBattery, ClcBattery
-from vessim.influx_writer import InfluxConfig, InfluxWriter
 
 __all__ = [
     "Actor",
@@ -15,6 +15,7 @@ __all__ = [
     "MemoryLogger",
     "CsvLogger",
     "InfluxLogger",
+    "InfluxConfig",
     "Microgrid",
     "Environment",
     "Policy",
@@ -25,8 +26,6 @@ __all__ = [
     "Storage",
     "ClcBattery",
     "SimpleBattery",
-    "InfluxConfig",
-    "InfluxWriter",
 ]
 
 try:

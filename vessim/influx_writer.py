@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import math
-import logging
 from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional, Any
+
+from loguru import logger
 
 try:
     from influxdb_client import InfluxDBClient, WriteOptions
@@ -18,7 +19,10 @@ except ImportError:
 if TYPE_CHECKING:
     from vessim.actor import Actor
 
-logger = logging.getLogger(__name__)
+_FLOAT_FIELD_KEYS = (
+    "soc", "p_grid", "p_delta", "capacity",
+    "charge_level", "charge_power", "min_soc", "c_rate",
+)
 
 
 @dataclass
@@ -42,8 +46,9 @@ class InfluxConfig:
 class InfluxWriter:
     """Batching writer for InfluxDB 2.x. Non-blocking, auto-flushes on close."""
 
-    def __init__(self, config: InfluxConfig) -> None:
+    def __init__(self, config: InfluxConfig, sim_id: Optional[str] = None) -> None:
         self._config = config
+        self._sim_id = sim_id
         self._client: Optional[Any] = None
         self._write_api: Optional[Any] = None
         self._closed = False
@@ -68,12 +73,12 @@ class InfluxWriter:
             error_callback=self._on_error,
             retry_callback=self._on_retry,
         )
-        logger.info(f"InfluxWriter: {config.url} bucket={config.bucket}")
+        logger.info(f"InfluxWriter connected to {config.url} bucket={config.bucket}")
 
     def _on_success(self, conf: tuple, data: Any) -> None:
         if data:
-            s = data.decode('utf-8') if isinstance(data, bytes) else str(data)
-            self._points_written += s.count('\n') + 1
+            s = data.decode("utf-8") if isinstance(data, bytes) else str(data)
+            self._points_written += s.count("\n") + 1
 
     def _on_error(self, conf: tuple, data: Any, exc: Exception) -> None:
         logger.error(f"InfluxDB write failed: {exc}")
@@ -83,7 +88,6 @@ class InfluxWriter:
 
     @property
     def is_available(self) -> bool:
-        """Check if writer is available."""
         return (
             self._config.enabled
             and INFLUX_AVAILABLE
@@ -93,32 +97,18 @@ class InfluxWriter:
 
     @property
     def points_written(self) -> int:
-        """Number of points written."""
         return self._points_written
 
-    def write_batch(
+    def write_microgrid(
         self,
         ts: datetime,
+        microgrid_name: str,
         actor_values: dict["Actor", float],
-        microgrid: Optional[str] = None,
-        sim_id: Optional[str] = None,
-        # Microgrid-level state (all fields from CSV)
-        soc: Optional[float] = None,
-        p_grid: Optional[float] = None,
-        p_delta: Optional[float] = None,
+        microgrid_state: dict,
         coords: Optional[tuple[float, float]] = None,
-        # Storage state
-        capacity: Optional[float] = None,
-        charge_level: Optional[float] = None,
-        charge_power: Optional[float] = None,
-        min_soc: Optional[float] = None,
-        c_rate: Optional[float] = None,
-        # Policy state
-        mode: Optional[str] = None,
-        # Tag sums
         tag_sums: Optional[dict[str, float]] = None,
     ) -> None:
-        """Write actor values and microgrid state to InfluxDB."""
+        """Write actor data and microgrid state for a single microgrid."""
         if not self.is_available:
             return
 
@@ -126,89 +116,67 @@ class InfluxWriter:
         measurement = self._config.measurement
         ts_ns = int(ts.timestamp() * 1e9)
 
-        # Write actor values (+ actor coords if available)
+        # Actor-level points
         for actor, value in actor_values.items():
-            if value is None:
-                continue
-            try:
-                fval = float(value)
-                if math.isnan(fval) or math.isinf(fval):
-                    continue
-            except (TypeError, ValueError):
+            fval = _to_float(value)
+            if fval is None:
                 continue
 
             category = _escape(actor.tag) if actor.tag else "unknown"
-            name = _escape(actor.name) if actor.name else "unknown"
-            tags = f"category={category},name={name}"
-            if microgrid:
-                tags += f",microgrid={_escape(microgrid)}"
-            if sim_id:
-                tags += f",sim_id={_escape(sim_id)}"
-
-            # Add actor coords as tags (not fields)
-            if hasattr(actor, 'coords') and actor.coords is not None:
-                if len(actor.coords) == 2:
-                    try:
-                        alat, alon = float(actor.coords[0]), float(actor.coords[1])
-                        tags += f",lat={alat},lon={alon}"
-                    except (TypeError, ValueError):
-                        pass
+            tags = f"category={category},name={_escape(actor.name)}"
+            tags += f",microgrid={_escape(microgrid_name)}"
+            if self._sim_id:
+                tags += f",sim_id={_escape(self._sim_id)}"
+            if actor.coords is not None:
+                tags += f",lat={actor.coords[0]},lon={actor.coords[1]}"
 
             lines.append(f"{measurement},{tags} value={fval} {ts_ns}")
 
-        # Write microgrid-level metrics (all fields from CSV)
-        if microgrid:
-            mg_tags = f"category=microgrid,name={_escape(microgrid)}"
-            mg_tags += f",microgrid={_escape(microgrid)}"
-            if sim_id:
-                mg_tags += f",sim_id={_escape(sim_id)}"
+        # Microgrid-level point
+        mg_tags = f"category=microgrid,name={_escape(microgrid_name)}"
+        mg_tags += f",microgrid={_escape(microgrid_name)}"
+        if self._sim_id:
+            mg_tags += f",sim_id={_escape(self._sim_id)}"
+        if coords is not None:
+            mg_tags += f",lat={coords[0]},lon={coords[1]}"
 
-            # Add microgrid coords as tags
-            if coords is not None and len(coords) == 2:
-                try:
-                    lat, lon = float(coords[0]), float(coords[1])
-                    mg_tags += f",lat={lat},lon={lon}"
-                except (TypeError, ValueError):
-                    pass
+        storage_state = microgrid_state.get("storage_state") or {}
+        policy_state = microgrid_state.get("policy_state") or {}
+        flat = {
+            "soc": storage_state.get("soc"),
+            "p_grid": microgrid_state.get("p_grid"),
+            "p_delta": microgrid_state.get("p_delta"),
+            "capacity": storage_state.get("capacity"),
+            "charge_level": storage_state.get("charge_level"),
+            "charge_power": policy_state.get("charge_power"),
+            "min_soc": storage_state.get("min_soc"),
+            "c_rate": storage_state.get("c_rate"),
+        }
 
-            fields: list[str] = []
+        fields: list[str] = []
+        for key in _FLOAT_FIELD_KEYS:
+            fval = _to_float(flat.get(key))
+            if fval is not None:
+                fields.append(f"{key}={fval}")
 
-            # Helper to add float field
-            def add_float(name: str, val: Optional[float]) -> None:
-                if val is not None:
-                    try:
-                        fv = float(val)
-                        if not (math.isnan(fv) or math.isinf(fv)):
-                            fields.append(f"{name}={fv}")
-                    except (TypeError, ValueError):
-                        pass
+        mode = policy_state.get("mode")
+        if mode is not None:
+            fields.append(f'mode="{_escape(str(mode))}"')
 
-            add_float("soc", soc)
-            add_float("p_grid", p_grid)
-            add_float("p_delta", p_delta)
-            add_float("capacity", capacity)
-            add_float("charge_level", charge_level)
-            add_float("charge_power", charge_power)
-            add_float("min_soc", min_soc)
-            add_float("c_rate", c_rate)
+        if tag_sums:
+            for tag, val in tag_sums.items():
+                fval = _to_float(val)
+                if fval is not None:
+                    fields.append(f"tag_sum_{_escape(tag)}={fval}")
 
-            # Mode as string field (quoted)
-            if mode is not None:
-                fields.append(f'mode="{_escape(str(mode))}"')
-
-            # Tag sums
-            if tag_sums:
-                for tag, val in tag_sums.items():
-                    add_float(f"tag_sum_{_escape(tag)}", val)
-
-            if fields:
-                line = f"{measurement},{mg_tags} {','.join(fields)} {ts_ns}"
-                lines.append(line)
+        if fields:
+            lines.append(f"{measurement},{mg_tags} {','.join(fields)} {ts_ns}")
 
         if lines and self._write_api is not None:
-            record = "\n".join(lines)
             self._write_api.write(
-                bucket=self._config.bucket, org=self._config.org, record=record
+                bucket=self._config.bucket,
+                org=self._config.org,
+                record="\n".join(lines),
             )
 
     def close(self) -> None:
@@ -219,28 +187,34 @@ class InfluxWriter:
 
         if self._write_api:
             self._write_api.close()
-            logger.info(f"InfluxWriter closed: {self._points_written} points")
+            logger.info(f"InfluxWriter closed: {self._points_written} points written")
             self._write_api = None
         if self._client:
             self._client.close()
             self._client = None
 
     def __enter__(self) -> "InfluxWriter":
-        """Context manager entry."""
         return self
 
     def __exit__(self, *args: Any) -> None:
-        """Context manager exit."""
         self.close()
 
 
+def _to_float(value: Any) -> Optional[float]:
+    """Convert to float, returning None for non-finite or invalid values."""
+    if value is None:
+        return None
+    try:
+        fval = float(value)
+        if math.isnan(fval) or math.isinf(fval):
+            return None
+        return fval
+    except (TypeError, ValueError):
+        return None
+
+
 def _escape(value: str) -> str:
-    """Escape InfluxDB tag special chars."""
+    """Escape InfluxDB line protocol special characters in tag values."""
     if not value:
         return "unknown"
-    escaped = str(value)
-    escaped = escaped.replace("\\", "\\\\")
-    escaped = escaped.replace(" ", "\\ ")
-    escaped = escaped.replace(",", "\\,")
-    escaped = escaped.replace("=", "\\=")
-    return escaped
+    return str(value).replace("\\", "\\\\").replace(" ", "\\ ").replace(",", "\\,").replace("=", "\\=")

@@ -140,8 +140,7 @@ class InfluxLogger(Controller):
         influx_config: InfluxConfig,
         sim_id: Optional[str] = None,
     ):
-        self.sim_id = sim_id
-        self._influx_writer = InfluxWriter(influx_config)
+        self._influx_writer = InfluxWriter(influx_config, sim_id=sim_id)
         self._microgrids: dict[str, Microgrid] = {}
         self._actor_lookup: dict[str, dict[str, Actor]] = {}
 
@@ -153,14 +152,8 @@ class InfluxLogger(Controller):
     def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
         if not self._influx_writer.is_available:
             return
-        self._write_to_influx(now, microgrid_states)
 
-    def _write_to_influx(
-        self,
-        t: datetime,
-        microgrid_states: dict[str, MicrogridState],
-    ) -> None:
-ok        for mg_name, state in microgrid_states.items():
+        for mg_name, state in microgrid_states.items():
             actor_lookup = self._actor_lookup.get(mg_name, {})
             actor_states = state.get("actor_states", {}) or {}
             actor_values: dict = {}
@@ -176,27 +169,14 @@ ok        for mg_name, state in microgrid_states.items():
                     if actor.tag is not None:
                         tag_sums[actor.tag] += power
 
-            storage_state = state.get("storage_state", {}) or {}
-            policy_state = state.get("policy_state", {}) or {}
-
             mg = self._microgrids.get(mg_name)
-            coords = mg.coords if mg else None
 
-            self._influx_writer.write_batch(
-                t,
-                actor_values,
-                microgrid=mg_name,
-                sim_id=self.sim_id,
-                soc=storage_state.get("soc"),
-                p_grid=state.get("p_grid"),
-                p_delta=state.get("p_delta"),
-                coords=coords,
-                capacity=storage_state.get("capacity"),
-                charge_level=storage_state.get("charge_level"),
-                charge_power=policy_state.get("charge_power"),
-                min_soc=storage_state.get("min_soc"),
-                c_rate=storage_state.get("c_rate"),
-                mode=policy_state.get("mode"),
+            self._influx_writer.write_microgrid(
+                now,
+                microgrid_name=mg_name,
+                actor_values=actor_values,
+                microgrid_state=state,
+                coords=mg.coords if mg else None,
                 tag_sums=dict(tag_sums) if tag_sums else None,
             )
 

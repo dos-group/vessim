@@ -44,6 +44,9 @@ sil = [
     "uvicorn>=0.23.0",
     "prometheus_client>0.22.0",
 ]
+monitor = [
+    "influxdb-client>=1.36.0",
+]
 dev = [
     "pytest",
     "mypy",
