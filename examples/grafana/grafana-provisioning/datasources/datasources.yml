@@ -17,3 +17,10 @@ datasources:
 
     secureJsonData:
       token: ${INFLUX_TOKEN}  # Use environment variable for security
+
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: false
