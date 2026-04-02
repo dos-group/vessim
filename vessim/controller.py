@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Optional, TYPE_CHECKING
 
 import mosaik_api_v3  # type: ignore
+from loguru import logger
 
 from vessim._util import flatten_dict
 from vessim.influx_writer import InfluxConfig, InfluxWriter
@@ -94,10 +95,7 @@ class MemoryLogger(Controller):
 
 
 class CsvLogger(Controller):
-    """Controller that writes the state of the simulation to a CSV file.
-
-    The state is written to the file at each simulation step (streaming), so
-    it doesn't consume memory for the history.
+    """Controller that logs the state of the simulation to a CSV file.
 
     Args:
         outfile: Path to the CSV file.
@@ -129,83 +127,40 @@ class CsvLogger(Controller):
                 writer.writerow(log_entry)
 
 
-class Monitor(Controller):
-    """Controller that logs simulation data to InfluxDB and optionally to CSV.
-
-    The Monitor streams simulation data in real-time directly to InfluxDB,
-    which can then be visualized in Grafana. Actors are grouped by tags
-    (e.g., `solar`, `compute`) for organized monitoring.
+class InfluxLogger(Controller):
+    """Controller that logs the state of the simulation in InfluxDB.
 
     Args:
-        outfile: Optional path to a CSV file for logging.
-        influx_config: InfluxDB configuration for real-time streaming.
+        influx_config: InfluxDB connection and batching configuration.
         sim_id: Optional simulation ID for filtering in InfluxDB.
-        write_csv: Whether to write to CSV file. Defaults to True.
     """
 
     def __init__(
         self,
-        outfile: Optional[str | Path] = None,
-        influx_url: Optional[str] = None,
-        influx_bucket: Optional[str] = None,
-        influx_token: Optional[str] = None,
-        influx_org: Optional[str] = None,
-        influx_config: Optional[InfluxConfig] = None,
+        influx_config: InfluxConfig,
         sim_id: Optional[str] = None,
-        write_csv: bool = True,
     ):
-        self.outfile = Path(outfile) if outfile else None
-        self.write_csv = write_csv
         self.sim_id = sim_id
-        self.log: dict[datetime, dict[str, MicrogridState]] = defaultdict(dict)
-
-        self.influx_url = influx_url
-        self.influx_bucket = influx_bucket
-        self.influx_token = influx_token
-        self.influx_org = influx_org
-
-        self._influx_writer: Optional[InfluxWriter] = None
-        if influx_config is not None:
-            self._influx_writer = InfluxWriter(influx_config)
-        elif influx_url and influx_bucket and influx_token and influx_org:
-            self._influx_writer = InfluxWriter(InfluxConfig(
-                url=influx_url,
-                token=influx_token,
-                org=influx_org,
-                bucket=influx_bucket,
-            ))
-
-        self.microgrids: dict[str, Microgrid] = {}
+        self._influx_writer = InfluxWriter(influx_config)
+        self._microgrids: dict[str, Microgrid] = {}
         self._actor_lookup: dict[str, dict[str, Actor]] = {}
-        self._csv_logger: Optional[CsvLogger] = None
 
     def start(self, microgrids: dict[str, Microgrid]) -> None:
-        self.microgrids = microgrids
+        self._microgrids = microgrids
         for mg_name, mg in microgrids.items():
             self._actor_lookup[mg_name] = {actor.name: actor for actor in mg.actors}
 
-        if self.write_csv and self.outfile:
-            self._csv_logger = CsvLogger(self.outfile)
-
     def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
-        self.log[now] = microgrid_states
-
-        if self._csv_logger:
-            self._csv_logger.step(now, microgrid_states)
-
-        if self._influx_writer is not None and self._influx_writer.is_available:
-            self._write_to_influx(now, microgrid_states)
+        if not self._influx_writer.is_available:
+            return
+        self._write_to_influx(now, microgrid_states)
 
     def _write_to_influx(
         self,
         t: datetime,
         microgrid_states: dict[str, MicrogridState],
     ) -> None:
-        """Write data to InfluxDB in real-time."""
-        if self._influx_writer is None:
-            return
-
-        for mg_name, state in microgrid_states.items():
+ok        for mg_name, state in microgrid_states.items():
             actor_lookup = self._actor_lookup.get(mg_name, {})
             actor_states = state.get("actor_states", {}) or {}
             actor_values: dict = {}
@@ -218,15 +173,14 @@ class Monitor(Controller):
                 actor = actor_lookup.get(actor_name)
                 if actor is not None:
                     actor_values[actor] = power
-                tag = a_state.get("tag")
-                if tag is not None:
-                    tag_sums[tag] += power
+                    if actor.tag is not None:
+                        tag_sums[actor.tag] += power
 
             storage_state = state.get("storage_state", {}) or {}
             policy_state = state.get("policy_state", {}) or {}
 
-            mg = self.microgrids.get(mg_name)
-            coords = mg.coords if mg and hasattr(mg, 'coords') else None
+            mg = self._microgrids.get(mg_name)
+            coords = mg.coords if mg else None
 
             self._influx_writer.write_batch(
                 t,
@@ -249,7 +203,9 @@ class Monitor(Controller):
     def finalize(self) -> None:
         if self._influx_writer is not None:
             self._influx_writer.close()
-            print(f"Monitor: {self._influx_writer.points_written} points streamed to InfluxDB")
+            logger.info(
+                f"InfluxLogger: {self._influx_writer.points_written} points written"
+            )
 
 
 class Api(Controller):

@@ -1,7 +1,7 @@
 """A simulator for carbon-aware applications and systems."""
 
 from vessim.actor import Actor
-from vessim.controller import Controller, MemoryLogger, CsvLogger, Monitor
+from vessim.controller import Controller, MemoryLogger, CsvLogger, InfluxLogger
 from vessim.environment import Environment
 from vessim.microgrid import Microgrid
 from vessim.policy import Policy, DefaultPolicy
@@ -14,7 +14,7 @@ __all__ = [
     "Controller",
     "MemoryLogger",
     "CsvLogger",
-    "Monitor",
+    "InfluxLogger",
     "Microgrid",
     "Environment",
     "Policy",
