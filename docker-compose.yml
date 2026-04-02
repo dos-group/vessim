@@ -5,19 +5,15 @@ services:
     ports:
       - "8086:8086"
     volumes:
-      # Mount named volumes for persistence of data and configuration
       - influxdb_data:/var/lib/influxdb2
       - influxdb_config:/etc/influxdb2
-    env_file:
-      - .env
     environment:
       - DOCKER_INFLUXDB_INIT_MODE=setup
       - DOCKER_INFLUXDB_INIT_USERNAME=admin
       - DOCKER_INFLUXDB_INIT_PASSWORD=admin123
       - DOCKER_INFLUXDB_INIT_ORG=vessim_org
       - DOCKER_INFLUXDB_INIT_BUCKET=vessim_bucket
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUX_TOKEN}
-      - DOCKER_INFLUXDB_INIT_RETENTION=
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=vessim-dev-token
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8086/health || exit 1"]
@@ -33,7 +29,6 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin123
-      - INFLUX_TOKEN=${INFLUX_TOKEN}
     depends_on:
       - influxdb2
     volumes:
@@ -44,7 +39,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  # Define named volumes managed by Docker for persistent storage
   influxdb_data:
   influxdb_config:
   grafana_data:
