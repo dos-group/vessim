@@ -2,8 +2,7 @@ import pytest
 from unittest.mock import Mock
 from vessim.microgrid import Microgrid
 from vessim.actor import Actor
-from vessim.policy import Policy
-from vessim.storage import Storage
+from vessim.dispatch_policy import DispatchPolicy
 
 class TestMicrogrid:
     @pytest.fixture
@@ -16,7 +15,7 @@ class TestMicrogrid:
 
     @pytest.fixture
     def mock_policy(self):
-        return Mock(spec=Policy)
+        return Mock(spec=DispatchPolicy)
 
     def test_init_raises_invalid_step_size(self, mock_world, mock_clock, mock_policy):
         actor = Mock(spec=Actor)
@@ -29,6 +28,7 @@ class TestMicrogrid:
                 clock=mock_clock,
                 step_size=3,
                 actors=[actor],
+                dispatchables=[],
                 policy=mock_policy
             )
 
@@ -40,11 +40,9 @@ class TestMicrogrid:
         # Setup mocks for world.start() returns
         actor_sim = Mock()
         grid_sim = Mock()
-        storage_sim = Mock()
+        dispatch_sim = Mock()
 
-        # When world.start is called, it returns a simulator which we call .Model() on.
-        # e.g. actor_sim.Actor(actor=actor) -> actor_entity
-        mock_world.start.side_effect = [actor_sim, grid_sim, storage_sim]
+        mock_world.start.side_effect = [actor_sim, grid_sim, dispatch_sim]
 
         actor_entity = Mock()
         actor_sim.Actor.return_value = actor_entity
@@ -52,16 +50,16 @@ class TestMicrogrid:
         grid_entity = Mock()
         grid_sim.Grid.return_value = grid_entity
 
-        storage_entity = Mock()
-        storage_sim.Storage.return_value = storage_entity
+        dispatch_entity = Mock()
+        dispatch_sim.Dispatch.return_value = dispatch_entity
 
         mg = Microgrid(
             world=mock_world,
             clock=mock_clock,
-            step_size=5, # 10 % 5 == 0
+            step_size=5,  # 10 % 5 == 0
             actors=[actor],
+            dispatchables=[],
             policy=mock_policy,
-            storage=Mock(spec=Storage)
         )
 
         # Check if actors are started
@@ -72,15 +70,12 @@ class TestMicrogrid:
         mock_world.start.assert_any_call("Grid", sim_id=f"{mg.name}.grid", step_size=5,
                                          grid_signals=None, sim_start=mock_clock.sim_start)
 
-        # Check if storage is started
-        mock_world.start.assert_any_call("Storage", sim_id=f"{mg.name}.storage", step_size=5)
+        # Check if dispatch is started
+        mock_world.start.assert_any_call("Dispatch", sim_id=f"{mg.name}.dispatch", step_size=5)
 
         # Check connections
-        # connect(actor_entity, grid_entity, "power")
         mock_world.connect.assert_any_call(actor_entity, grid_entity, "power")
-
-        # connect(grid_entity, storage_entity, "p_delta")
-        mock_world.connect.assert_any_call(grid_entity, storage_entity, "p_delta")
+        mock_world.connect.assert_any_call(grid_entity, dispatch_entity, "p_delta")
 
     def test_finalize(self, mock_world, mock_clock, mock_policy):
         actor = Mock(spec=Actor)
@@ -95,6 +90,7 @@ class TestMicrogrid:
             clock=mock_clock,
             step_size=5,
             actors=[actor],
+            dispatchables=[],
             policy=mock_policy
         )
 

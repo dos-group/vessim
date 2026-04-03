@@ -29,15 +29,15 @@ class PrometheusMetrics:
             'Current grid power exchange',
             ['microgrid']
         )
-        self.microgrid_battery_soc = Gauge(
-            'vessim_microgrid_battery_soc',
-            'Battery state of charge (0-1)',
-            ['microgrid']
+        self.dispatchable_soc = Gauge(
+            'vessim_dispatchable_soc',
+            'Dispatchable state of charge (0-1)',
+            ['microgrid', 'dispatchable']
         )
-        self.microgrid_battery_capacity_wh = Gauge(
-            'vessim_microgrid_battery_capacity_wh',
-            'Battery capacity in Wh',
-            ['microgrid']
+        self.dispatchable_capacity_wh = Gauge(
+            'vessim_dispatchable_capacity_wh',
+            'Dispatchable capacity in Wh',
+            ['microgrid', 'dispatchable']
         )
         self.microgrid_p_actor = Gauge(
             'vessim_microgrid_p_actor',
@@ -52,31 +52,35 @@ class PrometheusMetrics:
 
     def update_from_data(self, microgrid_name: str, data: dict[str, Any]):
         """Update all metrics from incoming simulation data."""
-        # Update data points counter
         self.data_points_total.labels(microgrid=microgrid_name).inc()
 
-        # Update power metrics
         if 'p_delta' in data:
             self.microgrid_p_delta.labels(microgrid=microgrid_name).set(data['p_delta'])
         if 'p_grid' in data:
             self.microgrid_p_grid.labels(microgrid=microgrid_name).set(data['p_grid'])
 
-        # Update battery metrics
-        for key, value in data.items():
-            if key.endswith('.storage.Storage') and isinstance(value, dict):
-                storage_data = value.get('storage', {})
-                if 'soc' in storage_data:
-                    self.microgrid_battery_soc.labels(microgrid=microgrid_name).set(storage_data['soc'])
-                if 'capacity' in storage_data:
-                    self.microgrid_battery_capacity_wh.labels(microgrid=microgrid_name).set(storage_data['capacity'])
+        # Dispatchable metrics from dispatch_states
+        dispatch_states = data.get('dispatch_states')
+        if isinstance(dispatch_states, dict):
+            for name, state in dispatch_states.items():
+                if isinstance(state, dict):
+                    if 'soc' in state:
+                        self.dispatchable_soc.labels(
+                            microgrid=microgrid_name, dispatchable=name
+                        ).set(state['soc'])
+                    if 'capacity' in state:
+                        self.dispatchable_capacity_wh.labels(
+                            microgrid=microgrid_name, dispatchable=name
+                        ).set(state['capacity'])
 
-        # Update actor power metrics
-        for key, value in data.items():
-            if '.actor.' in key and isinstance(value, dict) and 'p' in value:
-                actor_name = key.split('.actor.')[1] if '.actor.' in key else key
-                self.microgrid_p_actor.labels(
-                    microgrid=microgrid_name, actor=actor_name
-                ).set(value['p'])
+        # Actor power metrics from actor_states
+        actor_states = data.get('actor_states')
+        if isinstance(actor_states, dict):
+            for actor_name, state in actor_states.items():
+                if isinstance(state, dict) and 'power' in state:
+                    self.microgrid_p_actor.labels(
+                        microgrid=microgrid_name, actor=actor_name
+                    ).set(state['power'])
 
 
 class Broker:
@@ -134,13 +138,19 @@ def list_microgrids() -> list[str]:
     return list(broker.microgrids.keys())
 
 
+@app.get("/microgrids/{name}/config")
+def get_microgrid_config_detail(name: str):
+    if name not in broker.microgrids:
+        raise HTTPException(404, "Microgrid not found")
+    return broker.microgrids[name]
+
+
 @app.get("/microgrids/{name}")
-def get_microgrid_config(name: str):
+def get_microgrid_state(name: str):
     if name not in broker.microgrids:
         raise HTTPException(404, "Microgrid not found")
     if name not in broker.history or not broker.history[name]:
         raise HTTPException(404, "No data available")
-    # return broker.microgrids[name]
     return broker.history[name][-1]
 
 
@@ -152,12 +162,13 @@ def get_history(name: str, limit: int = 100):
     return {"data": history[-limit:] if limit else history}
 
 
-@app.put("/microgrids/{name}/storage/{prop}")
-def set_storage_prop(name: str, prop: str, value: Any):
+@app.put("/microgrids/{name}/dispatchables/{dispatchable_name}/{prop}")
+def set_dispatchable_prop(name: str, dispatchable_name: str, prop: str, value: Any):
     broker.add_command({
         "type": "set_parameter",
         "microgrid": name,
-        "target": "storage",
+        "target": "dispatchable",
+        "target_name": dispatchable_name,
         "property": prop,
         "value": value,
     })

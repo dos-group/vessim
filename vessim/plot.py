@@ -138,13 +138,17 @@ def plot_result_df(
                      df = df[cols].rename(columns={c: c[len(prefix):] for c in cols})
 
     # Determine availability of data
-    has_storage = "storage_state.soc" in df.columns
+    # Check for storage SoC columns (dispatch_states.{name}.soc)
+    soc_cols = [
+        col for col in df.columns if col.startswith("dispatch_states.") and col.endswith(".soc")
+    ]
+    has_soc = len(soc_cols) > 0
 
     # Configure subplots (Always 4 rows)
     subplot_titles = [
         "Actor Power",
         "Delta Power",
-        "Battery State of Charge",
+        "Storage State of Charge",
         "Grid Power",
     ]
     row_heights = [0.25, 0.25, 0.25, 0.25]
@@ -164,7 +168,7 @@ def plot_result_df(
         col for col in df.columns if col.startswith("actor_states.") and col.endswith(".power")
     ]
     for col in actor_p_cols:
-        # Extract actor name: actor_states.{name}.p
+        # Extract actor name: actor_states.{name}.power
         actor_name = col.split(".")[1]
         display_name = actor_name.replace("_", " ").title()
 
@@ -229,34 +233,42 @@ def plot_result_df(
 
     fig.update_yaxes(title_text="Power (W)", row=2, col=1)
 
-    # 3. Battery State of Charge (No Legend)
-    if has_storage:
-        fig.add_trace(
-            go.Scatter(
-                x=df.index,
-                y=df["storage_state.soc"] * 100,
-                name="Battery SoC",
-                showlegend=False,
-                line=dict(color="green"),
-                fill="tozeroy",
-                fillcolor="rgba(0,128,0,0.1)",
-                hovertemplate="SoC: %{y:.1f}%<extra></extra>",
-            ),
-            row=3,
-            col=1,
-        )
+    # 3. Storage State of Charge
+    if has_soc:
+        colors = ["green", "blue", "orange", "purple", "brown"]
+        for i, col in enumerate(soc_cols):
+            # Extract name: dispatch_states.{name}.soc
+            d_name = col.split(".")[1]
+            display_name = d_name.replace("_", " ").title()
+            color = colors[i % len(colors)]
 
-        if "storage_state.min_soc" in df.columns:
-            min_soc = df["storage_state.min_soc"].iloc[0] * 100
-            fig.add_hline(
-                y=min_soc,
-                line_dash="dash",
-                line_color="gray",
-                annotation_text=f"Min SoC ({min_soc:.0f}%)",
-                annotation_position="top right",
+            fig.add_trace(
+                go.Scatter(
+                    x=df.index,
+                    y=df[col] * 100,
+                    name=f"{display_name} SoC",
+                    showlegend=len(soc_cols) > 1,
+                    line=dict(color=color),
+                    fill="tozeroy" if len(soc_cols) == 1 else None,
+                    fillcolor=f"rgba(0,128,0,0.1)" if len(soc_cols) == 1 else None,
+                    hovertemplate=f"{display_name} SoC: %{{y:.1f}}%<extra></extra>",
+                ),
                 row=3,
                 col=1,
             )
+
+            min_soc_col = f"dispatch_states.{d_name}.min_soc"
+            if min_soc_col in df.columns:
+                min_soc = df[min_soc_col].iloc[0] * 100
+                fig.add_hline(
+                    y=min_soc,
+                    line_dash="dash",
+                    line_color="gray",
+                    annotation_text=f"Min SoC ({min_soc:.0f}%)",
+                    annotation_position="top right",
+                    row=3,
+                    col=1,
+                )
         fig.update_yaxes(title_text="SoC (%)", range=[0, 100], row=3, col=1)
     else:
         # Add dummy trace to ensure x-axis alignment and subplot initialization

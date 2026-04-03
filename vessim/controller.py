@@ -160,8 +160,28 @@ class Api(Controller):
         for mg_name, mg in microgrids.items():
             config = {
                 "name": mg_name,
-                "actors": [actor.name for actor in mg.actors],
-                "storage": mg.storage.__class__.__name__ if mg.storage else None,
+                "actors": [
+                    {
+                        "name": actor.name,
+                        "signal_type": actor.signal.__class__.__name__,
+                        "signal": str(actor.signal),
+                        "step_size": actor.step_size,
+                    }
+                    for actor in mg.actors
+                ],
+                "dispatch": [
+                    {
+                        "name": d.name,
+                        "type": d.__class__.__name__,
+                        **d.state(),
+                    }
+                    for d in mg.dispatchables
+                ],
+                "policy": {
+                    "type": mg.policy.__class__.__name__,
+                    **mg.policy.state(),
+                },
+                "coords": mg.coords,
             }
             self.requests.post(f"{self.broker_url}/internal/microgrids/{mg_name}", json=config)
         print(f"Registered {len(microgrids)} microgrids with API broker.")
@@ -194,8 +214,11 @@ class Api(Controller):
                 prop = cmd.get("property")
                 val = cmd.get("value")
 
-                if target == "storage" and mg.storage:
-                    setattr(mg.storage, prop, val)
+                if target == "dispatchable":
+                    target_name = cmd.get("target_name")
+                    d = next((d for d in mg.dispatchables if d.name == target_name), None)
+                    if d:
+                        setattr(d, prop, val)
                 elif target == "policy":
                     setattr(mg.policy, prop, val)
                 elif target == "actor":
@@ -231,7 +254,7 @@ class _ControllerSim(mosaik_api_v3.Simulator):
                     "p_grid",
                     "actor_states",
                     "policy_state",
-                    "storage_state",
+                    "dispatch_states",
                     "grid_signals",
                 ],
             },
@@ -264,10 +287,10 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         microgrids = [key.split(".grid.Grid")[0] for key in data["p_delta"].keys()]
         microgrid_states: dict[str, MicrogridState] = {name: {
             "p_delta": data["p_delta"][f"{name}.grid.Grid"],
-            "p_grid": data["p_grid"][f"{name}.storage.Storage"],
+            "p_grid": data["p_grid"][f"{name}.dispatch.Dispatch"],
             "actor_states": {k.split(".")[-1]: data["actor_states"][k] for k in data["actor_states"].keys() if k.startswith(f"{name}.actor.")},  # noqa: E501
-            "policy_state": next((v for k, v in data["policy_state"].items() if k.startswith(f"{name}.storage.Storage")), {}),  # noqa: E501
-            "storage_state": next((v for k, v in data.get("storage_state", {}).items() if k.startswith(f"{name}.storage.Storage")), None),  # noqa: E501
+            "policy_state": next((v for k, v in data["policy_state"].items() if k.startswith(f"{name}.dispatch.Dispatch")), {}),  # noqa: E501
+            "dispatch_states": next((v for k, v in data.get("dispatch_states", {}).items() if k.startswith(f"{name}.dispatch.Dispatch")), None),  # noqa: E501
             "grid_signals": next((v for k, v in data["grid_signals"].items() if k.startswith(f"{name}.grid.Grid")), None),  # noqa: E501
         } for name in microgrids}
 

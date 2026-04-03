@@ -20,7 +20,7 @@ class TestMemoryLogger:
             "p_grid": 5.0,
             "actor_states": {"actor1": {"power": 2}},
             "policy_state": {"mode": "charge"},
-            "storage_state": {"soc": 0.5},
+            "dispatch_states": {"battery": {"soc": 0.5}},
             "grid_signals": {"co2": 100},
         }
         return now, {"mg1": state}
@@ -67,7 +67,7 @@ class TestCsvLogger:
             "p_grid": 5.0,
             "actor_states": {"actor1": {"power": 2}},
             "policy_state": {},
-            "storage_state": None,
+            "dispatch_states": None,
             "grid_signals": None,
         }
 
@@ -92,7 +92,7 @@ class TestCsvLogger:
             "p_grid": 5.0,
             "actor_states": {},
             "policy_state": {},
-            "storage_state": None,
+            "dispatch_states": None,
             "grid_signals": None,
         }
 

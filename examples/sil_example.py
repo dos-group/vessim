@@ -27,7 +27,7 @@ def main():
     )
 
     # Server load driven by actual host CPU usage via Prometheus + node_exporter.
-    # The query returns CPU utilization (0.0–1.0), scaled to 0–1000W.
+    # The query returns CPU utilization (0.0-1.0), scaled to 0-1000W.
     server = vs.Actor(
         name="server",
         signal=vs.PrometheusSignal(
@@ -43,12 +43,12 @@ def main():
         signal=vs.Trace.load("solcast2022_global", "Berlin", params={"scale": 2000})
     )
 
-    battery = vs.SimpleBattery(capacity=20, initial_soc=0.5)
+    battery = vs.SimpleBattery(name="battery", capacity=20, initial_soc=0.5)
 
     environment.add_microgrid(
         name="your_computer",
         actors=[server, solar],
-        storage=battery
+        dispatch=battery,
     )
 
     # The API controller exposes a REST API and a /metrics endpoint for Prometheus.

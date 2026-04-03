@@ -2,12 +2,12 @@
 
 from vessim.actor import Actor
 from vessim.controller import Controller, MemoryLogger, CsvLogger
+from vessim.dispatch_policy import DispatchPolicy, DefaultDispatchPolicy
+from vessim.dispatchable import Dispatchable, Storage, SimpleBattery, ClcBattery
 from vessim.environment import Environment
 from vessim.microgrid import Microgrid
 from vessim.plot import plot_trace, plot_result_df
-from vessim.policy import Policy, DefaultPolicy
 from vessim.signal import Signal, Trace, StaticSignal
-from vessim.storage import Storage, SimpleBattery, ClcBattery
 
 __all__ = [
     "Actor",
@@ -16,14 +16,15 @@ __all__ = [
     "CsvLogger",
     "Microgrid",
     "Environment",
-    "Policy",
-    "DefaultPolicy",
+    "DispatchPolicy",
+    "DefaultDispatchPolicy",
+    "Dispatchable",
+    "Storage",
+    "SimpleBattery",
+    "ClcBattery",
     "StaticSignal",
     "Signal",
     "Trace",
-    "Storage",
-    "ClcBattery",
-    "SimpleBattery",
     "plot_trace",
     "plot_result_df",
 ]

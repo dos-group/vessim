@@ -9,11 +9,16 @@ from vessim.signal import Signal
 
 
 class Actor:
-    """Consumer or producer based on a `Signal`.
+    """An exogenous energy consumer or producer based on a `Signal`.
+
+    Actors represent non-dispatchable energy devices whose power output is
+    determined externally like solar panels, wind turbines, or (compute) loads.
 
     Args:
         name: The name of the actor.
-        signal: The `Signal` that determines the power consumption/production.
+        signal: The `Signal` that determines the power consumption/production. Can be
+            a `StaticSignal` for constant power, a `Trace` for time series data, or any
+            custom signal (e.g., based on real-time monitoring).
         step_size: The step size of the actor in seconds. If None, the step size
             of the microgrid is used.
     """

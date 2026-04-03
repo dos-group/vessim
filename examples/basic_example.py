@@ -22,9 +22,9 @@ environment.add_microgrid(
             "solcast2022_global", column="Berlin", params={"scale": 5000}
         )),
     ],
-    # Microgrids can be equipped with Energy Storage.
+    # Microgrids can be equipped with Dispatchables (controllable resources like batteries).
     # Batteries are (dis)charged based on a configurable Dispatch Policy.
-    storage=vs.SimpleBattery(capacity=1500, initial_soc=0.8, min_soc=0.3),
+    dispatch=vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3),
 )
 
 # Vessim includes various Controllers to monitor and control your microgrid.

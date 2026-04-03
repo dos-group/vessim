@@ -38,7 +38,7 @@ environment.add_microgrid(
             "solcast2022_global", column="Berlin", params={"scale": 5000}
         )),
     ],
-    storage=vs.SimpleBattery(capacity=1500, initial_soc=0.8, min_soc=0.3),
+    dispatch=vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3),
 )
 
 logger = vs.MemoryLogger()
@@ -48,7 +48,7 @@ environment.run(until=24 * 3600)
 vs.plot_result_df(logger.to_df())
 ```
 
-Check out the [tutorials](https://vessim.readthedocs.io/en/latest/tutorials/1_basic_example/) and [`examples/`](examples/) for more, including multi-microgrid setups and real-time dashboards with InfluxDB and Grafana.
+Check out the [tutorials](https://vessim.readthedocs.io/en/latest/tutorials/1_basic_example/) and [`examples/`](examples/) for more, including multi-microgrid setups and real-time monitoring.
 
 
 ## Installation
@@ -65,13 +65,6 @@ If you require software-in-the-loop (SiL) capabilities, you should additionally 
 ```
 pip install vessim[sil]
 ```
-
-For real-time monitoring with InfluxDB and Grafana, install the `monitor` extension:
-
-```
-pip install vessim[monitor]
-```
-
 
 ## Datasets
 

@@ -31,7 +31,6 @@ class TestEnvironment:
         mock_actor.step_size = None
         mock_actor.name = "test_actor"
 
-        # We need to patch Microgrid init because it interacts with mosaik world
         with patch("vessim.environment.Microgrid") as mock_microgrid_cls:
             mg_instance = mock_microgrid_cls.return_value
             mg = environment.add_microgrid(actors=[mock_actor])
@@ -46,25 +45,20 @@ class TestEnvironment:
             def _fetch_current_value(self): return 0
             def finalize(self): pass
 
-        # Create a mock microgrid with a mock actor having a SilSignal
         mock_actor = Mock(spec=Actor)
         mock_actor.signal = DummySilSignal()
-
-        # We can't easily mock the internal state of Environment without adding a microgrid.
-        # So we add a mocked microgrid.
 
         mg = Mock(spec=Microgrid)
         mg.actors = [mock_actor]
         environment.microgrids = [mg]
 
-        # Should raise RuntimeError if rt_factor is None
-        with pytest.raises(RuntimeError, match="SiL actors detected"):
+        with pytest.raises(RuntimeError, match="SiL signals detected"):
             environment.run(until=100)
 
     def test_contains_sil_signals(self, environment):
         mg = Mock(spec=Microgrid)
         actor1 = Mock(spec=Actor)
-        actor1.signal = Mock(spec=Signal) # Not SilSignal
+        actor1.signal = Mock(spec=Signal)
 
         actor2 = Mock(spec=Actor)
 
@@ -80,7 +74,5 @@ class TestEnvironment:
 
         assert environment._contains_sil_signals() is True
 
-        # Check negative case
         mg.actors = [actor1]
         assert environment._contains_sil_signals() is False
-

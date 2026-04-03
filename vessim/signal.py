@@ -465,6 +465,9 @@ class SilSignal(Signal):
         # Start background polling
         self._start_background_polling()
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(interval={self.update_interval}s)"
+
     @abstractmethod
     def _fetch_current_value(self) -> float:
         """Fetch the current value from the external source.
@@ -591,6 +594,9 @@ class PrometheusSignal(SilSignal):
         value = float(results[0]["value"][1])
         return -value if self.consumer else value
 
+    def __repr__(self):
+        return f"PrometheusSignal({self.query})"
+
 
 class WatttimeSignal(SilSignal):
     """Real-time carbon intensity signal from WattTime API.
@@ -658,6 +664,9 @@ class WatttimeSignal(SilSignal):
 
         # Initialize parent class (starts background polling)
         super().__init__(update_interval=update_interval, timeout=timeout)
+
+    def __repr__(self):
+        return f"WatttimeSignal(region={self._region})"
 
     def _get_token(self) -> str:
         """Obtain or refresh authentication token, auto-registering if needed."""

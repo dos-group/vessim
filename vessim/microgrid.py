@@ -8,8 +8,8 @@ import mosaik_api_v3
 
 if TYPE_CHECKING:
     from vessim.actor import Actor
-    from vessim.policy import Policy
-    from vessim.storage import Storage
+    from vessim.dispatch_policy import DispatchPolicy
+    from vessim.dispatchable import Dispatchable
     from vessim._util import Clock
     from vessim.signal import Signal
 
@@ -23,26 +23,29 @@ class MicrogridState(TypedDict):
     p_delta: float  # Current power delta in W
     p_grid: float  # Last step's power exchange with the public grid in W
     actor_states: dict[str, dict]  # States of all actors in the microgrid
-    policy_state: dict  # State of the microgrid policy
-    storage_state: Optional[dict]  # State of the storage, if available
+    policy_state: dict  # State of the microgrid dispatch policy
+    dispatch_states: dict[str, dict]  # States of all dispatchables, keyed by name
     grid_signals: Optional[dict[str, float]]  # Current grid signals, if available
 
 
 class Microgrid:
     """A simulated energy system.
 
-    A microgrid is a collection of actors (consumers and producers), energy storage,
-    and a policy that governs their interaction. It can also be connected to the public grid.
+    A microgrid is a collection of actors (exogenous consumers and producers),
+    dispatchables (controllable resources like batteries), and a dispatch policy
+    that governs their interaction. It can also be connected to the public grid.
 
     Args:
         world: The mosaik world instance.
         clock: The simulation clock.
         step_size: The step size of the simulation in seconds.
-        actors: The actors in the microgrid.
-        policy: The `Policy` that controls the microgrid.
-        storage: Optional energy storage.
+        actors: The exogenous actors in the microgrid.
+        dispatchables: The dispatchable resources in the microgrid.
+        policy: The `DispatchPolicy` that controls the microgrid.
         grid_signals: Optional signals from the public grid.
         name: Optional name for the microgrid.
+        coords: Optional coordinates (latitude, longitude) for visualizing the
+            microgrid's location in the dashboard.
     """
 
     def __init__(
@@ -51,16 +54,16 @@ class Microgrid:
         clock: Clock,
         step_size: int,
         actors: list[Actor],
-        policy: Policy,
-        storage: Optional[Storage] = None,
+        dispatchables: list[Dispatchable],
+        policy: DispatchPolicy,
         grid_signals: Optional[dict[str, Signal]] = None,
         name: Optional[str] = None,
         coords: Optional[tuple[float, float]] = None,
     ):
         self.step_size = step_size
         self.actors = actors
+        self.dispatchables = dispatchables
         self.policy = policy
-        self.storage = storage
         self.name = name or f"microgrid_{id(self)}"
         self.coords = coords
 
@@ -90,9 +93,9 @@ class Microgrid:
         for actor_name, actor_entity in self.actor_entities.items():
             world.connect(actor_entity, self.grid_entity, "power")
 
-        storage_sim = world.start("Storage", sim_id=f"{self.name}.storage", step_size=step_size)
-        self.storage_entity = storage_sim.Storage(storage=storage, policy=policy)
-        world.connect(self.grid_entity, self.storage_entity, "p_delta")
+        dispatch_sim = world.start("Dispatch", sim_id=f"{self.name}.dispatch", step_size=step_size)
+        self.dispatch_entity = dispatch_sim.Dispatch(dispatchables=dispatchables, policy=policy)
+        world.connect(self.grid_entity, self.dispatch_entity, "p_delta")
 
     def finalize(self):
         """Clean up in case the simulation was interrupted.

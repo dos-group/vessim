@@ -8,10 +8,10 @@ import mosaik  # type: ignore
 from vessim._util import Clock, disable_rt_warnings
 from vessim.actor import Actor
 from vessim.controller import Controller
+from vessim.dispatch_policy import DispatchPolicy, DefaultDispatchPolicy
+from vessim.dispatchable import Dispatchable
 from vessim.microgrid import Microgrid
-from vessim.policy import Policy, DefaultPolicy
 from vessim.signal import Signal, SilSignal
-from vessim.storage import Storage
 
 
 class Environment:
@@ -30,21 +30,21 @@ class Environment:
         "Actor": {"python": "vessim.actor:_ActorSim"},
         "Controller": {"python": "vessim.controller:_ControllerSim"},
         "Grid": {"python": "vessim.microgrid:_GridSim"},
-        "Storage": {"python": "vessim.storage:_StorageSim"},
+        "Dispatch": {"python": "vessim.dispatchable:_DispatchSim"},
     }
 
     def __init__(self, sim_start: str | datetime, step_size: int = 1):
         self.clock = Clock(sim_start)
         self.step_size = step_size
         self.microgrids: list[Microgrid] = []
-        self.controllers: list[Controller] = []  # Track controllers at environment level
+        self.controllers: list[Controller] = []
         self.world = mosaik.World(self.COSIM_CONFIG, skip_greetings=True)
 
     def add_microgrid(
         self,
         actors: list[Actor],
-        policy: Optional[Policy] = None,
-        storage: Optional[Storage] = None,
+        dispatch: Optional[Dispatchable | list[Dispatchable]] = None,
+        policy: Optional[DispatchPolicy] = None,
         grid_signals: Optional[dict[str, Signal]] = None,
         name: Optional[str] = None,
         coords: Optional[tuple[float, float]] = None,
@@ -52,10 +52,11 @@ class Environment:
         """Add a microgrid to the environment.
 
         Args:
-            actors: A list of actors that are part of the microgrid.
-            policy: The policy that controls the energy management of the microgrid.
-                If None, a `DefaultPolicy` is used.
-            storage: An optional energy storage system (e.g., a battery).
+            actors: A list of exogenous actors (consumers/producers) in the microgrid.
+            dispatch: Optional dispatchable resource(s) (e.g., batteries, generators).
+                Can be a single `Dispatchable` or a list.
+            policy: The dispatch policy that controls energy management. If None, a
+                `DefaultDispatchPolicy` is used.
             grid_signals: Optional signals from the public grid (e.g., carbon intensity).
             name: An optional name for the microgrid.
             coords: Optional coordinates (latitude, longitude) for the microgrid.
@@ -66,13 +67,21 @@ class Environment:
         if not actors:
             raise ValueError("There should be at least one actor in the Microgrid.")
 
+        # Normalize dispatch to a list
+        if dispatch is None:
+            dispatchables = []
+        elif isinstance(dispatch, Dispatchable):
+            dispatchables = [dispatch]
+        else:
+            dispatchables = list(dispatch)
+
         microgrid = Microgrid(
             world=self.world,
             clock=self.clock,
             step_size=self.step_size,
             actors=actors,
-            policy=policy if policy is not None else DefaultPolicy(),
-            storage=storage,
+            dispatchables=dispatchables,
+            policy=policy if policy is not None else DefaultDispatchPolicy(),
             grid_signals=grid_signals,
             name=name,
             coords=coords,
@@ -120,28 +129,30 @@ class Environment:
                     ("state", "actor_states"),
                 )
 
-            # Connect to storage for state/energy feedback
+            # Connect to dispatch for state/energy feedback
             self.world.connect(
-                microgrid.storage_entity,
+                microgrid.dispatch_entity,
                 controller_entity,
                 "p_grid",
                 time_shifted=True,
                 initial_data={"p_grid": 0.0},
             )
             self.world.connect(
-                microgrid.storage_entity,
+                microgrid.dispatch_entity,
                 controller_entity,
                 "policy_state",
                 time_shifted=True,
                 initial_data={"policy_state": microgrid.policy.state()},
             )
-            if microgrid.storage:
+            if microgrid.dispatchables:
                 self.world.connect(
-                    microgrid.storage_entity,
+                    microgrid.dispatch_entity,
                     controller_entity,
-                    "storage_state",
+                    "dispatch_states",
                     time_shifted=True,
-                    initial_data={"storage_state": microgrid.storage.state()},
+                    initial_data={
+                        "dispatch_states": {d.name: d.state() for d in microgrid.dispatchables}
+                    },
                 )
 
     def run(
@@ -164,17 +175,16 @@ class Environment:
                 simulation falls behind real-time (only used if `rt_factor` is set).
         """
         if until is None:
-            # there is no integer representing infinity in python
             until = float("inf")  # type: ignore
         assert until is not None
 
         # Initialize controllers before running simulation
         self._initialize_controllers()
 
-        # Check if SiL actors are present and fail if the simulation is not in real-time mode
+        # Check if SiL signals are present and fail if the simulation is not in real-time mode
         if self._contains_sil_signals() and rt_factor is None:
             raise RuntimeError(
-                "SiL actors detected but not running in real-time mode. "
+                "SiL signals detected but not running in real-time mode. "
                 "Use rt_factor > 0 for real-time simulation."
             )
 
@@ -188,7 +198,7 @@ class Environment:
             raise
 
     def _contains_sil_signals(self) -> bool:
-        """Check if any microgrid contains SiL actors."""
+        """Check if any microgrid contains SiL signals."""
         for microgrid in self.microgrids:
             for actor in microgrid.actors:
                 if isinstance(actor.signal, SilSignal):
