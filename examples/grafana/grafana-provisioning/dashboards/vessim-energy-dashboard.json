@@ -4,7 +4,7 @@
   "links": [],
   "panels": [
     {
-      "datasource": { "type": "influxdb", "uid": "influxdb2" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -17,7 +17,6 @@
             "showPoints": "never",
             "spanNulls": false
           },
-          "displayName": "${__field.labels.name}",
           "unit": "watt"
         }
       },
@@ -33,7 +32,8 @@
       },
       "targets": [
         {
-          "query": "from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sim\")\n  |> filter(fn: (r) => r.microgrid == \"${microgrid}\")\n  |> filter(fn: (r) => r.category != \"microgrid\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
+          "expr": "vessim_microgrid_p_actor{microgrid=\"$microgrid\"}",
+          "legendFormat": "{{actor}}",
           "refId": "A"
         }
       ],
@@ -42,7 +42,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "influxdb", "uid": "influxdb2" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "fixedColor": "blue", "mode": "fixed" },
@@ -75,7 +75,8 @@
       },
       "targets": [
         {
-          "query": "from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sim\")\n  |> filter(fn: (r) => r.microgrid == \"${microgrid}\")\n  |> filter(fn: (r) => r.category == \"microgrid\")\n  |> filter(fn: (r) => r._field == \"p_delta\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
+          "expr": "vessim_microgrid_p_delta{microgrid=\"$microgrid\"}",
+          "legendFormat": "p_delta",
           "refId": "A"
         }
       ],
@@ -84,7 +85,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "influxdb", "uid": "influxdb2" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "fixedColor": "green", "mode": "fixed" },
@@ -115,7 +116,8 @@
       },
       "targets": [
         {
-          "query": "from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sim\")\n  |> filter(fn: (r) => r.microgrid == \"${microgrid}\")\n  |> filter(fn: (r) => r.category == \"microgrid\")\n  |> filter(fn: (r) => r._field == \"soc\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
+          "expr": "vessim_microgrid_battery_soc{microgrid=\"$microgrid\"}",
+          "legendFormat": "SoC",
           "refId": "A"
         }
       ],
@@ -124,7 +126,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "influxdb", "uid": "influxdb2" },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "fixedColor": "purple", "mode": "fixed" },
@@ -157,7 +159,8 @@
       },
       "targets": [
         {
-          "query": "from(bucket: \"vessim_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"sim\")\n  |> filter(fn: (r) => r.microgrid == \"${microgrid}\")\n  |> filter(fn: (r) => r.category == \"microgrid\")\n  |> filter(fn: (r) => r._field == \"p_grid\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
+          "expr": "vessim_microgrid_p_grid{microgrid=\"$microgrid\"}",
+          "legendFormat": "p_grid",
           "refId": "A"
         }
       ],
@@ -171,20 +174,20 @@
   "templating": {
     "list": [
       {
-        "current": {},
-        "datasource": { "type": "influxdb", "uid": "influxdb2" },
-        "definition": "from(bucket: \"vessim_bucket\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"sim\") |> keep(columns: [\"microgrid\"]) |> distinct(column: \"microgrid\")",
+        "current": { "text": "datacenter", "value": "datacenter" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "definition": "label_values(vessim_microgrid_p_delta, microgrid)",
         "includeAll": false,
         "label": "Microgrid",
         "name": "microgrid",
-        "query": "from(bucket: \"vessim_bucket\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"sim\") |> keep(columns: [\"microgrid\"]) |> distinct(column: \"microgrid\")",
+        "query": "label_values(vessim_microgrid_p_delta, microgrid)",
         "refresh": 2,
         "sort": 1,
         "type": "query"
       }
     ]
   },
-  "time": { "from": "now-24h", "to": "now" },
+  "time": { "from": "now-15m", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
   "title": "Vessim Energy Dashboard",

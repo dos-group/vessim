@@ -16,9 +16,6 @@ class Actor:
         signal: The `Signal` that determines the power consumption/production.
         step_size: The step size of the actor in seconds. If None, the step size
             of the microgrid is used.
-        tag: Optional category tag (e.g., ``"solar"``, ``"wind"``, ``"load"``).
-            Used by controllers like ``InfluxLogger`` for grouping.
-        coords: Optional ``(latitude, longitude)`` tuple for geospatial annotation.
     """
 
     def __init__(
@@ -26,14 +23,10 @@ class Actor:
         name: str,
         signal: Signal,
         step_size: Optional[int] = None,
-        tag: Optional[str] = None,
-        coords: Optional[tuple[float, float]] = None,
     ) -> None:
         self.name = name
         self.step_size = step_size
         self.signal = signal
-        self.tag = tag
-        self.coords = coords
 
     def power(self, now: datetime) -> float:
         """Current power consumption/production."""
@@ -41,15 +34,11 @@ class Actor:
 
     def state(self, now: datetime) -> dict:
         """Current state of the actor which is passed to `Controller`s on every step."""
-        state = {
+        return {
             "name": self.name,
             "signal": str(self.signal),
             "power": self.power(now),
-            "tag": self.tag,
         }
-        if self.coords:
-            state["coords"] = {"latitude": self.coords[0], "longitude": self.coords[1]}
-        return state
 
     def finalize(self) -> None:
         """Clean up resources."""

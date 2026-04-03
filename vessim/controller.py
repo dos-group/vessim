@@ -13,11 +13,9 @@ import mosaik_api_v3  # type: ignore
 from loguru import logger
 
 from vessim._util import flatten_dict
-from vessim._influx_writer import InfluxWriter
 
 if TYPE_CHECKING:
     from vessim.microgrid import Microgrid, MicrogridState
-    from vessim.actor import Actor
 
 
 class Controller(ABC):
@@ -122,75 +120,6 @@ class CsvLogger(Controller):
                 if write_header:
                     writer.writeheader()
                 writer.writerow(log_entry)
-
-
-class InfluxLogger(Controller):
-    """Controller that logs the state of the simulation in InfluxDB.
-
-    Args:
-        url: InfluxDB server URL (e.g., 'http://localhost:8086').
-        token: InfluxDB authentication token.
-        org: InfluxDB organization.
-        bucket: InfluxDB bucket to write to.
-        sim_id: Optional simulation ID for filtering in InfluxDB.
-    """
-
-    def __init__(
-        self,
-        url: str,
-        token: str,
-        org: str,
-        bucket: str,
-        sim_id: Optional[str] = None,
-    ):
-        self._influx_writer = InfluxWriter(
-            url=url, token=token, org=org, bucket=bucket, sim_id=sim_id,
-        )
-        self._microgrids: dict[str, Microgrid] = {}
-        self._actor_lookup: dict[str, dict[str, Actor]] = {}
-
-    def start(self, microgrids: dict[str, Microgrid]) -> None:
-        self._microgrids = microgrids
-        for mg_name, mg in microgrids.items():
-            self._actor_lookup[mg_name] = {actor.name: actor for actor in mg.actors}
-
-    def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
-        if not self._influx_writer.is_available:
-            return
-
-        for mg_name, state in microgrid_states.items():
-            actor_lookup = self._actor_lookup.get(mg_name, {})
-            actor_states = state.get("actor_states", {}) or {}
-            actor_values: dict = {}
-            tag_sums: dict[str, float] = defaultdict(float)
-
-            for actor_name, a_state in actor_states.items():
-                power = a_state.get("power")
-                if power is None or not isinstance(power, (int, float)):
-                    continue
-                actor = actor_lookup.get(actor_name)
-                if actor is not None:
-                    actor_values[actor] = power
-                    if actor.tag is not None:
-                        tag_sums[actor.tag] += power
-
-            mg = self._microgrids.get(mg_name)
-
-            self._influx_writer.write_microgrid(
-                now,
-                microgrid_name=mg_name,
-                actor_values=actor_values,
-                microgrid_state=state,
-                coords=mg.coords if mg else None,
-                tag_sums=dict(tag_sums) if tag_sums else None,
-            )
-
-    def finalize(self) -> None:
-        if self._influx_writer is not None:
-            self._influx_writer.close()
-            logger.info(
-                f"InfluxLogger: {self._influx_writer.points_written} points written"
-            )
 
 
 class Api(Controller):

@@ -1,26 +1,4 @@
 services:
-  influxdb2:
-    container_name: influxdb2
-    image: influxdb:2
-    ports:
-      - "8086:8086"
-    volumes:
-      - influxdb_data:/var/lib/influxdb2
-      - influxdb_config:/etc/influxdb2
-    environment:
-      - DOCKER_INFLUXDB_INIT_MODE=setup
-      - DOCKER_INFLUXDB_INIT_USERNAME=admin
-      - DOCKER_INFLUXDB_INIT_PASSWORD=admin123
-      - DOCKER_INFLUXDB_INIT_ORG=vessim_org
-      - DOCKER_INFLUXDB_INIT_BUCKET=vessim_bucket
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=vessim-dev-token
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8086/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
   prometheus:
     container_name: prometheus
     image: prom/prometheus:latest
@@ -48,9 +26,7 @@ services:
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
-      - INFLUX_TOKEN=vessim-dev-token
     depends_on:
-      - influxdb2
       - prometheus
     volumes:
       - grafana_data:/var/lib/grafana
@@ -60,8 +36,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  influxdb_data:
-  influxdb_config:
   prometheus_data:
   grafana_data:
   grafana_logs:

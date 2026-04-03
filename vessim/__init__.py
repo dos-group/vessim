@@ -29,10 +29,10 @@ __all__ = [
 ]
 
 try:
-    from vessim.controller import Api, InfluxLogger  # noqa: F401
+    from vessim.controller import Api  # noqa: F401
     from vessim.signal import SilSignal, WatttimeSignal, PrometheusSignal  # noqa: F401
 
-    __all__.extend(["Api", "InfluxLogger", "SilSignal", "WatttimeSignal", "PrometheusSignal"])
+    __all__.extend(["Api", "SilSignal", "WatttimeSignal", "PrometheusSignal"])
 except ImportError:
     # Requires optional dependencies: pip install vessim[sil]
     pass

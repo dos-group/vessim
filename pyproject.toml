@@ -44,7 +44,6 @@ sil = [
     "fastapi>=0.104.0",          # Api broker
     "uvicorn>=0.23.0",           # Api broker
     "prometheus_client>0.22.0",  # Api /metrics export
-    "influxdb-client>=1.36.0",   # InfluxLogger → Grafana
 ]
 dev = [
     "pytest",

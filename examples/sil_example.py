@@ -49,15 +49,8 @@ def main():
     )
 
     # The API controller exposes a REST API and a /metrics endpoint for Prometheus.
+    # Prometheus scrapes this endpoint and Grafana visualizes the data.
     environment.add_controller(vs.Api(export_prometheus=True))
-
-    # Stream simulation data to InfluxDB for live Grafana dashboards.
-    environment.add_controller(vs.InfluxLogger(
-        url="http://127.0.0.1:8086",
-        token="vessim-dev-token",
-        org="vessim_org",
-        bucket="vessim_bucket",
-    ))
 
     print("Starting simulation...")
     print("API available at http://localhost:8700")
