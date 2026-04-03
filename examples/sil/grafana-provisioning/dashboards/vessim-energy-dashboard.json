@@ -7,6 +7,141 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": -100 },
+              { "color": "green", "value": 0 }
+            ]
+          },
+          "unit": "watt"
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "vessim_microgrid_p_delta{microgrid=\"$microgrid\"}",
+          "legendFormat": "Delta Power",
+          "refId": "A"
+        }
+      ],
+      "title": "Delta Power",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": -100 },
+              { "color": "green", "value": 0 }
+            ]
+          },
+          "unit": "watt"
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "vessim_microgrid_p_grid{microgrid=\"$microgrid\"}",
+          "legendFormat": "Grid Power",
+          "refId": "A"
+        }
+      ],
+      "title": "Grid Power",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 0.2 },
+              { "color": "green", "value": 0.5 }
+            ]
+          },
+          "unit": "percentunit"
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto"
+      },
+      "targets": [
+        {
+          "expr": "vessim_microgrid_battery_soc{microgrid=\"$microgrid\"}",
+          "legendFormat": "SoC",
+          "refId": "A"
+        }
+      ],
+      "title": "Battery SoC",
+      "type": "gauge"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null }
+            ]
+          },
+          "unit": "watth"
+        }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "vessim_microgrid_battery_capacity_wh{microgrid=\"$microgrid\"}",
+          "legendFormat": "Capacity",
+          "refId": "A"
+        }
+      ],
+      "title": "Battery Capacity",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
           "color": { "mode": "palette-classic" },
           "custom": {
             "drawStyle": "line",
@@ -15,15 +150,15 @@
             "lineInterpolation": "smooth",
             "lineWidth": 2,
             "showPoints": "never",
-            "spanNulls": false
+            "spanNulls": true
           },
           "unit": "watt"
         }
       },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
       "options": {
         "legend": {
-          "calcs": ["mean", "max"],
+          "calcs": ["mean", "max", "min"],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
@@ -38,7 +173,6 @@
         }
       ],
       "title": "Actor Power",
-      "transparent": true,
       "type": "timeseries"
     },
     {
@@ -54,10 +188,9 @@
             "lineInterpolation": "smooth",
             "lineWidth": 2,
             "showPoints": "never",
-            "spanNulls": false,
+            "spanNulls": true,
             "thresholdsStyle": { "mode": "area" }
           },
-          "displayName": "p_delta",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -68,7 +201,7 @@
           "unit": "watt"
         }
       },
-      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 8 },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 12 },
       "options": {
         "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false },
         "tooltip": { "mode": "single" }
@@ -81,7 +214,6 @@
         }
       ],
       "title": "Delta Power",
-      "transparent": true,
       "type": "timeseries"
     },
     {
@@ -96,15 +228,14 @@
             "lineInterpolation": "smooth",
             "lineWidth": 2,
             "showPoints": "never",
-            "spanNulls": false
+            "spanNulls": true
           },
-          "displayName": "SoC",
           "max": 1,
           "min": 0,
           "unit": "percentunit"
         }
       },
-      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 14 },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 18 },
       "options": {
         "legend": {
           "calcs": ["mean", "last"],
@@ -122,7 +253,6 @@
         }
       ],
       "title": "Battery State of Charge",
-      "transparent": true,
       "type": "timeseries"
     },
     {
@@ -138,10 +268,9 @@
             "lineInterpolation": "smooth",
             "lineWidth": 2,
             "showPoints": "never",
-            "spanNulls": false,
+            "spanNulls": true,
             "thresholdsStyle": { "mode": "area" }
           },
-          "displayName": "p_grid",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -152,7 +281,7 @@
           "unit": "watt"
         }
       },
-      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 20 },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 24 },
       "options": {
         "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false },
         "tooltip": { "mode": "single" }
@@ -165,7 +294,6 @@
         }
       ],
       "title": "Grid Power",
-      "transparent": true,
       "type": "timeseries"
     }
   ],
@@ -174,7 +302,7 @@
   "templating": {
     "list": [
       {
-        "current": { "text": "datacenter", "value": "datacenter" },
+        "current": {},
         "datasource": { "type": "prometheus", "uid": "prometheus" },
         "definition": "label_values(vessim_microgrid_p_delta, microgrid)",
         "includeAll": false,
@@ -188,6 +316,7 @@
     ]
   },
   "time": { "from": "now-15m", "to": "now" },
+  "refresh": "5s",
   "timepicker": {},
   "timezone": "browser",
   "title": "Vessim Energy Dashboard",

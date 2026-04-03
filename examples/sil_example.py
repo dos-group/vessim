@@ -4,11 +4,14 @@ Uses node_exporter CPU metrics from Prometheus as the server power consumption
 signal, demonstrating how vessim connects to real monitoring infrastructure.
 
 1. pip install 'vessim[sil]'
-2. docker compose -f examples/grafana/docker-compose.yml up -d
+2. docker compose -f examples/sil/docker-compose.yml up -d
 3. Wait ~15s for Prometheus to collect initial node_exporter scrapes
 4. python examples/sil_example.py
 5. API available at http://localhost:8700
-6. Grafana dashboard at http://localhost:3001
+
+Visualization (run in a second terminal):
+  - NiceGUI dashboard: pip install 'vessim[dashboard]' && python -m dashboard
+  - Grafana: docker compose -f examples/sil/docker-compose.grafana.yml up -d
 """
 import vessim as vs
 from datetime import datetime
@@ -40,21 +43,16 @@ def main():
         signal=vs.Trace.load("solcast2022_global", "Berlin", params={"scale": 2000})
     )
 
-    battery = vs.SimpleBattery(capacity=5000, initial_soc=0.5)
+    battery = vs.SimpleBattery(capacity=20, initial_soc=0.5)
 
     environment.add_microgrid(
-        name="datacenter",
+        name="your_computer",
         actors=[server, solar],
         storage=battery
     )
 
     # The API controller exposes a REST API and a /metrics endpoint for Prometheus.
-    # Prometheus scrapes this endpoint and Grafana visualizes the data.
     environment.add_controller(vs.Api(export_prometheus=True))
-
-    print("Starting simulation...")
-    print("API available at http://localhost:8700")
-    print("Grafana dashboard at http://localhost:3001")
 
     # Run the simulation in real-time.
     # You can now use 'curl' or other tools to interact with the API.
