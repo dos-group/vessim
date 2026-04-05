@@ -92,7 +92,7 @@ curl http://localhost:8700/my_microgrid
   "time": "2023-01-01T00:00:00",
   "p_delta": -500.0,
   "p_grid": -500.0,
-  "storage": { "soc": 0.8 },
+  "dispatch": { "battery": { "soc": 0.8 } },
   "actors": { "server": { "power": -500.0 } }
 }
 ```
@@ -101,7 +101,7 @@ curl http://localhost:8700/my_microgrid
 ```bash
 curl -X PUT http://localhost:8700/my_microgrid \
      -H "Content-Type: application/json" \
-     -d '{"storage": {"min_soc": 0.5}}'
+     -d '{"dispatchable": {"name": "battery", "property": "min_soc", "value": 0.5}}'
 ```
 
 ### Prometheus Exporter
@@ -130,13 +130,13 @@ def main():
         signal=vs.Trace.load("solcast2022_global", "Berlin", params={"scale": 2000})
     )
 
-    battery = vs.SimpleBattery(capacity=5000, initial_soc=0.5)
+    battery = vs.SimpleBattery(name="battery", capacity=5000, initial_soc=0.5)
 
     # 3. Create Microgrid
     environment.add_microgrid(
         name="datacenter",
         actors=[server, solar],
-        storage=battery
+        dispatch=battery,
     )
 
     # 4. Add API Controller with Prometheus export

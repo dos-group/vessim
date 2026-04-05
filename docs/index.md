@@ -37,24 +37,26 @@ pip install vessim[sil]
 
 ## How Vessim Works
 
-Vessim can simulate local energy systems (we call them "microgrids") that combine computing equipment with renewable energy sources and batteries.
+Vessim simulates local energy systems called **microgrids** that combine computing equipment with renewable energy sources, controllable resources like batteries, and a connection to the public grid.
 
 ![Vessim Overview](assets/vessim_overview.png)
 
 In the diagram, all hexagons represent a distinct [Mosaik](https://mosaik.offis.de) component which can be either simulated or real (software-in-the-loop).
 Vessim has the following core components:
 
-- **Actors** (red): Energy consumers and producers
+- **Actors** (red): Exogenous energy consumers and producers whose power output is determined by an underlying [Signal](tutorials/2_signals_and_datasets.md).
     - Computing systems (servers, workstations, etc.) that consume power
     - Renewable sources (solar panels, wind turbines) that produce power
-    - Both can be based on other simulators, historical traces, or real-life input from power meters
+    - Signals can be static, based on historical traces, or fed from real-time sources like Prometheus
 
-- **Energy Storage** (gray): From batteries to hydrogen storage
-    - Batteries that store excess renewable energy for later use
-    - Vessim already implements analytical models for realistic Li-ion battery modeling
-    - Configurable charging/discharging policies based on your strategy
+    At each simulation step, the **Grid** sums all actor powers to compute the **power delta** — the net surplus or deficit of the microgrid.
 
-- **Controller** (yellow): Enable logging, monitoring, REST APIs, and custom control strategies
-    - Loggers can track the energy system state and carbon emissions over time in memory or, e.g., in a CSV file
-    - REST APIs can provide real-time visibility and control over the simulated energy system
-    - You can implement custom control strategies to e.g. schedule computing workloads based on energy availability
+- **Dispatchables** (gray): Controllable energy resources whose power output is managed by a **Dispatch Policy**.
+    - The most common dispatchable is a battery, but anything with a controllable power setpoint (diesel generators, hydrogen electrolyzers, etc.) can be modeled as a `Dispatchable`.
+    - Vessim ships with two battery models: `SimpleBattery` (ideal, capacity-based) and `ClcBattery` (a realistic lithium-ion model based on [Kazhamiaka et al., 2019](https://doi.org/10.1186/s42162-019-0070-6)).
+    - The **Dispatch Policy** decides how to distribute the power delta across dispatchables. The default policy charges batteries when there is excess power and discharges them during deficits. Any remaining imbalance is exchanged with the public grid. You can implement custom policies for more advanced strategies (e.g., charging only when the grid is clean).
+
+- **Controllers** (yellow): Observe and interact with the simulation at every step.
+    - Built-in loggers (`MemoryLogger`, `CsvLogger`) record the full microgrid state over time
+    - The `Api` controller exposes a REST API for real-time monitoring and control
+    - You can implement custom controllers to, e.g., adjust dispatch policy parameters based on grid carbon intensity

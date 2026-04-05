@@ -19,7 +19,7 @@ nav:
     - api_reference/environment.md
     - Actors and Signals: api_reference/actors.md
     - Controllers: api_reference/controllers.md
-    - Energy Storage: api_reference/storage.md
+    - Dispatchables: api_reference/dispatchables.md
     - Dispatch Policy: api_reference/policy.md
     - Visualization: api_reference/visualization.md
   - Publications: publications.md

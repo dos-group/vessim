@@ -1,2 +1,2 @@
-::: vessim.Policy
-::: vessim.DefaultPolicy
+::: vessim.DispatchPolicy
+::: vessim.DefaultDispatchPolicy

@@ -19,7 +19,7 @@ environment.add_microgrid( # (2)!
             "solcast2022_global", column="Berlin", params={"scale": 5000}
         )), # (4)!
     ],
-    storage=vs.SimpleBattery(capacity=1500, initial_soc=0.8, min_soc=0.3), # (5)!
+    dispatch=vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3), # (5)!
     # (6)!
 )
 
@@ -36,8 +36,9 @@ vs.plot_result_df(logger.to_df()) # (9)!
 3.  **Actors** represent energy consumers (negative values) or producers (positive values). In this case we assume a server with a constant power consumption of 700W.<br /><br />
     At each simulation step, Vessim sums up the power values of all actors to determine the microgrid's power delta at the current time.
 4.  Every actor is based on a [Signal](2_signals_and_datasets.md) that provides its power value at any given time. Signals can be static (constant), based on historical time-series data (Vessim provides some exemplary datasets but you can of course bring your own), or real-time data from physical systems through, e.g., Prometheus.
-5.  Optionally, microgrids can be equipped with **Energy Storage** like a battery. Vessim currently includes two battery models, however you can also integrate external simulators like Matlab.<br /><br />
-    Batteries are (dis)charged based on a configurable **Dispatch Policy**, which allows you to, e.g., charge from the public grid if energy is clean or cheap.
+5.  Optionally, microgrids can be equipped with **Dispatchables** — controllable energy resources like batteries or generators. Unlike actors, their power output is not determined by a signal but managed by a **Dispatch Policy**.<br /><br />
+    The `dispatch` parameter accepts a single `Dispatchable` or a list. Vessim includes two battery models (`SimpleBattery` and `ClcBattery`), but you can implement your own by subclassing `Dispatchable`.<br /><br />
+    If you don't specify a `policy`, Vessim uses the `DefaultDispatchPolicy`, which tries to absorb as much of the power delta as possible (charging on surplus, discharging on deficit) and exchanges the rest with the public grid.
 6.  Optionally, you can also define **Grid Signals** for your microgrid that provide contextual information about the public grid, e.g., energy prices or carbon intensity. Unlike actors, they do not consume or produce power themselves. We omitted them in this simple example.
 7.  Vessim includes various **Controllers** to monitor and control your microgrid. In this example, we use a simple in-memory logger to record the simulation results.
 8.  We run the simulation for 24 hours (24 * 3600 seconds).
@@ -63,16 +64,18 @@ The grid then calculates the **Delta Power**, which is simply the sum of all act
 - A **positive delta** means you have excess energy
 - A **negative delta** means you have a power deficit
 
-### 2. Energy Storage and Policy
+### 2. Dispatchables and Dispatch Policy
 
-If your microgrid has **Energy Storage** (like a battery), it can be used to balance the delta power. This behavior is governed by a **Dispatch Policy**.
+**Dispatchables** are controllable energy resources — anything whose power setpoint you can actively manage, such as batteries, diesel generators, or hydrogen electrolyzers. Each dispatchable reports a **feasible range** of power it can accept for a given timestep (accounting for capacity, state-of-charge, c-rate limits, etc.).
 
-By default, Vessim uses a policy that tries to balance as much of the delta as possible using the battery:
+A **Dispatch Policy** decides how to distribute the power delta across dispatchables. Vessim's `DefaultDispatchPolicy` iterates through dispatchables in order and allocates as much of the delta as each can handle:
 
-- If there is an **excess**, the battery is charged.
-- If there is a **deficit**, the battery is discharged.
+- If there is an **excess**, dispatchables are charged (positive power).
+- If there is a **deficit**, dispatchables are discharged (negative power).
 
-Any remaining delta that cannot be handled by the battery is exchanged with the public grid.
+Any remaining delta that dispatchables cannot absorb is exchanged with the public grid. You can implement custom policies (subclassing `DispatchPolicy`) for more advanced strategies, such as only charging when the grid carbon intensity is low.
+
+The `DefaultDispatchPolicy` also supports an `"islanded"` mode where the microgrid is not connected to the public grid — if dispatchables cannot fully balance the delta, an error is raised.
 
 ### 3. Grid Signals
 
