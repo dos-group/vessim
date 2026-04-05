@@ -36,6 +36,7 @@ dependencies = [
     "loguru>=0.6.0",
     "docopt-ng>=0.9.0",  # mosaik-api-v3 depends on an outdated version of docopt, doctopt-ng is a maintained fork
     "plotly>=5.0.0",
+    "pyyaml>=6.0.0",
 ]
 
 [project.optional-dependencies]

@@ -90,16 +90,48 @@ class MemoryLogger(Controller):
 
 
 class CsvLogger(Controller):
-    """Controller that logs the state of the simulation to a CSV file.
+    """Controller that logs simulation results to a directory.
+
+    Writes two files:
+    - ``config.yaml``: static experiment configuration (microgrid topology, actor and
+      dispatchable parameters) written once before the simulation starts.
+    - ``timeseries.csv``: dynamic state logged at every simulation step.
 
     Args:
-        outfile: Path to the CSV file.
+        outdir: Path to the output directory (created if it doesn't exist).
     """
 
-    def __init__(self, outfile: str | Path):
-        self.filepath = Path(outfile)
+    def __init__(self, outdir: str | Path):
+        self.outdir = Path(outdir)
+        self.outdir.mkdir(exist_ok=True, parents=True)
+        self.csv_path = self.outdir / "timeseries.csv"
         self.fieldnames: dict[str, list] = {}
-        self.filepath.parent.mkdir(exist_ok=True, parents=True)
+
+    def start(self, microgrids: dict[str, Microgrid]) -> None:
+        try:
+            import yaml
+        except ImportError:
+            raise ImportError(
+                "CsvLogger requires 'pyyaml'. Install with: pip install pyyaml"
+            )
+
+        config: dict = {"microgrids": {}}
+        for mg_name, mg in microgrids.items():
+            config["microgrids"][mg_name] = {
+                "actors": [actor.config() for actor in mg.actors],
+                "dispatchables": [
+                    {"name": d.name, "type": d.__class__.__name__, **d.config()}
+                    for d in mg.dispatchables
+                ],
+                "policy": {
+                    "type": mg.policy.__class__.__name__,
+                    **mg.policy.state(),
+                },
+                "coords": mg.coords,
+            }
+
+        with (self.outdir / "config.yaml").open("w") as f:
+            yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
     def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
         for mg_name, mg_state in microgrid_states.items():
@@ -115,7 +147,7 @@ class CsvLogger(Controller):
             else:
                 mode, write_header = "a", False
 
-            with self.filepath.open(mode, newline="") as csvfile:
+            with self.csv_path.open(mode, newline="") as csvfile:
                 writer = DictWriter(csvfile, fieldnames=self.fieldnames[mg_name])
                 if write_header:
                     writer.writeheader()
@@ -160,20 +192,12 @@ class Api(Controller):
         for mg_name, mg in microgrids.items():
             config = {
                 "name": mg_name,
-                "actors": [
-                    {
-                        "name": actor.name,
-                        "signal_type": actor.signal.__class__.__name__,
-                        "signal": str(actor.signal),
-                        "step_size": actor.step_size,
-                    }
-                    for actor in mg.actors
-                ],
+                "actors": [actor.config() for actor in mg.actors],
                 "dispatch": [
                     {
                         "name": d.name,
                         "type": d.__class__.__name__,
-                        **d.state(),
+                        **d.config(),
                     }
                     for d in mg.dispatchables
                 ],

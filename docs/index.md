@@ -57,6 +57,6 @@ Vessim has the following core components:
     - The **Dispatch Policy** decides how to distribute the power delta across dispatchables. The default policy charges batteries when there is excess power and discharges them during deficits. Any remaining imbalance is exchanged with the public grid. You can implement custom policies for more advanced strategies (e.g., charging only when the grid is clean).
 
 - **Controllers** (yellow): Observe and interact with the simulation at every step.
-    - Built-in loggers (`MemoryLogger`, `CsvLogger`) record the full microgrid state over time
+    - Built-in loggers (`MemoryLogger`, `CsvLogger`) record the full microgrid state over time; `CsvLogger` also writes a `config.yaml` with the static experiment configuration alongside the time-series data
     - The `Api` controller exposes a REST API for real-time monitoring and control
     - You can implement custom controllers to, e.g., adjust dispatch policy parameters based on grid carbon intensity

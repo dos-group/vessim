@@ -37,13 +37,18 @@ class Actor:
         """Current power consumption/production."""
         return self.signal.now(at=now)
 
-    def state(self, now: datetime) -> dict:
-        """Current state of the actor which is passed to `Controller`s on every step."""
+    def config(self) -> dict:
+        """Static configuration of the actor. Used for experiment config export."""
         return {
             "name": self.name,
+            "signal_type": self.signal.__class__.__name__,
             "signal": str(self.signal),
-            "power": self.power(now),
+            "step_size": self.step_size,
         }
+
+    def state(self, now: datetime) -> dict:
+        """Dynamic state of the actor at the current timestep, passed to `Controller`s."""
+        return {"power": self.power(now)}
 
     def finalize(self) -> None:
         """Clean up resources."""

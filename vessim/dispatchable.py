@@ -60,8 +60,20 @@ class Dispatchable(ABC):
         """
 
     @abstractmethod
+    def config(self) -> dict:
+        """Returns the static configuration parameters of the dispatchable.
+
+        These are parameters that are fixed at construction time and do not change
+        during the simulation (e.g. capacity, C-rate). Used for experiment metadata.
+        """
+
+    @abstractmethod
     def state(self) -> dict:
-        """Returns information about the current state of the dispatchable."""
+        """Returns the dynamic state of the dispatchable at the current timestep.
+
+        These are values that change during the simulation (e.g. SoC, charge level).
+        Used for time-series logging.
+        """
 
 
 class Storage(Dispatchable):
@@ -192,13 +204,17 @@ class SimpleBattery(Storage):
         """Returns the state-of-charge (SoC) of the battery (0 to 1)."""
         return self._soc
 
+    def config(self) -> dict:
+        return {
+            "capacity": self.capacity,
+            "min_soc": self.min_soc,
+            "c_rate": self.c_rate,
+        }
+
     def state(self) -> dict:
         return {
             "soc": self._soc,
             "charge_level": self.charge_level,
-            "capacity": self.capacity,
-            "min_soc": self.min_soc,
-            "c_rate": self.c_rate,
         }
 
 
@@ -352,12 +368,16 @@ class ClcBattery(Storage):
         self.charge_level += discharge_energy
         self._soc = self.charge_level / self.v_2
 
+    def config(self) -> dict:
+        return {
+            "capacity": self.v_2 * self.number_of_cells,
+            "min_soc": self.min_soc,
+        }
+
     def state(self) -> dict:
         return {
             "soc": self._soc,
             "charge_level": self.charge_level * self.number_of_cells,
-            "capacity": self.v_2 * self.number_of_cells,
-            "min_soc": self.min_soc,
         }
 
 

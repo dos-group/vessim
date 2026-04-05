@@ -52,15 +52,12 @@ class TestMemoryLogger:
 
 class TestCsvLogger:
     @pytest.fixture
-    def temp_file(self):
-        with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
-            path = f.name
-        yield path
-        if os.path.exists(path):
-            os.remove(path)
+    def temp_dir(self):
+        with tempfile.TemporaryDirectory() as d:
+            yield d
 
-    def test_step_writes_csv(self, temp_file):
-        logger = CsvLogger(temp_file)
+    def test_step_writes_csv(self, temp_dir):
+        logger = CsvLogger(temp_dir)
         now = datetime(2023, 1, 1, 12, 0)
         state: MicrogridState = {
             "p_delta": 10.0,
@@ -73,7 +70,7 @@ class TestCsvLogger:
 
         logger.step(now, {"mg1": state})
 
-        with open(temp_file, "r") as f:
+        with open(os.path.join(temp_dir, "timeseries.csv"), "r") as f:
             reader = csv.DictReader(f)
             rows = list(reader)
 
@@ -83,8 +80,8 @@ class TestCsvLogger:
         assert float(rows[0]["p_delta"]) == 10.0
         assert float(rows[0]["actor_states.actor1.power"]) == 2.0
 
-    def test_step_appends_csv(self, temp_file):
-        logger = CsvLogger(temp_file)
+    def test_step_appends_csv(self, temp_dir):
+        logger = CsvLogger(temp_dir)
         now1 = datetime(2023, 1, 1, 12, 0)
         now2 = datetime(2023, 1, 1, 12, 1)
         state: MicrogridState = {
@@ -99,7 +96,7 @@ class TestCsvLogger:
         logger.step(now1, {"mg1": state})
         logger.step(now2, {"mg1": state})
 
-        with open(temp_file, "r") as f:
+        with open(os.path.join(temp_dir, "timeseries.csv"), "r") as f:
             reader = csv.DictReader(f)
             rows = list(reader)
 

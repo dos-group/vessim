@@ -101,11 +101,54 @@ df = logger.to_df()
 ```
 
 ### CsvLogger
-Writes simulation results directly to a CSV file during the simulation. This is useful for long-running simulations where keeping everything in memory isn't feasible.
+Writes simulation results to a directory during the simulation. This is useful for long-running simulations where keeping everything in memory isn't feasible, and produces a self-contained experiment record.
 
 ```python
-csv_logger = vs.CsvLogger("results.csv")
+csv_logger = vs.CsvLogger("results/my_experiment")
 environment.add_controller(csv_logger)
+```
+
+After the simulation, the output directory contains two files:
+
+```
+results/my_experiment/
+  config.yaml    # static experiment configuration
+  timeseries.csv   # dynamic state at every simulation step
+```
+
+**`config.yaml`** captures the full microgrid topology — actor types and signal parameters, dispatchable specs (e.g. battery capacity and initial SoC), and the dispatch policy. This is written once before the simulation starts and never changes:
+
+```yaml
+microgrids:
+  datacenter:
+    actors:
+      - name: server
+        signal_type: StaticSignal
+        signal: StaticSignal(value=-700)
+        step_size: null
+      - name: solar_panel
+        signal_type: Trace
+        signal: "Trace(solcast2022_global, column=Berlin)"
+        step_size: null
+    dispatchables:
+      - name: battery
+        type: SimpleBattery
+        capacity: 1500.0
+        min_soc: 0.3
+        c_rate: null
+    policy:
+      type: DefaultDispatchPolicy
+      mode: grid-connected
+      charge_power: null
+    coords: null
+```
+
+**`timeseries.csv`** contains only the dynamic values that change each step — power flows, battery state of charge, grid signals — without repeating the static configuration:
+
+```
+time,microgrid,p_delta,p_grid,actor_states.server.power,...,dispatch_states.battery.soc,...
+2022-06-09 00:00:00,datacenter,120.5,0.0,-700.0,...,0.74,...
+2022-06-09 00:05:00,datacenter,98.2,0.0,-700.0,...,0.76,...
 ```
 
 ## Advanced Control: Software-in-the-Loop

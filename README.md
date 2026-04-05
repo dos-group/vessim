@@ -41,11 +41,9 @@ environment.add_microgrid(
     dispatch=vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3),
 )
 
-logger = vs.MemoryLogger()
-environment.add_controller(logger)
+environment.add_controller(vs.CsvLogger("results/my_experiment"))
 
 environment.run(until=24 * 3600)
-vs.plot_result_df(logger.to_df())
 ```
 
 Check out the [tutorials](https://vessim.readthedocs.io/en/latest/tutorials/1_basic_example/) and [`examples/`](examples/) for more, including multi-microgrid setups and real-time monitoring.
