@@ -15,6 +15,7 @@ This serves the pre-built viewer and opens it in your browser. Alternatively, op
 ## Development
 
 ```bash
+cd viewer
 npm install
 npm run dev       # Start dev server with hot reload
 npm run build     # Production build → dist/

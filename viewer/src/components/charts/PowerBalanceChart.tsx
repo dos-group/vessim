@@ -1,15 +1,6 @@
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-  ReferenceLine,
-} from 'recharts'
+import ReactECharts from 'echarts-for-react'
 import type { MicrogridState } from '../../api/types'
-import { CHART_HEIGHT, CHART_MARGIN, formatTime, formatW, computeTicks, getTickStyle, getTooltipStyle, getGridColor, getRefLineColor } from './shared'
+import { CHART_HEIGHT, formatTime, formatW, getBaseOption } from './shared'
 import { useTheme } from '../../ThemeContext'
 
 interface Props {
@@ -19,50 +10,54 @@ interface Props {
 
 export function PowerBalanceChart({ history, height = CHART_HEIGHT }: Props) {
   const { isDark } = useTheme()
-  const data = history.map((s) => ({ time: s.time, value: s.p_delta }))
-  const ticks = computeTicks(history.map((s) => s.time))
+  const base = getBaseOption(isDark)
 
-  return (
-    <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={data} margin={CHART_MARGIN}>
-        <defs>
-          <linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#10b981" stopOpacity={isDark ? 0.3 : 0.2} />
-            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke={getGridColor(isDark)} />
-        <XAxis
-          dataKey="time"
-          ticks={ticks}
-          tickFormatter={formatTime}
-          tick={getTickStyle(isDark)}
-          axisLine={false}
-          tickLine={false}
-        />
-        <YAxis
-          tickFormatter={(v) => formatW(v as number)}
-          tick={getTickStyle(isDark)}
-          axisLine={false}
-          tickLine={false}
-          width={44}
-        />
-        <Tooltip
-          formatter={(v) => [formatW(v as number), 'Power Balance']}
-          labelFormatter={(l) => formatTime(String(l))}
-          contentStyle={getTooltipStyle(isDark)}
-        />
-        <ReferenceLine y={0} stroke={getRefLineColor(isDark)} strokeDasharray="4 2" />
-        <Area
-          type="monotone"
-          dataKey="value"
-          stroke="#10b981"
-          fill="url(#balanceGradient)"
-          strokeWidth={1.5}
-          dot={false}
-          isAnimationActive={false}
-        />
-      </AreaChart>
-    </ResponsiveContainer>
-  )
+  const option = {
+    ...base,
+    visualMap: {
+      show: false,
+      type: 'piecewise',
+      seriesIndex: 0,
+      pieces: [
+        { gte: 0, color: '#22c55e' },
+        { lt: 0, color: '#ef4444' },
+      ],
+    },
+    tooltip: {
+      ...base.tooltip,
+      formatter: (params: { value: [string, number] }[]) => {
+        if (!params.length) return ''
+        const [time, val] = params[0].value
+        const color = val >= 0 ? '#22c55e' : '#ef4444'
+        const label = val >= 0 ? 'surplus' : 'deficit'
+        return `${formatTime(time)}<br/><span style="color:${color}"><b>${formatW(val)}</b></span> <span style="color:#9ca3af">${label}</span>`
+      },
+    },
+    yAxis: {
+      ...base.yAxis,
+      axisLabel: {
+        ...(base.yAxis as { axisLabel: object }).axisLabel,
+        formatter: (v: number) => formatW(v),
+      },
+    },
+    series: [
+      {
+        type: 'line',
+        data: history.map((s) => [s.time, s.p_delta]),
+        smooth: false,
+        symbol: 'none',
+        lineStyle: { width: 1.5 },
+        areaStyle: { opacity: isDark ? 0.25 : 0.2 },
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          lineStyle: { color: isDark ? '#374151' : '#d1d5db', type: 'solid', width: 1 },
+          data: [{ yAxis: 0 }],
+          label: { show: false },
+        },
+      },
+    ],
+  }
+
+  return <ReactECharts option={option} style={{ height, width: '100%' }} notMerge />
 }

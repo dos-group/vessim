@@ -1,10 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { MicrogridView } from './components/MicrogridView'
-import { loadFromFiles, loadFromServer, type LoadedExperiment } from './data/fileLoader'
+import {
+  detectExperiments,
+  loadFromFiles,
+  loadFromServer,
+  loadFromSummary,
+  type ExperimentSummary,
+  type LoadedExperiment,
+} from './data/fileLoader'
 import { useTheme } from './ThemeContext'
 
 export default function App() {
   const [experiment, setExperiment] = useState<LoadedExperiment | null>(null)
+  const [experiments, setExperiments] = useState<ExperimentSummary[] | null>(null)
+  const [activeSummary, setActiveSummary] = useState<ExperimentSummary | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -41,15 +50,48 @@ export default function App() {
     setLoading(true)
     setError(null)
     try {
-      const exp = await loadFromFiles(files)
-      setExperiment(exp)
-      setSelected(null)
-      setServerMode(false)
+      const summaries = await detectExperiments(files)
+      if (summaries) {
+        setExperiments(summaries)
+        setExperiment(null)
+        setActiveSummary(null)
+        setSelected(null)
+        setServerMode(false)
+      } else {
+        const exp = await loadFromFiles(files)
+        setExperiment(exp)
+        setExperiments(null)
+        setActiveSummary(null)
+        setSelected(null)
+        setServerMode(false)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setLoading(false)
     }
+  }
+
+  async function handleSelectSummary(summary: ExperimentSummary) {
+    setLoading(true)
+    setError(null)
+    try {
+      const exp = await loadFromSummary(summary)
+      setExperiment(exp)
+      setActiveSummary(summary)
+      setSelected(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function handleBackToList() {
+    setExperiment(null)
+    setActiveSummary(null)
+    setSelected(null)
+    setError(null)
   }
 
   async function handleReload() {
@@ -71,26 +113,46 @@ export default function App() {
   }
 
   const status = experiment?.metadata.status
+  const inListMode = experiments !== null && experiment === null
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0d0f14] text-gray-900 dark:text-gray-100" style={{ fontFamily: 'system-ui, sans-serif' }}>
       {/* Header */}
       <header className="sticky top-0 z-10 bg-white dark:bg-[#13161e] border-b border-gray-200 dark:border-gray-800 shadow-xs">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center gap-4">
-          {/* Logo */}
+          {/* Logo / back navigation */}
           <div className="flex items-center gap-2 mr-4">
+            {activeSummary && experiments && (
+              <button
+                onClick={handleBackToList}
+                className="w-7 h-7 flex items-center justify-center rounded text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                title="Back to list"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+            )}
             <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            <span className="text-base font-semibold text-gray-800 dark:text-gray-100 tracking-tight">Vessim</span>
+            <span className="text-base font-semibold text-gray-800 dark:text-gray-100 tracking-tight">
+              Vessim
+            </span>
+            {activeSummary && (
+              <>
+                <span className="text-gray-300 dark:text-gray-700">/</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">{activeSummary.name}</span>
+              </>
+            )}
           </div>
 
           {/* Microgrid selector */}
-          {microgrids.length === 1 && (
+          {!inListMode && microgrids.length === 1 && !activeSummary && (
             <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{microgrids[0]}</span>
           )}
-          {microgrids.length > 1 && (
+          {!inListMode && microgrids.length > 1 && (
             <div className="flex gap-1">
               {microgrids.map((mg) => (
                 <button
@@ -139,7 +201,7 @@ export default function App() {
 
             {/* Load button */}
             <label className="cursor-pointer px-3 py-1.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-              {experiment ? 'Load other' : 'Load experiment'}
+              {experiment || experiments ? 'Load other' : 'Load experiment'}
               <input
                 ref={inputRef}
                 type="file"
@@ -190,6 +252,61 @@ export default function App() {
           </div>
         )}
 
+        {/* Multi-experiment list view */}
+        {!loading && !error && inListMode && (
+          <div className="max-w-2xl mx-auto">
+            <p className="text-sm text-gray-400 dark:text-gray-600 mb-4">
+              {experiments.length} experiment{experiments.length !== 1 ? 's' : ''} found
+            </p>
+            <div className="divide-y divide-gray-100 dark:divide-gray-800 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+              {experiments.map((summary) => (
+                <button
+                  key={summary.name}
+                  onClick={() => handleSelectSummary(summary)}
+                  className="w-full flex items-center gap-4 px-5 py-4 text-left bg-white dark:bg-[#13161e] hover:bg-gray-50 dark:hover:bg-[#1a1d27] transition-colors group"
+                >
+                  {/* Folder icon */}
+                  <svg className="w-4 h-4 text-gray-300 dark:text-gray-700 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                      d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+                  </svg>
+
+                  {/* Name */}
+                  <span className="flex-1 text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 font-mono">
+                    {summary.name}
+                  </span>
+
+                  {/* Status badge */}
+                  <span className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 shrink-0">
+                    {summary.status === 'running' ? (
+                      <>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        running
+                      </>
+                    ) : summary.status === 'completed' ? (
+                      <>
+                        <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600" />
+                        completed
+                      </>
+                    ) : (
+                      <>
+                        <span className="w-1.5 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700" />
+                        unknown
+                      </>
+                    )}
+                  </span>
+
+                  {/* Chevron */}
+                  <svg className="w-4 h-4 text-gray-200 dark:text-gray-800 group-hover:text-gray-400 dark:group-hover:text-gray-600 transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Single experiment view */}
         {!loading && !error && active && experiment && (
           <MicrogridView
             key={active}
@@ -198,7 +315,8 @@ export default function App() {
           />
         )}
 
-        {!loading && !error && !experiment && (
+        {/* Empty state */}
+        {!loading && !error && !experiment && !experiments && (
           <div className="flex flex-col items-center justify-center py-40 gap-4 text-gray-400 dark:text-gray-600">
             <svg className="w-14 h-14 text-gray-200 dark:text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}

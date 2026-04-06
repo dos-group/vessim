@@ -34,6 +34,3 @@ environment.add_controller(logger)
 
 # Run the simulation for 24 hours (24 * 3600 seconds).
 environment.run(until=24 * 3600)
-
-# Visualize the results using Vessim's built-in plotting functionality.
-vs.plot_result_df(logger.to_df())

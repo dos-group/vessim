@@ -1,15 +1,6 @@
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-  ReferenceLine,
-} from 'recharts'
+import ReactECharts from 'echarts-for-react'
 import type { MicrogridState } from '../../api/types'
-import { CHART_HEIGHT, CHART_MARGIN, formatTime, formatW, computeTicks, getTickStyle, getTooltipStyle, getGridColor, getRefLineColor } from './shared'
+import { CHART_HEIGHT, formatTime, formatW, getBaseOption } from './shared'
 import { useTheme } from '../../ThemeContext'
 
 interface Props {
@@ -19,54 +10,54 @@ interface Props {
 
 export function GridChart({ history, height = CHART_HEIGHT }: Props) {
   const { isDark } = useTheme()
-  const data = history.map((s) => ({ time: s.time, value: s.p_grid }))
-  const ticks = computeTicks(history.map((s) => s.time))
+  const base = getBaseOption(isDark)
 
-  return (
-    <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={data} margin={CHART_MARGIN}>
-        <defs>
-          <linearGradient id="gridImportGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#f59e0b" stopOpacity={isDark ? 0.3 : 0.2} />
-            <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke={getGridColor(isDark)} />
-        <XAxis
-          dataKey="time"
-          ticks={ticks}
-          tickFormatter={formatTime}
-          tick={getTickStyle(isDark)}
-          axisLine={false}
-          tickLine={false}
-        />
-        <YAxis
-          tickFormatter={(v) => formatW(v as number)}
-          tick={getTickStyle(isDark)}
-          axisLine={false}
-          tickLine={false}
-          width={44}
-        />
-        <Tooltip
-          formatter={(v) => {
-            const val = v as number
-            const label = val > 0 ? 'Importing' : val < 0 ? 'Exporting' : 'Balanced'
-            return [formatW(Math.abs(val)), label]
-          }}
-          labelFormatter={(l) => formatTime(String(l))}
-          contentStyle={getTooltipStyle(isDark)}
-        />
-        <ReferenceLine y={0} stroke={getRefLineColor(isDark)} strokeDasharray="4 2" />
-        <Area
-          type="monotone"
-          dataKey="value"
-          stroke="#f59e0b"
-          fill="url(#gridImportGradient)"
-          strokeWidth={1.5}
-          dot={false}
-          isAnimationActive={false}
-        />
-      </AreaChart>
-    </ResponsiveContainer>
-  )
+  const option = {
+    ...base,
+    visualMap: {
+      show: false,
+      type: 'piecewise',
+      seriesIndex: 0,
+      pieces: [
+        { gte: 0, color: '#ef4444' },  // importing = red
+        { lt: 0, color: '#22c55e' },   // exporting = green
+      ],
+    },
+    tooltip: {
+      ...base.tooltip,
+      formatter: (params: { value: [string, number] }[]) => {
+        if (!params.length) return ''
+        const [time, val] = params[0].value
+        const label = val > 0 ? 'importing' : val < 0 ? 'exporting' : 'balanced'
+        const color = val > 0 ? '#ef4444' : val < 0 ? '#22c55e' : '#9ca3af'
+        return `${formatTime(time)}<br/><span style="color:${color}"><b>${formatW(Math.abs(val))}</b></span> <span style="color:#9ca3af">${label}</span>`
+      },
+    },
+    yAxis: {
+      ...base.yAxis,
+      axisLabel: {
+        ...(base.yAxis as { axisLabel: object }).axisLabel,
+        formatter: (v: number) => formatW(v),
+      },
+    },
+    series: [
+      {
+        type: 'line',
+        data: history.map((s) => [s.time, s.p_grid]),
+        smooth: false,
+        symbol: 'none',
+        lineStyle: { width: 1.5 },
+        areaStyle: { opacity: isDark ? 0.25 : 0.2 },
+        markLine: {
+          silent: true,
+          symbol: 'none',
+          lineStyle: { color: isDark ? '#374151' : '#d1d5db', type: 'solid', width: 1 },
+          data: [{ yAxis: 0 }],
+          label: { show: false },
+        },
+      },
+    ],
+  }
+
+  return <ReactECharts option={option} style={{ height, width: '100%' }} notMerge />
 }

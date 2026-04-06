@@ -1,50 +1,9 @@
-export const CHART_HEIGHT = 180
+import type { EChartsOption } from 'echarts'
 
-export const CHART_MARGIN = { top: 4, right: 16, bottom: 4, left: 48 }
+export const CHART_HEIGHT = 200
 
-export const COLORS = [
-  '#3b82f6', // blue-500
-  '#10b981', // emerald-500
-  '#f59e0b', // amber-500
-  '#8b5cf6', // violet-500
-  '#ec4899', // pink-500
-  '#06b6d4', // cyan-500
-  '#f97316', // orange-500
-]
-
-export const TICK_STYLE = {
-  fontSize: 10,
-  fill: '#9ca3af',
-  fontFamily: 'ui-monospace, SFMono-Regular, monospace',
-}
-
-export const TOOLTIP_STYLE = {
-  fontSize: 12,
-  borderRadius: 4,
-  border: '1px solid #e5e7eb',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-}
-
-export function getTickStyle(isDark: boolean) {
-  return { ...TICK_STYLE, fill: isDark ? '#6b7280' : '#9ca3af' }
-}
-
-export function getTooltipStyle(isDark: boolean) {
-  return {
-    ...TOOLTIP_STYLE,
-    border: `1px solid ${isDark ? '#2d3348' : '#e5e7eb'}`,
-    backgroundColor: isDark ? '#1a1d2e' : '#ffffff',
-    color: isDark ? '#e2e8f0' : '#111827',
-  }
-}
-
-export function getGridColor(isDark: boolean) {
-  return isDark ? '#1e2130' : '#f3f4f6'
-}
-
-export function getRefLineColor(isDark: boolean) {
-  return isDark ? '#374151' : '#d1d5db'
-}
+export const PRODUCER_COLORS = ['#22c55e', '#16a34a', '#4ade80', '#15803d', '#86efac']
+export const CONSUMER_COLORS = ['#ef4444', '#dc2626', '#f87171', '#b91c1c', '#fca5a5']
 
 export function formatTime(iso: string): string {
   const d = new Date(iso)
@@ -56,8 +15,50 @@ export function formatW(value: number): string {
   return `${value.toFixed(0)} W`
 }
 
-export function computeTicks(times: string[], count = 5): string[] {
-  if (times.length <= count + 1) return times
-  const step = Math.ceil(times.length / count)
-  return times.filter((_, i) => i % step === 0)
+export function getBaseOption(isDark: boolean): EChartsOption {
+  const textColor = isDark ? '#4b5563' : '#9ca3af'
+  const gridColor = isDark ? '#1e2130' : '#f3f4f6'
+
+  return {
+    animation: false,
+    backgroundColor: 'transparent',
+    grid: { top: 28, right: 56, bottom: 24, left: 60 },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross' },
+      backgroundColor: isDark ? '#1a1d2e' : '#ffffff',
+      borderColor: isDark ? '#2d3348' : '#e5e7eb',
+      borderWidth: 1,
+      textStyle: { color: isDark ? '#e2e8f0' : '#111827', fontSize: 12 },
+      extraCssText: 'border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,.12);',
+    },
+    xAxis: {
+      type: 'time',
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { lineStyle: { color: gridColor } },
+      axisLabel: { color: textColor, fontSize: 10, fontFamily: 'ui-monospace, monospace' },
+    },
+    yAxis: {
+      type: 'value',
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { lineStyle: { color: gridColor } },
+      axisLabel: { color: textColor, fontSize: 10, fontFamily: 'ui-monospace, monospace' },
+    },
+    toolbox: {
+      right: 6,
+      top: 4,
+      itemSize: 12,
+      itemGap: 6,
+      iconStyle: { borderColor: textColor, borderWidth: 1.5 },
+      emphasis: { iconStyle: { borderColor: isDark ? '#e2e8f0' : '#374151' } },
+      feature: {
+        dataZoom: { yAxisIndex: 'none', title: { zoom: 'Box zoom', back: 'Reset zoom' } },
+        restore: { title: 'Reset' },
+        saveAsImage: { title: 'Save as PNG', pixelRatio: 2 },
+      },
+    },
+    dataZoom: [{ type: 'inside', filterMode: 'none' }],
+  }
 }

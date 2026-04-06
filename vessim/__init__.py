@@ -6,7 +6,6 @@ from vessim.dispatch_policy import DispatchPolicy, DefaultDispatchPolicy
 from vessim.dispatchable import Dispatchable, Storage, SimpleBattery, ClcBattery
 from vessim.environment import Environment
 from vessim.microgrid import Microgrid
-from vessim.plot import plot_trace, plot_result_df
 from vessim.signal import Signal, Trace, StaticSignal
 
 __all__ = [
@@ -25,8 +24,6 @@ __all__ = [
     "StaticSignal",
     "Signal",
     "Trace",
-    "plot_trace",
-    "plot_result_df",
 ]
 
 try:
