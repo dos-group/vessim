@@ -16,6 +16,9 @@ vessim.egg-info
 venv
 dist
 
+# Built viewer assets (regenerate with `npm run build` in viewer/)
+vessim/_viewer_dist/
+
 # Docs
 site
 
