@@ -15,6 +15,7 @@ from loguru import logger
 from vessim._util import flatten_dict
 
 if TYPE_CHECKING:
+    from vessim.environment import Environment
     from vessim.microgrid import Microgrid, MicrogridState
 
 
@@ -25,11 +26,11 @@ class Controller(ABC):
     behavior of the microgrids. They are executed at every simulation step.
     """
 
-    def start(self, microgrids: dict[str, Microgrid]) -> None:
+    def start(self, environment: Environment) -> None:
         """Executed before the simulation starts.
 
         Can be overridden to inspect the simulation topology or perform initialization
-        that requires access to the `Microgrid` objects.
+        that requires access to the `Environment`.
         """
 
     @abstractmethod
@@ -93,8 +94,9 @@ class CsvLogger(Controller):
     """Controller that logs simulation results to a directory.
 
     Writes two files:
-    - ``config.yaml``: static experiment configuration (microgrid topology, actor and
-      dispatchable parameters) written once before the simulation starts.
+    - ``experiment.yaml``: static experiment configuration (run metadata, microgrid
+      topology, actor and dispatchable parameters) written once before the simulation
+      starts.
     - ``timeseries.csv``: dynamic state logged at every simulation step.
 
     Args:
@@ -106,8 +108,9 @@ class CsvLogger(Controller):
         self.outdir.mkdir(exist_ok=True, parents=True)
         self.csv_path = self.outdir / "timeseries.csv"
         self.fieldnames: dict[str, list] = {}
+        self._last_sim_time: Optional[datetime] = None
 
-    def start(self, microgrids: dict[str, Microgrid]) -> None:
+    def start(self, environment: Environment) -> None:
         try:
             import yaml
         except ImportError:
@@ -115,7 +118,35 @@ class CsvLogger(Controller):
                 "CsvLogger requires 'pyyaml'. Install with: pip install pyyaml"
             )
 
-        config: dict = {"microgrids": {}}
+        self._yaml = yaml
+
+        git_hash: Optional[str] = None
+        try:
+            import subprocess
+            result = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                capture_output=True, text=True, check=True,
+            )
+            git_hash = result.stdout.strip()
+        except Exception:
+            pass
+
+        microgrids = {mg.name: mg for mg in environment.microgrids}
+        config: dict = {
+            "environment": {
+                "name": environment.name,
+                "sim_start": str(environment.clock.sim_start),
+                "step_size": environment.step_size,
+            },
+            "execution": {
+                "status": "running",
+                "git_hash": git_hash,
+                "start": datetime.now().isoformat(),
+                "end": None,
+                "duration": None,
+            },
+            "microgrids": {},
+        }
         for mg_name, mg in microgrids.items():
             config["microgrids"][mg_name] = {
                 "actors": [actor.config() for actor in mg.actors],
@@ -130,10 +161,12 @@ class CsvLogger(Controller):
                 "coords": mg.coords,
             }
 
-        with (self.outdir / "config.yaml").open("w") as f:
+        self._exec_start = datetime.now()
+        with (self.outdir / "experiment.yaml").open("w") as f:
             yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
     def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
+        self._last_sim_time = now
         for mg_name, mg_state in microgrid_states.items():
             log_entry = {
                 "microgrid": mg_name,
@@ -152,6 +185,20 @@ class CsvLogger(Controller):
                 if write_header:
                     writer.writeheader()
                 writer.writerow(log_entry)
+
+    def finalize(self) -> None:
+        experiment_path = self.outdir / "experiment.yaml"
+        if experiment_path.exists() and hasattr(self, "_yaml"):
+            end = datetime.now()
+            with experiment_path.open() as f:
+                config = self._yaml.safe_load(f)
+            config["execution"]["status"] = "completed"
+            config["execution"]["end"] = end.isoformat()
+            config["execution"]["duration"] = round((end - self._exec_start).total_seconds(), 3)
+            if self._last_sim_time is not None:
+                config["environment"]["sim_end"] = str(self._last_sim_time)
+            with experiment_path.open("w") as f:
+                self._yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
 
 class Api(Controller):
@@ -186,7 +233,8 @@ class Api(Controller):
         self.export_prometheus = export_prometheus
         self.microgrids: dict[str, Microgrid] = {}
 
-    def start(self, microgrids: dict[str, Microgrid]) -> None:
+    def start(self, environment: Environment) -> None:
+        microgrids = {mg.name: mg for mg in environment.microgrids}
         self.microgrids = microgrids
         self._start_broker()
         for mg_name, mg in microgrids.items():

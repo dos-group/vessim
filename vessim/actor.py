@@ -47,7 +47,11 @@ class Actor:
         }
 
     def state(self, now: datetime) -> dict:
-        """Dynamic state of the actor at the current timestep, passed to `Controller`s."""
+        """Dynamic state of the actor at the current timestep, passed to `Controller`s.
+
+        This can be extended to include any relevant information about e.g. internal
+        states of simulators that may be useful for control (e.g. temperature) or logs.
+        """
         return {"power": self.power(now)}
 
     def finalize(self) -> None:

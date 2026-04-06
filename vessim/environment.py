@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Optional, Literal
 
 import mosaik  # type: ignore
+from loguru import logger
 
 from vessim._util import Clock, disable_rt_warnings
 from vessim.actor import Actor
@@ -33,9 +34,10 @@ class Environment:
         "Dispatch": {"python": "vessim.dispatchable:_DispatchSim"},
     }
 
-    def __init__(self, sim_start: str | datetime, step_size: int = 1):
+    def __init__(self, sim_start: str | datetime, step_size: int = 1, name: Optional[str] = None):
         self.clock = Clock(sim_start)
         self.step_size = step_size
+        self.name = name
         self.microgrids: list[Microgrid] = []
         self.controllers: list[Controller] = []
         self.world = mosaik.World(self.COSIM_CONFIG, skip_greetings=True)
@@ -103,9 +105,8 @@ class Environment:
             return
 
         # Execute start() method on all controllers
-        microgrids_dict = {mg.name: mg for mg in self.microgrids}
         for controller in self.controllers:
-            controller.start(microgrids_dict)
+            controller.start(self)
 
         # Create one global controller simulator
         controller_sim = self.world.start(
@@ -179,6 +180,8 @@ class Environment:
         assert until is not None
 
         # Initialize controllers before running simulation
+        if self.name:
+            logger.info(f"Experiment: {self.name}")
         self._initialize_controllers()
 
         # Check if SiL signals are present and fail if the simulation is not in real-time mode
