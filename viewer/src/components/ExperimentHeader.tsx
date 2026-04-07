@@ -36,9 +36,9 @@ function computeStats(allHistory: Record<string, MicrogridState[]>, stepSize: nu
           peakConsumption = Math.max(peakConsumption, Math.abs(a.power))
         }
       }
-      // Grid
-      if (s.p_grid > 0) gridImported += s.p_grid * dtH
-      else gridExported += Math.abs(s.p_grid) * dtH
+      // Grid (p_grid > 0 = exporting, p_grid < 0 = importing)
+      if (s.p_grid > 0) gridExported += s.p_grid * dtH
+      else gridImported += Math.abs(s.p_grid) * dtH
     }
     // Battery cycles
     for (let i = 1; i < history.length; i++) {
@@ -67,12 +67,12 @@ function computeStats(allHistory: Record<string, MicrogridState[]>, stepSize: nu
   return [
     { label: 'Produced', value: fmtEnergy(totalProduced), color: 'text-emerald-600 dark:text-emerald-400' },
     { label: 'Consumed', value: fmtEnergy(totalConsumed), color: 'text-red-500 dark:text-red-400' },
-    { label: 'Grid import', value: fmtEnergy(gridImported), color: 'text-amber-500 dark:text-amber-400' },
     { label: 'Grid export', value: fmtEnergy(gridExported), color: 'text-blue-500 dark:text-blue-400' },
-    { label: 'Peak prod.', value: formatW(peakProduction), color: 'text-emerald-600 dark:text-emerald-400' },
-    { label: 'Peak cons.', value: formatW(peakConsumption), color: 'text-red-500 dark:text-red-400' },
-    { label: 'Self-suff.', value: `${(selfSufficiency * 100).toFixed(0)}%`, color: 'text-gray-700 dark:text-gray-300' },
-    { label: 'Batt. cycles', value: batteryCycles.toFixed(1), color: 'text-gray-700 dark:text-gray-300' },
+    { label: 'Grid import', value: fmtEnergy(gridImported), color: 'text-amber-500 dark:text-amber-400' },
+    { label: 'Peak production', value: formatW(peakProduction), color: 'text-emerald-600 dark:text-emerald-400' },
+    { label: 'Peak consumption', value: formatW(peakConsumption), color: 'text-red-500 dark:text-red-400' },
+    { label: 'Self-sufficiency', value: `${(selfSufficiency * 100).toFixed(0)}%`, color: 'text-gray-700 dark:text-gray-300' },
+    { label: 'Battery cycles', value: batteryCycles.toFixed(1), color: 'text-gray-700 dark:text-gray-300' },
   ]
 }
 

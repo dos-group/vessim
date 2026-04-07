@@ -7,9 +7,10 @@ interface Props {
   history: MicrogridState[]
   mode: 'producers' | 'consumers'
   height?: number
+  stacked?: boolean
 }
 
-export function ActorsChart({ history, mode, height = CHART_HEIGHT }: Props) {
+export function ActorsChart({ history, mode, height = CHART_HEIGHT, stacked = false }: Props) {
   const { isDark } = useTheme()
 
   const actorNames = Array.from(
@@ -40,11 +41,12 @@ export function ActorsChart({ history, mode, height = CHART_HEIGHT }: Props) {
     series: actorNames.map((name, i) => ({
       name,
       type: 'line',
+      stack: stacked ? 'total' : undefined,
       data: history.map((s) => [s.time, Math.abs(s.actor_states[name]?.power ?? 0)]),
       smooth: false,
       symbol: 'none',
       lineStyle: { color: colors[i % colors.length], width: 1.5 },
-      areaStyle: { color: colors[i % colors.length], opacity: isDark ? 0.12 : 0.08 },
+      areaStyle: { color: colors[i % colors.length], opacity: stacked ? (isDark ? 0.5 : 0.4) : (isDark ? 0.12 : 0.08) },
       emphasis: { focus: 'series' },
     })),
     yAxis: {
