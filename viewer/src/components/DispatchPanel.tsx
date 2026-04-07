@@ -32,37 +32,51 @@ export function DispatchPanel({ history, latest, prev }: Props) {
 
   if (!hasDispatch) {
     return (
-      <div className="bg-white dark:bg-[#13161e] border border-gray-200 dark:border-gray-800 rounded p-5 flex flex-col gap-4 shadow-xs opacity-40">
-        <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">Dispatch</span>
-        <span className="text-sm text-gray-300 dark:text-gray-700">No dispatchables configured</span>
+      <div className="bg-white dark:bg-[#13161e] border border-gray-200 dark:border-gray-800 rounded p-5 flex flex-col gap-3 shadow-xs opacity-40">
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Dispatch</span>
+        <span className="text-sm text-gray-400 dark:text-gray-600">No dispatchables configured</span>
       </div>
     )
   }
 
-  return (
-    <div className="bg-white dark:bg-[#13161e] border border-gray-200 dark:border-gray-800 rounded p-5 flex flex-col gap-4 shadow-xs">
-      <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-600">Dispatch</span>
+  // Show first dispatchable's power in header
+  const firstPower = currentPower(names[0], latest, prev)
+  const { label: firstLabel, color: firstColor } = powerStatus(firstPower)
 
-      {/* Per-dispatchable current power */}
-      <div className="flex flex-col gap-2">
-        {names.map((name) => {
-          const power = currentPower(name, latest, prev)
-          const { label, color } = powerStatus(power)
-          return (
-            <div key={name} className="flex items-baseline justify-between">
-              <div className="flex items-baseline gap-2">
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{name}</span>
-                <span className={`text-[10px] font-medium ${color}`}>{label}</span>
-              </div>
-              <span className={`text-base font-semibold tabular-nums ${color}`}>
-                {power !== null ? formatW(Math.abs(power)) : '—'}
-              </span>
-            </div>
-          )
-        })}
+  return (
+    <div className="bg-white dark:bg-[#13161e] border border-gray-200 dark:border-gray-800 rounded p-5 flex flex-col gap-3 shadow-xs">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Dispatch</span>
+        <div className="flex items-center gap-1.5">
+          <span className={`text-sm font-semibold tabular-nums font-mono ${firstColor}`}>
+            {firstPower !== null ? formatW(Math.abs(firstPower)) : '\u2014'}
+          </span>
+          <span className={`text-[10px] ${firstColor}`}>{firstLabel}</span>
+        </div>
       </div>
 
       <DispatchChart history={history} />
+
+      {/* Per-dispatchable details (only if multiple) */}
+      {names.length > 1 && (
+        <div className="flex flex-col gap-1.5 border-t border-gray-100 dark:border-gray-800 pt-3">
+          {names.map((name) => {
+            const power = currentPower(name, latest, prev)
+            const { label, color } = powerStatus(power)
+            return (
+              <div key={name} className="flex items-baseline justify-between">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{name}</span>
+                  <span className={`text-[10px] font-medium ${color}`}>{label}</span>
+                </div>
+                <span className={`text-xs font-mono tabular-nums ${color}`}>
+                  {power !== null ? formatW(Math.abs(power)) : '\u2014'}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

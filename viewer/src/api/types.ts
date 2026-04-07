@@ -63,3 +63,18 @@ export interface MicrogridConfig {
   policy: PolicyConfig
   coords: [number, number] | null
 }
+
+export interface EnvironmentConfig {
+  name: string | null
+  sim_start: string
+  step_size: number
+  sim_end: string
+}
+
+export interface ExecutionInfo {
+  status: 'running' | 'completed'
+  git_hash: string | null
+  start: string | null
+  end: string | null
+  duration: number | null
+}

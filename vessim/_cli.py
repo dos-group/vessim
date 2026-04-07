@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import argparse
 import functools
-import os
+import json
 import sys
 import webbrowser
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
+
+import yaml
 
 
 def _viewer_dist_dir() -> Path:
@@ -16,12 +18,46 @@ def _viewer_dist_dir() -> Path:
 
 
 class _ViewerHandler(SimpleHTTPRequestHandler):
-    """Serves the built viewer app and exposes the results directory under /results/."""
+    """Serves the built viewer app, /results/* files, and a /experiments JSON endpoint."""
 
     def __init__(self, *args, viewer_dir: Path, results_dir: Path, **kwargs):
         self.viewer_dir = viewer_dir
         self.results_dir = results_dir
         super().__init__(*args, **kwargs)
+
+    def do_GET(self):
+        url_path = self.path.split("?", 1)[0].split("#", 1)[0]
+        if url_path == "/experiments":
+            self._serve_experiments()
+            return
+        super().do_GET()
+
+    def _serve_experiments(self):
+        root_config = self.results_dir / "experiment.yaml"
+        if root_config.exists():
+            status = self._read_status(root_config)
+            data = {"mode": "single", "experiments": [{"name": "", "status": status}]}
+        else:
+            experiments = []
+            for subdir in sorted(self.results_dir.iterdir()):
+                config_file = subdir / "experiment.yaml"
+                if subdir.is_dir() and config_file.exists():
+                    experiments.append({"name": subdir.name, "status": self._read_status(config_file)})
+            data = {"mode": "multi", "experiments": experiments}
+
+        body = json.dumps(data).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _read_status(self, config_file: Path) -> str | None:
+        try:
+            config = yaml.safe_load(config_file.read_text()) or {}
+            return config.get("execution", {}).get("status")
+        except Exception:
+            return None
 
     def translate_path(self, path: str) -> str:
         # Strip query string and fragment
@@ -87,7 +123,7 @@ def main():
     sub = parser.add_subparsers(dest="command")
 
     view = sub.add_parser("view", help="View experiment results in the browser")
-    view.add_argument("directory", help="Path to a results directory (with config.yaml + timeseries.csv)")
+    view.add_argument("directory", help="Path to a results directory")
     view.add_argument("-p", "--port", type=int, default=8710, help="Port (default: 8710)")
     view.add_argument("--no-browser", action="store_true", help="Don't open browser automatically")
 

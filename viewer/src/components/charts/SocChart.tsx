@@ -1,6 +1,6 @@
 import ReactECharts from 'echarts-for-react'
 import type { MicrogridState } from '../../api/types'
-import { CHART_HEIGHT, formatTime, getBaseOption } from './shared'
+import { CHART_HEIGHT, formatTime, getBaseOption, connectChart } from './shared'
 import { useTheme } from '../../ThemeContext'
 
 interface Props {
@@ -78,6 +78,7 @@ export function SocChart({ history, height = CHART_HEIGHT }: Props) {
               lineStyle: { color: '#6b7280', type: 'dashed', width: 1 },
               label: {
                 formatter: `Min SoC (${minSocMap[name].toFixed(0)}%)`,
+                position: 'insideStartTop',
                 color: '#6b7280',
                 fontSize: 10,
                 fontFamily: 'ui-monospace, monospace',
@@ -89,5 +90,5 @@ export function SocChart({ history, height = CHART_HEIGHT }: Props) {
     })),
   }
 
-  return <ReactECharts option={option} style={{ height, width: '100%' }} notMerge />
+  return <ReactECharts option={option} style={{ height, width: '100%' }} notMerge onChartReady={connectChart} />
 }

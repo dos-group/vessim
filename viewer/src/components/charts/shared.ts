@@ -1,3 +1,4 @@
+import * as echarts from 'echarts'
 import type { EChartsOption } from 'echarts'
 
 export const CHART_HEIGHT = 200
@@ -22,7 +23,7 @@ export function getBaseOption(isDark: boolean): EChartsOption {
   return {
     animation: false,
     backgroundColor: 'transparent',
-    grid: { top: 28, right: 56, bottom: 24, left: 60 },
+    grid: { top: 28, right: 16, bottom: 24, left: 60 },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'cross' },
@@ -56,9 +57,16 @@ export function getBaseOption(isDark: boolean): EChartsOption {
       feature: {
         dataZoom: { yAxisIndex: 'none', title: { zoom: 'Box zoom', back: 'Reset zoom' } },
         restore: { title: 'Reset' },
-        saveAsImage: { title: 'Save as PNG', pixelRatio: 2 },
+        saveAsImage: { title: 'Save', pixelRatio: 2, excludeComponents: ['toolbox'] },
       },
     },
     dataZoom: [{ type: 'inside', filterMode: 'none' }],
   }
+}
+
+const CHART_GROUP = 'vessim'
+
+export function connectChart(chart: echarts.ECharts) {
+  chart.group = CHART_GROUP
+  echarts.connect(CHART_GROUP)
 }

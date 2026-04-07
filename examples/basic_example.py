@@ -29,8 +29,7 @@ environment.add_microgrid(
 
 # Vessim includes various Controllers to monitor and control your microgrid.
 # We use a simple in-memory logger to record the simulation results.
-logger = vs.MemoryLogger()
-environment.add_controller(logger)
+environment.add_controller(vs.CsvLogger(outdir="mhmresults/basic_example"))
 
 # Run the simulation for 24 hours (24 * 3600 seconds).
 environment.run(until=24 * 3600)

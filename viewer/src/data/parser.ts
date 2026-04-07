@@ -3,6 +3,8 @@ import Papa from 'papaparse'
 import type {
   MicrogridState,
   MicrogridConfig,
+  EnvironmentConfig,
+  ExecutionInfo,
   ActorState,
   DispatchableState,
   GridSignals,
@@ -17,14 +19,35 @@ export interface MicrogridMetadata {
 }
 
 export interface ExperimentMetadata {
-  status: 'running' | 'completed' | undefined
+  environment: EnvironmentConfig | null
+  execution: ExecutionInfo | null
   microgrids: Record<string, MicrogridMetadata>
 }
 
 export function parseConfig(yamlText: string): ExperimentMetadata {
   const raw = yaml.load(yamlText) as Record<string, unknown>
+
+  const env = raw.environment as Record<string, unknown> | undefined
+  const exec = raw.execution as Record<string, unknown> | undefined
+
   return {
-    status: (raw.status as ExperimentMetadata['status']) ?? undefined,
+    environment: env
+      ? {
+          name: (env.name as string) ?? null,
+          sim_start: String(env.sim_start ?? ''),
+          step_size: Number(env.step_size ?? 0),
+          sim_end: String(env.sim_end ?? ''),
+        }
+      : null,
+    execution: exec
+      ? {
+          status: (exec.status as 'running' | 'completed') ?? 'completed',
+          git_hash: (exec.git_hash as string) ?? null,
+          start: (exec.start as string) ?? null,
+          end: (exec.end as string) ?? null,
+          duration: exec.duration != null ? Number(exec.duration) : null,
+        }
+      : null,
     microgrids: raw.microgrids as Record<string, MicrogridMetadata>,
   }
 }
