@@ -41,7 +41,6 @@ class Actor:
         """Static configuration of the actor. Used for experiment config export."""
         return {
             "name": self.name,
-            "signal_type": self.signal.__class__.__name__,
             "signal": str(self.signal),
             "step_size": self.step_size,
         }

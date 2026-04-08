@@ -12,7 +12,7 @@ import type {
 } from '../api/types'
 
 export interface MicrogridMetadata {
-  actors: { name: string; signal_type: string; signal: string; step_size: number | null }[]
+  actors: { name: string; signal: string; step_size: number | null }[]
   dispatchables: { name: string; type: string; [key: string]: unknown }[]
   policy: { type: string; [key: string]: unknown }
   coords: [number, number] | null
@@ -59,7 +59,6 @@ export function deriveConfigs(metadata: ExperimentMetadata): Record<string, Micr
       name,
       actors: mg.actors.map((a) => ({
         name: a.name,
-        signal_type: a.signal_type,
         signal: a.signal,
         step_size: a.step_size,
       })),

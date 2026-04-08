@@ -79,6 +79,7 @@ export function ExperimentView({ experiment, onReload }: Props) {
           <div className="px-6 py-6">
             <MicrogridView
               key={activeMg}
+              name={activeMg}
               allHistory={experiment.timeseriesByMicrogrid}
               history={experiment.timeseriesByMicrogrid[activeMg]}
               config={experiment.configByMicrogrid[activeMg]}

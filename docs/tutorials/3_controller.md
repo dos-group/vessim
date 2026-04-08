@@ -123,11 +123,9 @@ microgrids:
   datacenter:
     actors:
       - name: server
-        signal_type: StaticSignal
         signal: StaticSignal(value=-700)
         step_size: null
       - name: solar_panel
-        signal_type: Trace
         signal: "Trace(solcast2022_global, column=Berlin)"
         step_size: null
     dispatchables:

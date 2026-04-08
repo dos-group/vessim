@@ -11,6 +11,7 @@ import { MicrogridInfoPanel } from './MicrogridInfoPanel'
 import { actorsByMode } from './MicrogridInfoPanel'
 
 interface Props {
+  name: string
   allHistory: Record<string, MicrogridState[]>
   history: MicrogridState[]
   config: MicrogridConfig
@@ -89,7 +90,7 @@ function StackToggle({ stacked, onChange }: { stacked: boolean; onChange: (v: bo
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function MicrogridView({ history, config, metadata }: Omit<Props, 'allHistory'> & { allHistory: Record<string, MicrogridState[]> }) {
+export function MicrogridView({ name, history, config, metadata }: Props) {
   const [stackedProducers, setStackedProducers] = useState(false)
   const [stackedConsumers, setStackedConsumers] = useState(false)
 
@@ -112,7 +113,8 @@ export function MicrogridView({ history, config, metadata }: Omit<Props, 'allHis
     <div className="flex gap-6 items-start">
 
       {/* ── Left info column ──────────────────────────────────────────────── */}
-      <div className="w-52 shrink-0 sticky top-6 max-h-[calc(100vh-3.5rem)] overflow-y-auto pb-6">
+      <div className="w-52 shrink-0 sticky top-6 max-h-[calc(100vh-3.5rem)] overflow-y-auto pb-6 flex flex-col gap-4">
+        <h1 className="text-base font-bold font-mono">{name}</h1>
         <MicrogridInfoPanel history={history} config={config} stepSize={stepSize} />
       </div>
 

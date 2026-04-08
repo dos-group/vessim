@@ -36,7 +36,6 @@ export interface MicrogridState {
 
 export interface ActorConfig {
   name: string
-  signal_type: string
   signal: string
   step_size: number | null
 }
