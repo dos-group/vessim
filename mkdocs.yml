@@ -21,7 +21,6 @@ nav:
     - Controllers: api_reference/controllers.md
     - Dispatchables: api_reference/dispatchables.md
     - Dispatch Policy: api_reference/policy.md
-    - Visualization: api_reference/visualization.md
   - Publications: publications.md
   - About: about.md
 

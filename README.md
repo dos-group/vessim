@@ -64,19 +64,6 @@ If you require software-in-the-loop (SiL) capabilities, you should additionally 
 pip install vessim[sil]
 ```
 
-## Datasets
-
-Vessim comes with ready-to-user datasets for solar irradiance and average carbon intensity provided by
-
-<p float="left">
-  <img src="docs/assets/solcast_logo.png" width="120" />
-  <span> and </span>
-  <img src="docs/assets/watttime_logo.png" width="120" />
-</p>
-
-We're working on documentation on how to include custom datasets for your simulations.
-
-
 ## Publications
 
 If you use Vessim in your research, please cite our paper:
