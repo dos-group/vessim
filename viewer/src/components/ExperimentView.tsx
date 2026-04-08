@@ -15,7 +15,7 @@ function TabBtn({ label, active, onClick }: { label: string; active: boolean; on
       className={`px-3 h-10 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
         active
           ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400'
-          : 'border-transparent text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+          : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white'
       }`}
     >
       {label}
@@ -57,7 +57,7 @@ export function ExperimentView({ experiment, onReload }: Props) {
               {onReload && (
                 <button
                   onClick={onReload}
-                  className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  className="text-xs text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                 >
                   Reload
                 </button>
