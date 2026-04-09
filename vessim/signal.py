@@ -562,13 +562,19 @@ class PrometheusSignal(SilSignal):
 
     def _validate_connection(self) -> None:
         """Validate that we can connect to the Prometheus server."""
-        response = self.requests.get(
-            f"{self.prometheus_url}/api/v1/query",
-            params={"query": "up"},
-            timeout=self.timeout,
-            auth=self._auth,
-        )
-        response.raise_for_status()
+        try:
+            response = self.requests.get(
+                f"{self.prometheus_url}/api/v1/query",
+                params={"query": "up"},
+                timeout=self.timeout,
+                auth=self._auth,
+            )
+            response.raise_for_status()
+        except requests.exceptions.ConnectionError:
+            raise ConnectionError(
+                f"Could not connect to Prometheus at '{self.prometheus_url}'. "
+                f"Make sure the Prometheus server is running and accessible."
+            ) from None
 
     def _fetch_current_value(self) -> float:
         """Fetch the current value from Prometheus."""
