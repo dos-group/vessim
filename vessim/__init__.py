@@ -32,5 +32,11 @@ try:
 
     __all__.extend(["Api", "SilSignal", "WatttimeSignal", "PrometheusSignal"])
 except ImportError:
-    # Requires optional dependencies: pip install vessim[sil]
-    pass
+    _SIL_INSTALL_MSG = (
+        "This feature requires the 'sil' extra. Install with: pip install 'vessim[sil]'"
+    )
+
+    def __getattr__(name: str):
+        if name in ("Api", "SilSignal", "WatttimeSignal", "PrometheusSignal"):
+            raise ImportError(f"vessim.{name} is not available. {_SIL_INSTALL_MSG}")
+        raise AttributeError(f"module 'vessim' has no attribute {name!r}")

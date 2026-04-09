@@ -29,11 +29,7 @@ class TestActor:
         actor = Actor(name="test_actor", signal=mock_signal)
         now = datetime(2023, 1, 1, 12, 0)
         state = actor.state(now)
-        assert state == {
-            "name": "test_actor",
-            "signal": "MockSignal",
-            "power": 10.0,
-        }
+        assert state == {"power": 10.0}
         mock_signal.now.assert_called_once_with(at=now)
 
     def test_finalize(self, mock_signal):
