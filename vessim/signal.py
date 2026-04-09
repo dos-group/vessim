@@ -158,6 +158,7 @@ class Trace(Signal):
         """Returns a string representation of the Trace."""
         return f"Trace({self.repr_ or ''})"
 
+    # TODO: Replace params dict with explicit keyword arguments (scale, start_time, etc.)
     @classmethod
     def load(
         cls,

@@ -45,7 +45,7 @@ class Environment:
     def add_microgrid(
         self,
         actors: list[Actor],
-        dispatch: Optional[Dispatchable | list[Dispatchable]] = None,
+        dispatchers: Optional[list[Dispatchable]] = None,
         policy: Optional[DispatchPolicy] = None,
         grid_signals: Optional[dict[str, Signal]] = None,
         name: Optional[str] = None,
@@ -55,8 +55,8 @@ class Environment:
 
         Args:
             actors: A list of exogenous actors (consumers/producers) in the microgrid.
-            dispatch: Optional dispatchable resource(s) (e.g., batteries, generators).
-                Can be a single `Dispatchable` or a list.
+            dispatchers: Optional list of dispatchable resources (e.g., batteries,
+                generators).
             policy: The dispatch policy that controls energy management. If None, a
                 `DefaultDispatchPolicy` is used.
             grid_signals: Optional signals from the public grid (e.g., carbon intensity).
@@ -69,20 +69,12 @@ class Environment:
         if not actors:
             raise ValueError("There should be at least one actor in the Microgrid.")
 
-        # Normalize dispatch to a list
-        if dispatch is None:
-            dispatchables = []
-        elif isinstance(dispatch, Dispatchable):
-            dispatchables = [dispatch]
-        else:
-            dispatchables = list(dispatch)
-
         microgrid = Microgrid(
             world=self.world,
             clock=self.clock,
             step_size=self.step_size,
             actors=actors,
-            dispatchables=dispatchables,
+            dispatchables=dispatchers or [],
             policy=policy if policy is not None else DefaultDispatchPolicy(),
             grid_signals=grid_signals,
             name=name,
@@ -175,6 +167,7 @@ class Environment:
             behind_threshold: The threshold in seconds for issuing warnings when the
                 simulation falls behind real-time (only used if `rt_factor` is set).
         """
+        # TODO: Accept timedelta or datetime for `until`, not just seconds.
         if until is None:
             until = float("inf")  # type: ignore
         assert until is not None

@@ -38,7 +38,7 @@ environment.add_microgrid(
             "solcast2022_global", column="Berlin", params={"scale": 5000}
         )),
     ],
-    dispatch=vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3),
+    dispatchers=[vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3)],
 )
 
 environment.add_controller(vs.CsvLogger("results/my_experiment"))

@@ -76,6 +76,9 @@ class Dispatchable(ABC):
         """
 
 
+# TODO: Document units consistently across the API (Wh for capacity, W for power).
+
+
 class Storage(Dispatchable):
     """Abstract base class for energy storage devices.
 
@@ -216,6 +219,10 @@ class SimpleBattery(Storage):
             "soc": self._soc,
             "charge_level": self.charge_level,
         }
+
+
+# TODO: Add convenience constructor for ClcBattery (e.g., from_capacity_wh) to avoid
+# requiring expert-level parameterization for common use cases.
 
 
 class ClcBattery(Storage):
