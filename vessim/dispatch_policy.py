@@ -29,9 +29,10 @@ class DispatchPolicy(ABC):
             p_delta: Power imbalance in W. Positive means excess power (can charge),
                 negative means power deficit (need to discharge/generate).
             duration: Duration of the timestep in seconds.
-            dispatchables: List of dispatchables available for dispatch.
+            dispatchables: List of flexible components available for dispatch,
+                like batteries or on-site diesel or gas generators.
             grid_signals: Current grid signal values (e.g., carbon intensity, energy
-                price), if any are configured on the microgrid.
+                price, curtailment), if any are configured on the microgrid.
 
         Returns:
             Power in W exchanged with the public grid. Negative means power drawn
@@ -77,14 +78,14 @@ class DefaultDispatchPolicy(DispatchPolicy):
         remaining = p_delta
 
         if self.mode == "grid-connected" and self.charge_power and dispatchables:
-            # Fixed charge power mode: charge/discharge all dispatchables at specified rate
+            # Charge/discharge all dispatchables at specified rate
             for d in dispatchables:
                 lo, hi = d.feasible_range(duration)
                 power = max(lo, min(hi, self.charge_power))
                 d.set_power(power, duration)
                 remaining -= power
         else:
-            # Merit-order dispatch: allocate delta in priority order
+            # Sequential dispatch
             for d in dispatchables:
                 if remaining == 0:
                     d.set_power(0.0, duration)
@@ -92,11 +93,9 @@ class DefaultDispatchPolicy(DispatchPolicy):
 
                 lo, hi = d.feasible_range(duration)
 
-                if remaining > 0:
-                    # Excess power: try to charge (positive power)
+                if remaining > 0:  # excess: try to charge (positive power)
                     allocated = max(0.0, min(hi, remaining))
-                else:
-                    # Power deficit: try to discharge (negative power)
+                else:  # deficit: try to discharge (negative power)
                     allocated = min(0.0, max(lo, remaining))
 
                 d.set_power(allocated, duration)

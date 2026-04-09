@@ -24,7 +24,7 @@ class TestEnvironment:
 
     def test_add_microgrid_raises_no_actors(self, environment):
         with pytest.raises(ValueError, match="There should be at least one actor"):
-            environment.add_microgrid(actors=[], dispatchers=[])
+            environment.add_microgrid(actors=[], dispatchables=[])
 
     def test_add_microgrid(self, environment):
         mock_actor = Mock(spec=Actor)

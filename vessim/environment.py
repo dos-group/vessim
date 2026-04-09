@@ -45,7 +45,7 @@ class Environment:
     def add_microgrid(
         self,
         actors: list[Actor],
-        dispatchers: Optional[list[Dispatchable]] = None,
+        dispatchables: Optional[list[Dispatchable]] = None,
         policy: Optional[DispatchPolicy] = None,
         grid_signals: Optional[dict[str, Signal]] = None,
         name: Optional[str] = None,
@@ -55,7 +55,7 @@ class Environment:
 
         Args:
             actors: A list of exogenous actors (consumers/producers) in the microgrid.
-            dispatchers: Optional list of dispatchable resources (e.g., batteries,
+            dispatchables: Optional list of dispatchable resources (e.g., batteries,
                 generators).
             policy: The dispatch policy that controls energy management. If None, a
                 `DefaultDispatchPolicy` is used.
@@ -74,7 +74,7 @@ class Environment:
             clock=self.clock,
             step_size=self.step_size,
             actors=actors,
-            dispatchables=dispatchers or [],
+            dispatchables=dispatchables or [],
             policy=policy if policy is not None else DefaultDispatchPolicy(),
             grid_signals=grid_signals,
             name=name,

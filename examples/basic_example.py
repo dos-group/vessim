@@ -24,7 +24,7 @@ environment.add_microgrid(
     ],
     # Microgrids can be equipped with Dispatchables (controllable resources like batteries).
     # Batteries are (dis)charged based on a configurable Dispatch Policy.
-    dispatchers=[vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3)],
+    dispatchables=[vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3)],
 )
 
 # Vessim includes various Controllers to monitor and control your microgrid.
