@@ -19,6 +19,8 @@ class Actor:
         signal: The `Signal` that determines the power consumption/production. Can be
             a `StaticSignal` for constant power, a `Trace` for time series data, or any
             custom signal (e.g., based on real-time monitoring).
+        consumer: If True, the signal value is negated (Vessim convention: consumption
+            is negative, production is positive). Defaults to False.
         step_size: The step size of the actor in seconds. If None, the step size
             of the microgrid is used.
     """
@@ -27,21 +29,25 @@ class Actor:
         self,
         name: str,
         signal: Signal,
+        consumer: bool = False,
         step_size: Optional[int] = None,
     ) -> None:
         self.name = name
         self.step_size = step_size
         self.signal = signal
+        self.consumer = consumer
 
     def power(self, now: datetime) -> float:
         """Current power consumption/production."""
-        return self.signal.now(at=now)
+        value = self.signal.now(at=now)
+        return -value if self.consumer else value
 
     def config(self) -> dict:
         """Static configuration of the actor. Used for experiment config export."""
         return {
             "name": self.name,
             "signal": str(self.signal),
+            "consumer": self.consumer,
             "step_size": self.step_size,
         }
 

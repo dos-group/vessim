@@ -14,7 +14,7 @@ environment.add_microgrid(
     actors=[
         # Actors represent energy consumers (negative values) or producers (positive values).
         # Here we assume a server with a constant power consumption of 700W.
-        vs.Actor(name="server", signal=vs.StaticSignal(value=-700)),
+        vs.Actor(name="server", signal=vs.StaticSignal(value=700), consumer=True),
 
         # Every actor is based on a Signal that provides its power value at any given time.
         # This solar panel uses historical trace data, scaled to a 5kW peak.
@@ -29,7 +29,7 @@ environment.add_microgrid(
 
 # Vessim includes various Controllers to monitor and control your microgrid.
 # We use a simple in-memory logger to record the simulation results.
-environment.add_controller(vs.CsvLogger(outdir="mhmresults/basic_example"))
+environment.add_controller(vs.CsvLogger(outdir="results/basic_example"))
 
 # Run the simulation for 24 hours (24 * 3600 seconds).
 environment.run(until=24 * 3600)

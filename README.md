@@ -33,7 +33,7 @@ environment = vs.Environment(sim_start="2022-06-09", step_size=300)
 environment.add_microgrid(
     name="datacenter",
     actors=[
-        vs.Actor(name="server", signal=vs.StaticSignal(value=-700)),
+        vs.Actor(name="server", signal=vs.StaticSignal(value=700), consumer=True),
         vs.Actor(name="solar_panel", signal=vs.Trace.load(
             "solcast2022_global", column="Berlin", params={"scale": 5000}
         )),

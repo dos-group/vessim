@@ -30,10 +30,10 @@ def main():
     # The query returns CPU utilization (0.0-1.0), scaled to 0-1000W.
     server = vs.Actor(
         name="server",
+        consumer=True,
         signal=vs.PrometheusSignal(
             prometheus_url="http://localhost:9090",
             query='(1 - avg(rate(node_cpu_seconds_total{mode="idle"}[1m]))) * 1000',
-            consumer=True,
         ),
     )
 

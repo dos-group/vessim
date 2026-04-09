@@ -523,7 +523,6 @@ class PrometheusSignal(SilSignal):
         query: PromQL query to fetch energy usage data
         update_interval: Interval in seconds between metric updates
         timeout: Request timeout in seconds
-        consumer: If True, negates values (Vessim represents consumption as negative)
         username: Username for HTTP Basic Authentication (optional)
         password: Password for HTTP Basic Authentication (optional)
     """
@@ -532,7 +531,6 @@ class PrometheusSignal(SilSignal):
         self,
         prometheus_url: str,
         query: str,
-        consumer: bool = True,
         username: Optional[str] = None,
         password: Optional[str] = None,
         update_interval: float = 10,
@@ -549,7 +547,6 @@ class PrometheusSignal(SilSignal):
         self.requests = requests
         self.prometheus_url = prometheus_url.rstrip("/")
         self.query = query
-        self.consumer = consumer
         self.username = username
         self.password = password
 
@@ -592,8 +589,7 @@ class PrometheusSignal(SilSignal):
             raise ValueError(f"No data returned for query: {self.query}")
 
         # Get the value from the first result
-        value = float(results[0]["value"][1])
-        return -value if self.consumer else value
+        return float(results[0]["value"][1])
 
     def __repr__(self):
         return f"PrometheusSignal({self.query})"

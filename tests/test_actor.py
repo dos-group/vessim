@@ -32,6 +32,15 @@ class TestActor:
         assert state == {"power": 10.0}
         mock_signal.now.assert_called_once_with(at=now)
 
+    def test_consumer_negates_power(self, mock_signal):
+        actor = Actor(name="test_actor", signal=mock_signal, consumer=True)
+        now = datetime(2023, 1, 1, 12, 0)
+        assert actor.power(now) == -10.0
+
+    def test_consumer_false_by_default(self, mock_signal):
+        actor = Actor(name="test_actor", signal=mock_signal)
+        assert actor.consumer is False
+
     def test_finalize(self, mock_signal):
         actor = Actor(name="test_actor", signal=mock_signal)
         actor.finalize()
