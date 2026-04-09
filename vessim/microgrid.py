@@ -96,6 +96,7 @@ class Microgrid:
         dispatch_sim = world.start("Dispatch", sim_id=f"{self.name}.dispatch", step_size=step_size)
         self.dispatch_entity = dispatch_sim.Dispatch(dispatchables=dispatchables, policy=policy)
         world.connect(self.grid_entity, self.dispatch_entity, "p_delta")
+        world.connect(self.grid_entity, self.dispatch_entity, "grid_signals")
 
     def finalize(self):
         """Clean up in case the simulation was interrupted.

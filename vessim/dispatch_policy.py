@@ -17,7 +17,11 @@ class DispatchPolicy(ABC):
 
     @abstractmethod
     def apply(
-        self, p_delta: float, duration: int, dispatchables: list[Dispatchable]
+        self,
+        p_delta: float,
+        duration: int,
+        dispatchables: list[Dispatchable],
+        grid_signals: Optional[dict[str, float]] = None,
     ) -> float:
         """Allocate power delta across dispatchables.
 
@@ -26,6 +30,8 @@ class DispatchPolicy(ABC):
                 negative means power deficit (need to discharge/generate).
             duration: Duration of the timestep in seconds.
             dispatchables: List of dispatchables available for dispatch.
+            grid_signals: Current grid signal values (e.g., carbon intensity, energy
+                price), if any are configured on the microgrid.
 
         Returns:
             Power in W exchanged with the public grid. Negative means power drawn
@@ -62,7 +68,11 @@ class DefaultDispatchPolicy(DispatchPolicy):
         self.charge_power = charge_power if charge_power else 0.0
 
     def apply(
-        self, p_delta: float, duration: int, dispatchables: list[Dispatchable]
+        self,
+        p_delta: float,
+        duration: int,
+        dispatchables: list[Dispatchable],
+        grid_signals: Optional[dict[str, float]] = None,
     ) -> float:
         remaining = p_delta
 
