@@ -122,30 +122,17 @@ class Environment:
                     ("state", "actor_states"),
                 )
 
-            # Connect to dispatch for state/energy feedback
+            # Connect to dispatch for state/energy feedback.
+            # Controllers that modify the policy take effect at the next step.
             self.world.connect(
-                microgrid.dispatch_entity,
-                controller_entity,
-                "p_grid",
-                time_shifted=True,
-                initial_data={"p_grid": 0.0},
+                microgrid.dispatch_entity, controller_entity, "p_grid"
             )
             self.world.connect(
-                microgrid.dispatch_entity,
-                controller_entity,
-                "policy_state",
-                time_shifted=True,
-                initial_data={"policy_state": microgrid.policy.state()},
+                microgrid.dispatch_entity, controller_entity, "policy_state"
             )
             if microgrid.dispatchables:
                 self.world.connect(
-                    microgrid.dispatch_entity,
-                    controller_entity,
-                    "dispatch_states",
-                    time_shifted=True,
-                    initial_data={
-                        "dispatch_states": {d.name: d.state() for d in microgrid.dispatchables}
-                    },
+                    microgrid.dispatch_entity, controller_entity, "dispatch_states"
                 )
 
     def run(
