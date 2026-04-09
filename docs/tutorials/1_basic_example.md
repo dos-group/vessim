@@ -14,35 +14,35 @@ environment = vs.Environment(sim_start="2022-06-09 00:00:00", step_size=300) # (
 environment.add_microgrid( # (2)!
     name="datacenter",
     actors=[
-        vs.Actor(name="server", signal=vs.StaticSignal(value=-700)), # (3)!
+        vs.Actor(name="server", signal=vs.StaticSignal(value=700), consumer=True), # (3)!
         vs.Actor(name="solar_panel", signal=vs.Trace.load(
             "solcast2022_global", column="Berlin", params={"scale": 5000}
         )), # (4)!
     ],
-    dispatch=vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3), # (5)!
+    dispatchers=[vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3)], # (5)!
     # (6)!
 )
 
-logger = vs.MemoryLogger() # (7)!
+logger = vs.CsvLogger("results/basic_example") # (7)!
 environment.add_controller(logger)
 
 environment.run(until=24 * 3600) # (8)!
-
-vs.plot_result_df(logger.to_df()) # (9)!
 ```
 
 1.  The **Environment** manages the simulation time and synchronization between simulators. In this example, we start on June 9, 2022, with 5-minute steps.
 2.  You can simulate an arbitrary number of (geo-distributed) **Microgrids** in parallel, simply add them to the environment.
-3.  **Actors** represent energy consumers (negative values) or producers (positive values). In this case we assume a server with a constant power consumption of 700W.<br /><br />
+3.  **Actors** represent energy consumers or producers. Setting `consumer=True` negates the signal value (Vessim convention: consumption is negative, production is positive). Here we assume a server with a constant power consumption of 700W.<br /><br />
     At each simulation step, Vessim sums up the power values of all actors to determine the microgrid's power delta at the current time.
 4.  Every actor is based on a [Signal](2_signals_and_datasets.md) that provides its power value at any given time. Signals can be static (constant), based on historical time-series data (Vessim provides some exemplary datasets but you can of course bring your own), or real-time data from physical systems through, e.g., Prometheus.
 5.  Optionally, microgrids can be equipped with **Dispatchables** — controllable energy resources like batteries or generators. Unlike actors, their power output is not determined by a signal but managed by a **Dispatch Policy**.<br /><br />
-    The `dispatch` parameter accepts a single `Dispatchable` or a list. Vessim includes two battery models (`SimpleBattery` and `ClcBattery`), but you can implement your own by subclassing `Dispatchable`.<br /><br />
+    The `dispatchers` parameter accepts a list of `Dispatchable`s. Vessim includes two battery models (`SimpleBattery` and `ClcBattery`), but you can implement your own by subclassing `Dispatchable`.<br /><br />
     If you don't specify a `policy`, Vessim uses the `DefaultDispatchPolicy`, which tries to absorb as much of the power delta as possible (charging on surplus, discharging on deficit) and exchanges the rest with the public grid.
 6.  Optionally, you can also define **Grid Signals** for your microgrid that provide contextual information about the public grid, e.g., energy prices or carbon intensity. Unlike actors, they do not consume or produce power themselves. We omitted them in this simple example.
-7.  Vessim includes various **Controllers** to monitor and control your microgrid. In this example, we use a simple in-memory logger to record the simulation results.
+7.  `CsvLogger` writes simulation results to a directory. After the run it contains `experiment.yaml` (static configuration) and `timeseries.csv` (power flows and battery state at every step). Open the results in the experiment viewer with:<br /><br />
+    ```console
+    vessim view results/basic_example
+    ```
 8.  We run the simulation for 24 hours (24 * 3600 seconds).
-9.  Vessim includes basic, built-in plotting functionality to visualize results.
 
 
 The above simulation yields the following results:

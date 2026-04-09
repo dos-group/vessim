@@ -121,8 +121,8 @@ def main():
 
     # 2. Define Components
     # In a real scenario, this could be a PrometheusSignal measuring your actual server
-    server_load = vs.StaticSignal(-1000) 
-    server = vs.Actor(name="server", signal=server_load)
+    server_load = vs.StaticSignal(1000) 
+    server = vs.Actor(name="server", signal=server_load, consumer=True)
 
     # Solar simulation
     solar = vs.Actor(
@@ -136,7 +136,7 @@ def main():
     environment.add_microgrid(
         name="datacenter",
         actors=[server, solar],
-        dispatch=battery,
+        dispatchers=[battery],
     )
 
     # 4. Add API Controller with Prometheus export
