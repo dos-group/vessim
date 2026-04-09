@@ -136,7 +136,7 @@ def main():
     environment.add_microgrid(
         name="datacenter",
         actors=[server, solar],
-        dispatchers=[battery],
+        dispatchables=[battery],
     )
 
     # 4. Add API Controller with Prometheus export

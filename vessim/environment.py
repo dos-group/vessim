@@ -30,8 +30,7 @@ class Environment:
     COSIM_CONFIG: mosaik.SimConfig = {
         "Actor": {"python": "vessim.actor:_ActorSim"},
         "Controller": {"python": "vessim.controller:_ControllerSim"},
-        "Grid": {"python": "vessim.microgrid:_GridSim"},
-        "Dispatch": {"python": "vessim.dispatchable:_DispatchSim"},
+        "Microgrid": {"python": "vessim.microgrid:_MicrogridSim"},
     }
 
     def __init__(self, sim_start: str | datetime, step_size: int = 1, name: Optional[str] = None):
@@ -110,29 +109,21 @@ class Environment:
 
         # Connect global controller to all microgrids
         for microgrid in self.microgrids:
-            # Connect to grid for p_delta
-            self.world.connect(microgrid.grid_entity, controller_entity, "p_delta")
-            self.world.connect(microgrid.grid_entity, controller_entity, "grid_signals")
+            self.world.connect(microgrid.entity, controller_entity, "p_delta")
+            self.world.connect(microgrid.entity, controller_entity, "grid_signals")
+            self.world.connect(microgrid.entity, controller_entity, "p_grid")
+            self.world.connect(microgrid.entity, controller_entity, "policy_state")
+            if microgrid.dispatchables:
+                self.world.connect(
+                    microgrid.entity, controller_entity, "dispatch_states"
+                )
 
-            # Connect to actors for state
+            # Connect actors for state
             for actor_entity in microgrid.actor_entities.values():
                 self.world.connect(
                     actor_entity,
                     controller_entity,
                     ("state", "actor_states"),
-                )
-
-            # Connect to dispatch for state/energy feedback.
-            # Controllers that modify the policy take effect at the next step.
-            self.world.connect(
-                microgrid.dispatch_entity, controller_entity, "p_grid"
-            )
-            self.world.connect(
-                microgrid.dispatch_entity, controller_entity, "policy_state"
-            )
-            if microgrid.dispatchables:
-                self.world.connect(
-                    microgrid.dispatch_entity, controller_entity, "dispatch_states"
                 )
 
     def run(

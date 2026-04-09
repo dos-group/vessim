@@ -78,25 +78,22 @@ class Microgrid:
                 clock=clock,
                 step_size=actor_step_size,
             )
-            # We initialize all actors before the grid simulation to make sure that
-            # there is already a valid p_delta at step 0
+            # We initialize all actors before the microgrid simulation to make sure
+            # that there is already a valid p_delta at step 0
             self.actor_entities[actor.name] = actor_sim.Actor(actor=actor)
 
-        grid_sim = world.start(
-            "Grid",
-            sim_id=f"{self.name}.grid",
+        microgrid_sim = world.start(
+            "Microgrid",
+            sim_id=f"{self.name}.microgrid",
             step_size=step_size,
             grid_signals=grid_signals,
             sim_start=clock.sim_start,
         )
-        self.grid_entity = grid_sim.Grid()
-        for actor_name, actor_entity in self.actor_entities.items():
-            world.connect(actor_entity, self.grid_entity, "power")
-
-        dispatch_sim = world.start("Dispatch", sim_id=f"{self.name}.dispatch", step_size=step_size)
-        self.dispatch_entity = dispatch_sim.Dispatch(dispatchables=dispatchables, policy=policy)
-        world.connect(self.grid_entity, self.dispatch_entity, "p_delta")
-        world.connect(self.grid_entity, self.dispatch_entity, "grid_signals")
+        self.entity = microgrid_sim.Microgrid(
+            dispatchables=dispatchables, policy=policy,
+        )
+        for actor_entity in self.actor_entities.values():
+            world.connect(actor_entity, self.entity, "power")
 
     def finalize(self):
         """Clean up in case the simulation was interrupted.
@@ -108,48 +105,89 @@ class Microgrid:
             actor.finalize()
 
 
-class _GridSim(mosaik_api_v3.Simulator):
+class _MicrogridSim(mosaik_api_v3.Simulator):
+    """Mosaik simulator that aggregates actor power and dispatches to flexible resources."""
+
     META = {
         "type": "time-based",
         "models": {
-            "Grid": {
+            "Microgrid": {
                 "public": True,
-                "params": ["grid_signals"],
-                "attrs": ["power", "p_delta", "grid_signals"],
+                "params": ["dispatchables", "policy", "grid_signals"],
+                "attrs": [
+                    "power",
+                    "p_delta",
+                    "grid_signals",
+                    "p_grid",
+                    "dispatch_states",
+                    "policy_state",
+                ],
             },
         },
     }
 
     def __init__(self):
         super().__init__(self.META)
-        self.eid = "Grid"
+        self.eid = "Microgrid"
         self.step_size = None
         self.grid_signals: Optional[dict[str, Signal]] = None
         self.p_delta = 0.0
+        self.p_grid = 0.0
+        self.dispatch_states: dict = {}
+        self.policy_state: dict = {}
 
     def init(self, sid, time_resolution=1.0, **sim_params):
         self.step_size = sim_params["step_size"]
-        self.grid_signals = sim_params["grid_signals"]
+        self.grid_signals = sim_params.get("grid_signals")
         self.sim_start = sim_params["sim_start"]
         return self.meta
 
     def create(self, num, model, **model_params):
         assert num == 1, "Only one instance per simulation is supported"
+        self.dispatchables = model_params["dispatchables"]
+        self.policy = model_params["policy"]
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
-        self._current_time = time
-        self.p_delta = sum(inputs[self.eid]["power"].values())
         assert self.step_size is not None
-        return time + self.step_size
 
-    def get_data(self, outputs):
+        # Phase 1: Advance dispatchable state from previous round's power setpoints
+        for d in self.dispatchables:
+            d.step(self.step_size)
+
+        # Phase 2: Aggregate actor power into p_delta
+        self.p_delta = sum(inputs[self.eid]["power"].values())
+
+        # Phase 3: Resolve grid signals at current time
         if self.grid_signals:
-            current_dt = self.sim_start + timedelta(seconds=self._current_time)
-            grid_signals = {
+            current_dt = self.sim_start + timedelta(seconds=time)
+            self._resolved_grid_signals = {
                 name: signal.now(at=current_dt)
                 for name, signal in self.grid_signals.items()
             }
         else:
-            grid_signals = None
-        return {self.eid: {"p_delta": self.p_delta, "grid_signals": grid_signals}}
+            self._resolved_grid_signals = None
+
+        # Phase 4: Dispatch policy allocates new power setpoints
+        self.p_grid = self.policy.apply(
+            self.p_delta,
+            duration=self.step_size,
+            dispatchables=self.dispatchables,
+            grid_signals=self._resolved_grid_signals,
+        )
+
+        self.policy_state = self.policy.state()
+        self.dispatch_states = {d.name: d.state() for d in self.dispatchables}
+
+        return time + self.step_size
+
+    def get_data(self, outputs):
+        return {
+            self.eid: {
+                "p_delta": self.p_delta,
+                "grid_signals": self._resolved_grid_signals,
+                "p_grid": self.p_grid,
+                "dispatch_states": self.dispatch_states,
+                "policy_state": self.policy_state,
+            }
+        }

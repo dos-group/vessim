@@ -19,7 +19,7 @@ environment.add_microgrid( # (2)!
             "solcast2022_global", column="Berlin", params={"scale": 5000}
         )), # (4)!
     ],
-    dispatchers=[vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3)], # (5)!
+    dispatchables=[vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3)], # (5)!
     # (6)!
 )
 
@@ -35,7 +35,7 @@ environment.run(until=24 * 3600) # (8)!
     At each simulation step, Vessim sums up the power values of all actors to determine the microgrid's power delta at the current time.
 4.  Every actor is based on a [Signal](2_signals_and_datasets.md) that provides its power value at any given time. Signals can be static (constant), based on historical time-series data (Vessim provides some exemplary datasets but you can of course bring your own), or real-time data from physical systems through, e.g., Prometheus.
 5.  Optionally, microgrids can be equipped with **Dispatchables** — controllable energy resources like batteries or generators. Unlike actors, their power output is not determined by a signal but managed by a **Dispatch Policy**.<br /><br />
-    The `dispatchers` parameter accepts a list of `Dispatchable`s. Vessim includes two battery models (`SimpleBattery` and `ClcBattery`), but you can implement your own by subclassing `Dispatchable`.<br /><br />
+    The `dispatchables` parameter accepts a list of `Dispatchable`s. Vessim includes two battery models (`SimpleBattery` and `ClcBattery`), but you can implement your own by subclassing `Dispatchable`.<br /><br />
     If you don't specify a `policy`, Vessim uses the `DefaultDispatchPolicy`, which tries to absorb as much of the power delta as possible (charging on surplus, discharging on deficit) and exchanges the rest with the public grid.
 6.  Optionally, you can also define **Grid Signals** for your microgrid that provide contextual information about the public grid, e.g., energy prices or carbon intensity. Unlike actors, they do not consume or produce power themselves. We omitted them in this simple example.
 7.  `CsvLogger` writes simulation results to a directory. After the run it contains `experiment.yaml` (static configuration) and `timeseries.csv` (power flows and battery state at every step). Open the results in the experiment viewer with:<br /><br />
@@ -81,4 +81,4 @@ The `DefaultDispatchPolicy` also supports an `"islanded"` mode where the microgr
 
 Microgrids can also receive **Grid Signals**, that can describe energy prices or carbon intensity at the location of the microgrid.
 Unlike actors, these signals do not consume or produce power themselves. 
-Instead, they provide environmental context that [Controllers](3_controller.md) can use to make "smart" decisions, for example, deciding to charge the battery only when the carbon intensity is low.
+Instead, they provide environmental context that the **Dispatch Policy** and [Controllers](3_controller.md) can use to make smart decisions, for example, only charging the battery when the carbon intensity is low.

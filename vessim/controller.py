@@ -356,14 +356,15 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         assert self.step_size is not None
 
         data = inputs[self.eid]
-        microgrids = [key.split(".grid.Grid")[0] for key in data["p_delta"].keys()]
+        mg_suffix = ".microgrid.Microgrid"
+        microgrids = [key.removesuffix(mg_suffix) for key in data["p_delta"].keys()]
         microgrid_states: dict[str, MicrogridState] = {name: {
-            "p_delta": data["p_delta"][f"{name}.grid.Grid"],
-            "p_grid": data["p_grid"][f"{name}.dispatch.Dispatch"],
+            "p_delta": data["p_delta"][f"{name}{mg_suffix}"],
+            "p_grid": data["p_grid"][f"{name}{mg_suffix}"],
             "actor_states": {k.split(".")[-1]: data["actor_states"][k] for k in data["actor_states"].keys() if k.startswith(f"{name}.actor.")},  # noqa: E501
-            "policy_state": next((v for k, v in data["policy_state"].items() if k.startswith(f"{name}.dispatch.Dispatch")), {}),  # noqa: E501
-            "dispatch_states": next((v for k, v in data.get("dispatch_states", {}).items() if k.startswith(f"{name}.dispatch.Dispatch")), None),  # noqa: E501
-            "grid_signals": next((v for k, v in data["grid_signals"].items() if k.startswith(f"{name}.grid.Grid")), None),  # noqa: E501
+            "policy_state": data["policy_state"].get(f"{name}{mg_suffix}", {}),
+            "dispatch_states": data.get("dispatch_states", {}).get(f"{name}{mg_suffix}"),
+            "grid_signals": data["grid_signals"].get(f"{name}{mg_suffix}"),
         } for name in microgrids}
 
         now = self.clock.to_datetime(time)

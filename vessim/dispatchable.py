@@ -1,14 +1,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
-import mosaik_api_v3
 import numpy as np
 from loguru import logger
-
-if TYPE_CHECKING:
-    from vessim.dispatch_policy import DispatchPolicy
 
 
 class Dispatchable(ABC):
@@ -388,62 +384,3 @@ class ClcBattery(Storage):
         }
 
 
-class _DispatchSim(mosaik_api_v3.Simulator):
-    """Mosaik simulator for dispatchables and dispatch policy."""
-
-    META = {
-        "type": "time-based",
-        "models": {
-            "Dispatch": {
-                "public": True,
-                "params": ["dispatchables", "policy"],
-                "attrs": ["p_delta", "grid_signals", "p_grid", "dispatch_states", "policy_state"],
-            },
-        },
-    }
-
-    def __init__(self) -> None:
-        super().__init__(self.META)
-        self.eid: str = "Dispatch"
-
-    def init(self, sid: str, time_resolution: float = 1.0, **sim_params):
-        self.step_size: int = sim_params["step_size"]
-        self.p_grid: float = 0.0
-        self.dispatch_states: dict = {}
-        self.policy_state: dict = {}
-        return self.meta
-
-    def create(self, num: int, model, **model_params):
-        assert num == 1, "Only one instance per simulation is supported"
-        self.dispatchables: list[Dispatchable] = model_params["dispatchables"]
-        self.policy: DispatchPolicy = model_params["policy"]
-        return [{"eid": self.eid, "type": model}]
-
-    def step(self, time, inputs, max_advance):
-        p_delta = list(inputs[self.eid]["p_delta"].values())[0]
-        grid_signals = list(inputs[self.eid].get("grid_signals", {None: None}).values())[0]
-
-        # Phase 1: Dispatch policy allocates power across dispatchables
-        self.p_grid = self.policy.apply(
-            p_delta,
-            duration=self.step_size,
-            dispatchables=self.dispatchables,
-            grid_signals=grid_signals,
-        )
-
-        # Phase 2: Advance dispatchable state
-        for d in self.dispatchables:
-            d.step(self.step_size)
-
-        self.policy_state = self.policy.state()
-        self.dispatch_states = {d.name: d.state() for d in self.dispatchables}
-        return time + self.step_size
-
-    def get_data(self, outputs):
-        return {
-            self.eid: {
-                "p_grid": self.p_grid,
-                "dispatch_states": self.dispatch_states,
-                "policy_state": self.policy_state,
-            }
-        }
