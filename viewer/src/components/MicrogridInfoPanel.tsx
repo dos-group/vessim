@@ -90,7 +90,6 @@ export function MicrogridInfoPanel({ history, config, stepSize }: {
         <SectionHeader>Actors</SectionHeader>
         {producers.map(name => {
           const state = latest.actor_states[name]
-          const cfg = config.actors.find(a => a.name === name)
           return (
             <div key={name} className="flex flex-col gap-0.5">
               <Row label={name}>
@@ -104,7 +103,6 @@ export function MicrogridInfoPanel({ history, config, stepSize }: {
         })}
         {consumers.map(name => {
           const state = latest.actor_states[name]
-          const cfg = config.actors.find(a => a.name === name)
           return (
             <div key={name} className="flex flex-col gap-0.5">
               <Row label={name}>

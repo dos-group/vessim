@@ -19,6 +19,32 @@ if TYPE_CHECKING:
     from vessim.microgrid import Microgrid, MicrogridState
 
 
+def _build_experiment_config(environment: Environment) -> dict:
+    """Build the static experiment configuration dict shared by loggers."""
+    return {
+        "environment": {
+            "name": environment.name,
+            "sim_start": str(environment.clock.sim_start),
+            "step_size": environment.step_size,
+        },
+        "microgrids": {
+            mg.name: {
+                "actors": [actor.config() for actor in mg.actors],
+                "dispatchables": [
+                    {"name": d.name, "type": d.__class__.__name__, **d.config()}
+                    for d in mg.dispatchables
+                ],
+                "policy": {
+                    "type": mg.policy.__class__.__name__,
+                    **mg.policy.state(),
+                },
+                "coords": mg.coords,
+            }
+            for mg in environment.microgrids
+        },
+    }
+
+
 class Controller(ABC):
     """Abstract base class for all controllers in the simulation.
 
@@ -50,10 +76,16 @@ class MemoryLogger(Controller):
     """Controller that logs the state of the simulation in memory.
 
     The logged state can be retrieved as a dictionary or a pandas DataFrame.
+    After the simulation, ``config`` contains the static experiment metadata
+    (same information that ``CsvLogger`` writes to ``experiment.yaml``).
     """
 
     def __init__(self):
         self.log: dict[datetime, dict[str, MicrogridState]] = defaultdict(dict)
+        self.config: dict = {}
+
+    def start(self, environment: Environment) -> None:
+        self.config = _build_experiment_config(environment)
 
     def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
         self.log[now] = microgrid_states
@@ -131,35 +163,14 @@ class CsvLogger(Controller):
         except Exception:
             pass
 
-        microgrids = {mg.name: mg for mg in environment.microgrids}
-        config: dict = {
-            "environment": {
-                "name": environment.name,
-                "sim_start": str(environment.clock.sim_start),
-                "step_size": environment.step_size,
-            },
-            "execution": {
-                "status": "running",
-                "git_hash": git_hash,
-                "start": datetime.now().isoformat(),
-                "end": None,
-                "duration": None,
-            },
-            "microgrids": {},
+        config = _build_experiment_config(environment)
+        config["execution"] = {
+            "status": "running",
+            "git_hash": git_hash,
+            "start": datetime.now().isoformat(),
+            "end": None,
+            "duration": None,
         }
-        for mg_name, mg in microgrids.items():
-            config["microgrids"][mg_name] = {
-                "actors": [actor.config() for actor in mg.actors],
-                "dispatchables": [
-                    {"name": d.name, "type": d.__class__.__name__, **d.config()}
-                    for d in mg.dispatchables
-                ],
-                "policy": {
-                    "type": mg.policy.__class__.__name__,
-                    **mg.policy.state(),
-                },
-                "coords": mg.coords,
-            }
 
         self._exec_start = datetime.now()
         with (self.outdir / "experiment.yaml").open("w") as f:
