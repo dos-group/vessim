@@ -21,8 +21,8 @@ __all__ = [
     "Storage",
     "SimpleBattery",
     "ClcBattery",
-    "StaticSignal",
     "Signal",
+    "StaticSignal",
     "Trace",
 ]
 

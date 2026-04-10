@@ -1,4 +1,8 @@
-"""Vessim CLI – ``vessim view <results-dir>``."""
+"""Vessim CLI
+
+So far only supports:
+- `vessim view <results-dir>`
+"""
 
 from __future__ import annotations
 

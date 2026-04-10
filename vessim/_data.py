@@ -9,6 +9,9 @@ from zipfile import ZipFile
 
 import pandas as pd
 
+# TODO: The dataset utilities haven't been updated in a long time and probably deserve
+#   more attention in the near future.
+
 VESSIM_DATASETS: dict[str, dict[str, str]] = {
     "solcast2022_germany": {
         "actual": "solcast2022_germany_actual.csv",
