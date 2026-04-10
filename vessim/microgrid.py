@@ -64,6 +64,7 @@ class Microgrid:
         self.actors = actors
         self.dispatchables = dispatchables
         self.policy = policy
+        self.grid_signals = grid_signals
         self.name = name or f"microgrid_{id(self)}"
         self.coords = coords
 

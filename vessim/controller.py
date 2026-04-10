@@ -38,6 +38,10 @@ def _build_experiment_config(environment: Environment) -> dict:
                     "type": mg.policy.__class__.__name__,
                     **mg.policy.state(),
                 },
+                "grid_signals": (
+                    {name: str(signal) for name, signal in mg.grid_signals.items()}
+                    if mg.grid_signals else None
+                ),
                 "coords": mg.coords,
             }
             for mg in environment.microgrids
