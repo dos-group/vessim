@@ -37,7 +37,7 @@ class Environment:
         self.clock = Clock(sim_start)
         self.step_size = step_size
         self.name = name
-        self.microgrids: list[Microgrid] = []
+        self.microgrids: dict[str, Microgrid] = {}
         self.controllers: list[Controller] = []
         self.world = mosaik.World(self.COSIM_CONFIG, skip_greetings=True)
 
@@ -79,7 +79,11 @@ class Environment:
             name=name,
             coords=coords,
         )
-        self.microgrids.append(microgrid)
+        if microgrid.name in self.microgrids:
+            raise ValueError(
+                f"A microgrid named '{microgrid.name}' already exists in this environment."
+            )
+        self.microgrids[microgrid.name] = microgrid
         return microgrid
 
     def add_controller(self, controller: Controller):
@@ -108,7 +112,7 @@ class Environment:
         controller_entity = controller_sim.Controller(controllers=self.controllers)
 
         # Connect global controller to all microgrids
-        for microgrid in self.microgrids:
+        for microgrid in self.microgrids.values():
             self.world.connect(microgrid.entity, controller_entity, "p_delta")
             self.world.connect(microgrid.entity, controller_entity, "grid_signals")
             self.world.connect(microgrid.entity, controller_entity, "p_grid")
@@ -167,13 +171,13 @@ class Environment:
         try:
             self.world.run(until=until, rt_factor=rt_factor, print_progress=print_progress)
         except Exception:
-            for microgrid in self.microgrids:
+            for microgrid in self.microgrids.values():
                 microgrid.finalize()
             raise
 
     def _contains_sil_signals(self) -> bool:
         """Check if any microgrid contains SiL signals."""
-        for microgrid in self.microgrids:
+        for microgrid in self.microgrids.values():
             for actor in microgrid.actors:
                 if isinstance(actor.signal, SilSignal):
                     return True

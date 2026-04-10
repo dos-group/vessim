@@ -44,7 +44,7 @@ def _build_experiment_config(environment: Environment) -> dict:
                 ),
                 "coords": mg.coords,
             }
-            for mg in environment.microgrids
+            for mg in environment.microgrids.values()
         },
     }
 
@@ -249,10 +249,9 @@ class Api(Controller):
         self.microgrids: dict[str, Microgrid] = {}
 
     def start(self, environment: Environment) -> None:
-        microgrids = {mg.name: mg for mg in environment.microgrids}
-        self.microgrids = microgrids
+        self.microgrids = dict(environment.microgrids)
         self._start_broker()
-        for mg_name, mg in microgrids.items():
+        for mg_name, mg in self.microgrids.items():
             config = {
                 "name": mg_name,
                 "actors": [actor.config() for actor in mg.actors],
@@ -271,7 +270,7 @@ class Api(Controller):
                 "coords": mg.coords,
             }
             self.requests.post(f"{self.broker_url}/internal/microgrids/{mg_name}", json=config)
-        print(f"Registered {len(microgrids)} microgrids with API broker.")
+        print(f"Registered {len(self.microgrids)} microgrids with API broker.")
 
     def _start_broker(self):
         from vessim._broker import run_broker

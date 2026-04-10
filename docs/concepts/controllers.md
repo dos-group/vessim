@@ -36,7 +36,7 @@ import vessim as vs
 class MyController(vs.Controller):
     def start(self, environment):
         # Called once before the simulation starts
-        self.microgrids = {mg.name: mg for mg in environment.microgrids}
+        self.microgrids = environment.microgrids
 
     def step(self, now, microgrid_states):
         # Called at every simulation step
@@ -62,7 +62,7 @@ class ScheduledCharger(vs.Controller):
         self.microgrid_name = microgrid_name
 
     def start(self, environment):
-        mg = next(m for m in environment.microgrids if m.name == self.microgrid_name)
+        mg = environment.microgrids[self.microgrid_name]
         assert isinstance(mg.policy, vs.DefaultDispatchPolicy)
         self.policy = mg.policy
 

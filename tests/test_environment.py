@@ -18,7 +18,7 @@ class TestEnvironment:
     def test_init(self, mock_mosaik_world):
         env = Environment(sim_start="2023-01-01 00:00:00", step_size=60)
         assert env.step_size == 60
-        assert env.microgrids == []
+        assert env.microgrids == {}
         assert env.controllers == []
         mock_mosaik_world.assert_called_once()
 
@@ -33,10 +33,11 @@ class TestEnvironment:
 
         with patch("vessim.environment.Microgrid") as mock_microgrid_cls:
             mg_instance = mock_microgrid_cls.return_value
+            mg_instance.name = "test_mg"
             mg = environment.add_microgrid(actors=[mock_actor])
 
             assert mg == mg_instance
-            assert mg in environment.microgrids
+            assert mg in environment.microgrids.values()
             mock_microgrid_cls.assert_called_once()
 
     def test_run_validates_sil_signals(self, environment):
@@ -50,7 +51,7 @@ class TestEnvironment:
 
         mg = Mock(spec=Microgrid)
         mg.actors = [mock_actor]
-        environment.microgrids = [mg]
+        environment.microgrids = {"mg": mg}
 
         with pytest.raises(RuntimeError, match="SiL signals detected"):
             environment.run(until=100)
@@ -70,7 +71,7 @@ class TestEnvironment:
         actor2.signal = DummySilSignal()
 
         mg.actors = [actor1, actor2]
-        environment.microgrids = [mg]
+        environment.microgrids = {"mg": mg}
 
         assert environment._contains_sil_signals() is True
 
