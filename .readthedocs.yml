@@ -8,7 +8,7 @@ build:
     post_create_environment:
       - pip install uv
     post_install:
-      - uv pip install -e ".[docs,examples]"
+      - uv pip install -e ".[docs,sil]"
 
 mkdocs:
   configuration: mkdocs.yml
