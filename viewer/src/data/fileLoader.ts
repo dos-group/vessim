@@ -18,14 +18,22 @@ export interface ExperimentsResponse {
   experiments: ExperimentEntry[]
 }
 
+// When VITE_STATIC_BASE is set (e.g. "/viewer/"), the app fetches data from static
+// files relative to that base — suitable for embedding in a documentation site.
+// Without it, the dev-server and `vessim view` endpoints (/experiments, /results/*) are used.
+const STATIC_BASE: string | undefined = import.meta.env.VITE_STATIC_BASE
+
 export async function fetchExperiments(): Promise<ExperimentsResponse> {
-  const res = await fetch('/experiments')
+  const url = STATIC_BASE ? `${STATIC_BASE}experiments.json` : '/experiments'
+  const res = await fetch(url)
   if (!res.ok) throw new Error('Could not reach the experiments endpoint. Start the viewer with VITE_RESULTS_DIR=/path npm run dev or vessim view /path.')
   return res.json()
 }
 
 export async function loadExperiment(name: string): Promise<LoadedExperiment> {
-  const prefix = name ? `/results/${name}` : '/results'
+  const prefix = STATIC_BASE
+    ? name ? `${STATIC_BASE}results/${name}` : `${STATIC_BASE}results`
+    : name ? `/results/${name}` : '/results'
   const [yamlRes, csvRes] = await Promise.all([
     fetch(`${prefix}/metadata.yaml`),
     fetch(`${prefix}/timeseries.csv`),

@@ -17,11 +17,11 @@ Vessim helps you to understand and optimize how your (distributed) computing sys
 - **Energy-aware applications**: Develop applications that adapt their energy consumption to the carbon intensity and price of electricity.
 - **Microgrid composition**: Experiment with adding solar panels, wind turbines, or batteries to see how they would affect your energy costs and carbon emissions.
 - **Demand response and power outages**: Simulate demand response signals or power outages to understand your system's flexibility and test mitigation strategies.
-- **Quality assurance**: Apply Vessim in continuous integrating testing to validate software roll-outs in a controlled environment.
+- **Quality assurance**: Apply Vessim in continuous integration to validate software roll-outs in a controlled environment.
 
-Vessim can simulate multiple distributed microgrids in parallel and easily integrates historical datasets and new simulators. 
+Vessim can simulate multiple distributed microgrids in parallel and easily integrates historical datasets and new simulators.
 
-Vessim’s software-in-the-loop capabilities let you run real systems against simulated microgrids. Connect live data sources like Prometheus and interact through REST APIs.
+Vessim's [software-in-the-loop](concepts/sil.md) capabilities let you run real systems against simulated microgrids. Connect live data sources like Prometheus and interact through REST APIs.
 
 
 ## How Vessim Works
@@ -30,38 +30,37 @@ Vessim simulates local energy systems, called **microgrids**, that combine compu
 
 ![Vessim Overview](assets/vessim_overview.png)
 
-Vessim is based on [Mosaik](https://mosaik.offis.de), a general-purpose co-simulation framework.
-In the diagram, all hexagons represent a distinct Mosaik component which can be either simulated or real (software-in-the-loop).
-Vessim has the following core components:
+Vessim is built on [Mosaik](https://mosaik.offis.de), a general-purpose co-simulation framework.
+Each hexagon in the diagram is a Mosaik component that can be simulated or run as real software (software-in-the-loop).
+A microgrid is composed of three kinds of building blocks:
 
-- **Actors** (red): Exogenous energy consumers and producers whose power output is determined by an underlying [Signal](tutorials/2_signals_and_datasets.md).
-    - Computing systems (servers, workstations, etc.) that consume power
-    - Energy sources (solar panels, wind turbines) that produce power
-    - Signals can be static, based on historical traces, or fed from real-time sources like Prometheus
+- **[Actors](concepts/signals.md)** (red): exogenous consumers and producers — servers, solar panels, wind turbines — whose power is determined by a `Signal`. Their sum at each step is the microgrid's *power delta*.
+- **[Dispatchables](concepts/dispatchables.md)** (gray): controllable resources like batteries or generators. A `DispatchPolicy` decides how to distribute the power delta across them; any remainder is exchanged with the public grid.
+- **[Controllers](concepts/controllers.md)** (yellow): observe the simulation each step. Built-in loggers record the state, and custom controllers can adjust dispatch parameters or expose the simulation via REST.
 
-    At each simulation step, the **Grid** sums all actor powers to compute the net surplus or deficit of the microgrid.
 
-- **Dispatchables** (gray): Controllable energy resources whose power output is managed by a `DispatchPolicy`.
-    - The most common dispatchable is a battery, but anything with a controllable power setpoint (diesel generators, hydrogen electrolyzers, etc.) can be modeled as a `Dispatchable`.
-    - Vessim ships with two battery models: `SimpleBattery` (ideal, capacity-based) and `ClcBattery` (a realistic lithium-ion model based on [Kazhamiaka et al., 2019](https://doi.org/10.1186/s42162-019-0070-6)).
-    - The `DispatchPolicy` decides how to distribute the power delta across dispatchables. The default policy charges batteries when there is excess power and discharges them during deficits. Any remaining imbalance is exchanged with the public grid. You can implement custom policies for more advanced strategies (e.g., charging only when the grid is clean).
+## Try it now
 
-- **Controllers** (yellow): Observe and interact with the simulation at every step.
-    - Built-in loggers (`MemoryLogger`, `CsvLogger`) record the experiment metadata as well as full microgrid state over time
-    - The `Api` controller exposes a REST API for real-time monitoring and control, as well as Prometheus metrics.
-    - You can implement custom controllers to, e.g., adjust dispatch policy parameters based on electricity prices.
+Head to [Getting Started](getting_started.md) for a step-by-step walkthrough that builds a complete microgrid in a few lines of code.
+
+You can also explore a finished simulation in your browser — [open the **Experiment Viewer**](viewer/index.html){target="_blank"} to see the interactive dashboard for the Getting Started run.
 
 
 ## Installation
 
-You can install our [latest release](https://pypi.org/project/vessim/) via [pip](https://pip.pypa.io/en/stable/getting-started/):
+Install the [latest release](https://pypi.org/project/vessim/) via [pip](https://pip.pypa.io/en/stable/getting-started/):
 
 ```console
 pip install vessim
 ```
 
-If you require software-in-the-loop capabilities (e.g. loading live data from Prometheus and/or exposing the simulated microgrids via a REST API), you can install the `sil` extra:
+For software-in-the-loop capabilities (loading live data from Prometheus, exposing the simulated microgrid via a REST API), install the `sil` extra:
 
 ```console
 pip install vessim[sil]
 ```
+
+
+## Contact
+
+Please reach out via [GitHub Discussions](https://github.com/dos-group/vessim/discussions) in case of questions.

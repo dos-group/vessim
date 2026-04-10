@@ -1,34 +1,46 @@
-"""This example acts as a playground for the "First Steps" tutorial.
+"""This example accompanies the "Getting Started" walkthrough.
 
-https://vessim.readthedocs.io/en/latest/tutorials/1_basic_example/
+https://vessim.readthedocs.io/en/latest/getting_started/
 """
 import vessim as vs
 
-# The Environment manages the simulation time and synchronization between simulators.
-# In this example, we start on June 9, 2022, with 5-minute (300s) steps.
+# The Environment manages simulation time and the synchronization between simulators.
+# Here we start on June 9, 2022 and step every 5 minutes (300 s).
 environment = vs.Environment(sim_start="2022-06-09 00:00:00", step_size=300)
 
-# You can simulate an arbitrary number of (geo-distributed) Microgrids in parallel.
+# A microgrid combines actors (consumers/producers), dispatchables (batteries,
+# generators, ...), and optional grid signals (carbon intensity, electricity price, ...).
+# You can call add_microgrid() multiple times to simulate geo-distributed sites in parallel.
 environment.add_microgrid(
     name="datacenter",
     actors=[
-        # Actors represent energy consumers (negative values) or producers (positive values).
-        # Here we assume a server with a constant power consumption of 700W.
+        # Actors represent energy consumers (consumer=True) or producers.
+        # Vessim convention: consumption is negative, production is positive.
         vs.Actor(name="server", signal=vs.StaticSignal(value=700), consumer=True),
 
-        # Every actor is based on a Signal that provides its power value at any given time.
-        # This solar panel uses historical trace data, scaled to a 5kW peak.
+        # Every actor is backed by a Signal. Trace replays historical time-series data;
+        # here we scale the normalized Berlin solar trace to a 5 kW peak.
         vs.Actor(name="solar_panel", signal=vs.Trace.load(
             "solcast2022_global", column="Berlin", params={"scale": 5000}
         )),
     ],
-    # Microgrids can be equipped with Dispatchables (controllable resources like batteries).
-    # Batteries are (dis)charged based on a configurable Dispatch Policy.
-    dispatchables=[vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3)],
+    # Dispatchables are controllable resources. The default DispatchPolicy charges on
+    # surplus, discharges on deficit, and exchanges any remainder with the public grid.
+    dispatchables=[
+        vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3)
+    ],
+    # Grid signals provide contextual information that custom policies and controllers
+    # can react to. They are also plotted by the experiment viewer. The watttime trace
+    # is from 2023 — we shift it via start_time so it lines up with the 2022 sim window.
+    grid_signals={
+        "carbon_intensity": vs.Trace.load(
+            "watttime2023_caiso-north", params={"start_time": "2022-06-09"}
+        ),
+    },
 )
 
-# Vessim includes various Controllers to monitor and control your microgrid.
-# We use a simple in-memory logger to record the simulation results.
+# CsvLogger writes metadata.yaml + timeseries.csv to the output directory. Open the
+# results in your browser with: vessim view results/basic_example
 environment.add_controller(vs.CsvLogger(outdir="results/basic_example"))
 
 # Run the simulation for 24 hours (24 * 3600 seconds).

@@ -10,17 +10,21 @@ extra_javascript:
 
 nav:
   - Overview: index.md
-  - Tutorials:
-    - First Steps: tutorials/1_basic_example.md
-    - Signals and Datasets: tutorials/2_signals_and_datasets.md
-    - Controllers: tutorials/3_controller.md
-    - Software-in-the-Loop: tutorials/4_sil.md
+  - Getting Started: getting_started.md
+  - Concepts:
+    - Signals and Datasets: concepts/signals.md
+    - Dispatchables and Dispatch Policies: concepts/dispatchables.md
+    - Controllers: concepts/controllers.md
+    - Software-in-the-Loop: concepts/sil.md
   - API Reference:
-    - api_reference/environment.md
-    - Actors and Signals: api_reference/actors.md
-    - Controllers: api_reference/controllers.md
-    - Dispatchables: api_reference/dispatchables.md
-    - Dispatch Policy: api_reference/policy.md
+    - Environment: api_reference/environment.md
+    - Microgrid: api_reference/microgrid.md
+    - Actor: api_reference/actor.md
+    - Signal: api_reference/signal.md
+    - Dispatchable: api_reference/dispatchable.md
+    - Dispatch Policy: api_reference/dispatch_policy.md
+    - Controller: api_reference/controller.md
+    - CLI: api_reference/cli.md
   - Publications: publications.md
   - About: about.md
 
