@@ -1,6 +1,6 @@
 # Vessim Viewer
 
-Browser-based experiment viewer for Vessim simulation results. Reads `config.yaml` and `timeseries.csv` from a results directory. No running simulation required.
+Browser-based experiment viewer for Vessim simulation results. Reads `metadata.yaml` and `timeseries.csv` from a results directory. No running simulation required.
 
 ## Usage
 

@@ -22,7 +22,7 @@ function resultsPlugin(resultsDir: string): Plugin {
     configureServer(server) {
       // /experiments — return JSON list of discovered experiments
       server.middlewares.use('/experiments', (_req, res) => {
-        const rootConfig = path.join(absDir, 'experiment.yaml')
+        const rootConfig = path.join(absDir, 'metadata.yaml')
         let response: { mode: string; experiments: { name: string; status: string | null }[] }
 
         if (fs.existsSync(rootConfig)) {
@@ -34,7 +34,7 @@ function resultsPlugin(resultsDir: string): Plugin {
           const experiments: { name: string; status: string | null }[] = []
           for (const entry of fs.readdirSync(absDir).sort()) {
             const subdir = path.join(absDir, entry)
-            const configFile = path.join(subdir, 'experiment.yaml')
+            const configFile = path.join(subdir, 'metadata.yaml')
             if (fs.statSync(subdir).isDirectory() && fs.existsSync(configFile)) {
               experiments.push({ name: entry, status: parseYamlStatus(configFile) })
             }

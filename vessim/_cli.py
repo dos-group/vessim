@@ -37,14 +37,14 @@ class _ViewerHandler(SimpleHTTPRequestHandler):
         super().do_GET()
 
     def _serve_experiments(self):
-        root_config = self.results_dir / "experiment.yaml"
+        root_config = self.results_dir / "metadata.yaml"
         if root_config.exists():
             status = self._read_status(root_config)
             data = {"mode": "single", "experiments": [{"name": "", "status": status}]}
         else:
             experiments = []
             for subdir in sorted(self.results_dir.iterdir()):
-                config_file = subdir / "experiment.yaml"
+                config_file = subdir / "metadata.yaml"
                 if subdir.is_dir() and config_file.exists():
                     experiments.append({"name": subdir.name, "status": self._read_status(config_file)})
             data = {"mode": "multi", "experiments": experiments}

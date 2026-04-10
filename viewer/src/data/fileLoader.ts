@@ -27,10 +27,10 @@ export async function fetchExperiments(): Promise<ExperimentsResponse> {
 export async function loadExperiment(name: string): Promise<LoadedExperiment> {
   const prefix = name ? `/results/${name}` : '/results'
   const [yamlRes, csvRes] = await Promise.all([
-    fetch(`${prefix}/experiment.yaml`),
+    fetch(`${prefix}/metadata.yaml`),
     fetch(`${prefix}/timeseries.csv`),
   ])
-  if (!yamlRes.ok) throw new Error(`Could not load experiment.yaml${name ? ` for "${name}"` : ''}`)
+  if (!yamlRes.ok) throw new Error(`Could not load metadata.yaml${name ? ` for "${name}"` : ''}`)
   if (!csvRes.ok) throw new Error(`Could not load timeseries.csv${name ? ` for "${name}"` : ''}`)
   const [yamlText, csvText] = await Promise.all([yamlRes.text(), csvRes.text()])
   const metadata = parseConfig(yamlText)

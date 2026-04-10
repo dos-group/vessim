@@ -77,7 +77,7 @@ class MemoryLogger(Controller):
 
     The logged state can be retrieved as a dictionary or a pandas DataFrame.
     After the simulation, ``config`` contains the static experiment metadata
-    (same information that ``CsvLogger`` writes to ``experiment.yaml``).
+    (same information that ``CsvLogger`` writes to ``metadata.yaml``).
     """
 
     def __init__(self):
@@ -126,7 +126,7 @@ class CsvLogger(Controller):
     """Controller that logs simulation results to a directory.
 
     Writes two files:
-    - ``experiment.yaml``: static experiment configuration (run metadata, microgrid
+    - ``metadata.yaml``: static experiment configuration (run metadata, microgrid
       topology, actor and dispatchable parameters) written once before the simulation
       starts.
     - ``timeseries.csv``: dynamic state logged at every simulation step.
@@ -173,7 +173,7 @@ class CsvLogger(Controller):
         }
 
         self._exec_start = datetime.now()
-        with (self.outdir / "experiment.yaml").open("w") as f:
+        with (self.outdir / "metadata.yaml").open("w") as f:
             yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
     def step(self, now: datetime, microgrid_states: dict[str, MicrogridState]) -> None:
@@ -198,7 +198,7 @@ class CsvLogger(Controller):
                 writer.writerow(log_entry)
 
     def finalize(self) -> None:
-        experiment_path = self.outdir / "experiment.yaml"
+        experiment_path = self.outdir / "metadata.yaml"
         if experiment_path.exists() and hasattr(self, "_yaml"):
             end = datetime.now()
             with experiment_path.open() as f:

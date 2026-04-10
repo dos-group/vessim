@@ -19,12 +19,13 @@ environment.add_microgrid( # (2)!
             "solcast2022_global", column="Berlin", params={"scale": 5000}
         )), # (4)!
     ],
-    dispatchables=[vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3)], # (5)!
+    dispatchables=[
+        vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3)
+    ], # (5)!
     # (6)!
 )
 
-logger = vs.CsvLogger("results/basic_example") # (7)!
-environment.add_controller(logger)
+environment.add_controller(vs.CsvLogger("results/basic_example"))  # (7)!
 
 environment.run(until=24 * 3600) # (8)!
 ```
@@ -38,7 +39,7 @@ environment.run(until=24 * 3600) # (8)!
     The `dispatchables` parameter accepts a list of `Dispatchable`s. Vessim includes two battery models (`SimpleBattery` and `ClcBattery`), but you can implement your own by subclassing `Dispatchable`.<br /><br />
     If you don't specify a `policy`, Vessim uses the `DefaultDispatchPolicy`, which tries to absorb as much of the power delta as possible (charging on surplus, discharging on deficit) and exchanges the rest with the public grid.
 6.  Optionally, you can also define **Grid Signals** for your microgrid that provide contextual information about the public grid, e.g., energy prices or carbon intensity. Unlike actors, they do not consume or produce power themselves. We omitted them in this simple example.
-7.  `CsvLogger` writes simulation results to a directory. After the run it contains `experiment.yaml` (static configuration) and `timeseries.csv` (power flows and battery state at every step). Open the results in the experiment viewer with:<br /><br />
+7.  `CsvLogger` writes simulation results to a directory. After the run it contains `metadata.yaml` (static configuration) and `timeseries.csv` (power flows and battery state at every step). Open the results in the experiment viewer with:<br /><br />
     ```console
     vessim view results/basic_example
     ```

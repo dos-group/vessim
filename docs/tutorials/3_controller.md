@@ -112,11 +112,11 @@ After the simulation, the output directory contains two files:
 
 ```
 results/my_experiment/
-  config.yaml    # static experiment configuration
+  metadata.yaml    # static experiment configuration
   timeseries.csv   # dynamic state at every simulation step
 ```
 
-**`config.yaml`** captures the full microgrid topology — actor types and signal parameters, dispatchable specs (e.g. battery capacity and initial SoC), and the dispatch policy. This is written once before the simulation starts and never changes:
+**`metadata.yaml`** captures the full microgrid topology — actor types and signal parameters, dispatchable specs (e.g. battery capacity and initial SoC), and the dispatch policy. This is written once before the simulation starts and never changes:
 
 ```yaml
 microgrids:
