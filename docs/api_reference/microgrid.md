@@ -1,4 +1,4 @@
 # Microgrid
 
 ::: vessim.Microgrid
-::: vessim.microgrid.MicrogridState
+::: vessim.MicrogridState

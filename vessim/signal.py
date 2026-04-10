@@ -220,20 +220,28 @@ class Trace(Signal):
             column = self.default_column
 
         np_dt = np.datetime64(at)
-        times, values = self._actual[_get_column_name(self._actual, column)]
+        resolved_column = _get_column_name(self._actual, column)
+        times, values = self._actual[resolved_column]
 
         if self._fill_method == "ffill":
             index = times.searchsorted(np_dt, side="right") - 1
             if index >= 0:
                 return values[index]
-            else:
-                raise ValueError(f"'{at}' is too early to get data in column '{column}'.")
+            raise ValueError(
+                f"'{at}' is before the start of column '{resolved_column}' "
+                f"(data covers {pd.Timestamp(times[0])} to {pd.Timestamp(times[-1])}). "
+                f"Shift the trace via Trace.load(..., params={{'start_time': ...}}) "
+                f"or pick a sim_start within the data range."
+            )
         else:
             index = times.searchsorted(np_dt, side="left")
             try:
                 return values[index]
             except IndexError:
-                raise ValueError(f"'{at}' is too late to get data in column '{column}'.")
+                raise ValueError(
+                    f"'{at}' is after the end of column '{resolved_column}' "
+                    f"(data covers {pd.Timestamp(times[0])} to {pd.Timestamp(times[-1])})."
+                )
 
     def forecast(
         self,

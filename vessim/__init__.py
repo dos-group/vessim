@@ -5,7 +5,7 @@ from vessim.controller import Controller, MemoryLogger, CsvLogger
 from vessim.dispatch_policy import DispatchPolicy, DefaultDispatchPolicy
 from vessim.dispatchable import Dispatchable, Storage, SimpleBattery, ClcBattery
 from vessim.environment import Environment
-from vessim.microgrid import Microgrid
+from vessim.microgrid import Microgrid, MicrogridState
 from vessim.signal import Signal, Trace, StaticSignal
 
 __all__ = [
@@ -14,6 +14,7 @@ __all__ = [
     "MemoryLogger",
     "CsvLogger",
     "Microgrid",
+    "MicrogridState",
     "Environment",
     "DispatchPolicy",
     "DefaultDispatchPolicy",
