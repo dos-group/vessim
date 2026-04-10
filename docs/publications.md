@@ -41,9 +41,10 @@ For details in Vessim's software-in-the-loop simulation methodology, refer to ou
     ```
 
 
-## Further publications using or building on Vessim
+## Publications using or building on Vessim
 
-- Julius Irion, Philipp Wiesner, Jonathan Bader, and Odej Kao. "[Optimizing Microgrid Composition for Sustainable Data Centers](https://dl.acm.org/doi/full/10.1145/3731599.3767562)". Sustainable Supercomputing Workshop at SC. 2025.
-- Miray Özcan, Philipp Wiesner, Philipp Weiß, and Odej Kao. "[Quantifying the Energy Consumption and Carbon Emissions of LLM Inference via Simulations](https://arxiv.org/pdf/2507.11417)". Workshop on Performance and Energy Efficiency in Concurrent and Distributed Systems (PECS) at Euro-PAR. 2025.
-- Paul Kilian, Philipp Wiesner, and Odej Kao. "[Choosing the Right Battery Model for Data Center Simulations](https://arxiv.org/pdf/2506.17739)". 1st International Workshop on Low Carbon Computing (LOCO). 2024.
-- Philipp Wiesner, Ramin Khalili, Dennis Grinwald, Pratik Agrawal, Lauritz Thamsen, and Odej Kao. "[FedZero: Leveraging Renewable Excess Energy in Federated Learning](https://dl.acm.org/doi/10.1145/3632775.3639589)". 15th ACM International Conference on Future and Sustainable Energy Systems (e-Energy). 2024.
+1. Philipp Wiesner, Soeren Becker, Brett Cornick, Dominik Scheinert, Alexander Acker and Odej Kao. "[Distributed LLM Pretraining During Renewable Curtailment Windows: A Feasibility Study](https://arxiv.org/pdf/2602.22760)". Technical Report. 2026.
+1. Julius Irion, Philipp Wiesner, Jonathan Bader, and Odej Kao. "[Optimizing Microgrid Composition for Sustainable Data Centers](https://dl.acm.org/doi/full/10.1145/3731599.3767562)". Sustainable Supercomputing Workshop at SC. 2025.
+1. Miray Özcan, Philipp Wiesner, Philipp Weiß, and Odej Kao. "[Quantifying the Energy Consumption and Carbon Emissions of LLM Inference via Simulations](https://arxiv.org/pdf/2507.11417)". Workshop on Performance and Energy Efficiency in Concurrent and Distributed Systems (PECS) at Euro-PAR. 2025.
+1. Paul Kilian, Philipp Wiesner, and Odej Kao. "[Choosing the Right Battery Model for Data Center Simulations](https://arxiv.org/pdf/2506.17739)". 1st International Workshop on Low Carbon Computing (LOCO). 2024.
+1. Philipp Wiesner, Ramin Khalili, Dennis Grinwald, Pratik Agrawal, Lauritz Thamsen, and Odej Kao. "[FedZero: Leveraging Renewable Excess Energy in Federated Learning](https://dl.acm.org/doi/10.1145/3632775.3639589)". 15th ACM International Conference on Future and Sustainable Energy Systems (e-Energy). 2024.

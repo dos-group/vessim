@@ -11,9 +11,10 @@ We thank everyone who has contributed to Vessim over the past years, especially 
 
 We are currently working on the following aspects and features:
 
-- **Improved SiL capabilities**: We are woking on smoother integration of real hardware testbeds into Vessim's software-in-the-loop simulation methodology.
+- **Datasets**: We are working on better integrating exiting data sources like electricity prices, carbon intensity data, or weather forecasts into Vessim.
 - **System Advisor Model (SAM)**: We are working on integrating NREL's [SAM](https://sam.nrel.gov/) as a subsystem in Vessim, allowing for better simulation of solar arrays, wind farms, and other types of renewable energy generators.
 - **Battery degradation**: We are working on integrating NREL's [BLAST-Lite](https://github.com/NREL/BLAST-Lite) for modeling battery lifetime and degradation
+- **Improved modeling**: We are working on more sophisticated modeling of e.g. demand response signals, time-varying PUE, ...
 - **Calibration**: We are working on a methodology for calibrating Vessim simulations on real hardware testbeds.
 
 ## License

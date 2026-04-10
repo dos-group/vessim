@@ -3,6 +3,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Optional, Literal
 
+from vessim.dispatchable import Storage
+
 if TYPE_CHECKING:
     from vessim.dispatchable import Dispatchable
 
@@ -55,8 +57,9 @@ class DefaultDispatchPolicy(DispatchPolicy):
         mode: Operating mode. In ``"grid-connected"`` mode, remaining power is
             exchanged with the grid. In ``"islanded"`` mode, an error is raised
             if the delta cannot be fully served by dispatchables.
-        charge_power: Optional fixed charge/discharge rate applied to all dispatchables.
-            If set, dispatchables are charged at this rate regardless of the power delta.
+        charge_power: Optional fixed charge/discharge rate applied to storage dispatchables.
+            If set, storage is charged/discharged at this rate regardless of the power delta,
+            and remaining dispatchables are dispatched sequentially as usual.
             Only works in grid-connected mode. Defaults to None.
     """
 
@@ -76,30 +79,35 @@ class DefaultDispatchPolicy(DispatchPolicy):
         grid_signals: Optional[dict[str, float]] = None,
     ) -> float:
         remaining = p_delta
+        force_charged = set()
 
-        if self.mode == "grid-connected" and self.charge_power and dispatchables:
-            # Charge/discharge all dispatchables at specified rate
+        if self.charge_power and self.mode == "grid-connected":
+            # Pre-pass: force-charge/discharge storage at specified rate
             for d in dispatchables:
-                lo, hi = d.feasible_range(duration)
-                power = max(lo, min(hi, self.charge_power))
-                d.set_power(power, duration)
-                remaining -= power
-        else:
-            # Sequential dispatch
-            for d in dispatchables:
-                if remaining == 0:
-                    d.set_power(0.0, duration)
-                    continue
+                if isinstance(d, Storage):
+                    lo, hi = d.feasible_range(duration)
+                    power = max(lo, min(hi, self.charge_power))
+                    d.set_power(power, duration)
+                    remaining -= power
+                    force_charged.add(d)
 
-                lo, hi = d.feasible_range(duration)
+        # Sequential dispatch for remaining dispatchables
+        for d in dispatchables:
+            if d in force_charged:
+                continue
+            if remaining == 0:
+                d.set_power(0.0, duration)
+                continue
 
-                if remaining > 0:  # excess: try to charge (positive power)
-                    allocated = max(0.0, min(hi, remaining))
-                else:  # deficit: try to discharge (negative power)
-                    allocated = min(0.0, max(lo, remaining))
+            lo, hi = d.feasible_range(duration)
 
-                d.set_power(allocated, duration)
-                remaining -= allocated
+            if remaining > 0:  # excess: try to charge (positive power)
+                allocated = max(0.0, min(hi, remaining))
+            else:  # deficit: try to discharge (negative power)
+                allocated = min(0.0, max(lo, remaining))
+
+            d.set_power(allocated, duration)
+            remaining -= allocated
 
         if self.mode == "islanded":
             if remaining < 0:
