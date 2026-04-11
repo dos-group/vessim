@@ -76,6 +76,10 @@ const staticBase: string | undefined = process.env.VITE_STATIC_BASE
 
 export default defineConfig({
   base: staticBase ?? '/',
+  build: {
+    outDir: '../vessim/_viewer_dist',
+    emptyOutDir: true,
+  },
   plugins: [react(), tailwindcss(), ...(resultsDir ? [resultsPlugin(resultsDir)] : [])],
   server: {
     proxy: {
