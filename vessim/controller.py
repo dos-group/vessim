@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any, Optional, TYPE_CHECKING
 
 import mosaik_api_v3  # type: ignore
-from loguru import logger
 
 from vessim._util import flatten_dict
 

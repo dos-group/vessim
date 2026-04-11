@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, TypedDict
 from datetime import timedelta
+from typing import TYPE_CHECKING, Optional, TypedDict
 
 import mosaik
 import mosaik_api_v3

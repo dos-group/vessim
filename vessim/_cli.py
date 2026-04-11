@@ -1,4 +1,4 @@
-"""Vessim CLI
+"""Vessim CLI.
 
 So far only supports:
 - `vessim view <results-dir>`
@@ -46,7 +46,10 @@ class _ViewerHandler(SimpleHTTPRequestHandler):
             for subdir in sorted(self.results_dir.iterdir()):
                 config_file = subdir / "metadata.yaml"
                 if subdir.is_dir() and config_file.exists():
-                    experiments.append({"name": subdir.name, "status": self._read_status(config_file)})
+                    experiments.append({
+                        "name": subdir.name,
+                        "status": self._read_status(config_file)
+                    })
             data = {"mode": "multi", "experiments": experiments}
 
         body = json.dumps(data).encode()

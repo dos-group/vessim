@@ -32,7 +32,7 @@ class StaticSignal(Signal):
         self._v = value
 
     def __repr__(self):
-        """Returns a string representation of the StaticSignal."""
+        """Returns a string representation for the Vessim viewer."""
         return f"StaticSignal({self._v})"
 
     def set_value(self, value: float) -> None:
@@ -155,7 +155,7 @@ class Trace(Signal):
             raise ValueError(f"Incompatible type {type(forecast)} for 'forecast'.")
 
     def __repr__(self):
-        """Returns a string representation of the Trace."""
+        """Returns a string representation for the Vessim viewer."""
         return f"Trace({self.repr_ or ''})"
 
     # TODO: Replace params dict with explicit keyword arguments (scale, start_time, etc.)
@@ -475,6 +475,7 @@ class SilSignal(Signal):
         self._start_background_polling()
 
     def __repr__(self):
+        """Returns a string representation for the Vessim viewer."""
         return f"{self.__class__.__name__}(interval={self.update_interval}s)"
 
     @abstractmethod
@@ -578,7 +579,7 @@ class PrometheusSignal(SilSignal):
                 auth=self._auth,
             )
             response.raise_for_status()
-        except requests.exceptions.ConnectionError:
+        except self.requests.exceptions.ConnectionError:
             raise ConnectionError(
                 f"Could not connect to Prometheus at '{self.prometheus_url}'. "
                 f"Make sure the Prometheus server is running and accessible."
@@ -606,6 +607,7 @@ class PrometheusSignal(SilSignal):
         return float(results[0]["value"][1])
 
     def __repr__(self):
+        """Returns a string representation for the Vessim viewer."""
         return f"PrometheusSignal({self.query})"
 
 
@@ -677,6 +679,7 @@ class WatttimeSignal(SilSignal):
         super().__init__(update_interval=update_interval, timeout=timeout)
 
     def __repr__(self):
+        """Returns a string representation for the Vessim viewer."""
         return f"WatttimeSignal(region={self._region})"
 
     def _get_token(self) -> str:

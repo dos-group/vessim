@@ -251,10 +251,10 @@ class ClcBattery(Storage):
             parameter can be viewed as the capacity of a single cell. Defaults to 19.14Wh.
         alpha_d: Maximum discharging C-rate. Defaults to -1.5C.
         alpha_c: Maximum charging C-rate. Defaults to 0.7C.
-        eta_d: Average fraction of power that has to be discharged from cell to obtain said
-            power. Is equivalent to the discharging inefficiency. Should be >= 1. Defaults to 1.014.
-        eta_c: Average fraction of power that is stored in cell when charged at said power.
-            Is equivalent to the charging inefficiency. Should be between 0 and 1. Defaults to 0.978.
+        eta_d: Average fraction of power that has to be discharged from cell to obtain said power.
+            Is equivalent to the discharging inefficiency. Should be >= 1. Defaults to 1.014.
+        eta_c: Average fraction of power that is stored in cell when charged at said power. Is
+            equivalent to the charging inefficiency. Should be between 0 and 1. Defaults to 0.978.
         discharging_current_cutoff: If the maximum allowed discharging current is higher than this
             value, discharging is stopped. Defaults to -0.05A.
         charging_current_cutoff: If the maximum allowed charging current is lower than this value,

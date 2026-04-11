@@ -10,13 +10,27 @@ uv pip install -e ".[dev,sil,docs]"
 
 ## Viewer
 
-The viewer is a Vite/React app in `viewer/`. It must be built before running tests or packaging:
+The viewer is a Vite/React app in `viewer/`.
+
+### Local development
+
+Install dependencies and start the dev server pointed at a local results directory:
 
 ```bash
-cd viewer && npm ci && npm run build
+cd viewer
+npm ci
+VITE_RESULTS_DIR=../results npm run dev
 ```
 
-The built output is copied into `vessim/_viewer_dist/` at publish time (see `publish.yml`).
+The viewer is then available at `http://localhost:5173`.
+
+### Building
+
+The viewer must be built before installing the Python package locally or running tests:
+
+```bash
+cd viewer && npm run build
+```
 
 ## Tests
 
@@ -36,9 +50,9 @@ Docs are published automatically via [Read the Docs](https://vessim.readthedocs.
 
 ### Embedded experiment viewer
 
-The "Getting Started" page links to a live demo served from `docs/viewer/`. It is generated
-automatically when docs are published (via Read the Docs). To rebuild locally before
-previewing with `mkdocs serve`:
+The "Getting Started" page links to a live demo served from `docs/viewer/`. It is a static
+viewer build with a checked-in results fixture. Rebuild it locally when the viewer source or
+`examples/basic_example.py` changes:
 
 ```bash
 make docs-viewer

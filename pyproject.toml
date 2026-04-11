@@ -50,6 +50,7 @@ dev = [
     "mypy",
     "types-psutil",
     "pandas-stubs",
+    "types-PyYAML",
     "types-requests",
     "black",
     "ruff"
