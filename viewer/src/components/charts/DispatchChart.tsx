@@ -1,6 +1,6 @@
-import ReactECharts from 'echarts-for-react'
+import ReactECharts from 'echarts-for-react/lib/core'
 import type { MicrogridState } from '../../api/types'
-import { CHART_HEIGHT, formatTime, formatW, getBaseOption, connectChart } from './shared'
+import { echarts, CHART_HEIGHT, formatTime, formatW, getBaseOption, connectChart } from './shared'
 import { useTheme } from '../../ThemeContext'
 
 interface Props {
@@ -95,6 +95,7 @@ export function DispatchChart({ history, height = CHART_HEIGHT }: Props) {
     <ReactECharts
       option={{ ...base, tooltip, yAxis: { ...base.yAxis, axisLabel: { ...(base.yAxis as { axisLabel: object }).axisLabel, formatter: (v: number) => formatW(v) } }, series }}
       style={{ height, width: '100%' }}
+      echarts={echarts}
       notMerge
       onChartReady={connectChart}
     />

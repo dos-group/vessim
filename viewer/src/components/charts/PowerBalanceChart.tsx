@@ -1,6 +1,6 @@
-import ReactECharts from 'echarts-for-react'
+import ReactECharts from 'echarts-for-react/lib/core'
 import type { MicrogridState } from '../../api/types'
-import { CHART_HEIGHT, formatTime, formatW, getBaseOption, connectChart } from './shared'
+import { echarts, CHART_HEIGHT, formatTime, formatW, getBaseOption, connectChart } from './shared'
 import { useTheme } from '../../ThemeContext'
 
 interface Props {
@@ -49,5 +49,5 @@ export function PowerBalanceChart({ history, height = CHART_HEIGHT }: Props) {
     ],
   }
 
-  return <ReactECharts option={option} style={{ height, width: '100%' }} notMerge onChartReady={connectChart} />
+  return <ReactECharts echarts={echarts} option={option} style={{ height, width: '100%' }} notMerge onChartReady={connectChart} />
 }

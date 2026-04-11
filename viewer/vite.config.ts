@@ -72,8 +72,10 @@ function resultsPlugin(resultsDir: string): Plugin {
 }
 
 const resultsDir = process.env.VITE_RESULTS_DIR
+const staticBase: string | undefined = process.env.VITE_STATIC_BASE
 
 export default defineConfig({
+  base: staticBase ?? '/',
   plugins: [react(), tailwindcss(), ...(resultsDir ? [resultsPlugin(resultsDir)] : [])],
   server: {
     proxy: {

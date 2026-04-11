@@ -1,5 +1,28 @@
-import * as echarts from 'echarts'
+import * as echarts from 'echarts/core'
+import { LineChart } from 'echarts/charts'
+import {
+  GridComponent,
+  TooltipComponent,
+  AxisPointerComponent,
+  DataZoomComponent,
+  ToolboxComponent,
+  MarkLineComponent,
+} from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
 import type { EChartsOption } from 'echarts'
+
+echarts.use([
+  LineChart,
+  GridComponent,
+  TooltipComponent,
+  AxisPointerComponent,
+  DataZoomComponent,
+  ToolboxComponent,
+  MarkLineComponent,
+  CanvasRenderer,
+])
+
+export { echarts }
 
 export const CHART_HEIGHT = 200
 
@@ -66,7 +89,8 @@ export function getBaseOption(isDark: boolean): EChartsOption {
 
 const CHART_GROUP = 'vessim'
 
-export function connectChart(chart: echarts.ECharts) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function connectChart(chart: any) {
   chart.group = CHART_GROUP
   echarts.connect(CHART_GROUP)
 }
