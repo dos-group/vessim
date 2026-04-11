@@ -4,11 +4,14 @@ build:
   os: "ubuntu-24.04"
   tools:
     python: "3.12"
+    nodejs: "22"
   jobs:
     post_create_environment:
       - pip install uv
     post_install:
       - uv pip install -e ".[docs,sil]"
+    pre_build:
+      - make docs-viewer
 
 mkdocs:
   configuration: mkdocs.yml

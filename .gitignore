@@ -15,12 +15,16 @@ vessim.egg-info
 
 venv
 dist
+uv.lock
 
 # Built viewer assets (regenerate with `npm run build` in viewer/)
 vessim/_viewer_dist/
 
 # Docs
 site
+
+# Generated docs viewer (rebuilt by ReadTheDocs and locally via `make docs-viewer`)
+docs/viewer
 
 # code coverage files
 .coverage
