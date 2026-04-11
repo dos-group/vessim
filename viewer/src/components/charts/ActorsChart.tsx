@@ -1,4 +1,4 @@
-import ReactECharts from 'echarts-for-react/lib/core'
+import ReactECharts from 'echarts-for-react/esm/core'
 import type { MicrogridState } from '../../api/types'
 import { echarts, CHART_HEIGHT, PRODUCER_COLORS, CONSUMER_COLORS, formatTime, formatW, getBaseOption, connectChart } from './shared'
 import { useTheme } from '../../ThemeContext'
