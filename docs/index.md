@@ -14,10 +14,9 @@ It connects domain-specific simulators for power generation and batteries with r
 
 Vessim helps you to understand and optimize how your (distributed) computing system interacts with (distributed) energy sources and battery storage.
 
-- **Energy-aware applications**: Develop applications that adapt their energy consumption to the carbon intensity and price of electricity.
+- **Energy-aware and carbon-aware applications**: Develop applications that adapt their energy consumption to the carbon intensity and price of electricity.
 - **Microgrid composition**: Experiment with adding solar panels, wind turbines, or batteries to see how they would affect your energy costs and carbon emissions.
 - **Demand response and power outages**: Simulate demand response signals or power outages to understand your system's flexibility and test mitigation strategies.
-- **Quality assurance**: Apply Vessim in continuous integration to validate software roll-outs in a controlled environment.
 
 Vessim can simulate multiple distributed microgrids in parallel and easily integrates historical datasets and new simulators.
 

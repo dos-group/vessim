@@ -39,7 +39,7 @@ solar = vs.Trace.load(
 
 **WattTime (carbon intensity)** — provided by [WattTime](https://watttime.org/):
 
-- `watttime2023_caiso-north` — Marginal Operating Emissions Rate (MOER) for Northern California, 2023.
+- `watttime2023_caiso-north` — Marginal Operating Emissions Rate (MOER) for Northern California, June 8 – July 8, 2023 (5-minute resolution).
 
 ```python
 carbon = vs.Trace.load("watttime2023_caiso-north")
