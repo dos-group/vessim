@@ -19,8 +19,7 @@ Vessim helps you to understand and optimize how your (distributed) computing sys
 - **Demand response and power outages**: Simulate demand response signals or power outages to understand your system's flexibility and test mitigation strategies.
 
 Vessim can simulate multiple distributed microgrids in parallel and easily integrates historical datasets and new simulators.
-
-Vessim's [software-in-the-loop](concepts/sil.md) capabilities let you run real systems against simulated microgrids. Connect live data sources like Prometheus and interact through REST APIs.
+Vessim's [software-in-the-loop](concepts/sil.md) capabilities let you run real systems against simulated microgrids. 
 
 
 ## How Vessim Works

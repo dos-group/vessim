@@ -2,6 +2,9 @@ site_name: Vessim
 site_url: !ENV READTHEDOCS_CANONICAL_URL
 repo_url: https://github.com/dos-group/vessim
 
+extra_css:
+  - stylesheets/extra.css
+
 extra_javascript:
   - javascripts/mathjax.js
   - javascripts/readthedocs.js
