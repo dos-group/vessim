@@ -2,6 +2,11 @@ name: Publish
 
 on:
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Build without publishing (dry run)'
+        type: boolean
+        default: true
   release:
     types: [created]
 
@@ -42,4 +47,5 @@ jobs:
       run: uv build
 
     - name: Publish
+      if: ${{ !inputs.dry_run }}
       run: uv publish -t ${{ secrets.PYPI_API_TOKEN }}
