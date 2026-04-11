@@ -8,6 +8,8 @@ build:
   jobs:
     post_create_environment:
       - pip install uv
+    pre_install:
+      - cd viewer && npm ci && npx vite build
     post_install:
       - uv pip install -e ".[docs,sil]"
     pre_build:
