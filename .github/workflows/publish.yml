@@ -1,51 +1,25 @@
 name: Publish
 
 on:
-  workflow_dispatch:
-    inputs:
-      dry_run:
-        description: 'Build without publishing (dry run)'
-        type: boolean
-        default: true
   release:
     types: [created]
 
 jobs:
-  deploy:
+  build:
+    uses: ./.github/workflows/build.yml
+
+  publish:
+    needs: build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - name: Download dist
+      uses: actions/download-artifact@v4
       with:
-        fetch-depth: 0  # Fetch all history for all branches and tags
+        name: dist
+        path: dist/
 
-    # Build viewer and copy into Python package
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 22
-        cache: npm
-        cache-dependency-path: viewer/package-lock.json
-
-    - name: Install viewer dependencies
-      run: npm ci
-      working-directory: viewer
-
-    - name: Build viewer
-      run: npm run build
-      working-directory: viewer
-
-    - name: Copy viewer dist into package
-      run: rm -rf vessim/_viewer_dist && cp -r viewer/dist vessim/_viewer_dist
-
-    # Build and publish Python package
     - name: Install uv
       uses: astral-sh/setup-uv@v5
-      with:
-        enable-cache: true
-
-    - name: Build
-      run: uv build
 
     - name: Publish
-      if: ${{ !inputs.dry_run }}
       run: uv publish -t ${{ secrets.PYPI_API_TOKEN }}
