@@ -1,7 +1,7 @@
 .PHONY: docs-viewer
 
 docs-viewer:
-	cd viewer && npm ci && VITE_STATIC_BASE="/viewer/" npx vite build --outDir dist
+	cd viewer && npm ci && VITE_STATIC_BASE="./" npx vite build --outDir dist
 	cp -r viewer/dist/. docs/viewer/
 	uv run python examples/basic_example.py
 	mkdir -p docs/viewer/results
