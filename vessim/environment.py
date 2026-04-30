@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, Literal
 
 import mosaik  # type: ignore
+import pandas as pd
 from loguru import logger
 
-from vessim._util import Clock, disable_rt_warnings
+from vessim._util import disable_rt_warnings
 from vessim.actor import Actor
 from vessim.controller import Controller
 from vessim.dispatch_policy import DispatchPolicy, DefaultDispatchPolicy
@@ -21,6 +22,15 @@ class Environment:
     This class manages the simulation time, the interaction between different components,
     and the execution of the [Mosaik](https://mosaik.offis.de/) co-simulation.
 
+    Two modes are supported:
+
+    - **Simulated** — `Environment(sim_start=..., step_size=...)`. The simulation
+      clock advances as fast as possible, anchored at the explicit `sim_start`.
+    - **Live** — `Environment.live(step_size=...)`. The simulation clock tracks
+      wall-clock time and `sim_start` is captured when `run()` is called (i.e.
+      defaults to "now at the moment of running"). Use this when mixing in
+      `SilSignal`s.
+
     Args:
         sim_start: The start time of the simulation. Can be a `datetime` object or a
             string in the format "YYYY-MM-DD HH:MM:SS".
@@ -33,13 +43,56 @@ class Environment:
         "Microgrid": {"python": "vessim.microgrid:_MicrogridSim"},
     }
 
-    def __init__(self, sim_start: str | datetime, step_size: int = 1, name: Optional[str] = None):
-        self.clock = Clock(sim_start)
+    def __init__(
+        self,
+        sim_start: Optional[str | datetime] = None,
+        step_size: int = 1,
+        name: Optional[str] = None,
+        _live: bool = False,
+        _behind_threshold: float = 5.0,
+    ):
+        if not _live and sim_start is None:
+            raise ValueError(
+                "sim_start is required for simulated mode. "
+                "Use Environment.live(...) for real-time experiments."
+            )
+        self.sim_start: pd.Timestamp | None = (
+            pd.to_datetime(sim_start) if sim_start is not None else None
+        )
         self.step_size = step_size
         self.name = name
         self.microgrids: dict[str, Microgrid] = {}
         self.controllers: list[Controller] = []
         self.world = mosaik.World(self.COSIM_CONFIG, skip_greetings=True)
+        self._live = _live
+        self._behind_threshold = _behind_threshold
+
+    @classmethod
+    def live(
+        cls,
+        step_size: int = 1,
+        behind_threshold: float = 5.0,
+        name: Optional[str] = None,
+    ) -> "Environment":
+        """Create an environment that advances in real-time (1× wall-clock).
+
+        The simulation clock is anchored at `datetime.now()` the moment `run()`
+        is called, so traces start replaying from "now" and SiL signals stay in
+        sync with wall-clock time.
+
+        Args:
+            step_size: Step size in seconds. Defaults to 1.
+            behind_threshold: Seconds the simulation may fall behind real-time before
+                a warning is logged. Defaults to 5.
+            name: Optional name for the environment.
+        """
+        return cls(
+            sim_start=None,
+            step_size=step_size,
+            name=name,
+            _live=True,
+            _behind_threshold=behind_threshold,
+        )
 
     def add_microgrid(
         self,
@@ -70,7 +123,6 @@ class Environment:
 
         microgrid = Microgrid(
             world=self.world,
-            clock=self.clock,
             step_size=self.step_size,
             actors=actors,
             dispatchables=dispatchables or [],
@@ -106,7 +158,7 @@ class Environment:
         # Create one global controller simulator
         controller_sim = self.world.start(
             "Controller",
-            clock=self.clock,
+            sim_start=self.sim_start,
             step_size=self.step_size,
         )
         controller_entity = controller_sim.Controller(controllers=self.controllers)
@@ -132,26 +184,33 @@ class Environment:
 
     def run(
         self,
-        until: Optional[int] = None,
-        rt_factor: Optional[float] = None,
+        until: Optional[timedelta | datetime | int | float] = None,
         print_progress: bool | Literal["individual"] = True,
-        behind_threshold: float = float("inf"),
     ):
         """Run the simulation.
 
         Args:
-            until: The end time of the simulation in seconds. If None, the simulation
-                runs indefinitely.
-            rt_factor: The real-time factor. 1.0 means the simulation runs in real-time.
-                0.5 means it runs twice as fast as real-time. If None, the simulation
-                runs as fast as possible.
+            until: When the simulation should end. Accepts:
+
+                - `int` or `float` — elapsed seconds since `sim_start`.
+                - `timedelta` — elapsed time since `sim_start`.
+                - `datetime` — absolute wall-clock end (resolved against `sim_start`).
+                - `None` — run indefinitely.
             print_progress: Whether to print a progress bar.
-            behind_threshold: The threshold in seconds for issuing warnings when the
-                simulation falls behind real-time (only used if `rt_factor` is set).
         """
-        # TODO: Accept timedelta or datetime for `until`, not just seconds.
+        # Live mode: anchor sim_start to "now" if the user didn't pin one explicitly.
+        if self._live and self.sim_start is None:
+            self.sim_start = pd.to_datetime(datetime.now())
+
         if until is None:
             until = float("inf")  # type: ignore
+        elif isinstance(until, timedelta):
+            until = until.total_seconds()
+        elif isinstance(until, datetime):
+            assert self.sim_start is not None
+            until = (pd.to_datetime(until) - self.sim_start).total_seconds()
+            if until < 0:
+                raise ValueError("`until` must be after `sim_start`.")
         assert until is not None
 
         # Initialize controllers before running simulation
@@ -159,15 +218,17 @@ class Environment:
             logger.info(f"Experiment: {self.name}")
         self._initialize_controllers()
 
-        # Check if SiL signals are present and fail if the simulation is not in real-time mode
-        if self._contains_sil_signals() and rt_factor is None:
+        # SiL signals require live mode (otherwise they'd be polled out of sync
+        # with simulated time).
+        if self._contains_sil_signals() and not self._live:
             raise RuntimeError(
-                "SiL signals detected but not running in real-time mode. "
-                "Use rt_factor > 0 for real-time simulation."
+                "SiL signals detected but not running in live mode. "
+                "Use Environment.live(...) instead of Environment(...)."
             )
 
+        rt_factor = 1.0 if self._live else None
         if rt_factor:
-            disable_rt_warnings(behind_threshold)
+            disable_rt_warnings(self._behind_threshold)
         try:
             self.world.run(until=until, rt_factor=rt_factor, print_progress=print_progress)
         except Exception:

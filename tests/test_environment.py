@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 import pytest
 from unittest.mock import Mock, patch
 from vessim.environment import Environment
@@ -55,6 +57,31 @@ class TestEnvironment:
 
         with pytest.raises(RuntimeError, match="SiL signals detected"):
             environment.run(until=100)
+
+    @pytest.mark.parametrize(
+        "until, expected_seconds",
+        [
+            (3600, 3600),
+            (3600.5, 3600.5),
+            (timedelta(hours=1), 3600.0),
+            (datetime(2023, 1, 1, 1, 0, 0), 3600.0),
+        ],
+    )
+    def test_run_until_accepts_timedelta_and_datetime(
+        self, environment, until, expected_seconds
+    ):
+        environment.world = Mock()
+        environment.world.run = Mock()
+        environment._initialize_controllers = Mock()
+        environment.run(until=until)
+        kwargs = environment.world.run.call_args.kwargs
+        assert kwargs["until"] == expected_seconds
+
+    def test_run_until_datetime_before_sim_start_raises(self, environment):
+        environment.world = Mock()
+        environment._initialize_controllers = Mock()
+        with pytest.raises(ValueError, match="must be after"):
+            environment.run(until=datetime(2022, 12, 31, 23, 59, 59))
 
     def test_contains_sil_signals(self, environment):
         mg = Mock(spec=Microgrid)
