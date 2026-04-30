@@ -10,16 +10,17 @@ from typing import Any, Optional, Literal
 import numpy as np
 import pandas as pd
 
-from vessim._data import load_dataset
-from vessim._util import DatetimeLike
-
 
 class Signal(ABC):
     """Abstract base class for signals."""
 
     @abstractmethod
-    def now(self, at: Optional[DatetimeLike] = None, **kwargs) -> float:
-        """Retrieves actual data point at given time."""
+    def at(self, elapsed: Optional[timedelta | float] = None) -> float:
+        """Return the signal's value at the given elapsed time since `sim_start`.
+
+        `elapsed` accepts a `timedelta` or `float` interpreted as
+        seconds since `sim_start`.
+        """
 
     def finalize(self) -> None:
         """Perform necessary finalization tasks of a signal."""
@@ -38,412 +39,228 @@ class StaticSignal(Signal):
     def set_value(self, value: float) -> None:
         self._v = value
 
-    def now(self, at: Optional[DatetimeLike] = None, **kwargs):
+    def at(self, elapsed: Optional[timedelta | float] = None):
         return self._v
 
 
 class Trace(Signal):
-    """Simulates a signal for time-series data like solar irradiance or carbon intensity.
+    """Replays a time series indexed by elapsed time since simulation start.
 
-    The `Trace` can also deal with unsorted or incomplete data.
+    A `Trace` is queried via `at(elapsed)`; the index *is* the offset. Use
+    `offset=` for an additional shift on top (e.g. delay a solar trace so it
+    starts at sunrise).
+
+    For data that comes with calendar timestamps (CSVs, `pd.date_range(...)`),
+    use `Trace.from_csv` (file path) or `Trace.from_datetime` (in-memory
+    `Series`/`DataFrame`) — both rebase the first row to elapsed=0 explicitly.
 
     Args:
-        actual: The actual time-series data to be used. It should contain a datetime-like
-            index marking the time, and each column should represent a different zone
-            containing the data. The name of the zone is equal to the column name.
-            Note that while interpolation is possible when retrieving forecasts, the
-            actual data between timestamps is computed using either `ffill` or `bfill`.
-            If you wish a different behavior, you have to change your actual data
-            beforehand (e.g. by resampling into a different frequency).
-
-        forecast: An optional time-series dataset representing forecasted values. The
-            data should contain two datetime-like indices. One is the
-            `Request Timestamp`, marking the time when the forecast was made. One is the
-            `Forecast Timestamp`, indicating the time the forecast is made for.
-
-            - If data does not include a `Request Timestamp`, it is treated as a static
-              forecast that does not change over time.
-
-            - If `forecast` is not provided, predictions are derived from the actual
-              data when requesting forecasts (actual data is treated as static forecast).
-
-        fill_method: Either `ffill` or `bfill`. Determines how actual data is acquired in
-            between timestamps. Default is `ffill`.
-
-        column: Default column to be used if no column is specified for at().
+        data: A pandas `Series` or `DataFrame`. The index must be either a
+            `TimedeltaIndex` or a numeric index (interpreted as elapsed
+            *seconds*). Each column represents one zone of data; the column
+            name is the zone name. Between samples, values are interpolated
+            using `fill_method` (`ffill` or `bfill`).
+        offset: Optional shift in elapsed time. Stacks on top of whatever the
+            input index already implies. Defaults to no shift.
+        on_overflow: What to do if queried beyond the trace's range.
+            Currently only `"raise"` is supported. Defaults to `"raise"`.
+        column: Default column to use when `at()` is called without one.
             Defaults to None.
+        fill_method: How values between timestamps are computed. Either
+            `ffill` (use the most recent past value) or `bfill` (use the next
+            future value). Defaults to `ffill`.
     """
 
     def __init__(
         self,
-        actual: pd.Series | pd.DataFrame,
-        forecast: Optional[pd.Series | pd.DataFrame] = None,
-        fill_method: Literal["ffill", "bfill"] = "ffill",
+        data: pd.Series | pd.DataFrame,
+        offset: Optional[timedelta] = None,
+        on_overflow: Literal["raise"] = "raise",
         column: Optional[str] = None,
+        fill_method: Literal["ffill", "bfill"] = "ffill",
         repr_: Optional[str] = None,
     ):
-        if isinstance(actual, pd.DataFrame) and forecast is not None:
-            if isinstance(forecast, pd.DataFrame):
-                if not actual.columns.equals(forecast.columns):
-                    raise ValueError("Column names in actual and forecast do not match.")
-            else:
-                raise ValueError("Forecast has to be a DataFrame if actual is a DataFrame.")
+        if on_overflow != "raise":
+            raise ValueError(
+                f"on_overflow={on_overflow!r} is not yet supported. Only 'raise' is available."
+            )
 
         self._fill_method = fill_method
+        self._on_overflow = on_overflow
         self.default_column = column
         self.repr_ = repr_
 
-        # Unpack index of actual dataframe
-        actual_times = actual.index.to_numpy(dtype="datetime64[ns]", copy=True)
-        actual_times_sorter = actual_times.argsort()
-        actual_times = actual_times[actual_times_sorter]
+        if not isinstance(data, (pd.Series, pd.DataFrame)):
+            raise ValueError(f"Incompatible type {type(data)} for 'data'.")
 
-        # Unpack values of actual dataframe
-        self._actual: dict[str, tuple[np.ndarray, np.ndarray]] = {}
-        if isinstance(actual, pd.Series):
-            actual_values = actual.to_numpy(dtype=float, copy=True)[actual_times_sorter]
-            nan_mask = ~np.isnan(actual_values)
-            self._actual[str(actual.name)] = actual_times[nan_mask], actual_values[nan_mask]
-        elif isinstance(actual, pd.DataFrame):
-            for col in actual.columns:
-                actual_values = actual[col].to_numpy(dtype=float, copy=True)[actual_times_sorter]
-                nan_mask = ~np.isnan(actual_values)
-                self._actual[str(col)] = actual_times[nan_mask], actual_values[nan_mask]
+        # The index *is* the elapsed offset. Datetime-keyed data must be
+        # rebased explicitly via Trace.from_datetime / Trace.from_csv.
+        raw_index = data.index
+        if isinstance(raw_index, pd.TimedeltaIndex):
+            offsets_array = raw_index.to_numpy().astype("timedelta64[ns]")
+        elif pd.api.types.is_numeric_dtype(raw_index):
+            offsets_array = pd.to_timedelta(raw_index, unit="s").to_numpy().astype(
+                "timedelta64[ns]"
+            )
         else:
-            raise ValueError(f"Incompatible type {type(actual)} for 'actual'.")
+            raise TypeError(
+                f"Trace requires a TimedeltaIndex or numeric (seconds) index, "
+                f"got {type(raw_index).__name__}. For datetime-indexed data use "
+                f"Trace.from_datetime(data) (or Trace.from_csv(path) for CSVs)."
+            )
 
-        # Unpack indices of forecast dataframe if present
-        forecast_request_times: Optional[np.ndarray] = None
-        if isinstance(forecast, (pd.Series, pd.DataFrame)):
-            if isinstance(forecast.index, pd.MultiIndex):
-                forecast_request_times = forecast.index.get_level_values(0).to_numpy(
-                    dtype="datetime64[ns]", copy=True
-                )
-                forecast_times = forecast.index.get_level_values(1).to_numpy(
-                    dtype="datetime64[ns]", copy=True
-                )
-                forecast_times_sorter = np.lexsort((forecast_times, forecast_request_times))
-                forecast_request_times = forecast_request_times[forecast_times_sorter]
-            else:
-                forecast_times = forecast.index.to_numpy(dtype="datetime64[ns]", copy=True)
-                forecast_times_sorter = np.argsort(forecast_times)
-            forecast_times = forecast_times[forecast_times_sorter]
+        sorter = np.argsort(offsets_array)
+        offsets_ns = offsets_array[sorter]
+        if offset is not None:
+            offsets_ns = offsets_ns + np.timedelta64(offset)
 
-        # Unpack values of forecast dataframe if present
-        self._forecast: Optional[dict[str, tuple[Optional[np.ndarray], np.ndarray, np.ndarray]]]
-        self._forecast = None
-        if forecast_request_times is None:
-            req_times = None
-
-        if isinstance(forecast, pd.Series):
-            values = forecast.to_numpy(dtype=float, copy=True)[forecast_times_sorter]
-            nan_mask = ~np.isnan(values)
-            if forecast_request_times is not None:
-                req_times = forecast_request_times[nan_mask]
-            self._forecast = {
-                str(forecast.name): (req_times, forecast_times[nan_mask], values[nan_mask])
-            }
-        elif isinstance(forecast, pd.DataFrame):
-            self._forecast = {}
-            for col in forecast.columns:
-                values = forecast[col].to_numpy(dtype=float, copy=True)[forecast_times_sorter]
-                nan_mask = ~np.isnan(values)
-                if forecast_request_times is not None:
-                    req_times = forecast_request_times[nan_mask]
-                self._forecast[str(col)] = (req_times, forecast_times[nan_mask], values[nan_mask])
-        elif forecast is not None:
-            raise ValueError(f"Incompatible type {type(forecast)} for 'forecast'.")
+        self._offsets: dict[str, tuple[np.ndarray, np.ndarray]] = {}
+        if isinstance(data, pd.Series):
+            values = data.to_numpy(dtype=float, copy=True)[sorter]
+            mask = ~np.isnan(values)
+            self._offsets[str(data.name)] = (offsets_ns[mask], values[mask])
+        else:
+            for col in data.columns:
+                values = data[col].to_numpy(dtype=float, copy=True)[sorter]
+                mask = ~np.isnan(values)
+                self._offsets[str(col)] = (offsets_ns[mask], values[mask])
 
     def __repr__(self):
         """Returns a string representation for the Vessim viewer."""
         return f"Trace({self.repr_ or ''})"
 
-    # TODO: Replace params dict with explicit keyword arguments (scale, start_time, etc.)
     @classmethod
-    def load(
+    def from_datetime(
         cls,
-        dataset: str,
+        data: pd.Series | pd.DataFrame,
+        offset: Optional[timedelta] = None,
+        on_overflow: Literal["raise"] = "raise",
         column: Optional[str] = None,
-        data_dir: Optional[str | Path] = None,
-        params: Optional[dict[Any, Any]] = None,
-    ):
-        """Creates a `Trace` from a Vessim dataset, handling downloading and unpacking.
+        fill_method: Literal["ffill", "bfill"] = "ffill",
+        repr_: Optional[str] = None,
+    ) -> Trace:
+        """Build a `Trace` from a datetime-indexed `Series` or `DataFrame`.
+
+        The earliest row is rebased to elapsed=0 and the calendar dates are
+        discarded — the trace replays starting at `sim_start` regardless of
+        when the source data was originally recorded. All other arguments
+        match `Trace`.
+        """
+        index = pd.to_datetime(data.index)
+        relative = data.copy()
+        relative.index = index - index.min()
+        return cls(
+            relative,
+            offset=offset,
+            on_overflow=on_overflow,
+            column=column,
+            fill_method=fill_method,
+            repr_=repr_,
+        )
+
+    @classmethod
+    def from_csv(
+        cls,
+        path: str | Path,
+        column: Optional[str] = None,
+        scale: float = 1.0,
+        offset: Optional[timedelta] = None,
+        on_overflow: Literal["raise"] = "raise",
+        fill_method: Literal["ffill", "bfill"] = "ffill",
+    ) -> Trace:
+        """Load a `Trace` from a CSV file.
+
+        The CSV must have a datetime in its first column. Remaining columns
+        are interpreted as zones. The earliest row is rebased to elapsed=0
+        (see `Trace.from_datetime`). See [Signals and Datasets](../concepts/signals.md)
+        for the expected schema and recipes for downloading public datasets.
 
         Args:
-            dataset: Name of the dataset to be downloaded.
-            column: Default column to use for calling `Trace.at()`.
-                Default to None.
-            data_dir: Absoulute path to the directory where the data should be loaded.
-                If not specified, the path `~/.cache/vessim` is used. Defaults to None.
-            params: Optional extra parameters used for data loading.
-                scale (float): Multiplies the data with a factor. Default: 1.0
-                start_time (DatetimeLike): Shifts data so that it starts at time. Default: None
-                use_forecast (bool): Determines if forecast should be loaded. Default: True
-        Raises:
-            ValueError if dataset is not available or invalid params are given.
-            RuntimeError if dataset can not be loaded.
+            path: Path to the CSV file.
+            column: Default column to use when `at()` is called without one.
+            scale: Multiplier applied to all values. Useful for normalized data.
+            offset: Optional shift in elapsed time. See `Trace`.
+            on_overflow: See `Trace`.
+            fill_method: See `Trace`.
         """
-        if params is None:
-            params = {}
-        return cls(**load_dataset(dataset, _abs_path(data_dir), params), column=column)
+        df = pd.read_csv(path, index_col=0)
+        if scale != 1.0:
+            df = df.astype(float) * scale
+        return cls.from_datetime(
+            df,
+            offset=offset,
+            on_overflow=on_overflow,
+            column=column,
+            fill_method=fill_method,
+            repr_=str(path),
+        )
 
     def columns(self) -> list:
-        """Returns a list of all columns where actual data is available."""
-        return list(self._actual.keys())
+        """Returns a list of all available columns."""
+        return list(self._offsets.keys())
 
-    def now(
+    def at(
         self,
-        at: Optional[DatetimeLike] = None,
+        elapsed: Optional[timedelta | float] = None,
         column: Optional[str] = None,
-        **kwargs: dict[str, Any],
     ) -> float:
-        """Retrieves actual data point of zone at given time.
+        """Return the trace's value at the given elapsed time since `sim_start`.
 
-        If queried timestamp is not available in the `actual` dataframe, the fill_method
-        is used to determine the data point.
+        If `elapsed` falls between sample points, `fill_method` decides how to
+        interpolate. If `elapsed` falls outside the trace, a `ValueError` is
+        raised (subject to `on_overflow`).
 
         Args:
-            at: Timestamp, at which data is returned.
-            column: Optional column for the data. Has to be provided if there is more than one
-                column specified in the data. Defaults to None.
-            **kwargs: Possibly needed for subclasses. Are not supported in this class and a
-                ValueError will be raised if specified.
+            elapsed: Elapsed time since `sim_start`. Either a `timedelta` or a
+                number (interpreted as seconds). Required.
+            column: Column to query. Required if the trace has more than one.
 
         Raises:
-            ValueError: If there is no available data at zone or time, or extra kwargs specified.
+            ValueError: If `elapsed` is None, before the trace start, after
+                the trace end, or refers to an unknown column.
         """
-        if at is None:
-            raise ValueError("Argument at cannot be None.")
-        if kwargs:
-            raise ValueError(f"Invalid arguments: {kwargs.keys()}")
+        if elapsed is None:
+            raise ValueError("Argument elapsed cannot be None.")
+        if not isinstance(elapsed, timedelta):
+            elapsed = timedelta(seconds=elapsed)
         if column is None:
             column = self.default_column
 
-        np_dt = np.datetime64(at)
-        resolved_column = _get_column_name(self._actual, column)
-        times, values = self._actual[resolved_column]
+        resolved = _get_column_name(self._offsets, column)
+        offsets, values = self._offsets[resolved]
+        np_at = np.timedelta64(elapsed)
 
         if self._fill_method == "ffill":
-            index = times.searchsorted(np_dt, side="right") - 1
+            index = offsets.searchsorted(np_at, side="right") - 1
             if index >= 0:
                 return values[index]
             raise ValueError(
-                f"'{at}' is before the start of column '{resolved_column}' "
-                f"(data covers {pd.Timestamp(times[0])} to {pd.Timestamp(times[-1])}). "
-                f"Shift the trace via Trace.load(..., params={{'start_time': ...}}) "
-                f"or pick a sim_start within the data range."
+                f"Elapsed time {elapsed} is before the start of column '{resolved}' "
+                f"(trace covers {_td(offsets[0])} to {_td(offsets[-1])} since sim_start)."
             )
         else:
-            index = times.searchsorted(np_dt, side="left")
-            try:
+            index = offsets.searchsorted(np_at, side="left")
+            if index < offsets.size:
                 return values[index]
-            except IndexError:
-                raise ValueError(
-                    f"'{at}' is after the end of column '{resolved_column}' "
-                    f"(data covers {pd.Timestamp(times[0])} to {pd.Timestamp(times[-1])})."
-                )
-
-    def forecast(
-        self,
-        start_time: DatetimeLike,
-        end_time: DatetimeLike,
-        column: Optional[str] = None,
-        frequency: Optional[str | timedelta] = None,
-        resample_method: Optional[Literal["ffill", "bfill", "linear", "nearest"]] = None,
-    ) -> dict[np.datetime64, float]:
-        """Retrieves forecasted data points within window at a frequency.
-
-        - If no separate forecast time-series data is provided, actual data is used.
-        - If frequency is not specified, all existing data in the window will be returned.
-        - If there is more than one column present, it has to be specified.
-        - With specified resampling methods except "bfill", the actual value valid at `start_time`
-          is used and because of that, the column where data is aquired has to appear in this data.
-        - The forecast does not include the value at `start_time` (see example).
-
-        Args:
-            start_time: Starting time of the window.
-            end_time: End time of the window.
-            column: Optional column where data should be used.
-            frequency: Optional interval, in which the forecast data is to be provided.
-                Defaults to None.
-            resample_method: Optional method, to deal with holes in resampled data.
-                Options are `ffill`, `bfill`, `linear` and `nearest`. Defaults to None.
-
-        Returns:
-            pd.Series of forecasted data with timestamps of forecast as index.
-
-        Raises:
-            ValueError: If no data is available for the specified zone or time, or if
-                insufficient data exists for the frequency, without `resample_method`
-                specified.
-
-        Example:
-            >>> index = pd.date_range(
-            ...    "2020-01-01T00:00:00", "2020-01-01T03:00:00", freq="1h"
-            ... )
-            >>> actual = pd.DataFrame({"zone_a": [4, 6, 2, 8]}, index=index)
-
-            >>> forecast_data = [
-            ...    ["2020-01-01T00:00:00", "2020-01-01T01:00:00", 5],
-            ...    ["2020-01-01T00:00:00", "2020-01-01T02:00:00", 2],
-            ...    ["2020-01-01T00:00:00", "2020-01-01T03:00:00", 6],
-            ... ]
-            >>> forecast = pd.DataFrame(
-            ...    forecast_data, columns=["req_time", "forecast_time", "zone_a"]
-            ... )
-            >>> forecast.set_index(["req_time", "forecast_time"], inplace=True)
-
-            >>> signal = Trace(actual, forecast)
-
-            Forward-fill resampling between 2020-01-01T00:00:00 (actual value = 4.0) and
-            forecasted values between 2020-01-01T01:00:00 and 2020-01-01T02:00:00:
-
-            >>> signal.forecast(
-            ...    start_time="2020-01-01T00:00:00",
-            ...    end_time="2020-01-01T02:00:00",
-            ...    frequency="30min",
-            ...    resample_method="ffill",
-            ... )
-            {numpy.datetime64('2020-01-01T00:30:00'): 4.0,
-            numpy.datetime64('2020-01-01T01:00:00'): 5.0,
-            numpy.datetime64('2020-01-01T01:30:00'): 5.0,
-            numpy.datetime64('2020-01-01T02:00:00'): 2.0}
-
-            Time interpolation between 2020-01-01T01:10:00 (actual value = 6.0) and
-            2020-01-01T02:00:00 (forecasted value = 2.0):
-
-            >>> signal.forecast(
-            ...    start_time="2020-01-01T01:10:00",
-            ...    end_time="2020-01-01T01:55:00",
-            ...    zone="zone_a",
-            ...    frequency=timedelta(minutes=20),
-            ...    resample_method="time",
-            ... )
-            {numpy.datetime64('2020-01-01T01:30:00'): 4.4,
-            numpy.datetime64('2020-01-01T01:50:00'): 2.8}
-        """
-        if column is None:
-            column = self.default_column
-
-        np_start = np.datetime64(start_time)
-        np_end = np.datetime64(end_time)
-        if self._forecast is None:
-            # No error forecast (actual data is used as static forecast)
-            column_name = _get_column_name(self._actual, column)
-            times, forecast = self._actual[column_name]
-        else:
-            column_name = _get_column_name(self._forecast, column)
-            req_times, times, forecast = self._forecast[column_name]
-            if req_times is not None:
-                # Non-static forecast
-                req_end_index = np.searchsorted(req_times, np_start, side="right")
-                if req_end_index <= 0:
-                    raise ValueError(f"No forecasts available at time {start_time}.")
-                req_start_index = np.searchsorted(
-                    req_times, req_times[req_end_index - 1], side="left"
-                )
-                times = times[req_start_index:req_end_index]
-                forecast = forecast[req_start_index:req_end_index]
-
-        # Resample the data to get the data to specified frequency
-        if frequency is not None:
-            np_freq = np.timedelta64(pd.to_timedelta(frequency))
-            return self._resample_to_frequency(
-                times, forecast, column_name, np_start, np_end, np_freq, resample_method
+            raise ValueError(
+                f"Elapsed time {elapsed} is after the end of column '{resolved}' "
+                f"(trace covers {_td(offsets[0])} to {_td(offsets[-1])} since sim_start)."
             )
-
-        start_index = np.searchsorted(times, np_start, side="right")
-        end_index = np.searchsorted(times, np_end, side="right")
-        return dict(
-            zip(times[start_index:end_index].copy(), forecast[start_index:end_index].copy())
-        )
-
-    def _resample_to_frequency(
-        self,
-        times: np.ndarray,
-        data: np.ndarray,
-        column: str,
-        start_time: np.datetime64,
-        end_time: np.datetime64,
-        freq: np.timedelta64,
-        resample_method: Optional[Literal["ffill", "bfill", "linear", "nearest"]],
-    ) -> dict[np.datetime64, float]:
-        """Transform frame into the desired frequency between start and end time."""
-        # Cutoff data and create deep copy
-        start_index = np.searchsorted(times, start_time, side="right")
-        if start_index >= times.size:
-            raise ValueError(f"No data found at start time '{start_time}'.")
-        end_index = np.searchsorted(times, end_time, side="right") + 1
-        times = times[start_index:end_index].copy()
-        data = data[start_index:end_index].copy()
-
-        new_times = np.arange(
-            start_time + freq, end_time + np.timedelta64(1, "ns"), freq, dtype="datetime64[ns]"
-        )
-
-        new_times_indices = np.searchsorted(times, new_times, side="left")
-        if np.all(new_times_indices < times.size) and np.array_equal(
-            new_times, times[new_times_indices]
-        ):
-            # No resampling necessary
-            new_data = data[new_times_indices]
-        elif resample_method == "bfill":
-            # Perform backward-fill whereas values outside range are filled with NaN
-            new_data = np.full(new_times_indices.shape, np.nan)
-            valid_mask = new_times_indices < len(data)
-            new_data[valid_mask] = data[new_times_indices[valid_mask]]
-        else:
-            # Actual value is used for interpolation
-            times = np.insert(times, 0, start_time)
-            # https://github.com/dos-group/vessim/issues/234
-            # Use the length of the actual data to determine the column:
-            # self._actual is a dict[str, tuple[np.ndarray, np.ndarray]]
-            # -> every key is a column name
-            # -> if len(self._actual) == 1, _actual is based on pd.Series and column is None
-            data = np.insert(
-                data, 0, self.now(start_time, None if len(self._actual) == 1 else column)
-            )
-            if resample_method == "ffill":
-                new_data = data[np.searchsorted(times, new_times, side="right") - 1]
-            elif resample_method == "nearest":
-                spacing = np.diff(times) / 2
-                times = times + np.hstack([spacing, spacing[-1]])
-                data = np.hstack([data, data[-1]])
-                new_data = data[np.searchsorted(times, new_times)]
-            elif resample_method == "linear":
-                # Numpy does not support interpolation on datetimes
-                new_data = np.interp(new_times.astype("float64"), times.astype("float64"), data)
-            elif resample_method is not None:
-                raise ValueError(f"Unknown resample_method '{resample_method}'.")
-            else:
-                raise ValueError(f"Not enough data at frequency '{freq}' without resampling.")
-
-        return dict(zip(new_times, new_data))
 
 
 def _get_column_name(data: dict[str, Any], column: Optional[str]) -> str:
-    """Extracts data from a dictionary at a key."""
     if column is None:
         if len(data) == 1:
             return next(iter(data.keys()))
-        else:
-            raise ValueError("Column needs to be specified.")
-    elif column in data.keys():
+        raise ValueError("Column needs to be specified.")
+    if column in data:
         return column
-    else:
-        raise ValueError(f"Cannot retrieve data for column '{column}'.")
+    raise ValueError(f"Cannot retrieve data for column '{column}'.")
 
 
-def _abs_path(data_dir: Optional[str | Path]) -> Path:
-    """Returns absolute path to the directory data should be loaded into."""
-    if data_dir is None:
-        return Path.home() / ".cache" / "vessim"
-
-    path = Path(data_dir).expanduser()
-    if path.is_absolute():
-        return path
-    else:
-        raise ValueError(f"Path {data_dir} not valid. Has to be absolute or None.")
+def _td(value: np.timedelta64) -> timedelta:
+    """Convert a numpy timedelta64 to a Python timedelta for readable error messages."""
+    return pd.Timedelta(value).to_pytimedelta()
 
 
 class SilSignal(Signal):
@@ -507,12 +324,11 @@ class SilSignal(Signal):
 
         self.Timer(0, poll).start()  # Start immediately
 
-    def now(self, at: Optional[DatetimeLike] = None, **kwargs: dict[str, Any]) -> float:
+    def at(self, elapsed: Optional[timedelta | float] = None) -> float:
         """Return the current cached value.
 
         Args:
-            at: Current simulation time (ignored for real-time data)
-            **kwargs: Additional parameters (ignored)
+            elapsed: Elapsed time since `sim_start` (ignored for real-time data).
 
         Returns:
             Current cached value

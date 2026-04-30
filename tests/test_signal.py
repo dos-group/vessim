@@ -1,7 +1,8 @@
-import pytest
-import pandas as pd
-import numpy as np
 from datetime import timedelta
+
+import numpy as np
+import pandas as pd
+import pytest
 
 import vessim as vs
 
@@ -14,327 +15,142 @@ class TestTrace:
             "2023-01-01T00:30:00",
             "2023-01-01T01:00:00",
         ]
-        actual = pd.DataFrame({"a": [1, 2, 3], "b": [0, 3, 0], "c": [None, 4, None]}, index=index)
-        return vs.Trace(actual)
+        actual = pd.DataFrame(
+            {"a": [1, 2, 3], "b": [0, 3, 0], "c": [None, 4, None]}, index=index
+        )
+        return vs.Trace.from_datetime(actual)
 
     @pytest.fixture
     def hist_signal_single(self) -> vs.Trace:
         index = ["2023-01-01T01:00:00", "2023-01-01T00:30:00", "2023-01-01T00:00:00"]
         actual = pd.Series([3, 2, 1], index=index)
-        return vs.Trace(actual, fill_method="bfill")
-
-    @pytest.fixture
-    def hist_signal_forecast(self) -> vs.Trace:
-        index = pd.date_range("2023-01-01T00:00:00", "2023-01-01T01:00:00", freq="20min")
-        actual = pd.DataFrame({"a": [1, 5, 3, 2], "b": [0, 1, 2, 3]}, index=index)
-
-        forecast_data = [
-            ["2023-01-01T00:00:00", "2023-01-01T00:10:00", 2, 2.5],
-            ["2023-01-01T00:00:00", "2023-01-01T01:00:00", 1.5, 2.5],
-            ["2023-01-01T00:00:00", "2023-01-01T02:00:00", 2.5, 3.5],
-            ["2023-01-01T00:00:00", "2023-01-01T03:00:00", 2, 1.5],
-            ["2023-01-01T01:00:00", "2023-01-01T02:00:00", 3, 2.5],
-            ["2023-01-01T01:00:00", "2023-01-01T03:00:00", 1.5, 1.5],
-        ]
-        forecast = pd.DataFrame(forecast_data, columns=["request_time", "forecast_time", "a", "b"])
-        forecast.set_index(["request_time", "forecast_time"], inplace=True)
-        return vs.Trace(actual, forecast)
-
-    @pytest.fixture
-    def hist_signal_static_forecast(self) -> vs.Trace:
-        index = pd.date_range("2023-01-01T00:00:00", "2023-01-01T03:00:00", freq="1h")
-        actual = pd.Series([3, 2, 4, 0], index=index)
-        forecast = pd.Series([4, 2, 4, 1], index=index)
-        return vs.Trace(actual, forecast)
+        return vs.Trace.from_datetime(actual, fill_method="bfill")
 
     def test_columns(self, hist_signal):
         assert hist_signal.columns() == ["a", "b", "c"]
 
     def test_actual_single_column(self, hist_signal_single):
-        assert hist_signal_single.now("2023-01-01T00:45:00") == 3
+        assert hist_signal_single.at(timedelta(minutes=45)) == 3
 
     def test_actual_none_values(self, hist_signal):
-        assert hist_signal.now("2023-01-01T01:20:00", column="c") == 4
+        assert hist_signal.at(timedelta(hours=1, minutes=20), column="c") == 4
 
     @pytest.mark.parametrize(
-        "dt, column, expected",
+        "elapsed, column, expected",
         [
-            (("2023-01-01T00:00:00"), "a", 1),
-            (("2023-01-01T00:00:10"), "a", 1),
-            (("2023-01-01T01:00:00"), "a", 3),
-            (("2023-01-01T10:00:00"), "a", 3),
-            (("2023-01-01T00:29:59"), "b", 0),
-            (("2023-01-01T00:30:00"), "b", 3),
+            (timedelta(0), "a", 1),
+            (timedelta(seconds=10), "a", 1),
+            (timedelta(hours=1), "a", 3),
+            (timedelta(hours=10), "a", 3),
+            (timedelta(minutes=29, seconds=59), "b", 0),
+            (timedelta(minutes=30), "b", 3),
         ],
     )
-    def test_actual(self, hist_signal, dt, column, expected):
-        assert hist_signal.now(dt, column) == expected
+    def test_actual(self, hist_signal, elapsed, column, expected):
+        assert hist_signal.at(elapsed, column) == expected
 
-    def test_actual_fails_if_invalid_key_word_arguments(self, hist_signal_single):
-        with pytest.raises(ValueError):
-            hist_signal_single.now("2023-01-01T00:00:00", invalid="invalid")
+    def test_accepts_int_seconds(self, hist_signal_single):
+        # int/float should be coerced to timedelta(seconds=...)
+        assert hist_signal_single.at(2700) == hist_signal_single.at(timedelta(seconds=2700))
+
+    def test_accepts_float_seconds(self, hist_signal_single):
+        assert hist_signal_single.at(1800.0) == hist_signal_single.at(timedelta(minutes=30))
+
+    def test_actual_fails_if_invalid_kwargs(self, hist_signal_single):
+        with pytest.raises(TypeError):
+            hist_signal_single.at(timedelta(0), invalid="invalid")  # type: ignore[call-arg]
 
     def test_actual_fails_if_column_not_specified(self, hist_signal):
         with pytest.raises(ValueError):
-            hist_signal.now("2023-01-01T00:00:00")
+            hist_signal.at(timedelta(0))
 
     def test_actual_fails_if_column_does_not_exist(self, hist_signal):
         with pytest.raises(ValueError):
-            hist_signal.now("2023-01-01T00:00:00", "d")
+            hist_signal.at(timedelta(0), "d")
 
-    def test_actual_fails_if_now_too_early(self, hist_signal):
+    def test_actual_fails_if_negative_elapsed(self, hist_signal):
         with pytest.raises(ValueError):
-            hist_signal.now("2022-12-30T23:59:59", "a")
+            hist_signal.at(timedelta(seconds=-1), "a")
 
-    def test_actual_fails_if_now_too_late(self, hist_signal_single):
+    def test_actual_fails_if_after_trace_end(self, hist_signal_single):
         with pytest.raises(ValueError):
-            hist_signal_single.now("2023-01-01T01:00:01")
+            hist_signal_single.at(timedelta(hours=1, seconds=1))
 
-    def test_forecast_single_column(self, hist_signal_single):
-        assert hist_signal_single.forecast(
-            start_time="2023-01-01T00:00:00",
-            end_time="2023-01-01T01:00:00",
-        ) == {
-            np.datetime64("2023-01-01T00:30:00.000000000"): 2.0,  # type: ignore
-            np.datetime64("2023-01-01T01:00:00.000000000"): 3.0,  # type: ignore
-        }
+    def test_actual_fails_if_at_is_none(self, hist_signal_single):
+        with pytest.raises(ValueError):
+            hist_signal_single.at(None)
 
-    def test_forecast_static(self, hist_signal_static_forecast):
-        assert hist_signal_static_forecast.forecast(
-            start_time="2023-01-01T00:00:00",
-            end_time="2023-01-01T02:00:00",
-        ) == {
-            np.datetime64("2023-01-01T01:00:00.000000000"): 2.0,  # type: ignore
-            np.datetime64("2023-01-01T02:00:00.000000000"): 4.0,  # type: ignore
-        }
+    def test_offset_shifts_trace(self):
+        index = pd.date_range("2023-01-01T00:00:00", periods=3, freq="1h")
+        actual = pd.Series([1, 2, 3], index=index)
+        trace = vs.Trace.from_datetime(actual, offset=timedelta(hours=2))
+        # First row now lives at elapsed=2h instead of elapsed=0
+        with pytest.raises(ValueError):
+            trace.at(timedelta(hours=1))
+        assert trace.at(timedelta(hours=2)) == 1
+        assert trace.at(timedelta(hours=3, minutes=30)) == 2
 
-    @pytest.mark.parametrize(
-        "start, end, column, expected",
-        [
-            (
-                "2023-01-01T00:00:00",
-                "2023-01-01T01:00:00",
-                "a",
-                {
-                    np.datetime64("2023-01-01T00:10:00.000000000"): 2.0,  # type: ignore
-                    np.datetime64("2023-01-01T01:00:00.000000000"): 1.5,  # type: ignore
-                },
-            ),
-            (
-                "2023-01-01T01:00:00",
-                "2023-01-01T02:00:00",
-                "a",
-                {np.datetime64("2023-01-01T02:00:00.000000000"): 3.0},  # type: ignore
-            ),
-            (
-                "2023-01-01T00:05:00",
-                "2023-01-01T00:50:00",
-                "a",
-                {np.datetime64("2023-01-01T00:10:00.000000000"): 2.0},  # type: ignore
-            ),
-            (
-                "2023-01-01T00:11:00",
-                "2023-01-01T00:59:00",
-                "a",
-                {},
-            ),
-            (
-                "2023-01-01T00:00:00",
-                "2023-01-01T02:00:00",
-                "b",
-                {
-                    np.datetime64("2023-01-01T00:10:00.000000000"): 2.5,  # type: ignore
-                    np.datetime64("2023-01-01T01:00:00.000000000"): 2.5,  # type: ignore
-                    np.datetime64("2023-01-01T02:00:00.000000000"): 3.5,  # type: ignore
-                },
-            ),
-            (
-                "2023-01-01T01:00:00",
-                "2023-04-04T14:00:00",
-                "a",
-                {
-                    np.datetime64("2023-01-01T02:00:00.000000000"): 3.0,  # type: ignore
-                    np.datetime64("2023-01-01T03:00:00.000000000"): 1.5,  # type: ignore
-                },
-            ),
-        ],
-    )
-    def test_forecast(self, hist_signal_forecast, start, end, column, expected):
-        assert hist_signal_forecast.forecast(start, end, column) == expected
-
-    @pytest.mark.parametrize(
-        "start, end, column, frequency, method, expected",
-        [
-            (
-                "2023-01-01T00:00:00",
-                "2023-01-01T03:00:00",
-                "a",
-                "2h",
-                None,
-                {np.datetime64("2023-01-01T02:00:00.000000000"): 2.5},  # type: ignore
-            ),
-            (
-                "2023-01-01T00:00:00",
-                "2023-01-01T01:00:00",
-                "b",
-                timedelta(minutes=35),
-                "bfill",
-                {np.datetime64("2023-01-01T00:35:00.000000000"): 2.5},  # type: ignore
-            ),
-            (
-                "2023-01-01T01:00:00",
-                "2023-01-01T04:00:00",
-                "a",
-                timedelta(minutes=45),
-                "ffill",
-                {
-                    np.datetime64("2023-01-01T01:45:00.000000000"): 2.0,  # type: ignore
-                    np.datetime64("2023-01-01T02:30:00.000000000"): 3.0,  # type: ignore
-                    np.datetime64("2023-01-01T03:15:00.000000000"): 1.5,  # type: ignore
-                    np.datetime64("2023-01-01T04:00:00.000000000"): 1.5,  # type: ignore
-                },
-            ),
-            (
-                "2023-01-01T00:00:00",
-                "2023-01-01T05:00:00",
-                "a",
-                timedelta(hours=1, minutes=30),
-                "linear",
-                {
-                    np.datetime64("2023-01-01T01:30:00.000000000"): 2.0,  # type: ignore
-                    np.datetime64("2023-01-01T03:00:00.000000000"): 2.0,  # type: ignore
-                    np.datetime64("2023-01-01T04:30:00.000000000"): 2.0,  # type: ignore
-                },
-            ),
-            (
-                "2023-01-01T00:20:00",
-                "2023-01-01T01:00:00",
-                "b",
-                "20min",
-                "bfill",
-                {
-                    np.datetime64("2023-01-01T00:40:00.000000000"): 2.5,  # type: ignore
-                    np.datetime64("2023-01-01T01:00:00.000000000"): 2.5,  # type: ignore
-                },
-            ),
-            (
-                "2023-01-01T00:30:00",
-                "2023-01-01T01:00:00",
-                "b",
-                "20min",
-                "linear",
-                {np.datetime64("2023-01-01T00:50:00.000000000"): 2.0},  # type: ignore
-            ),
-            (
-                "2023-01-01T00:45:00",
-                "2023-01-01T01:00:00",
-                "b",
-                "12min",
-                "linear",
-                {np.datetime64("2023-01-01T00:57:00.000000000"): 2.4},  # type: ignore
-            ),
-            (
-                "2023-01-01T00:35:00",
-                "2023-01-01T00:40:00",
-                "a",
-                "5min",
-                "linear",
-                {np.datetime64("2023-01-01T00:40:00.000000000"): 4.3},  # type: ignore
-            ),
-            (
-                "2023-01-01T00:40:00",
-                "2023-01-01T00:55:00",
-                "b",
-                "5min",
-                "nearest",
-                {
-                    np.datetime64("2023-01-01T00:45:00.000000000"): 2.0,  # type: ignore
-                    np.datetime64("2023-01-01T00:50:00.000000000"): 2.0,  # type: ignore
-                    np.datetime64("2023-01-01T00:55:00.000000000"): 2.5,  # type: ignore
-                },
-            ),
-            (
-                "2023-01-01T01:00:00",
-                "2023-01-01T04:00:00",
-                "b",
-                "1h",
-                "bfill",
-                {
-                    np.datetime64("2023-01-01T02:00:00.000000000"): 2.5,  # type: ignore
-                    np.datetime64("2023-01-01T03:00:00.000000000"): 1.5,  # type: ignore
-                    np.datetime64("2023-01-01T04:00:00.000000000"): np.nan,  # type: ignore
-                },
-            ),
-            (
-                "2023-01-01T01:00:00",
-                "2023-01-01T04:00:00",
-                "b",
-                "1h",
-                "nearest",
-                {
-                    np.datetime64("2023-01-01T02:00:00.000000000"): 2.5,  # type: ignore
-                    np.datetime64("2023-01-01T03:00:00.000000000"): 1.5,  # type: ignore
-                    np.datetime64("2023-01-01T04:00:00.000000000"): 1.5,  # type: ignore
-                },
-            ),
-        ],
-    )
-    def test_forecast_with_frequency(
-        self, hist_signal_forecast, start, end, column, frequency, method, expected
-    ):
-        forecast = hist_signal_forecast.forecast(
-            start,
-            end,
-            column=column,
-            frequency=frequency,
-            resample_method=method,
+    def test_from_datetime_normalizes_calendar_dates(self):
+        # Two traces with different calendar starts produce identical lookups.
+        a = pd.Series(
+            [10, 20], index=pd.to_datetime(["2022-06-09T00:00", "2022-06-09T01:00"])
         )
-        # Complicated because np.nan == np.nan is False
-        assert forecast.keys() == expected.keys()
-        assert all(
-            np.isnan(expected[k]) if np.isnan(forecast[k]) else forecast[k] == expected[k]
-            for k in forecast.keys()
+        b = pd.Series(
+            [10, 20], index=pd.to_datetime(["2024-12-31T00:00", "2024-12-31T01:00"])
         )
+        ta, tb = vs.Trace.from_datetime(a), vs.Trace.from_datetime(b)
+        for elapsed in (timedelta(0), timedelta(minutes=30), timedelta(hours=1)):
+            assert ta.at(elapsed) == tb.at(elapsed)
 
-    def test_forecast_fails_if_column_not_specified(self, hist_signal):
-        with pytest.raises(ValueError):
-            hist_signal.forecast(
-                "2023-01-01T00:00:00",
-                "2023-01-01T01:00:00",
-            )
+    def test_init_rejects_datetime_index_with_pointer(self):
+        data = pd.Series(
+            [1, 2], index=pd.to_datetime(["2023-01-01", "2023-01-02"])
+        )
+        with pytest.raises(TypeError, match="from_datetime"):
+            vs.Trace(data)
 
-    def test_forecast_fails_if_column_does_not_exist(self, hist_signal):
-        with pytest.raises(ValueError):
-            hist_signal.forecast(
-                "2023-01-01T00:00:00",
-                "2023-01-01T01:00:00",
-                column="d",
-            )
+    def test_timedelta_index_used_as_elapsed_offsets(self):
+        # A TimedeltaIndex is interpreted directly — no normalization.
+        data = pd.Series(
+            [10, 20, 30],
+            index=pd.to_timedelta(["0s", "30min", "1h"]),
+        )
+        trace = vs.Trace(data)
+        assert trace.at(timedelta(0)) == 10
+        assert trace.at(timedelta(minutes=30)) == 20
+        assert trace.at(timedelta(hours=1)) == 30
 
-    def test_forecast_fails_if_start_too_early(self, hist_signal_forecast):
+    def test_timedelta_index_preserves_nonzero_start(self):
+        # If the user's offsets don't start at 0, that's their declared start —
+        # we don't normalize it away (use offset= for an additional shift).
+        data = pd.Series([10, 20], index=pd.to_timedelta(["1h", "2h"]))
+        trace = vs.Trace(data)
         with pytest.raises(ValueError):
-            hist_signal_forecast.forecast(
-                "2022-12-31T23:59:59",
-                "2023-01-01T01:00:00",
-                column="a",
-            )
+            trace.at(timedelta(minutes=30))
+        assert trace.at(timedelta(hours=1)) == 10
+        assert trace.at(timedelta(hours=2)) == 20
 
-    def test_forecast_fails_with_invalid_frequency(self, hist_signal):
-        with pytest.raises(ValueError):
-            hist_signal.forecast(
-                hist_signal.forecast(
-                    "2023-01-01T00:00:00",
-                    "2023-01-01T01:00:00",
-                    column="a",
-                    frequency="invalid",
-                )
-            )
+    def test_numeric_index_interpreted_as_seconds(self):
+        data = pd.Series([10, 20, 30], index=[0, 1800, 3600])
+        trace = vs.Trace(data)
+        assert trace.at(0) == 10
+        assert trace.at(1800) == 20
+        assert trace.at(3600) == 30
 
-    def test_forecast_fails_if_not_enough_data_for_frequency(self, hist_signal):
-        with pytest.raises(ValueError):
-            hist_signal.forecast(
-                "2023-01-01T00:00:00",
-                "2023-01-01T01:00:00",
-                column="a",
-                frequency="15min",
-            )
+    def test_unsupported_on_overflow(self):
+        index = pd.date_range("2023-01-01", periods=2, freq="1h")
+        with pytest.raises(ValueError, match="not yet supported"):
+            vs.Trace(pd.Series([1, 2], index=index), on_overflow="loop")  # type: ignore[arg-type]
+
+
+class TestStaticSignal:
+    def test_returns_value(self):
+        s = vs.StaticSignal(42)
+        assert s.at() == 42
+        assert s.at(timedelta(hours=5)) == 42
+        assert s.at(60) == 42  # int seconds
+
+    def test_set_value(self):
+        s = vs.StaticSignal(1)
+        s.set_value(7)
+        assert s.at() == 7

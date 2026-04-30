@@ -10,14 +10,10 @@ class TestMicrogrid:
         return Mock()
 
     @pytest.fixture
-    def mock_clock(self):
-        return Mock()
-
-    @pytest.fixture
     def mock_policy(self):
         return Mock(spec=DispatchPolicy)
 
-    def test_init_raises_invalid_step_size(self, mock_world, mock_clock, mock_policy):
+    def test_init_raises_invalid_step_size(self, mock_world, mock_policy):
         actor = Mock(spec=Actor)
         actor.step_size = 10
         actor.name = "test_actor"
@@ -25,14 +21,13 @@ class TestMicrogrid:
         with pytest.raises(ValueError, match="Actor step size has to be a multiple"):
             Microgrid(
                 world=mock_world,
-                clock=mock_clock,
                 step_size=3,
                 actors=[actor],
                 dispatchables=[],
                 policy=mock_policy
             )
 
-    def test_init_connects_components(self, mock_world, mock_clock, mock_policy):
+    def test_init_connects_components(self, mock_world, mock_policy):
         actor = Mock(spec=Actor)
         actor.step_size = 10
         actor.name = "test_actor"
@@ -51,7 +46,6 @@ class TestMicrogrid:
 
         mg = Microgrid(
             world=mock_world,
-            clock=mock_clock,
             step_size=5,  # 10 % 5 == 0
             actors=[actor],
             dispatchables=[],
@@ -60,17 +54,16 @@ class TestMicrogrid:
 
         # Check if actors are started
         mock_world.start.assert_any_call("Actor", sim_id=f"{mg.name}.actor.test_actor",
-                                         clock=mock_clock, step_size=10)
+                                         step_size=10)
 
         # Check if microgrid sim is started
         mock_world.start.assert_any_call("Microgrid", sim_id=f"{mg.name}.microgrid",
-                                         step_size=5, grid_signals=None,
-                                         sim_start=mock_clock.sim_start)
+                                         step_size=5, grid_signals=None)
 
         # Check connections
         mock_world.connect.assert_any_call(actor_entity, microgrid_entity, "power")
 
-    def test_finalize(self, mock_world, mock_clock, mock_policy):
+    def test_finalize(self, mock_world, mock_policy):
         actor = Mock(spec=Actor)
         actor.step_size = 5
         actor.name = "test_actor"
@@ -80,7 +73,6 @@ class TestMicrogrid:
 
         mg = Microgrid(
             world=mock_world,
-            clock=mock_clock,
             step_size=5,
             actors=[actor],
             dispatchables=[],

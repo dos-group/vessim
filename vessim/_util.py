@@ -1,25 +1,13 @@
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Union, Any
 
 import numpy as np
-import pandas as pd
 from loguru import logger
 
 DatetimeLike = Union[str, datetime, np.datetime64]
-
-
-class Clock:
-    def __init__(self, sim_start: str | datetime):
-        self.sim_start = pd.to_datetime(sim_start)
-
-    def to_datetime(self, simtime: int) -> datetime:
-        return self.sim_start + timedelta(seconds=simtime)
-
-    def to_simtime(self, dt: datetime) -> int:
-        return int((dt - self.sim_start).total_seconds())
 
 
 def disable_rt_warnings(behind_threshold: float):

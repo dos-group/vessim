@@ -5,7 +5,7 @@ import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from csv import DictWriter
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional, TYPE_CHECKING
 
@@ -23,7 +23,7 @@ def _build_experiment_config(environment: Environment) -> dict:
     return {
         "environment": {
             "name": environment.name,
-            "sim_start": str(environment.clock.sim_start),
+            "sim_start": str(environment.sim_start),
             "step_size": environment.step_size,
         },
         "microgrids": {
@@ -350,13 +350,13 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         super().__init__(self.META)
         self.eid = "Controller"
         self.step_size = None
-        self.clock = None
+        self.sim_start = None
         self.controllers: list[Controller] = []
         self.microgrid_states: dict[str, dict[str, Any]] = {}
 
     def init(self, sid, time_resolution=1.0, **sim_params):
         self.step_size = sim_params["step_size"]
-        self.clock = sim_params["clock"]
+        self.sim_start = sim_params["sim_start"]
         return self.meta
 
     def create(self, num, model, **model_params):
@@ -365,7 +365,7 @@ class _ControllerSim(mosaik_api_v3.Simulator):
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
-        assert self.clock is not None
+        assert self.sim_start is not None
         assert self.step_size is not None
 
         data = inputs[self.eid]
@@ -380,7 +380,7 @@ class _ControllerSim(mosaik_api_v3.Simulator):
             "grid_signals": data["grid_signals"].get(f"{name}{mg_suffix}"),
         } for name in microgrids}
 
-        now = self.clock.to_datetime(time)
+        now = self.sim_start + timedelta(seconds=time)
         for controller in self.controllers:
             controller.step(now, microgrid_states)
 

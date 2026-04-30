@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import timedelta
 from typing import Optional
 
 import mosaik_api_v3  # type: ignore
@@ -37,9 +37,9 @@ class Actor:
         self.signal = signal
         self.consumer = consumer
 
-    def power(self, now: datetime) -> float:
-        """Current power consumption/production."""
-        value = self.signal.now(at=now)
+    def power(self, elapsed: timedelta | float) -> float:
+        """Current power consumption/production at `elapsed` time since `sim_start`."""
+        value = self.signal.at(elapsed)
         return -value if self.consumer else value
 
     def config(self) -> dict:
@@ -51,13 +51,13 @@ class Actor:
             "step_size": self.step_size,
         }
 
-    def state(self, now: datetime) -> dict:
-        """Dynamic state of the actor at the current timestep, passed to `Controller`s.
+    def state(self, elapsed: timedelta | float) -> dict:
+        """Dynamic state of the actor at `elapsed` time since `sim_start`.
 
         This can be extended to include any relevant information about e.g. internal
         states of simulators that may be useful for control (e.g. temperature) or logs.
         """
-        return {"power": self.power(now)}
+        return {"power": self.power(elapsed)}
 
     def finalize(self) -> None:
         """Clean up resources."""
@@ -80,14 +80,12 @@ class _ActorSim(mosaik_api_v3.Simulator):
         super().__init__(self.META)
         self.eid = None
         self.step_size = None
-        self.clock = None
         self.actor = None
         self.power = 0
         self.state = {}
 
     def init(self, sid, time_resolution=1.0, **sim_params):
         self.step_size = sim_params["step_size"]
-        self.clock = sim_params["clock"]
         return self.meta
 
     def create(self, num, model, **model_params):
@@ -97,11 +95,9 @@ class _ActorSim(mosaik_api_v3.Simulator):
         return [{"eid": self.eid, "type": model}]
 
     def step(self, time, inputs, max_advance):
-        assert self.clock is not None
-        now = self.clock.to_datetime(time)
         assert self.actor is not None
-        self.power = self.actor.power(now)
-        self.state = self.actor.state(now)
+        self.power = self.actor.power(time)
+        self.state = self.actor.state(time)
         assert self.step_size is not None
         return time + self.step_size
 

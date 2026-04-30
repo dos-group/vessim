@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import timedelta
 from typing import TYPE_CHECKING, Optional, TypedDict
 
 import mosaik
@@ -10,7 +9,6 @@ if TYPE_CHECKING:
     from vessim.actor import Actor
     from vessim.dispatch_policy import DispatchPolicy
     from vessim.dispatchable import Dispatchable
-    from vessim._util import Clock
     from vessim.signal import Signal
 
 
@@ -37,7 +35,6 @@ class Microgrid:
 
     Args:
         world: The mosaik world instance.
-        clock: The simulation clock.
         step_size: The step size of the simulation in seconds.
         actors: The exogenous actors in the microgrid.
         dispatchables: The dispatchable resources in the microgrid.
@@ -51,7 +48,6 @@ class Microgrid:
     def __init__(
         self,
         world: mosaik.World,
-        clock: Clock,
         step_size: int,
         actors: list[Actor],
         dispatchables: list[Dispatchable],
@@ -76,7 +72,6 @@ class Microgrid:
             actor_sim = world.start(
                 "Actor",
                 sim_id=f"{self.name}.actor.{actor.name}",
-                clock=clock,
                 step_size=actor_step_size,
             )
             # We initialize all actors before the microgrid simulation to make sure
@@ -88,7 +83,6 @@ class Microgrid:
             sim_id=f"{self.name}.microgrid",
             step_size=step_size,
             grid_signals=grid_signals,
-            sim_start=clock.sim_start,
         )
         self.entity = microgrid_sim.Microgrid(
             dispatchables=dispatchables, policy=policy,
@@ -140,7 +134,6 @@ class _MicrogridSim(mosaik_api_v3.Simulator):
     def init(self, sid, time_resolution=1.0, **sim_params):
         self.step_size = sim_params["step_size"]
         self.grid_signals = sim_params.get("grid_signals")
-        self.sim_start = sim_params["sim_start"]
         return self.meta
 
     def create(self, num, model, **model_params):
@@ -161,10 +154,8 @@ class _MicrogridSim(mosaik_api_v3.Simulator):
 
         # Phase 3: Resolve grid signals at current time
         if self.grid_signals:
-            current_dt = self.sim_start + timedelta(seconds=time)
             self._resolved_grid_signals = {
-                name: signal.now(at=current_dt)
-                for name, signal in self.grid_signals.items()
+                name: signal.at(time) for name, signal in self.grid_signals.items()
             }
         else:
             self._resolved_grid_signals = None
