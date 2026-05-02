@@ -34,8 +34,8 @@ environment.add_microgrid(
     name="datacenter",
     actors=[
         vs.Actor(name="server", signal=vs.StaticSignal(value=700), consumer=True),
-        vs.Actor(name="solar_panel", signal=vs.Trace.load(
-            "solcast2022_global", column="Berlin", params={"scale": 5000}
+        vs.Actor(name="solar_panel", signal=vs.Trace.from_csv(
+            "datasets/solcast2022_global_actual.csv", column="Berlin", scale=5000
         )),
     ],
     dispatchables=[

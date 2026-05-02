@@ -83,6 +83,44 @@ class TestEnvironment:
         with pytest.raises(ValueError, match="must be after"):
             environment.run(until=datetime(2022, 12, 31, 23, 59, 59))
 
+    def test_advance_before_start_raises(self, environment):
+        with pytest.raises(RuntimeError, match="start"):
+            environment.advance(until=100)
+
+    def test_start_twice_raises(self, environment):
+        environment._initialize_controllers = Mock()
+        environment.start()
+        with pytest.raises(RuntimeError, match="already been called"):
+            environment.start()
+
+    def test_start_then_multiple_advance_calls(self, environment):
+        environment.world = Mock()
+        environment.world.run = Mock()
+        environment._initialize_controllers = Mock()
+
+        environment.start()
+        environment.advance(until=100)
+        environment.advance(until=200)
+        environment.advance(until=timedelta(seconds=300))
+
+        # _initialize_controllers must be invoked exactly once across the lifetime.
+        assert environment._initialize_controllers.call_count == 1
+        # world.run should be called once per advance, with the resolved seconds.
+        assert environment.world.run.call_count == 3
+        seen = [c.kwargs["until"] for c in environment.world.run.call_args_list]
+        assert seen == [100, 200, 300.0]
+
+    def test_run_is_equivalent_to_start_plus_advance(self, environment):
+        environment.world = Mock()
+        environment.world.run = Mock()
+        environment._initialize_controllers = Mock()
+
+        environment.run(until=500)
+
+        environment._initialize_controllers.assert_called_once()
+        environment.world.run.assert_called_once()
+        assert environment.world.run.call_args.kwargs["until"] == 500
+
     def test_contains_sil_signals(self, environment):
         mg = Mock(spec=Microgrid)
         actor1 = Mock(spec=Actor)
