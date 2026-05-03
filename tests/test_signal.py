@@ -85,12 +85,42 @@ class TestTrace:
         with pytest.raises(ValueError):
             hist_signal_single.at(None)
 
-    def test_init_rejects_datetime_index_with_pointer(self):
+    def test_datetime_index_requires_anchor(self):
         data = pd.Series(
             [1, 2], index=pd.to_datetime(["2023-01-01", "2023-01-02"])
         )
-        with pytest.raises(TypeError, match="Trace.from_csv"):
+        with pytest.raises(ValueError, match="anchor is required"):
             vs.Trace(data)
+
+    def test_datetime_index_with_anchor_rebases(self):
+        index = pd.to_datetime([
+            "2023-01-01 00:00:00",
+            "2023-01-01 01:00:00",
+            "2023-01-01 02:00:00",
+        ])
+        data = pd.Series([10, 20, 30], index=index)
+        trace = vs.Trace(data, anchor="2023-01-01 01:00:00")
+        # Anchor row becomes elapsed=0; row before is dropped.
+        assert trace.at(timedelta(0)) == 20
+        assert trace.at(timedelta(hours=1)) == 30
+
+    def test_datetime_index_anchor_must_match_existing_row(self):
+        data = pd.Series(
+            [1, 2],
+            index=pd.to_datetime(["2023-01-01", "2023-01-02"]),
+        )
+        with pytest.raises(ValueError, match="not present in the data's index"):
+            vs.Trace(data, anchor="2023-01-01 12:00:00")
+
+    def test_anchor_forbidden_with_timedelta_index(self):
+        data = pd.Series([1, 2], index=pd.to_timedelta(["0s", "1h"]))
+        with pytest.raises(ValueError, match="only valid for datetime"):
+            vs.Trace(data, anchor="2023-01-01")
+
+    def test_anchor_forbidden_with_numeric_index(self):
+        data = pd.Series([1, 2], index=[0, 3600])
+        with pytest.raises(ValueError, match="only valid for datetime"):
+            vs.Trace(data, anchor="2023-01-01")
 
     def test_timedelta_index_used_as_elapsed_offsets(self):
         # A TimedeltaIndex is interpreted directly: no normalization.

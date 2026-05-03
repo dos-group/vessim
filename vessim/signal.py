@@ -3,7 +3,6 @@ from __future__ import annotations
 import time
 from abc import ABC, abstractmethod
 from datetime import timedelta
-from itertools import count
 from pathlib import Path
 from typing import Any, Optional, Literal
 
@@ -27,8 +26,6 @@ class Signal(ABC):
 
 
 class StaticSignal(Signal):
-    _ids = count(0)
-
     def __init__(self, value: float) -> None:
         self._v = value
 
@@ -44,24 +41,34 @@ class StaticSignal(Signal):
 
 
 class Trace(Signal):
-    """Replays a time series indexed by elapsed time since simulation start.
+    """Replays a time series indexed by an *offset* since simulation start.
 
-    A `Trace` is queried via `at(elapsed)`; the index *is* the offset.
-    Vessim strictly enforces that the trace must start at `elapsed=0`. If you
-    want to delay a trace, you must pad the beginning of your data with zeros
-    or NaNs.
+    Internally a `Trace` is always offset-indexed: row 0 sits at offset=0
+    seconds, every other row is a positive offset from there. For a `Trace`,
+    the queried `elapsed` time and a row's `offset` are the same coordinate:
+    `at(elapsed)` returns the value whose offset best matches the elapsed
+    time the simulation has accumulated since `sim_start`.
 
-    For data that comes with calendar timestamps (CSVs), use `Trace.from_csv`
-    (file path) — which rebases the data to elapsed=0 via an `anchor`. For
-    in-memory data, you must manually rebase the index to a `TimedeltaIndex`
-    (e.g., `data.index = pd.to_datetime(data.index) - anchor`).
+    The accepted index types are:
+
+    - `TimedeltaIndex` or numeric (interpreted as offset *seconds*): used
+      as-is. Must start at offset=0. `anchor` must not be provided. This is
+      the canonical form.
+    - `DatetimeIndex`: a convenience for calendar-stamped data. `anchor` is
+      required and must match an existing row exactly; that row is rebased
+      to offset=0 and earlier rows are dropped.
+
+    For loading offset-indexed or datetime-indexed CSVs, use `Trace.from_csv`.
 
     Args:
-        data: A pandas `Series` or `DataFrame`. The index must be either a
-            `TimedeltaIndex` or a numeric index (interpreted as elapsed
-            *seconds*) and must start at 0. Each column represents one zone
-            of data; the column name is the zone name. Between samples,
-            values are interpolated using `fill_method` (`ffill` or `bfill`).
+        data: A pandas `Series` or `DataFrame`. See above for accepted index
+            types. Each column represents one zone of data; the column name
+            is the zone name. Between samples, values are interpolated using
+            `fill_method` (`ffill` or `bfill`).
+        anchor: Required when `data` has a `DatetimeIndex`. Must be a value
+            present in the index. The matching row is rebased to offset=0.
+            Forbidden for `TimedeltaIndex` and numeric indices (which are
+            already offset-indexed).
         on_overflow: What to do if queried beyond the trace's range.
             Currently only `"raise"` is supported. Defaults to `"raise"`.
         column: Default column to use when `at()` is called without one.
@@ -74,6 +81,7 @@ class Trace(Signal):
     def __init__(
         self,
         data: pd.Series | pd.DataFrame,
+        anchor: Optional[pd.Timestamp | str] = None,
         on_overflow: Literal["raise"] = "raise",
         column: Optional[str] = None,
         fill_method: Literal["ffill", "bfill"] = "ffill",
@@ -92,21 +100,41 @@ class Trace(Signal):
         if not isinstance(data, (pd.Series, pd.DataFrame)):
             raise ValueError(f"Incompatible type {type(data)} for 'data'.")
 
-        # The index *is* the elapsed offset. Datetime-keyed data must be
-        # rebased explicitly (e.g. data.index = pd.to_datetime(data.index) - anchor).
         raw_index = data.index
-        if isinstance(raw_index, pd.TimedeltaIndex):
+        if isinstance(raw_index, pd.DatetimeIndex):
+            if anchor is None:
+                raise ValueError(
+                    "anchor is required for datetime-indexed data. "
+                    "Pass anchor=<timestamp> matching a row in your data."
+                )
+            anchor_ts = pd.to_datetime(anchor)
+            if anchor_ts not in raw_index:
+                raise ValueError(
+                    f"anchor={anchor_ts!s} is not present in the data's index. "
+                    f"anchor must match an existing row exactly."
+                )
+            data = data.loc[raw_index >= anchor_ts]
+            offsets_array = (data.index - anchor_ts).to_numpy().astype(
+                "timedelta64[ns]"
+            )
+        elif isinstance(raw_index, pd.TimedeltaIndex):
+            if anchor is not None:
+                raise ValueError(
+                    "anchor is only valid for datetime-indexed data."
+                )
             offsets_array = raw_index.to_numpy().astype("timedelta64[ns]")
         elif pd.api.types.is_numeric_dtype(raw_index):
+            if anchor is not None:
+                raise ValueError(
+                    "anchor is only valid for datetime-indexed data."
+                )
             offsets_array = pd.to_timedelta(raw_index, unit="s").to_numpy().astype(
                 "timedelta64[ns]"
             )
         else:
             raise TypeError(
-                f"Trace requires a TimedeltaIndex or numeric (seconds) index, "
-                f"got {type(raw_index).__name__}. For datetime-indexed data, "
-                f"rebase your index (e.g., data.index - anchor) or use "
-                f"Trace.from_csv(path) for CSVs."
+                f"Trace requires a DatetimeIndex (with anchor=), TimedeltaIndex, "
+                f"or numeric (seconds) index, got {type(raw_index).__name__}."
             )
 
         if offsets_array.size == 0:
@@ -117,7 +145,7 @@ class Trace(Signal):
 
         if offsets_ns[0] != np.timedelta64(0):
             raise ValueError(
-                f"Trace must start at elapsed=0, but starts at {_td(offsets_ns[0])}. "
+                f"Trace must start at offset=0, but starts at {_td(offsets_ns[0])}. "
                 f"To delay a trace, pad the beginning of your data with zeros or NaNs."
             )
 
@@ -148,16 +176,16 @@ class Trace(Signal):
     ) -> Trace:
         """Load a `Trace` from a CSV file.
 
-        The CSV must have a datetime in its first column. Remaining columns
-        are interpreted as zones. The earliest row is rebased to elapsed=0
-        by default. See [Signals and Datasets](../concepts/signals.md)
-        for the expected schema and recipes for fetching data from public APIs.
+        The first column may either be a datetime or a numeric elapsed-seconds
+        offset. Remaining columns are interpreted as zones. See
+        [Signals and Datasets](../concepts/signals.md) for the expected schema
+        and recipes for fetching data from public APIs.
 
         Args:
             path: Path to the CSV file.
-            anchor: The timestamp in the data that should correspond to
-                simulation start (elapsed=0). Defaults to the earliest
-                timestamp in the data.
+            anchor: Required if the first column is a datetime; must match a
+                row in the data exactly. That row becomes `elapsed=0`. Forbidden
+                if the first column is numeric (rows are already elapsed offsets).
             column: Default column to use when `at()` is called without one.
             scale: Multiplier applied to all values. Useful for normalized data.
             on_overflow: See `Trace`.
@@ -167,15 +195,12 @@ class Trace(Signal):
         if scale != 1.0:
             df = df.astype(float) * scale
 
-        index = pd.to_datetime(df.index)
-        if anchor is None:
-            anchor = index.min()
-        else:
-            anchor = pd.to_datetime(anchor)
+        if not pd.api.types.is_numeric_dtype(df.index):
+            df.index = pd.to_datetime(df.index)
 
-        df.index = index - anchor
         return cls(
             df,
+            anchor=anchor,
             on_overflow=on_overflow,
             column=column,
             fill_method=fill_method,
@@ -307,6 +332,8 @@ class SilSignal(Signal):
                 except Exception:
                     pass  # Keep using cached value
                 # Schedule next poll
+                # TODO: daemonize the Timer threads so a forgotten finalize()
+                # cannot keep the interpreter alive after main returns.
                 self.Timer(self.update_interval, poll).start()
 
         self.Timer(0, poll).start()  # Start immediately
