@@ -1,21 +1,22 @@
 # Dispatchables and Dispatch Policies
 
-A **Dispatchable** is a controllable energy resource — a battery, generator, or electrolyzer — whose power setpoint is decided each step by a **Dispatch Policy**. Unlike actors (whose power comes from a signal), a dispatchable's power is allocated by the policy from the microgrid's current power delta.
+A [`Dispatchable`](../api_reference/dispatchable.md) is a controllable energy resource (a battery, diesel/gas generator, or electrolyzer) whose power setpoint is decided each step by a [`DispatchPolicy`](../api_reference/dispatch_policy.md). 
+Unlike actors (whose power comes from a signal), a dispatchable's power is allocated by the policy from the microgrid's current power delta.
 
-Each `Dispatchable` reports a **feasible range** `(min_power, max_power)` for the upcoming timestep. Negative values represent discharging/generation; positive values represent charging/consumption.
+Each `Dispatchable` reports a *feasible range* `(min_power, max_power)` for the upcoming timestep. Negative values represent discharging/generation; positive values represent charging/consumption.
 
 ## Battery models
 
 ### SimpleBattery
 
-`SimpleBattery` is an ideal, capacity-based model — fast and easy to parameterize. It is the right default for most simulations:
+[`SimpleBattery`](../api_reference/dispatchable.md#vessim.SimpleBattery) is an ideal, capacity-based model which is fast and easy to parameterize. It is a sensible default for simple simulations:
 
 ```python
 import vessim as vs
 
 battery = vs.SimpleBattery(
     name="battery",
-    capacity=5000,        # Wh — total energy capacity
+    capacity=5000,        # Wh (total energy capacity
     initial_soc=0.8,      # 80 % charged at simulation start
     min_soc=0.2,          # never discharge below 20 % SoC
     c_rate=0.5,           # optional: cap charge/discharge rate at 0.5C
@@ -26,7 +27,7 @@ battery = vs.SimpleBattery(
 
 ### ClcBattery
 
-`ClcBattery` implements the C-L-C model for lithium-ion batteries ([Kazhamiaka et al., 2019](https://doi.org/10.1186/s42162-019-0070-6)). It captures realistic degradation of charge/discharge limits as a function of current and is appropriate for high-fidelity studies. The default parameterization models a pack of LGM50 21700 Li-ion cells:
+[`ClcBattery`](../api_reference/dispatchable.md#vessim.ClcBattery) implements the C-L-C model for lithium-ion batteries ([Kazhamiaka et al., 2019](https://doi.org/10.1186/s42162-019-0070-6)). It captures realistic degradation of charge/discharge limits as a function of current and is appropriate for high-fidelity studies. The default parameterization models a pack of LGM50 21700 Li-ion cells:
 
 ```python
 battery = vs.ClcBattery(
@@ -42,7 +43,7 @@ battery = vs.ClcBattery(
 
 ## Multiple dispatchables
 
-`add_microgrid` accepts a list of dispatchables. The default policy serves them in order, so the first one is used until it is exhausted before the next one is touched:
+[`add_microgrid`](../api_reference/environment.md#vessim.Environment.add_microgrid) accepts a list of dispatchables. The default policy serves them in order, so the first one is used until it is exhausted before the next one is touched:
 
 ```python
 environment.add_microgrid(
@@ -57,25 +58,25 @@ environment.add_microgrid(
 
 ## Dispatch policies
 
-A `DispatchPolicy` receives the microgrid's power delta and allocates it across dispatchables. It returns the power that needs to be exchanged with the public grid.
+A [`DispatchPolicy`](../api_reference/dispatch_policy.md) receives the microgrid's power delta and allocates it across dispatchables. It returns the power that needs to be exchanged with the public grid.
 
 ### DefaultDispatchPolicy
 
-`DefaultDispatchPolicy` is used when no `policy` argument is given to `add_microgrid`. It supports three modes:
+[`DefaultDispatchPolicy`](../api_reference/dispatch_policy.md#vessim.DefaultDispatchPolicy) is used when no `policy` argument is given to `add_microgrid`. It supports three modes:
 
-**Grid-connected (default)** — allocate the delta in priority order, exchange the remainder with the grid.
+Grid-connected (default): allocate the delta in priority order, exchange the remainder with the grid.
 
 ```python
 policy = vs.DefaultDispatchPolicy(mode="grid-connected")
 ```
 
-**Islanded** — fully disconnect the microgrid from the grid. If dispatchables cannot cover a deficit, a `RuntimeError` is raised. Use this to verify a self-sufficient design.
+Islanded: fully disconnect the microgrid from the grid. If dispatchables cannot cover a deficit, a `RuntimeError` is raised. Use this to verify a self-sufficient design.
 
 ```python
 policy = vs.DefaultDispatchPolicy(mode="islanded")
 ```
 
-**Fixed charge power** — force storage to charge or discharge at a constant rate, balancing the difference with the grid. Useful for scheduled charging strategies; only works in grid-connected mode.
+Fixed charge power: force storage to charge or discharge at a constant rate, balancing the difference with the grid. Useful for scheduled charging strategies; only works in grid-connected mode.
 
 ```python
 policy = vs.DefaultDispatchPolicy(charge_power=200.0)   # charge at 200 W
@@ -84,7 +85,7 @@ policy = vs.DefaultDispatchPolicy(charge_power=-500.0)  # discharge at 500 W
 
 ## Custom dispatchables
 
-To model hardware that does not fit a battery model, subclass `Dispatchable` and implement four methods:
+To model hardware that does not fit a battery model, subclass [`Dispatchable`](../api_reference/dispatchable.md) and implement four methods:
 
 | Method | Description |
 |---|---|
@@ -129,7 +130,7 @@ environment.add_microgrid(
 
 ## Custom dispatch policies
 
-For advanced energy management, subclass `DispatchPolicy` and implement `apply`. The microgrid's grid signals are passed in directly, so the policy can be carbon- or price-aware without extra wiring:
+For advanced energy management, subclass [`DispatchPolicy`](../api_reference/dispatch_policy.md) and implement `apply`. The microgrid's grid signals are passed in directly, so the policy can be carbon- or price-aware without extra wiring:
 
 ```python
 class GreenChargePolicy(vs.DispatchPolicy):

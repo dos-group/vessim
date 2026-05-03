@@ -1,10 +1,9 @@
 # Software-in-the-Loop
 
-**Software-in-the-Loop (SiL)** simulation lets Vessim interact with real software and hardware systems while the simulation is running. Use it to:
+Software-in-the-Loop (SiL) simulation lets Vessim interact with real systems while the simulation is running. Use it to:
 
-- **Test real applications** — validate energy-aware schedulers, autoscalers, or routing logic against simulated energy scenarios.
-- **Use real data sources** — pull live metrics from sensors, monitoring systems, or APIs into the simulation.
-- **Hardware-in-the-Loop** — drive a physical battery testbench from a simulated microgrid.
+- Test real applications — validate energy-aware schedulers, autoscalers, or routing logic against simulated energy scenarios.
+- Use real data sources — pull live metrics from sensors, monitoring systems, or APIs into the simulation.
 
 SiL extras are not installed by default. Enable them with:
 
@@ -16,16 +15,16 @@ pip install vessim[sil]
 
 Vessim's SiL has two communication directions:
 
-1. **Real-time data → Vessim:** `SilSignal` (and subclasses like `PrometheusSignal` or `WatttimeSignal`) fetches data from external sources in a background thread and feeds it into the simulation.
-2. **Vessim → external world:** the `Api` controller exposes the simulation state via a REST API. External programs can read it and send back control commands.
+1. Real-time data → Vessim: [`SilSignal`](../api_reference/signal.md#vessim.SilSignal) (and subclasses like [`PrometheusSignal`](../api_reference/signal.md#vessim.PrometheusSignal) or [`WatttimeSignal`](../api_reference/signal.md#vessim.WatttimeSignal)) fetches data from external sources in a background thread and feeds it into the simulation.
+2. Vessim → external world: the [`Api`](../api_reference/controller.md#vessim.Api) controller exposes the simulation state via a REST API. External programs can read it and send back control commands. Feel free to implement other types of APIs.
 
 ## Real-time signals
 
-A `SilSignal` polls its data source on a background thread, so the simulation never blocks on a network request.
+A [`SilSignal`](../api_reference/signal.md#vessim.SilSignal) polls its data source on a background thread, so the simulation never blocks on a network request.
 
 ### PrometheusSignal
 
-Pulls a value from a [Prometheus](https://prometheus.io/) query. This is typical for using real server metrics as the load of a simulated actor:
+[`PrometheusSignal`](../api_reference/signal.md#vessim.PrometheusSignal) pulls a value from a [Prometheus](https://prometheus.io/) query. This is typical for using real server metrics as the load of a simulated actor:
 
 ```python
 import vessim as vs
@@ -40,7 +39,7 @@ server = vs.Actor(name="server", signal=power_signal, consumer=True)
 
 ### WatttimeSignal
 
-Fetches live grid carbon intensity from the [WattTime API](https://watttime.org/):
+[`WatttimeSignal`](../api_reference/signal.md#vessim.WatttimeSignal) fetches live grid carbon intensity from the [WattTime API](https://watttime.org/):
 
 ```python
 carbon = vs.WatttimeSignal(
@@ -53,7 +52,7 @@ carbon = vs.WatttimeSignal(
 
 ### Custom SiL signals
 
-Subclass `SilSignal` and implement `_fetch_current_value`:
+Subclass [`SilSignal`](../api_reference/signal.md#vessim.SilSignal) and implement `_fetch_current_value`:
 
 ```python
 class MySensorSignal(vs.SilSignal):
@@ -65,7 +64,7 @@ class MySensorSignal(vs.SilSignal):
 
 ## The Api controller
 
-`Api` starts a small FastAPI server that bridges the simulation and the outside world:
+[`Api`](../api_reference/controller.md#vessim.Api) starts a small FastAPI server that bridges the simulation and the outside world:
 
 ```python
 environment.add_controller(vs.Api(export_prometheus=True, broker_port=8700))
@@ -80,7 +79,7 @@ Once the simulation is running, the following endpoints are available at `http:/
 | `PUT /<microgrid>` | Send a control command (e.g. mutate a dispatchable property). |
 | `GET /metrics` | Prometheus-format metrics (when `export_prometheus=True`). |
 
-**Read the state:**
+Read the state:
 
 ```bash
 curl http://localhost:8700/datacenter
@@ -97,7 +96,7 @@ curl http://localhost:8700/datacenter
 }
 ```
 
-**Send a control command:**
+Send a control command:
 
 ```bash
 curl -X PUT http://localhost:8700/datacenter \

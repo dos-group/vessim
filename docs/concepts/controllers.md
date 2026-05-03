@@ -1,13 +1,13 @@
 # Controllers
 
-A **Controller** is executed at every simulation step. 
-It can observe the state of all microgrids, log it, and modify components of the running simulation, for example by changing parameters of a [DispatchPolicy](dispatchables.md#dispatch-policies) on the fly.
+A [`Controller`](../api_reference/controller.md) is executed at every simulation step. 
+It can observe the state of all microgrids, log it, and modify components of the running simulation, for example by changing parameters of a [`DispatchPolicy`](../api_reference/dispatch_policy.md) on the fly.
 
-Vessim ships with two built-in loggers (`CsvLogger` and `MemoryLogger`), an `Api` controller for software-in-the-loop experiment, and you can write your own by subclassing `Controller`.
+Vessim ships with two built-in loggers ([`CsvLogger`](../api_reference/controller.md#vessim.CsvLogger) and [`MemoryLogger`](../api_reference/controller.md#vessim.MemoryLogger)), an [`Api`](../api_reference/controller.md#vessim.Api) controller for software-in-the-loop experiment, and you can write your own by subclassing `Controller`.
 
 ## Logging with CsvLogger
 
-`CsvLogger` is the recommended way to record an experiment. It writes the static configuration and the full timeseries to a directory:
+[`CsvLogger`](../api_reference/controller.md#vessim.CsvLogger) is the recommended way to record an experiment. It writes the static configuration and the full timeseries to a directory:
 
 ```python
 environment.add_controller(vs.CsvLogger("results/my_experiment"))
@@ -24,11 +24,11 @@ results/my_experiment/
 These two files are exactly what the [experiment viewer](../getting_started.md#7-exploring-the-results) consumes. Open them in your browser with `vessim view results/my_experiment`.
 
 !!! tip "MemoryLogger"
-    For interactive exploration in a notebook, use `vs.MemoryLogger()` instead. It keeps the simulation state in memory and exposes `.to_df()` for direct DataFrame analysis.
+    For interactive exploration in a notebook, use [`vs.MemoryLogger()`](../api_reference/controller.md#vessim.MemoryLogger) instead. It keeps the simulation state in memory and exposes `.to_df()` for direct DataFrame analysis.
 
 ## Writing a custom controller
 
-Subclass `Controller` and implement `step`. Optionally override `start` to grab references to the environment before the simulation begins:
+Subclass [`Controller`](../api_reference/controller.md) and implement `step`. Optionally override `start` to grab references to the environment before the simulation begins:
 
 ```python
 import vessim as vs
@@ -45,8 +45,8 @@ class MyController(vs.Controller):
 
 The `step` method receives:
 
-- **`now`** — the current simulation time as a `datetime`.
-- **`microgrid_states`** — a `dict[str, MicrogridState]` keyed by microgrid name. Each `MicrogridState` exposes `p_delta`, `p_grid`, `actor_states`, `dispatch_states`, `policy_state`, and `grid_signals`.
+- `now` — the current simulation time as a `datetime`.
+- `microgrid_states` — a `dict[str, MicrogridState]` keyed by microgrid name. Each [`MicrogridState`](../api_reference/microgrid.md#vessim.MicrogridState) exposes `p_delta`, `p_grid`, `actor_states`, `dispatch_states`, `policy_state`, and `grid_signals`.
 
 ## Example: a scheduled charger
 
@@ -81,4 +81,4 @@ The same pattern works for any policy parameter: switch between policies, raise/
 
 ## Going further: real-time control
 
-Custom controllers can also expose the simulation to the outside world. The built-in `Api` controller starts a REST server that lets external programs query the state and send control commands while the simulation runs. See [Software-in-the-Loop](sil.md) for the full picture.
+Custom controllers can also expose the simulation to the outside world. The built-in [`Api`](../api_reference/controller.md#vessim.Api) controller starts a REST server that lets external programs query the state and send control commands while the simulation runs. See [Software-in-the-Loop](sil.md) for the full picture.
