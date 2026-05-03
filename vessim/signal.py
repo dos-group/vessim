@@ -46,22 +46,22 @@ class StaticSignal(Signal):
 class Trace(Signal):
     """Replays a time series indexed by elapsed time since simulation start.
 
-    A `Trace` is queried via `at(elapsed)`; the index *is* the offset. Use
-    `offset=` for an additional shift on top (e.g. delay a solar trace so it
-    starts at sunrise).
+    A `Trace` is queried via `at(elapsed)`; the index *is* the offset.
+    Vessim strictly enforces that the trace must start at `elapsed=0`. If you
+    want to delay a trace, you must pad the beginning of your data with zeros
+    or NaNs.
 
-    For data that comes with calendar timestamps (CSVs, `pd.date_range(...)`),
-    use `Trace.from_csv` (file path) or `Trace.from_datetime` (in-memory
-    `Series`/`DataFrame`) — both rebase the first row to elapsed=0 explicitly.
+    For data that comes with calendar timestamps (CSVs), use `Trace.from_csv`
+    (file path) — which rebases the data to elapsed=0 via an `anchor`. For
+    in-memory data, you must manually rebase the index to a `TimedeltaIndex`
+    (e.g., `data.index = pd.to_datetime(data.index) - anchor`).
 
     Args:
         data: A pandas `Series` or `DataFrame`. The index must be either a
             `TimedeltaIndex` or a numeric index (interpreted as elapsed
-            *seconds*). Each column represents one zone of data; the column
-            name is the zone name. Between samples, values are interpolated
-            using `fill_method` (`ffill` or `bfill`).
-        offset: Optional shift in elapsed time. Stacks on top of whatever the
-            input index already implies. Defaults to no shift.
+            *seconds*) and must start at 0. Each column represents one zone
+            of data; the column name is the zone name. Between samples,
+            values are interpolated using `fill_method` (`ffill` or `bfill`).
         on_overflow: What to do if queried beyond the trace's range.
             Currently only `"raise"` is supported. Defaults to `"raise"`.
         column: Default column to use when `at()` is called without one.
@@ -74,7 +74,6 @@ class Trace(Signal):
     def __init__(
         self,
         data: pd.Series | pd.DataFrame,
-        offset: Optional[timedelta] = None,
         on_overflow: Literal["raise"] = "raise",
         column: Optional[str] = None,
         fill_method: Literal["ffill", "bfill"] = "ffill",
@@ -94,7 +93,7 @@ class Trace(Signal):
             raise ValueError(f"Incompatible type {type(data)} for 'data'.")
 
         # The index *is* the elapsed offset. Datetime-keyed data must be
-        # rebased explicitly via Trace.from_datetime / Trace.from_csv.
+        # rebased explicitly (e.g. data.index = pd.to_datetime(data.index) - anchor).
         raw_index = data.index
         if isinstance(raw_index, pd.TimedeltaIndex):
             offsets_array = raw_index.to_numpy().astype("timedelta64[ns]")
@@ -105,14 +104,22 @@ class Trace(Signal):
         else:
             raise TypeError(
                 f"Trace requires a TimedeltaIndex or numeric (seconds) index, "
-                f"got {type(raw_index).__name__}. For datetime-indexed data use "
-                f"Trace.from_datetime(data) (or Trace.from_csv(path) for CSVs)."
+                f"got {type(raw_index).__name__}. For datetime-indexed data, "
+                f"rebase your index (e.g., data.index - anchor) or use "
+                f"Trace.from_csv(path) for CSVs."
             )
+
+        if offsets_array.size == 0:
+            raise ValueError("Trace data cannot be empty.")
 
         sorter = np.argsort(offsets_array)
         offsets_ns = offsets_array[sorter]
-        if offset is not None:
-            offsets_ns = offsets_ns + np.timedelta64(offset)
+
+        if offsets_ns[0] != np.timedelta64(0):
+            raise ValueError(
+                f"Trace must start at elapsed=0, but starts at {_td(offsets_ns[0])}. "
+                f"To delay a trace, pad the beginning of your data with zeros or NaNs."
+            )
 
         self._offsets: dict[str, tuple[np.ndarray, np.ndarray]] = {}
         if isinstance(data, pd.Series):
@@ -130,41 +137,12 @@ class Trace(Signal):
         return f"Trace({self.repr_ or ''})"
 
     @classmethod
-    def from_datetime(
-        cls,
-        data: pd.Series | pd.DataFrame,
-        offset: Optional[timedelta] = None,
-        on_overflow: Literal["raise"] = "raise",
-        column: Optional[str] = None,
-        fill_method: Literal["ffill", "bfill"] = "ffill",
-        repr_: Optional[str] = None,
-    ) -> Trace:
-        """Build a `Trace` from a datetime-indexed `Series` or `DataFrame`.
-
-        The earliest row is rebased to elapsed=0 and the calendar dates are
-        discarded — the trace replays starting at `sim_start` regardless of
-        when the source data was originally recorded. All other arguments
-        match `Trace`.
-        """
-        index = pd.to_datetime(data.index)
-        relative = data.copy()
-        relative.index = index - index.min()
-        return cls(
-            relative,
-            offset=offset,
-            on_overflow=on_overflow,
-            column=column,
-            fill_method=fill_method,
-            repr_=repr_,
-        )
-
-    @classmethod
     def from_csv(
         cls,
         path: str | Path,
+        anchor: Optional[pd.Timestamp | str] = None,
         column: Optional[str] = None,
         scale: float = 1.0,
-        offset: Optional[timedelta] = None,
         on_overflow: Literal["raise"] = "raise",
         fill_method: Literal["ffill", "bfill"] = "ffill",
     ) -> Trace:
@@ -172,23 +150,32 @@ class Trace(Signal):
 
         The CSV must have a datetime in its first column. Remaining columns
         are interpreted as zones. The earliest row is rebased to elapsed=0
-        (see `Trace.from_datetime`). See [Signals and Datasets](../concepts/signals.md)
-        for the expected schema and recipes for downloading public datasets.
+        by default. See [Signals and Datasets](../concepts/signals.md)
+        for the expected schema and recipes for fetching data from public APIs.
 
         Args:
             path: Path to the CSV file.
+            anchor: The timestamp in the data that should correspond to
+                simulation start (elapsed=0). Defaults to the earliest
+                timestamp in the data.
             column: Default column to use when `at()` is called without one.
             scale: Multiplier applied to all values. Useful for normalized data.
-            offset: Optional shift in elapsed time. See `Trace`.
             on_overflow: See `Trace`.
             fill_method: See `Trace`.
         """
         df = pd.read_csv(path, index_col=0)
         if scale != 1.0:
             df = df.astype(float) * scale
-        return cls.from_datetime(
+
+        index = pd.to_datetime(df.index)
+        if anchor is None:
+            anchor = index.min()
+        else:
+            anchor = pd.to_datetime(anchor)
+
+        df.index = index - anchor
+        return cls(
             df,
-            offset=offset,
             on_overflow=on_overflow,
             column=column,
             fill_method=fill_method,

@@ -10,21 +10,26 @@ import vessim as vs
 class TestTrace:
     @pytest.fixture
     def hist_signal(self) -> vs.Trace:
-        index = [
+        index = pd.to_datetime([
             "2023-01-01T00:00:00",
             "2023-01-01T00:30:00",
             "2023-01-01T01:00:00",
-        ]
+        ])
         actual = pd.DataFrame(
-            {"a": [1, 2, 3], "b": [0, 3, 0], "c": [None, 4, None]}, index=index
+            {"a": [1, 2, 3], "b": [0, 3, 0], "c": [None, 4, None]},
+            index=index - index[0]
         )
-        return vs.Trace.from_datetime(actual)
+        return vs.Trace(actual)
 
     @pytest.fixture
     def hist_signal_single(self) -> vs.Trace:
-        index = ["2023-01-01T01:00:00", "2023-01-01T00:30:00", "2023-01-01T00:00:00"]
-        actual = pd.Series([3, 2, 1], index=index)
-        return vs.Trace.from_datetime(actual, fill_method="bfill")
+        index = pd.to_datetime([
+            "2023-01-01T01:00:00",
+            "2023-01-01T00:30:00",
+            "2023-01-01T00:00:00"
+        ])
+        actual = pd.Series([3, 2, 1], index=index - index.min())
+        return vs.Trace(actual, fill_method="bfill")
 
     def test_columns(self, hist_signal):
         assert hist_signal.columns() == ["a", "b", "c"]
@@ -80,37 +85,15 @@ class TestTrace:
         with pytest.raises(ValueError):
             hist_signal_single.at(None)
 
-    def test_offset_shifts_trace(self):
-        index = pd.date_range("2023-01-01T00:00:00", periods=3, freq="1h")
-        actual = pd.Series([1, 2, 3], index=index)
-        trace = vs.Trace.from_datetime(actual, offset=timedelta(hours=2))
-        # First row now lives at elapsed=2h instead of elapsed=0
-        with pytest.raises(ValueError):
-            trace.at(timedelta(hours=1))
-        assert trace.at(timedelta(hours=2)) == 1
-        assert trace.at(timedelta(hours=3, minutes=30)) == 2
-
-    def test_from_datetime_normalizes_calendar_dates(self):
-        # Two traces with different calendar starts produce identical lookups.
-        a = pd.Series(
-            [10, 20], index=pd.to_datetime(["2022-06-09T00:00", "2022-06-09T01:00"])
-        )
-        b = pd.Series(
-            [10, 20], index=pd.to_datetime(["2024-12-31T00:00", "2024-12-31T01:00"])
-        )
-        ta, tb = vs.Trace.from_datetime(a), vs.Trace.from_datetime(b)
-        for elapsed in (timedelta(0), timedelta(minutes=30), timedelta(hours=1)):
-            assert ta.at(elapsed) == tb.at(elapsed)
-
     def test_init_rejects_datetime_index_with_pointer(self):
         data = pd.Series(
             [1, 2], index=pd.to_datetime(["2023-01-01", "2023-01-02"])
         )
-        with pytest.raises(TypeError, match="from_datetime"):
+        with pytest.raises(TypeError, match="Trace.from_csv"):
             vs.Trace(data)
 
     def test_timedelta_index_used_as_elapsed_offsets(self):
-        # A TimedeltaIndex is interpreted directly — no normalization.
+        # A TimedeltaIndex is interpreted directly: no normalization.
         data = pd.Series(
             [10, 20, 30],
             index=pd.to_timedelta(["0s", "30min", "1h"]),
@@ -120,15 +103,11 @@ class TestTrace:
         assert trace.at(timedelta(minutes=30)) == 20
         assert trace.at(timedelta(hours=1)) == 30
 
-    def test_timedelta_index_preserves_nonzero_start(self):
-        # If the user's offsets don't start at 0, that's their declared start —
-        # we don't normalize it away (use offset= for an additional shift).
+    def test_strict_zero_start_rule(self):
+        # Traces must start at elapsed=0.
         data = pd.Series([10, 20], index=pd.to_timedelta(["1h", "2h"]))
-        trace = vs.Trace(data)
-        with pytest.raises(ValueError):
-            trace.at(timedelta(minutes=30))
-        assert trace.at(timedelta(hours=1)) == 10
-        assert trace.at(timedelta(hours=2)) == 20
+        with pytest.raises(ValueError, match="must start at elapsed=0"):
+            vs.Trace(data)
 
     def test_numeric_index_interpreted_as_seconds(self):
         data = pd.Series([10, 20, 30], index=[0, 1800, 3600])
@@ -138,7 +117,7 @@ class TestTrace:
         assert trace.at(3600) == 30
 
     def test_unsupported_on_overflow(self):
-        index = pd.date_range("2023-01-01", periods=2, freq="1h")
+        index = pd.to_timedelta(["0s", "1h"])
         with pytest.raises(ValueError, match="not yet supported"):
             vs.Trace(pd.Series([1, 2], index=index), on_overflow="loop")  # type: ignore[arg-type]
 

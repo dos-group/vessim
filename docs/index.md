@@ -41,7 +41,7 @@ A microgrid is composed of three kinds of building blocks:
 
 Head to [Getting Started](getting_started.md) for a step-by-step walkthrough that builds a complete microgrid in a few lines of code.
 
-You can also explore a finished simulation in your browser — [open the **Experiment Viewer**](viewer/index.html){target="_blank"} to see the interactive dashboard for the Getting Started run.
+You can also explore a finished simulation in your browser: [open the **Experiment Viewer**](viewer/index.html){target="_blank"} to see the interactive dashboard for the Getting Started run.
 
 
 ## Installation
