@@ -13,18 +13,18 @@ Visualization (run in a second terminal):
   - NiceGUI dashboard: pip install 'vessim[dashboard]' && python -m dashboard
   - Grafana: docker compose -f examples/sil/docker-compose.grafana.yml up -d
 """
+import os
+
 import vessim as vs
-from datetime import datetime
+
+DATASETS = f"{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/datasets"
 
 
 def main():
-    # sim_start uses 2022 to align with the solcast2022 solar trace dataset,
-    # but preserves the current time-of-day for realistic solar output.
-    now = datetime.now()
-    environment = vs.Environment(
-        sim_start=now.replace(year=2022),
-        step_size=1,
-    )
+    # Live mode: sim_start is captured when run() is called and the simulation
+    # advances at 1× wall-clock. Trace data is queried by elapsed time since
+    # sim_start, so the solar trace starts replaying from "now".
+    environment = vs.Environment.live(step_size=1)
 
     # Server load driven by actual host CPU usage via Prometheus + node_exporter.
     # The query returns CPU utilization (0.0-1.0), scaled to 0-1000W.
@@ -37,10 +37,15 @@ def main():
         ),
     )
 
-    # Solar simulation based on historical trace data
+    # Solar simulation based on historical trace data, scaled to 2 kW peak.
     solar = vs.Actor(
         name="solar",
-        signal=vs.Trace.load("solcast2022_global", "Berlin", params={"scale": 2000})
+        signal=vs.Trace.from_csv(
+            f"{DATASETS}/solcast_example.csv",
+            anchor="2022-06-08 00:05:00",
+            column="Berlin",
+            scale=2000,
+        ),
     )
 
     battery = vs.SimpleBattery(name="battery", capacity=20, initial_soc=0.5)
@@ -54,9 +59,9 @@ def main():
     # The API controller exposes a REST API and a /metrics endpoint for Prometheus.
     environment.add_controller(vs.Api(export_prometheus=True))
 
-    # Run the simulation in real-time.
+    environment.run()
     # You can now use 'curl' or other tools to interact with the API.
-    environment.run(rt_factor=1.0)
+
 
 if __name__ == "__main__":
     main()
