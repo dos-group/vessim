@@ -66,7 +66,6 @@ class Environment:
         self.world = mosaik.World(self.COSIM_CONFIG, skip_greetings=True)
         self._live = _live
         self._behind_threshold = _behind_threshold
-        self._started = False
 
     @classmethod
     def live(
@@ -183,20 +182,38 @@ class Environment:
                     ("state", "actor_states"),
                 )
 
-    def start(self) -> None:
-        """Build the simulation without advancing time.
+    def run(
+        self,
+        until: Optional[timedelta | datetime | int | float] = None,
+        print_progress: bool | Literal["individual"] = True,
+    ):
+        """Run the simulation.
 
-        Wires up controllers, validates SiL signals, and anchors `sim_start`
-        in live mode. Call this before `advance()` when driving the simulation
-        stepwise from an external loop. The one-shot `run()` calls it for you.
+        Args:
+            until: When the simulation should end. Accepts:
+
+                - `int` or `float` — elapsed seconds since `sim_start`.
+                - `timedelta` — elapsed time since `sim_start`.
+                - `datetime` — absolute wall-clock end (resolved against `sim_start`).
+                - `None` — run indefinitely.
+            print_progress: Whether to print a progress bar.
         """
-        if self._started:
-            raise RuntimeError("Environment.start() has already been called.")
-
         # Live mode: anchor sim_start to "now" if the user didn't pin one explicitly.
         if self._live and self.sim_start is None:
             self.sim_start = pd.to_datetime(datetime.now())
 
+        if until is None:
+            until = float("inf")  # type: ignore
+        elif isinstance(until, timedelta):
+            until = until.total_seconds()
+        elif isinstance(until, datetime):
+            assert self.sim_start is not None
+            until = (pd.to_datetime(until) - self.sim_start).total_seconds()
+            if until < 0:
+                raise ValueError("`until` must be after `sim_start`.")
+        assert until is not None
+
+        # Initialize controllers before running simulation
         if self.name:
             logger.info(f"Experiment: {self.name}")
         self._initialize_controllers()
@@ -209,76 +226,15 @@ class Environment:
                 "Use Environment.live(...) instead of Environment(...)."
             )
 
-        if self._live:
-            disable_rt_warnings(self._behind_threshold)
-
-        self._started = True
-
-    def advance(
-        self,
-        until: timedelta | datetime | int | float,
-        print_progress: bool | Literal["individual"] = True,
-    ) -> None:
-        """Advance the simulation up to elapsed time `until`.
-
-        Can be called repeatedly with monotonically increasing values to drive
-        the simulation stepwise from an external loop (e.g. an FL training
-        round). Requires `start()` to have been called first.
-
-        Args:
-            until: When to advance to. Accepts:
-
-                - `int` or `float` — elapsed seconds since `sim_start`.
-                - `timedelta` — elapsed time since `sim_start`.
-                - `datetime` — absolute wall-clock end (resolved against `sim_start`).
-            print_progress: Whether to print a progress bar.
-        """
-        if not self._started:
-            raise RuntimeError(
-                "Call Environment.start() before advance(), or use run() instead."
-            )
-
-        if isinstance(until, timedelta):
-            until = until.total_seconds()
-        elif isinstance(until, datetime):
-            assert self.sim_start is not None
-            until = (pd.to_datetime(until) - self.sim_start).total_seconds()
-            if until < 0:
-                raise ValueError("`until` must be after `sim_start`.")
-
         rt_factor = 1.0 if self._live else None
+        if rt_factor:
+            disable_rt_warnings(self._behind_threshold)
         try:
             self.world.run(until=until, rt_factor=rt_factor, print_progress=print_progress)
         except Exception:
             for microgrid in self.microgrids.values():
                 microgrid.finalize()
             raise
-
-    def run(
-        self,
-        until: Optional[timedelta | datetime | int | float] = None,
-        print_progress: bool | Literal["individual"] = True,
-    ):
-        """Run the simulation in one shot.
-
-        Convenience wrapper for `start()` followed by `advance(until)`. For
-        stepwise control (e.g. driving Vessim from an external simulator),
-        call `start()` and `advance()` directly.
-
-        Args:
-            until: When the simulation should end. Accepts:
-
-                - `int` or `float` — elapsed seconds since `sim_start`.
-                - `timedelta` — elapsed time since `sim_start`.
-                - `datetime` — absolute wall-clock end (resolved against `sim_start`).
-                - `None` — run indefinitely.
-            print_progress: Whether to print a progress bar.
-        """
-        self.start()
-        self.advance(
-            until if until is not None else float("inf"),
-            print_progress=print_progress,
-        )
 
     def _contains_sil_signals(self) -> bool:
         """Check if any microgrid contains SiL signals."""
