@@ -176,16 +176,21 @@ class Trace(Signal):
     ) -> Trace:
         """Load a `Trace` from a CSV file.
 
-        The first column may either be a datetime or a numeric elapsed-seconds
-        offset. Remaining columns are interpreted as zones. See
-        [Signals and Datasets](../concepts/signals.md) for the expected schema
-        and recipes for fetching data from public APIs.
+        Vessim expects **offset-indexed** CSVs: the first column is the offset
+        in seconds since the trace start (row 0 at `0`). Remaining columns are
+        value columns (zones, regions, etc.).
+
+        As a utility, datetime-indexed CSVs are also accepted and converted on
+        load: pass `anchor=<timestamp>` to mark which row corresponds to
+        offset=0. See [Signals and Datasets](../concepts/signals.md) for the
+        full schema and recipes for fetching data from public APIs.
 
         Args:
             path: Path to the CSV file.
             anchor: Required if the first column is a datetime; must match a
-                row in the data exactly. That row becomes `elapsed=0`. Forbidden
-                if the first column is numeric (rows are already elapsed offsets).
+                row in the data exactly. That row becomes `offset=0` and
+                earlier rows are dropped. Forbidden if the first column is
+                already numeric.
             column: Default column to use when `at()` is called without one.
             scale: Multiplier applied to all values. Useful for normalized data.
             on_overflow: See `Trace`.

@@ -136,7 +136,7 @@ class TestTrace:
     def test_strict_zero_start_rule(self):
         # Traces must start at elapsed=0.
         data = pd.Series([10, 20], index=pd.to_timedelta(["1h", "2h"]))
-        with pytest.raises(ValueError, match="must start at elapsed=0"):
+        with pytest.raises(ValueError, match="must start at offset=0"):
             vs.Trace(data)
 
     def test_numeric_index_interpreted_as_seconds(self):

@@ -25,7 +25,7 @@ A `SilSignal` polls its data source on a background thread, so the simulation ne
 
 ### PrometheusSignal
 
-Pulls a value from a [Prometheus](https://prometheus.io/) query — typical for using real server metrics as the load of a simulated actor:
+Pulls a value from a [Prometheus](https://prometheus.io/) query. This is typical for using real server metrics as the load of a simulated actor:
 
 ```python
 import vessim as vs
@@ -105,20 +105,19 @@ curl -X PUT http://localhost:8700/datacenter \
      -d '{"dispatchable": {"name": "battery", "property": "min_soc", "value": 0.5}}'
 ```
 
-When `export_prometheus=True`, the `/metrics` endpoint can be scraped by Prometheus and visualized in Grafana — see [`examples/sil/`](https://github.com/dos-group/vessim/tree/main/examples/sil) for a ready-made compose file.
+When `export_prometheus=True`, the `/metrics` endpoint can be scraped by Prometheus and visualized in Grafana. See [`examples/sil/`](https://github.com/dos-group/vessim/tree/main/examples/sil) for a ready-made compose file.
 
-## Walkthrough: real CPU load → simulated microgrid
+## Walkthrough: real CPU load to simulated microgrid
 
 This example wires up a real Prometheus + node_exporter stack so that the actual CPU usage of the host drives the simulated server's power draw. The full source is at [`examples/sil_example.py`](https://github.com/dos-group/vessim/blob/main/examples/sil_example.py).
 
 ```python
 import vessim as vs
-from datetime import datetime
 
 def main():
-    # 2022 to align with the solar trace, but keep today's hour-of-day
-    now = datetime.now()
-    environment = vs.Environment(sim_start=now.replace(year=2022), step_size=1)
+    # Live mode: sim_start is captured when run() is called, simulation
+    # advances at 1× wall-clock, and Trace data replays starting from "now".
+    environment = vs.Environment.live(step_size=1)
 
     # Server load is driven by real host CPU usage scraped via Prometheus
     server = vs.Actor(
@@ -132,7 +131,11 @@ def main():
 
     solar = vs.Actor(
         name="solar",
-        signal=vs.Trace.load("solcast2022_global", "Berlin", params={"scale": 2000}),
+        signal=vs.Trace.from_csv(
+            "datasets/solar_example.csv",
+            column="Berlin",
+            scale=2000,
+        ),
     )
 
     battery = vs.SimpleBattery(name="battery", capacity=20, initial_soc=0.5)
@@ -144,9 +147,7 @@ def main():
     )
 
     environment.add_controller(vs.Api(export_prometheus=True))
-
-    # rt_factor=1.0 → run in real time
-    environment.run(rt_factor=1.0)
+    environment.run()
 
 if __name__ == "__main__":
     main()
