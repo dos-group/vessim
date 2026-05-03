@@ -1,7 +1,7 @@
 # Controllers
 
 A **Controller** is executed at every simulation step. 
-It can observe the state of all microgrids, log it, and modify components of the running simulation — for example by changing parameters of a [DispatchPolicy](dispatchables.md#dispatch-policies) on the fly.
+It can observe the state of all microgrids, log it, and modify components of the running simulation, for example by changing parameters of a [DispatchPolicy](dispatchables.md#dispatch-policies) on the fly.
 
 Vessim ships with two built-in loggers (`CsvLogger` and `MemoryLogger`), an `Api` controller for software-in-the-loop experiment, and you can write your own by subclassing `Controller`.
 

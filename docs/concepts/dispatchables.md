@@ -164,6 +164,6 @@ environment.add_microgrid(
     actors=[...],
     dispatchables=[vs.SimpleBattery(name="battery", capacity=5000, initial_soc=0.8)],
     policy=GreenChargePolicy(carbon_threshold=200),
-    grid_signals={"carbon_intensity": vs.Trace.load("watttime2023_caiso-north")},
+    grid_signals={"carbon_intensity": vs.Trace.from_csv("datasets/watttime_example.csv")},
 )
 ```
