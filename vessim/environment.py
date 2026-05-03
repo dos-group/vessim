@@ -56,6 +56,8 @@ class Environment:
                 "sim_start is required for simulated mode. "
                 "Use Environment.live(...) for real-time experiments."
             )
+        # In live mode, sim_start is purely a label (for logging / metadata).
+        # If omitted, run() will fall back to datetime.now() at start.
         self.sim_start: pd.Timestamp | None = (
             pd.to_datetime(sim_start) if sim_start is not None else None
         )
@@ -70,24 +72,29 @@ class Environment:
     @classmethod
     def live(
         cls,
+        sim_start: Optional[str | datetime] = None,
         step_size: int = 1,
         behind_threshold: float = 5.0,
         name: Optional[str] = None,
     ) -> "Environment":
         """Create an environment that advances in real-time (1× wall-clock).
 
-        The simulation clock is anchored at `datetime.now()` the moment `run()`
-        is called, so traces start replaying from "now" and SiL signals stay in
-        sync with wall-clock time.
+        The simulation clock advances 1:1 with wall-clock time, so traces start
+        replaying from `sim_start` and SiL signals stay in sync with the system
+        clock.
 
         Args:
+            sim_start: Optional label used only for logging and result metadata.
+                Does not affect signal queries (which are always indexed by
+                elapsed time since `run()`). Defaults to `datetime.now()` at
+                the moment `run()` is called.
             step_size: Step size in seconds. Defaults to 1.
             behind_threshold: Seconds the simulation may fall behind real-time before
                 a warning is logged. Defaults to 5.
             name: Optional name for the environment.
         """
         return cls(
-            sim_start=None,
+            sim_start=sim_start,
             step_size=step_size,
             name=name,
             _live=True,

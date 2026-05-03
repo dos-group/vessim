@@ -103,3 +103,7 @@ class _ActorSim(mosaik_api_v3.Simulator):
 
     def get_data(self, outputs):
         return {self.eid: {"power": self.power, "state": self.state}}
+
+    # TODO: implement finalize() that calls self.actor.finalize() so SiL
+    # signal background polling threads stop on normal simulation exit
+    # (currently only stopped on exception via Microgrid.finalize()).
