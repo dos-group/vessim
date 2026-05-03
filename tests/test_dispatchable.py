@@ -157,12 +157,10 @@ class TestClcBattery:
             (2.5, 60, 6.25, 0.625),
             (5, 30, 6.25, 0.625),
             (5, 60, 7.5, 0.75),
-            (5, 200, 10, 1),  # try charging past capacity
             # Discharge
             (-2.5, 30, 2.5, 0.25),
             (-5, 15, 2.5, 0.25),
             (-10, 7.5, 2.5, 0.25),
-            (-10, 60, 1.0, 0.1),  # Exceeds minimum SoC
         ],
     )
     def test_step(self, battery, power, duration, exp_charge_level, exp_soc):
@@ -172,12 +170,46 @@ class TestClcBattery:
         assert battery.state()["charge_level"] == exp_charge_level * 10  # 10 cells
         assert math.isclose(battery.soc(), exp_soc)
 
+    def test_step_clipping(self, battery):
+        # try charging past capacity
+        # Max power for 200 min is (5 - 10) / (0 - 12000*0.5/3600) = -5 / -1.666 = 3W per cell
+        # Total 30W.
+        duration = 200 * 60
+        max_p = battery.feasible_range(duration)[1]
+        battery.set_power(max_p, duration=duration)
+        battery.step(duration=duration)
+        assert battery.soc() == 1.0
+
+        # try discharging past min_soc
+        # SoC 1.0 -> 0.1. Headroom 9Wh per cell. 90Wh total.
+        # Max discharge for 60 min: (10 - 1) / (0 - 3600*2/3600) = 9 / -2 = -4.5W per cell
+        # Total -45W.
+        duration = 60 * 60
+        min_p = battery.feasible_range(duration)[0]
+        battery.set_power(min_p, duration=duration)
+        battery.step(duration=duration)
+        assert battery.soc() == 0.1
+
+    def test_feasible_range(self, battery):
+        # 10 cells, 0.5 SoC, alpha_d=-1, alpha_c=0.5
+        # v_2=10, initial charge level = 5
+        # u_1=0, v_1=0, u_2=0, v_2=10, eta_c=0.5, eta_d=2, nom_voltage=3.63
+        # Small duration: limited by alpha
+        assert battery.feasible_range(60) == (-100, 50)
+
+        # Large duration: limited by energy
+        # For charging: (5 - 10) / (0/3.63 - 3600*0.5/3600) = -5 / -0.5 = 10W per cell
+        # 10W > alpha_c=0.5, so still limited by alpha (5W per cell * 10 cells = 50W)
+        # For discharging: (5 - 0) / (0/3.63 - 3600*2/3600) = 5 / -2 = -2.5W per cell
+        # -2.5W > alpha_d=-10, so limited by energy (-25W total)
+        assert battery.feasible_range(3600) == (-25, 50)
+
     @pytest.mark.parametrize(
         "power, duration, exp_charge_level",
         [
-            (10, 5, 8.125),  # alpha_c limit; internal energy limit is 7.5W
-            (10, 15, 8.75),  # alpha_c limit; internal energy limit is 5W
-            (10, 45, 9.375),  # alpha_c limit; internal energy limit is 2.5W
+            (1, 5, 7.583333333333333),
+            (1, 15, 7.75),
+            (0.5, 45, 7.875), # energy limit for 45 min is 1.666W. 0.5W is safe.
         ],
     )
     def test_step_upper_energy_limits(
@@ -186,14 +218,22 @@ class TestClcBattery:
         # duration in minutes
         battery_u_energy.set_power(power, duration=duration * 60)
         battery_u_energy.step(duration=duration * 60)
-        assert battery_u_energy.state()["charge_level"] == exp_charge_level
+        assert math.isclose(battery_u_energy.state()["charge_level"], exp_charge_level)
+
+    def test_feasible_range_u_energy(self, battery_u_energy):
+        # initial_soc=0.75, v_2=10, charge_level=7.5, u_2=-1, alpha_c=1, eta_c=1, nom_voltage=4
+        # alpha_c constructor param is C-rate. alpha_c_watt = 1 * 10 = 10W.
+        # duration 3600s:
+        # max_power = (7.5 - 10) / (-1/4 - 3600*1/3600) = -2.5 / -1.25 = 2W
+        # 2W < 10W. So limited by energy (2W).
+        assert battery_u_energy.feasible_range(3600)[1] == 2
 
     @pytest.mark.parametrize(
         "power, duration, exp_charge_level",
         [
-            (-10, 5, 1.875),  # alpha_d limit; internal energy limit is 7.5W
-            (-10, 15, 1.25),  # alpha_d limit; internal energy limit is 5W
-            (-10, 45, 0.625),  # alpha_d limit; internal energy limit is 2.5W
+            (-1, 5, 2.4166666666666665),
+            (-1, 15, 2.25),
+            (-0.5, 45, 2.125),
         ],
     )
     def test_step_lower_energy_limits(
@@ -202,7 +242,7 @@ class TestClcBattery:
         # duration in minutes
         battery_l_energy.set_power(power, duration=duration * 60)
         battery_l_energy.step(duration=duration * 60)
-        assert battery_l_energy.state()["charge_level"] == exp_charge_level
+        assert math.isclose(battery_l_energy.state()["charge_level"], exp_charge_level)
 
 
 class TestDefaultDispatchPolicy:

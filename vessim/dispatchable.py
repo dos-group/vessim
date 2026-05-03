@@ -311,12 +311,32 @@ class ClcBattery(Storage):
         if self._soc <= self.min_soc:
             min_power = 0.0
         else:
-            min_power = self.alpha_d * self.number_of_cells
+            min_power = (
+                np.maximum(
+                    (self.charge_level - self.v_1)
+                    / (self.u_1 / self.nom_voltage - duration * self.eta_d / 3600),
+                    self.alpha_d,
+                )
+                * self.number_of_cells
+            )
+            if min_power > self.discharging_power_cutoff:
+                min_power = 0.0
+
         # Charge limit
         if self._soc >= 1.0:
             max_power = 0.0
         else:
-            max_power = self.alpha_c * self.number_of_cells
+            max_power = (
+                np.minimum(
+                    (self.charge_level - self.v_2)
+                    / (self.u_2 / self.nom_voltage - duration * self.eta_c / 3600),
+                    self.alpha_c,
+                )
+                * self.number_of_cells
+            )
+            if max_power < self.charging_power_cutoff:
+                max_power = 0.0
+
         return (min_power, max_power)
 
     def soc(self) -> float:
