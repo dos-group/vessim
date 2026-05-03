@@ -1,4 +1,15 @@
-.PHONY: docs docs-viewer serve-docs
+.PHONY: docs docs-viewer serve-docs typecheck lint test check
+
+check: typecheck lint test
+
+typecheck:
+	uv run mypy vessim
+
+lint:
+	uv run ruff check vessim
+
+test:
+	uv run pytest
 
 docs: docs-viewer
 	uv run mkdocs build

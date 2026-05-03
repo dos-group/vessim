@@ -237,7 +237,7 @@ class Environment:
         if rt_factor:
             disable_rt_warnings(self._behind_threshold)
         try:
-            self.world.run(until=until, rt_factor=rt_factor, print_progress=print_progress)
+            self.world.run(until=until, rt_factor=rt_factor, print_progress=print_progress)  # type: ignore
         except Exception:
             for microgrid in self.microgrids.values():
                 microgrid.finalize()

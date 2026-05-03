@@ -44,12 +44,12 @@ jobs:
 
     # type checking
     - name: Run type checker
-      run: uv run mypy vessim
+      run: make typecheck
 
     # linting
     - name: Run linter
-      run: uv run ruff check vessim
+      run: make lint
 
     # unit-testing
     - name: Run tests
-      run: uv run pytest
+      run: make test

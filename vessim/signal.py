@@ -114,6 +114,7 @@ class Trace(Signal):
                     f"anchor must match an existing row exactly."
                 )
             data = data.loc[raw_index >= anchor_ts]
+            assert isinstance(data.index, pd.DatetimeIndex)
             offsets_array = (data.index - anchor_ts).to_numpy().astype(
                 "timedelta64[ns]"
             )
