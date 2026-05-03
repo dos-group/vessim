@@ -1,7 +1,14 @@
-.PHONY: docs-viewer
+.PHONY: docs docs-viewer serve-docs
+
+docs: docs-viewer
+	uv run mkdocs build
+
+serve-docs: docs-viewer
+	uv run mkdocs serve --watch docs
 
 docs-viewer:
-	cd viewer && npm ci && VITE_STATIC_BASE="./" npx vite build --outDir dist
+	cd viewer && [ -d node_modules ] || npm ci
+	cd viewer && VITE_STATIC_BASE="./" npx vite build --outDir dist
 	cp -r viewer/dist/. docs/viewer/
 	uv run python examples/basic_example.py
 	mkdir -p docs/viewer/results
