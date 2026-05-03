@@ -41,8 +41,7 @@ def main():
     solar = vs.Actor(
         name="solar",
         signal=vs.Trace.from_csv(
-            f"{DATASETS}/solcast_example.csv",
-            anchor="2022-06-08 00:05:00",
+            f"{DATASETS}/solar_example.csv",
             column="Berlin",
             scale=2000,
         ),

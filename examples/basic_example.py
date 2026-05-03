@@ -9,8 +9,8 @@ import vessim as vs
 DATASETS = f"{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/datasets"
 
 # The Environment manages simulation time and the synchronization between simulators.
-# Here we start on June 9, 2022 and step every 5 minutes (300 s).
-environment = vs.Environment(sim_start="2022-06-09 00:00:00", step_size=300)
+# We step every 5 minutes (300 s).
+environment = vs.Environment(sim_start="2022-06-09", step_size=300)
 
 # A microgrid combines actors (consumers/producers), optional dispatchables (batteries,
 # diesel/gas generators, ...), and optional grid signals (electricity price, carbon
@@ -24,13 +24,13 @@ environment.add_microgrid(
         # production is positive.
         vs.Actor(name="server", signal=vs.StaticSignal(value=700), consumer=True),
 
-        # Trace replays a CSV indexed by elapsed time since sim_start. The Solcast
-        # data is normalized (0..1); we scale it to a 5 kW peak.
+        # Trace replays a time series. The CSV is offset-indexed (first column =
+        # seconds since the trace start). Solar data is normalized 0..1; we
+        # scale it to a 5 kW peak.
         vs.Actor(
             name="solar_panel",
             signal=vs.Trace.from_csv(
-                f"{DATASETS}/solcast_example.csv",
-                anchor="2022-06-09 00:00:00",
+                f"{DATASETS}/solar_example.csv",
                 column="Berlin",
                 scale=5000,
             ),
@@ -42,9 +42,8 @@ environment.add_microgrid(
         vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3)
     ],
     # Grid signals provide contextual information that custom policies and controllers
-    # can react to. They are also plotted by the experiment viewer. The trace's calendar
-    # year is irrelevant: anchor pins which row maps to elapsed=0, then playback is by
-    # elapsed time only.
+    # can react to. They are also plotted by the experiment viewer. The watttime CSV
+    # is datetime-indexed, so we pass anchor= to mark which row maps to offset=0.
     grid_signals={
         "carbon_intensity": vs.Trace.from_csv(
             f"{DATASETS}/watttime_example.csv",
