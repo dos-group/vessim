@@ -10,7 +10,7 @@ DATASETS = f"{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/datas
 
 # The Environment manages simulation time and the synchronization between simulators.
 # We step every 5 minutes (300 s).
-environment = vs.Environment(sim_start="2022-06-09", step_size=300)
+environment = vs.Environment(sim_start="2026-05-05", step_size=300)
 
 # A microgrid combines actors (consumers/producers), optional dispatchables (batteries,
 # diesel/gas generators, ...), and optional grid signals (electricity price, carbon

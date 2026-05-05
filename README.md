@@ -47,7 +47,7 @@ environment.add_controller(vs.CsvLogger("results/my_experiment"))
 environment.run(until=24 * 3600)
 ```
 
-Check out the [Getting Started walkthrough](https://vessim.readthedocs.io/en/latest/getting_started/) and [`examples/`](examples/) for more, including multi-microgrid setups and software-in-the-loop simulations.
+Check out the [Getting Started walkthrough](https://vessim.readthedocs.io/en/latest/getting_started/) and [`examples/`](examples/) for software-in-the-loop simulations.
 
 
 ## Installation

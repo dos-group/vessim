@@ -9,9 +9,8 @@ signal, demonstrating how vessim connects to real monitoring infrastructure.
 4. python examples/sil_example.py
 5. API available at http://localhost:8700
 
-Visualization (run in a second terminal):
-  - NiceGUI dashboard: pip install 'vessim[dashboard]' && python -m dashboard
-  - Grafana: docker compose -f examples/sil/docker-compose.grafana.yml up -d
+Grafana visualization (run in a second terminal):
+  - docker compose -f examples/sil/docker-compose.grafana.yml up -d
 """
 import os
 
