@@ -30,8 +30,8 @@ A [`SilSignal`](../api_reference/signal.md#vessim.SilSignal) polls its data sour
 import vessim as vs
 
 power_signal = vs.PrometheusSignal(
-    prometheus_url="http://localhost:9090",
-    query='(1 - avg(rate(node_cpu_seconds_total{mode="idle"}[1m]))) * 1000',
+   url="http://localhost:9090",
+   query='(1 - avg(rate(node_cpu_seconds_total{mode="idle"}[1m]))) * 1000',
 )
 
 server = vs.Actor(name="server", signal=power_signal, consumer=True)
@@ -113,43 +113,45 @@ This example wires up a real Prometheus + node_exporter stack so that the actual
 ```python
 import vessim as vs
 
+
 def main():
-    # Live mode: sim_start is captured when run() is called, simulation
-    # advances at 1× wall-clock, and Trace data replays starting from "now".
-    environment = vs.Environment.live(step_size=1)
+   # Live mode: sim_start is captured when run() is called, simulation
+   # advances at 1× wall-clock, and Trace data replays starting from "now".
+   environment = vs.Environment.live(step_size=1)
 
-    # Server load is driven by real host CPU usage scraped via Prometheus
-    server = vs.Actor(
-        name="server",
-        consumer=True,
-        signal=vs.PrometheusSignal(
-            prometheus_url="http://localhost:9090",
-            query='(1 - avg(rate(node_cpu_seconds_total{mode="idle"}[1m]))) * 1000',
-        ),
-    )
+   # Server load is driven by real host CPU usage scraped via Prometheus
+   server = vs.Actor(
+      name="server",
+      consumer=True,
+      signal=vs.PrometheusSignal(
+         url="http://localhost:9090",
+         query='(1 - avg(rate(node_cpu_seconds_total{mode="idle"}[1m]))) * 1000',
+      ),
+   )
 
-    solar = vs.Actor(
-        name="solar",
-        signal=vs.Trace.from_csv(
-            "datasets/solar_example.csv",
-            column="Berlin",
-            scale=2000,
-        ),
-    )
+   solar = vs.Actor(
+      name="solar",
+      signal=vs.Trace.from_csv(
+         "datasets/solar_example.csv",
+         column="Berlin",
+         scale=2000,
+      ),
+   )
 
-    battery = vs.SimpleBattery(name="battery", capacity=20, initial_soc=0.5)
+   battery = vs.SimpleBattery(name="battery", capacity=20, initial_soc=0.5)
 
-    environment.add_microgrid(
-        name="your_computer",
-        actors=[server, solar],
-        dispatchables=[battery],
-    )
+   environment.add_microgrid(
+      name="your_computer",
+      actors=[server, solar],
+      dispatchables=[battery],
+   )
 
-    environment.add_controller(vs.Api(export_prometheus=True))
-    environment.run()
+   environment.add_controller(vs.Api(export_prometheus=True))
+   environment.run()
+
 
 if __name__ == "__main__":
-    main()
+   main()
 ```
 
 ### Running it

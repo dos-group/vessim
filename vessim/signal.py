@@ -364,7 +364,7 @@ class PrometheusSignal(SilSignal):
     """Signal that pulls energy usage data from a Prometheus instance.
 
     Args:
-        prometheus_url: Base URL of the Prometheus server (e.g., 'http://localhost:9090')
+        url: Base URL of the Prometheus server (e.g., 'http://localhost:9090')
         query: PromQL query to fetch energy usage data
         update_interval: Interval in seconds between metric updates
         timeout: Request timeout in seconds
@@ -374,7 +374,7 @@ class PrometheusSignal(SilSignal):
 
     def __init__(
         self,
-        prometheus_url: str,
+        url: str,
         query: str,
         username: Optional[str] = None,
         password: Optional[str] = None,
@@ -390,7 +390,7 @@ class PrometheusSignal(SilSignal):
             )
 
         self.requests = requests
-        self.prometheus_url = prometheus_url.rstrip("/")
+        self.prometheus_url = url.rstrip("/")
         self.query = query
         self.username = username
         self.password = password

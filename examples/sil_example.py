@@ -31,7 +31,7 @@ def main():
         name="server",
         consumer=True,
         signal=vs.PrometheusSignal(
-            prometheus_url="http://localhost:9090",
+            url="http://localhost:9090",
             query='(1 - avg(rate(node_cpu_seconds_total{mode="idle"}[1m]))) * 1000',
         ),
     )
