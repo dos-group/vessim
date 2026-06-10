@@ -1,8 +1,8 @@
 [project]
 name = "vessim"
 dynamic = ["version"]
-description = "A simulator for carbon-aware applications and systems."
-keywords = ["simulation", "energy system", "testbed", "carbon-aware computing", "software-in-the-loop"]
+description = "A co-simulation testbed for microgrids and energy-aware systems."
+keywords = ["simulation", "energy system", "microgrid", "energy management", "demand response", "testbed", "carbon-aware computing", "software-in-the-loop"]
 authors = [
     {name = "Philipp Wiesner", email = "wiesner@tu-berlin.de"}
 ]

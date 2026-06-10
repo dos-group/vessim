@@ -1,4 +1,4 @@
-"""A simulator for carbon-aware applications and systems."""
+"""A co-simulation testbed for microgrids and energy-aware systems."""
 
 from vessim.actor import Actor
 from vessim.controller import Controller, MemoryLogger, CsvLogger

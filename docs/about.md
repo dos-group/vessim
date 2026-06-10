@@ -1,6 +1,6 @@
 # About Vessim
 
-Most research on energy-aware and carbon-aware computing relies on simulations, as globally distributed hardware testbeds are rare and costly.
+Research on microgrids and energy management, and in particular on energy- and carbon-aware computing where Vessim originated, often relies on simulation, as physical testbeds are rare and costly.
 Vessim addresses this gap by simplifying and unifying simulation-based evaluations and enabling continuous testing of emerging applications.
 
 Vessim is developed by [Philipp Wiesner](https://philippwiesner.org) at the [Distributed and Operating Systems (DOS)](https://www.dos.tu-berlin.de) group at TU Berlin.

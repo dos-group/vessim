@@ -4,19 +4,22 @@
     <img alt="Vessim Logo" src="assets/logo.png" width="300" />
 </div>
 
-Vessim is a co-simulation testbed for computing and energy systems.
+Vessim is a **co-simulation testbed for microgrids**\*
 
-Vessim lets you simulate the interaction of real or simulated computing systems with on-site energy sources, storage, and the public grid.
-It connects domain-specific simulators for power generation and batteries with real software and hardware.
+Vessim lets you model how loads, (renewable) generation, energy storage, and the public grid interact, and test control and dispatch strategies against them, in pure simulation or with **real software and hardware** in the loop.
+
+*\*By "microgrid" we mean any local energy system that combines loads, generation, and storage behind a grid connection. Grids can scale from small battery-constrained systems to a GW-scale datacenter campus.*
 
 
 ## What can I do with Vessim?
 
-Vessim helps you to understand and optimize how your (distributed) computing system interacts with (distributed) energy sources and battery storage.
+Vessim helps you understand and optimize how loads, energy sources, and storage interact.
+It was originally designed for energy-aware and carbon-aware data centers, but has also been used for other use cases such as battery price arbitrage and demand response for cooling warehouses.
 
-- **Energy-aware and carbon-aware applications**: develop applications that adapt their energy consumption to the carbon intensity and price of electricity.
-- **Microgrid composition**: experiment with adding solar panels, wind turbines, or batteries to see how they would affect your energy costs and carbon emissions.
+- **Control and dispatch strategies**: test battery charging/discharging, load-shifting, and price- or carbon-driven dispatch.
 - **Demand response and power outages**: simulate demand response signals or power outages to understand your system's flexibility and test mitigation strategies.
+- **Microgrid composition**: experiment with adding solar panels, wind turbines, or batteries to see how they would affect your energy costs and carbon emissions.
+- **Energy- and carbon-aware computing**: develop applications that adapt their energy consumption to the carbon intensity and price of electricity.
 
 Vessim can simulate multiple distributed microgrids in parallel and easily integrates historical datasets and new simulators.
 Vessim's [software-in-the-loop](concepts/sil.md) capabilities let you run real systems against simulated microgrids. 
@@ -24,7 +27,7 @@ Vessim's [software-in-the-loop](concepts/sil.md) capabilities let you run real s
 
 ## How Vessim Works
 
-Vessim simulates local energy systems, called *microgrids*, that combine computing equipment with (renewable) energy sources, dispatchable resources like batteries, and a connection to the public grid.
+Vessim simulates local energy systems, called *microgrids*, that combine loads (such as computing equipment, cooling, or charging) with energy sources, dispatchable resources like batteries, and a connection to the public grid.
 
 ![Vessim Overview](assets/vessim_overview.png)
 
