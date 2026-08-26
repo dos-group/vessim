@@ -12,7 +12,7 @@
   "dependencies": {
     "echarts": "^5.6.0",
     "echarts-for-react": "^3.0.2",
-    "js-yaml": "^4.1.1",
+    "js-yaml": "^4.3.1",
     "papaparse": "^5.5.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
