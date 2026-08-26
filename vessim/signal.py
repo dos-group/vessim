@@ -144,7 +144,7 @@ class Trace(Signal):
         sorter = np.argsort(offsets_array)
         offsets_ns = offsets_array[sorter]
 
-        if offsets_ns[0] != np.timedelta64(0):
+        if offsets_ns[0] != np.timedelta64(0, "ns"):
             raise ValueError(
                 f"Trace must start at offset=0, but starts at {_td(offsets_ns[0])}. "
                 f"To delay a trace, pad the beginning of your data with zeros or NaNs."
