@@ -19,7 +19,7 @@ You can update a `StaticSignal` at runtime via `set_value()`. This allows a [`Co
 
 ## Trace
 
-[`Trace`](../api_reference/signal.md#vessim.Trace) replays a time series row-by-row. Its index is an *offset* in seconds since the trace's start (row 0 at `0`); as the simulation advances, `Trace` returns the value at the matching offset.
+[`Trace`](../api_reference/signal.md#vessim.Trace) replays a time series row-by-row. Its index is an *offset* in seconds since the trace's start (row 0 at `0`). As the simulation advances, `Trace` returns the value at the matching offset.
 
 ### From in-memory data
 
@@ -61,7 +61,7 @@ load = vs.Trace.from_csv(
 
 ### Datetime data and `anchor`
 
-Calendar-stamped data is also supported. Pass an `anchor` to mark which row should sit at offset=0; earlier rows are dropped. This works both for in-memory data and for CSVs with a datetime first column:
+Calendar-stamped data is also supported. Pass an `anchor` to mark which row should sit at offset=0. Earlier rows are dropped. This works both for in-memory data and for CSVs with a datetime first column:
 
 ```text
 datetime,Berlin,Stockholm,Mumbai
@@ -99,3 +99,16 @@ For real-time simulations, [Software-in-the-Loop (SiL)](sil.md) signals poll dat
 SiL signals are time-independent: they ignore the `elapsed` argument and always return their most recent cached value. Use them with [`Environment.live`](../api_reference/environment.md#vessim.Environment.live) rather than `Environment(...)`. See [Software-in-the-Loop](sil.md).
 
 You can subclass [`SilSignal`](../api_reference/signal.md#vessim.SilSignal) to wrap any other live data source.
+
+
+## Reusing inputs across a study
+
+A trace holds read-only NumPy arrays and samples without a mutable cursor. Load a multi-column CSV once per worker, then select views without copying its arrays:
+
+```python
+traces = vs.Trace.from_csv("input.csv")
+solar = traces.select("solar")
+load = traces.select("load")
+```
+
+Reuse these traces in independent environments. Construct fresh actors, batteries, and policies for each run. This avoids repeated CSV parsing and data allocation. Do not change a shared trace's configuration while it is in use. Forward fill holds the last value beyond the final sample. Backward fill raises when no future sample exists.

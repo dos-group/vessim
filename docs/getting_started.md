@@ -1,6 +1,6 @@
 # Getting Started
 
-This walkthrough builds a complete Vessim simulation step by step.
+This walkthrough builds a simulation study using the default native backend. The same component models can be used in live experiments.
 
 The final code matches [`examples/basic_example.py`](https://github.com/dos-group/vessim/blob/main/examples/basic_example.py) in the repository, so you can follow along by running that file directly.
 
@@ -16,7 +16,7 @@ environment = vs.Environment(sim_start="2026-05-03", step_size=300)
 
 Vessim has two modes:
 
-- *simulated* (used here) uses only simulated actors and runs as fast as possible (see [Discrete-event simulation](https://en.wikipedia.org/wiki/Discrete-event_simulation) on Wikipedia). The `sim_start` parameter labels the output (e.g. CSV timestamps).
+- *simulation studies* (used here) run as fast as possible. The `sim_start` parameter labels output timestamps. Inputs are indexed by elapsed seconds.
 - *live* (via [`Environment.live`](api_reference/environment.md#vessim.Environment.live)) advances at wall-clock speed and can connect to real systems, see [Software-in-the-Loop](concepts/sil.md). Here, `sim_start` is optional and defaults to `datetime.now()`.
 
 ## 2. Actors
@@ -26,7 +26,7 @@ Each actor wraps a [`Signal`](concepts/signals.md) that provides its power value
 
 We start with a server that constantly draws 700 W. 
 By Vessim convention, production yields positives and consumption negative values. 
-Passing `consumer=True` flips the sign of the singal:
+Passing `consumer=True` flips the sign of the signal:
 
 ```python
 server = vs.Actor(name="server", signal=vs.StaticSignal(value=700), consumer=True)
@@ -45,7 +45,7 @@ solar = vs.Actor(
 )
 ```
 
-A [`Trace`](api_reference/signal.md#vessim.Trace) replays a CSV row-by-row, indexed by an offset in seconds since the trace's start. See [Signals and Datasets](concepts/signals.md) for all available signal types, the CSV schema, and how to fetch more data.
+A [`Trace`](api_reference/signal.md#vessim.Trace) samples a CSV loaded into memory, indexed by an offset in seconds since the trace's start. See [Signals and Datasets](concepts/signals.md) for all available signal types, the CSV schema, and how to fetch more data.
 
 At every step, Vessim sums the actors' powers into the microgrid's *power delta*. Again, positive means surplus, negative means deficit.
 
@@ -79,7 +79,7 @@ grid_signals = {
 ## 5. Putting the microgrid together
 
 [`add_microgrid`](api_reference/environment.md#vessim.Environment.add_microgrid) combines actors, dispatchables, and grid signals into one simulated system. 
-You can call it multiple times to simulate several geo-distributed microgrids in parallel.
+You can call it multiple times to simulate several geo-distributed microgrids together. Parallelize independent scenarios using separate worker processes.
 
 ```python
 environment.add_microgrid(
@@ -90,7 +90,19 @@ environment.add_microgrid(
 )
 ```
 
-## 6. Logging and running
+## 6. Results and running
+
+For large configuration sweeps, `Summary` accumulates grid import/export energy and peak power in bounded memory. Its optional JSON output is written once at finalization:
+
+```python
+summary = environment.add_controller(vs.Summary("results/summary.json"))
+```
+
+`environment.run(until=...)` returns a `RunResult` with the final observation, step count, last tick timestamp, requested horizon, and execution time. An environment runs once. Build fresh batteries, policies, and controllers for each scenario, while reusing immutable traces. See the [study example](https://github.com/dos-group/vessim/blob/main/examples/battery_sizing_study.py).
+
+For this walkthrough we also retain a full trajectory so it can be explored in the viewer.
+
+### Full trajectory logging
 
 The last ingredient is a [`Controller`](api_reference/controller.md). 
 Controllers observe the simulation at every step and can react to it.
@@ -99,7 +111,7 @@ We use the built-in [`CsvLogger`](api_reference/controller.md#vessim.CsvLogger),
 ```python
 environment.add_controller(vs.CsvLogger("results/basic_example"))
 
-environment.run(until=24 * 3600)  # 24 hours
+result = environment.run(until=24 * 3600)  # 24 hours, exclusive end
 ```
 
 After the run, `results/basic_example/` contains:
@@ -156,7 +168,9 @@ environment.run(until=24 * 3600)
 
 ## Next steps
 
-- [Signals and Datasets](concepts/signals.md) — replay historical data, build constant or custom signals.
-- [Dispatchables and Dispatch Policies](concepts/dispatchables.md) — battery models, custom dispatchables, custom policies.
-- [Controllers](concepts/controllers.md) — observe and modify a running simulation.
-- [Software-in-the-Loop](concepts/sil.md) — connect Vessim to live data sources and real applications.
+- [Execution and Coupling](concepts/execution.md): study/live modes, backends, tick semantics, and multi-run studies.
+
+- [Signals and Datasets](concepts/signals.md): replay historical data, build constant or custom signals.
+- [Dispatchables and Dispatch Policies](concepts/dispatchables.md): battery models, custom dispatchables, custom policies.
+- [Controllers](concepts/controllers.md): observe and modify a running simulation.
+- [Software-in-the-Loop](concepts/sil.md): connect Vessim to live data sources and real applications.

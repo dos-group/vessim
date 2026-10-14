@@ -14,10 +14,11 @@ nav:
   - Overview: index.md
   - Getting Started: getting_started.md
   - Concepts:
+    - Execution and Coupling: concepts/execution.md
     - Signals and Datasets: concepts/signals.md
     - Dispatchables and Dispatch Policies: concepts/dispatchables.md
     - Controllers: concepts/controllers.md
-    - Software-in-the-Loop: concepts/sil.md
+    - Live Experiments and Digital Twins: concepts/sil.md
   - API Reference:
     - Environment: api_reference/environment.md
     - Microgrid: api_reference/microgrid.md

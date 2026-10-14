@@ -1,15 +1,19 @@
-# Software-in-the-Loop
+# Live Experiments and Digital Twins
 
 Software-in-the-Loop (SiL) simulation lets Vessim interact with real systems while the simulation is running. Use it to:
 
-- Test real applications — validate energy-aware schedulers, autoscalers, or routing logic against simulated energy scenarios.
-- Use real data sources — pull live metrics from sensors, monitoring systems, or APIs into the simulation.
+- Test real applications: validate energy-aware schedulers, autoscalers, or routing logic against simulated energy scenarios.
+- Use real data sources: pull live metrics from sensors, monitoring systems, or APIs into the simulation.
 
 SiL extras are not installed by default. Enable them with:
 
 ```console
 pip install vessim[sil]
 ```
+
+Use `Environment.live()` for wall-clock pacing with either the native backend (default) or `backend="mosaik"` when coupling external simulators. Live experiments may mix measured signals with traces and simulated resources. A digital twin uses this live representation to inform simulation studies. Automatic state branching is future work. See [execution modes and backends](execution.md).
+
+Resources are finalized on completion or interruption. Use the environment as a context manager to also cover setup failures. Custom polling calls must honor their timeouts. Each live signal owns one stoppable background thread.
 
 ## Architecture
 
@@ -75,14 +79,14 @@ Once the simulation is running, the following endpoints are available at `http:/
 | Method & path | Purpose |
 |---|---|
 | `GET /` | List of microgrids and their actors. |
-| `GET /<microgrid>` | Current state of a microgrid (power flows, battery SoC, …). |
-| `PUT /<microgrid>` | Send a control command (e.g. mutate a dispatchable property). |
+| `GET /microgrids/<name>` | Current state of a microgrid (power flows, battery SoC, …). |
+| `PUT /microgrids/<name>/actors/<actor>/signal?value=100` | Queue a signal update. |
 | `GET /metrics` | Prometheus-format metrics (when `export_prometheus=True`). |
 
 Read the state:
 
 ```bash
-curl http://localhost:8700/datacenter
+curl http://localhost:8700/microgrids/datacenter
 ```
 
 ```json
@@ -91,24 +95,24 @@ curl http://localhost:8700/datacenter
   "time": "2023-01-01T00:00:00",
   "p_delta": -500.0,
   "p_grid": -500.0,
-  "dispatch": { "battery": { "soc": 0.8 } },
-  "actors":   { "server":  { "power": -500.0 } }
+  "dispatch_states": { "battery": { "soc": 0.8 } },
+  "actor_states":   { "server":  { "power": -500.0 } }
 }
 ```
 
 Send a control command:
 
 ```bash
-curl -X PUT http://localhost:8700/datacenter \
-     -H "Content-Type: application/json" \
-     -d '{"dispatchable": {"name": "battery", "property": "min_soc", "value": 0.5}}'
+curl -X PUT 'http://localhost:8700/microgrids/datacenter/actors/server/signal?value=700'
 ```
+
+Signal updates require a mutable signal such as `StaticSignal`. A trace or live measurement source cannot be set this way. Commands are processed by the API controller after dispatch and affect subsequent ticks. Broker HTTP connections are reused and requests have a bounded `request_timeout`.
 
 When `export_prometheus=True`, the `/metrics` endpoint can be scraped by Prometheus and visualized in Grafana. See [`examples/sil/`](https://github.com/dos-group/vessim/tree/main/examples/sil) for a ready-made compose file.
 
 ## Walkthrough: real CPU load to simulated microgrid
 
-This example wires up a real Prometheus + node_exporter stack so that the actual CPU usage of the host drives the simulated server's power draw. The full source is at [`examples/sil_example.py`](https://github.com/dos-group/vessim/blob/main/examples/sil_example.py).
+This example wires up a real Prometheus + node_exporter stack so that the actual CPU usage of the host drives the simulated server's power draw. The full source is at [`examples/live_server_monitoring.py`](https://github.com/dos-group/vessim/blob/main/examples/live_server_monitoring.py).
 
 ```python
 import vessim as vs
@@ -167,11 +171,11 @@ if __name__ == "__main__":
    Wait ~15 s for the first scrapes to land.
 3. Run the simulation:
    ```console
-   python examples/sil_example.py
+   python examples/live_server_monitoring.py --prometheus-url http://localhost:9090 --broker-port 8700
    ```
 4. Hit the API in another terminal:
    ```console
-   curl http://localhost:8700/your_computer
+   curl http://localhost:8700/microgrids/your_computer
    ```
    Drive your CPU up (e.g. `yes > /dev/null`) and watch the server power follow.
 5. Optionally start Grafana to visualize the live `/metrics` endpoint:

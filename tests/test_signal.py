@@ -10,24 +10,23 @@ import vessim as vs
 class TestTrace:
     @pytest.fixture
     def hist_signal(self) -> vs.Trace:
-        index = pd.to_datetime([
-            "2023-01-01T00:00:00",
-            "2023-01-01T00:30:00",
-            "2023-01-01T01:00:00",
-        ])
+        index = pd.to_datetime(
+            [
+                "2023-01-01T00:00:00",
+                "2023-01-01T00:30:00",
+                "2023-01-01T01:00:00",
+            ]
+        )
         actual = pd.DataFrame(
-            {"a": [1, 2, 3], "b": [0, 3, 0], "c": [None, 4, None]},
-            index=index - index[0]
+            {"a": [1, 2, 3], "b": [0, 3, 0], "c": [None, 4, None]}, index=index - index[0]
         )
         return vs.Trace(actual)
 
     @pytest.fixture
     def hist_signal_single(self) -> vs.Trace:
-        index = pd.to_datetime([
-            "2023-01-01T01:00:00",
-            "2023-01-01T00:30:00",
-            "2023-01-01T00:00:00"
-        ])
+        index = pd.to_datetime(
+            ["2023-01-01T01:00:00", "2023-01-01T00:30:00", "2023-01-01T00:00:00"]
+        )
         actual = pd.Series([3, 2, 1], index=index - index.min())
         return vs.Trace(actual, fill_method="bfill")
 
@@ -86,18 +85,18 @@ class TestTrace:
             hist_signal_single.at(None)
 
     def test_datetime_index_requires_anchor(self):
-        data = pd.Series(
-            [1, 2], index=pd.to_datetime(["2023-01-01", "2023-01-02"])
-        )
+        data = pd.Series([1, 2], index=pd.to_datetime(["2023-01-01", "2023-01-02"]))
         with pytest.raises(ValueError, match="anchor is required"):
             vs.Trace(data)
 
     def test_datetime_index_with_anchor_rebases(self):
-        index = pd.to_datetime([
-            "2023-01-01 00:00:00",
-            "2023-01-01 01:00:00",
-            "2023-01-01 02:00:00",
-        ])
+        index = pd.to_datetime(
+            [
+                "2023-01-01 00:00:00",
+                "2023-01-01 01:00:00",
+                "2023-01-01 02:00:00",
+            ]
+        )
         data = pd.Series([10, 20, 30], index=index)
         trace = vs.Trace(data, anchor="2023-01-01 01:00:00")
         # Anchor row becomes elapsed=0; row before is dropped.
@@ -163,3 +162,21 @@ class TestStaticSignal:
         s = vs.StaticSignal(1)
         s.set_value(7)
         assert s.at() == 7
+
+
+def test_trace_views_share_immutable_data_and_sample_independently():
+    trace = vs.Trace(pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}, index=[0, 1, 2]))
+    a, b = trace.select("a"), trace.select("b")
+    assert a._offsets is trace._offsets
+    assert b._offsets is trace._offsets
+    assert [a.at(2), a.at(0), b.at(1), a.at(0.5)] == [3, 1, 5, 1]
+    with pytest.raises(ValueError):
+        a._offsets["a"][1][0] = 10
+    with pytest.raises(ValueError):
+        trace.select("missing")
+
+
+@pytest.mark.parametrize("elapsed", [0.000001, 0.0000015, 0.1234567, 1.9999999, 10.5])
+def test_trace_fractional_seconds_match_timedelta(elapsed):
+    trace = vs.Trace(pd.Series([1, 2, 3], index=[0, 0.000002, 2]))
+    assert trace.at(elapsed) == trace.at(timedelta(seconds=elapsed))

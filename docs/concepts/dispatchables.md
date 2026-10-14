@@ -3,7 +3,7 @@
 A [`Dispatchable`](../api_reference/dispatchable.md) is a controllable energy resource (a battery, diesel/gas generator, or electrolyzer) whose power setpoint is decided each step by a [`DispatchPolicy`](../api_reference/dispatch_policy.md). 
 Unlike actors (whose power comes from a signal), a dispatchable's power is allocated by the policy from the microgrid's current power delta.
 
-Each `Dispatchable` reports a *feasible range* `(min_power, max_power)` for the upcoming timestep. Negative values represent discharging/generation; positive values represent charging/consumption.
+Each `Dispatchable` reports a *feasible range* `(min_power, max_power)` for the upcoming timestep. Negative values represent discharging/generation. Positive values represent charging/consumption.
 
 ## Battery models
 
@@ -76,7 +76,7 @@ Islanded: fully disconnect the microgrid from the grid. If dispatchables cannot 
 policy = vs.DefaultDispatchPolicy(mode="islanded")
 ```
 
-Fixed charge power: force storage to charge or discharge at a constant rate, balancing the difference with the grid. Useful for scheduled charging strategies; only works in grid-connected mode.
+Fixed charge power: force storage to charge or discharge at a constant rate, balancing the difference with the grid. Useful for scheduled charging strategies. Only works in grid-connected mode.
 
 ```python
 policy = vs.DefaultDispatchPolicy(charge_power=200.0)   # charge at 200 W

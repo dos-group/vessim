@@ -5,6 +5,7 @@ They can observe the state of all microgrids and modify their components.
 See the [Controllers](../concepts/controllers.md) concept page for usage examples.
 
 ::: vessim.Controller
+::: vessim.Summary
 ::: vessim.CsvLogger
 ::: vessim.MemoryLogger
 ::: vessim.Api

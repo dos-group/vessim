@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import math
 import time
+from copy import copy
+from threading import Event, Thread, current_thread
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from pathlib import Path
@@ -92,6 +95,8 @@ class Trace(Signal):
                 f"on_overflow={on_overflow!r} is not yet supported. Only 'raise' is available."
             )
 
+        if fill_method not in ("ffill", "bfill"):
+            raise ValueError("fill_method must be 'ffill' or 'bfill'.")
         self._fill_method = fill_method
         self._on_overflow = on_overflow
         self.default_column = column
@@ -115,22 +120,16 @@ class Trace(Signal):
                 )
             data = data.loc[raw_index >= anchor_ts]
             assert isinstance(data.index, pd.DatetimeIndex)
-            offsets_array = (data.index - anchor_ts).to_numpy().astype(
-                "timedelta64[ns]"
-            )
+            offsets_array = (data.index - anchor_ts).to_numpy().astype("timedelta64[ns]")
         elif isinstance(raw_index, pd.TimedeltaIndex):
             if anchor is not None:
-                raise ValueError(
-                    "anchor is only valid for datetime-indexed data."
-                )
+                raise ValueError("anchor is only valid for datetime-indexed data.")
             offsets_array = raw_index.to_numpy().astype("timedelta64[ns]")
         elif pd.api.types.is_numeric_dtype(raw_index):
             if anchor is not None:
-                raise ValueError(
-                    "anchor is only valid for datetime-indexed data."
-                )
-            offsets_array = pd.to_timedelta(raw_index, unit="s").to_numpy().astype(
-                "timedelta64[ns]"
+                raise ValueError("anchor is only valid for datetime-indexed data.")
+            offsets_array = (
+                pd.to_timedelta(raw_index, unit="s").to_numpy().astype("timedelta64[ns]")
             )
         else:
             raise TypeError(
@@ -160,6 +159,23 @@ class Trace(Signal):
                 values = data[col].to_numpy(dtype=float, copy=True)[sorter]
                 mask = ~np.isnan(values)
                 self._offsets[str(col)] = (offsets_ns[mask], values[mask])
+
+        for name, (offsets, values) in self._offsets.items():
+            offsets = offsets.view("i8")
+            offsets.setflags(write=False)
+            values.setflags(write=False)
+            self._offsets[name] = (offsets, values)
+
+    def select(self, column: str) -> Trace:
+        """Return a column view sharing immutable arrays with this trace.
+
+        Load a multi-column CSV once and use views for different actors or
+        scenarios. Sampling is stateless; no per-run cursor is stored here.
+        """
+        _get_column_name(self._offsets, column)
+        selected = copy(self)
+        selected.default_column = column
+        return selected
 
     def __repr__(self):
         """Returns a string representation for the Vessim viewer."""
@@ -239,14 +255,20 @@ class Trace(Signal):
         """
         if elapsed is None:
             raise ValueError("Argument elapsed cannot be None.")
-        if not isinstance(elapsed, timedelta):
-            elapsed = timedelta(seconds=elapsed)
+        if isinstance(elapsed, timedelta):
+            np_at = (
+                (elapsed.days * 86400 + elapsed.seconds) * 1_000_000 + elapsed.microseconds
+            ) * 1000
+        elif isinstance(elapsed, int):
+            np_at = elapsed * 1_000_000_000
+        else:
+            # Preserve timedelta's microsecond resolution for fractional seconds.
+            np_at = round(elapsed * 1_000_000) * 1000
         if column is None:
             column = self.default_column
 
         resolved = _get_column_name(self._offsets, column)
         offsets, values = self._offsets[resolved]
-        np_at = np.timedelta64(elapsed)
 
         if self._fill_method == "ffill":
             index = offsets.searchsorted(np_at, side="right") - 1
@@ -293,21 +315,20 @@ class SilSignal(Signal):
     """
 
     def __init__(self, update_interval: float = 5.0, timeout: float = 10.0):
-        try:
-            from threading import Timer
-        except ImportError:
-            raise ImportError("SilSignal requires threading support")
-
-        self.Timer = Timer
+        if (
+            not math.isfinite(update_interval)
+            or not math.isfinite(timeout)
+            or update_interval <= 0
+            or timeout <= 0
+        ):
+            raise ValueError("update_interval and timeout must be finite and positive.")
         self.update_interval = update_interval
         self.timeout = timeout
-
         self._last_update: Optional[float] = None
         self._cached_value: float = 0.0
-        self._stop_polling = False
-
-        # Start background polling
-        self._start_background_polling()
+        self._stop = Event()
+        self._thread = Thread(target=self._poll, daemon=True, name=f"vessim-{type(self).__name__}")
+        self._thread.start()
 
     def __repr__(self):
         """Returns a string representation for the Vessim viewer."""
@@ -327,22 +348,15 @@ class SilSignal(Signal):
             Exception: Any exception that occurs during data fetching
         """
 
-    def _start_background_polling(self) -> None:
-        """Start background polling in a separate thread."""
-
-        def poll():
-            if not self._stop_polling:
-                try:
-                    self._cached_value = self._fetch_current_value()
-                    self._last_update = time.time()
-                except Exception:
-                    pass  # Keep using cached value
-                # Schedule next poll
-                # TODO: daemonize the Timer threads so a forgotten finalize()
-                # cannot keep the interpreter alive after main returns.
-                self.Timer(self.update_interval, poll).start()
-
-        self.Timer(0, poll).start()  # Start immediately
+    def _poll(self) -> None:
+        while not self._stop.is_set():
+            try:
+                self._cached_value = self._fetch_current_value()
+                self._last_update = time.time()
+            except Exception:
+                pass  # Retain the last observation if a source is temporarily unavailable.
+            if self._stop.wait(self.update_interval):
+                break
 
     def at(self, elapsed: Optional[timedelta | float] = None) -> float:
         """Return the current cached value.
@@ -357,7 +371,9 @@ class SilSignal(Signal):
 
     def finalize(self) -> None:
         """Stop background polling and clean up resources."""
-        self._stop_polling = True
+        self._stop.set()
+        if current_thread() is not self._thread:
+            self._thread.join(timeout=self.timeout + 0.1)
 
 
 class PrometheusSignal(SilSignal):
@@ -400,10 +416,11 @@ class PrometheusSignal(SilSignal):
         if username and password:
             self._auth = requests.auth.HTTPBasicAuth(username, password)
 
-        # Initialize parent class (starts background polling)
-        super().__init__(update_interval=update_interval, timeout=timeout)
-
+        # Validate before starting a worker: failed construction has no owner
+        # that could finalize a background thread.
+        self.timeout = timeout
         self._validate_connection()
+        super().__init__(update_interval=update_interval, timeout=timeout)
 
     def _validate_connection(self) -> None:
         """Validate that we can connect to the Prometheus server."""
@@ -497,6 +514,7 @@ class WatttimeSignal(SilSignal):
         self._username = username
         self._password = password
         self._base_url = base_url
+        self.timeout = timeout
         self._token: Optional[str] = None
         self._token_expires: Optional[float] = None
 
@@ -529,7 +547,7 @@ class WatttimeSignal(SilSignal):
         # Try to get new token
         login_url = f"{self._base_url}/login"
         try:
-            response = self._requests.get(login_url, auth=self._auth)
+            response = self._requests.get(login_url, auth=self._auth, timeout=self.timeout)
             response.raise_for_status()
 
             self._token = response.json()["token"]
@@ -543,7 +561,7 @@ class WatttimeSignal(SilSignal):
                 # Login failed, try to register
                 self._register_user()
                 # Retry login after registration
-                response = self._requests.get(login_url, auth=self._auth)
+                response = self._requests.get(login_url, auth=self._auth, timeout=self.timeout)
                 response.raise_for_status()
 
                 self._token = response.json()["token"]
@@ -580,7 +598,7 @@ class WatttimeSignal(SilSignal):
             "email": email,
         }
 
-        response = self._requests.post(register_url, json=registration_data)
+        response = self._requests.post(register_url, json=registration_data, timeout=self.timeout)
         response.raise_for_status()
 
         print("✓ Registration successful!")
@@ -595,7 +613,9 @@ class WatttimeSignal(SilSignal):
             "signal_type": "co2_moer",
         }
 
-        response = self._requests.get(region_url, headers=headers, params=params)
+        response = self._requests.get(
+            region_url, headers=headers, params=params, timeout=self.timeout
+        )
         response.raise_for_status()
 
         data = response.json()

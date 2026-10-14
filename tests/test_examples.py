@@ -1,5 +1,3 @@
-import time
-import signal
 import subprocess
 import os
 import sys
@@ -29,39 +27,87 @@ def test_basic_example():
         os.remove("results.csv")
 
 
-def test_sil_example():
+def test_battery_sizing_study_is_reproducible_across_workers(tmp_path):
+    import json
+
+    for workers in (1, 2):
+        subprocess.run(
+            [
+                sys.executable,
+                os.path.join(EXAMPLES_DIR, "battery_sizing_study.py"),
+                "--scenarios",
+                "4",
+                "--workers",
+                str(workers),
+                "--output",
+                str(tmp_path / f"{workers}.json"),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    assert json.loads((tmp_path / "1.json").read_text()) == json.loads(
+        (tmp_path / "2.json").read_text()
+    )
+
+
+def test_external_simulator_coupling():
+    pytest.importorskip("mosaik")
+    result = run_script("external_simulator_coupling.py")
+    assert result.returncode == 0, result.stderr
+    assert "grid_import_wh" in result.stdout
+
+
+def test_live_server_monitoring(tmp_path):
     pytest.importorskip("fastapi")
-    # This script runs with rt_factor=1 (real-time), so it blocks.
-    # We start it, wait a bit, and terminate it.
-    script_path = os.path.join(EXAMPLES_DIR, "sil_example.py")
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    from threading import Thread
+    import socket
+    import json
 
-    # Use context manager to ensure pipes are closed
-    with subprocess.Popen(
-        [sys.executable, script_path],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        cwd=os.path.dirname(EXAMPLES_DIR),
-    ) as process:
-        try:
-            # Wait a bit to let it initialize
-            time.sleep(2)
-            if process.poll() is not None:
-                # It exited early, check why
-                stdout, stderr = process.communicate()
-                assert False, (
-                    f"SiL example exited early with code {process.returncode}.\n"
-                    f"Stderr: {stderr.decode()}"
-                )
+    class Prometheus(BaseHTTPRequestHandler):
+        def do_GET(self):
+            body = json.dumps(
+                {
+                    "status": "success",
+                    "data": {
+                        "result": [{"value": [0, "100"]}],
+                    },
+                }
+            ).encode()
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
 
-            # Terminate
-            process.send_signal(signal.SIGINT)
-            try:
-                process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                process.kill()
+        def log_message(self, *args):
+            pass
 
-        except Exception:
-            process.kill()
-            raise
-
-    # If we got here without assertion error, it started successfully
+    server = HTTPServer(("127.0.0.1", 0), Prometheus)
+    worker = Thread(target=server.serve_forever, daemon=True)
+    worker.start()
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        broker_port = sock.getsockname()[1]
+    try:
+        result = subprocess.run(
+            [
+                sys.executable,
+                os.path.join(EXAMPLES_DIR, "live_server_monitoring.py"),
+                "--prometheus-url",
+                f"http://127.0.0.1:{server.server_port}",
+                "--broker-port",
+                str(broker_port),
+                "--until",
+                "0.1",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        assert result.returncode == 0, result.stderr
+        assert "API broker terminated" in result.stdout
+    finally:
+        server.shutdown()
+        worker.join()
+        server.server_close()

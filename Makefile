@@ -1,21 +1,23 @@
 .PHONY: docs docs-viewer serve-docs typecheck lint test check
 
+CHECK_RUN = uv run --extra dev --extra sil --extra mosaik
+
 check: typecheck lint test
 
 typecheck:
-	uv run mypy vessim
+	$(CHECK_RUN) mypy vessim
 
 lint:
-	uv run ruff check vessim
+	$(CHECK_RUN) ruff check vessim
 
 test:
-	uv run pytest
+	$(CHECK_RUN) pytest
 
 docs: docs-viewer
-	uv run mkdocs build
+	uv run --extra docs mkdocs build
 
 serve-docs: docs-viewer
-	uv run mkdocs serve --watch docs
+	uv run --extra docs mkdocs serve --watch docs
 
 docs-viewer:
 	cd viewer && [ -d node_modules ] || npm ci

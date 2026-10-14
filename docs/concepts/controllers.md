@@ -3,15 +3,40 @@
 A [`Controller`](../api_reference/controller.md) is executed at every simulation step. 
 It can observe the state of all microgrids, log it, and modify components of the running simulation, for example by changing parameters of a [`DispatchPolicy`](../api_reference/dispatch_policy.md) on the fly.
 
-Vessim ships with two built-in loggers ([`CsvLogger`](../api_reference/controller.md#vessim.CsvLogger) and [`MemoryLogger`](../api_reference/controller.md#vessim.MemoryLogger)), an [`Api`](../api_reference/controller.md#vessim.Api) controller for software-in-the-loop experiment, and you can write your own by subclassing `Controller`.
+All built-in controllers use the same `start`, `step`, and `finalize` interface. Choose them according to what you need from a run:
+
+| Controller | Purpose | What it retains or exposes |
+|---|---|---|
+| [`Summary`](../api_reference/controller.md#vessim.Summary) | Compare the outcomes of many scenarios | Grid import/export energy and peak power, with optional JSON output at completion |
+| [`MemoryLogger`](../api_reference/controller.md#vessim.MemoryLogger) | Analyze a run in Python or a notebook | Every tick in memory, accessible as a dictionary or DataFrame |
+| [`CsvLogger`](../api_reference/controller.md#vessim.CsvLogger) | Save a detailed run and open it in the viewer | Every tick in a CSV file, plus experiment metadata |
+| [`Api`](../api_reference/controller.md#vessim.Api) | Interact with a running experiment | Current state and control commands over HTTP |
+
+`Summary` is an ordinary controller that updates a few counters at each tick. It does not retain the observations it receives. The loggers remain useful when you need to see when and why something happened. You can combine controllers, or implement your own metrics and control logic by subclassing `Controller`.
+
+## Compact results for studies
+
+For configuration sweeps and Monte Carlo studies, retain aggregate results rather than full trajectories:
+
+```python
+summary = environment.add_controller(vs.Summary("results/summary.json"))
+result = environment.run(until=86400)
+print(summary.metrics)
+```
+
+The JSON file is optional and is written only on finalization. `metrics` contains grid import/export energy in Wh and peak import/export power in W for each microgrid. The final interval is clipped to the requested horizon. Failed or interrupted runs are labeled as partial. Custom metrics such as cost or emissions belong in an ordinary `Controller`. Their units and treatment of imports/exports depend on the experiment.
+
+`run()` itself retains only the final observation. `Summary` retains a fixed number of counters per microgrid. `MemoryLogger` retains every tick and therefore grows with run length.
 
 ## Logging with CsvLogger
 
-[`CsvLogger`](../api_reference/controller.md#vessim.CsvLogger) is the recommended way to record an experiment. It writes the static configuration and the full timeseries to a directory:
+Use [`CsvLogger`](../api_reference/controller.md#vessim.CsvLogger) when you want to save a detailed trajectory. It writes the static configuration and the full timeseries to a directory:
 
 ```python
 environment.add_controller(vs.CsvLogger("results/my_experiment"))
 ```
+
+The logger keeps one buffered file open. In study mode it flushes on close. In live mode it flushes each tick. Pass `flush=True` or `flush=False` to override this. All microgrids share a column union determined at the first tick. Later schema changes raise an error.
 
 After the run, the directory contains:
 
@@ -45,8 +70,8 @@ class MyController(vs.Controller):
 
 The `step` method receives:
 
-- `now` — the current simulation time as a `datetime`.
-- `microgrid_states` — a `dict[str, MicrogridState]` keyed by microgrid name. Each [`MicrogridState`](../api_reference/microgrid.md#vessim.MicrogridState) exposes `p_delta`, `p_grid`, `actor_states`, `dispatch_states`, `policy_state`, and `grid_signals`.
+- `now`: the current simulation time as a `datetime`.
+- `microgrid_states`: a `dict[str, MicrogridState]` keyed by microgrid name. Each [`MicrogridState`](../api_reference/microgrid.md#vessim.MicrogridState) exposes `p_delta`, `p_grid`, `actor_states`, `dispatch_states`, `policy_state`, and `grid_signals`.
 
 ## Example: a scheduled charger
 
@@ -80,5 +105,7 @@ environment.add_controller(vs.CsvLogger("results/scheduled"))
 The same pattern works for any policy parameter: switch between policies, raise/lower a battery's `min_soc`, or react to grid signals exposed via `microgrid_states[name]["grid_signals"]`.
 
 ## Going further: real-time control
+
+Observations are detached from component state. Treat them as read-only. Controller actions take effect in subsequent computation. Controllers start after scenario preparation and are finalized on completion, errors, and interruption.
 
 Custom controllers can also expose the simulation to the outside world. The built-in [`Api`](../api_reference/controller.md#vessim.Api) controller starts a REST server that lets external programs query the state and send control commands while the simulation runs. See [Software-in-the-Loop](sil.md) for the full picture.

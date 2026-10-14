@@ -1,166 +1,131 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, TypedDict
+from copy import deepcopy
+from typing import Optional, TypedDict
 
-import mosaik
-import mosaik_api_v3
+import numpy as np
 
-if TYPE_CHECKING:
-    from vessim.actor import Actor
-    from vessim.dispatch_policy import DispatchPolicy
-    from vessim.dispatchable import Dispatchable
-    from vessim.signal import Signal
+from vessim.actor import Actor
+from vessim.dispatchable import Dispatchable
+from vessim.dispatch_policy import DispatchPolicy
+from vessim.signal import Signal
 
 
 class MicrogridState(TypedDict):
-    """State of a microgrid.
+    """Observation at a tick, after dispatch and before controllers execute."""
 
-    This state is passed to `Controller`s on every step.
-    """
+    p_delta: float
+    p_grid: float
+    actor_states: dict[str, dict]
+    policy_state: dict
+    dispatch_states: dict[str, dict]
+    grid_signals: Optional[dict[str, float]]
 
-    p_delta: float  # Current power delta in W
-    p_grid: float  # Last step's power exchange with the public grid in W
-    actor_states: dict[str, dict]  # States of all actors in the microgrid
-    policy_state: dict  # State of the microgrid dispatch policy
-    dispatch_states: dict[str, dict]  # States of all dispatchables, keyed by name
-    grid_signals: Optional[dict[str, float]]  # Current grid signals, if available
+
+_IMMUTABLE_SCALARS = (str, int, float, bool, bytes, type(None), np.float64)
+
+
+def _snapshot(state: dict) -> dict:
+    # Built-in observations are flat dictionaries of immutable scalars. Avoid
+    # deepcopy's recursive bookkeeping there, retaining it for custom state.
+    if all(type(value) in _IMMUTABLE_SCALARS for value in state.values()):
+        return state.copy()
+    return deepcopy(state)
 
 
 class Microgrid:
-    """A simulated energy system.
+    """Energy-system models and current state, independent of an execution backend.
 
-    A microgrid is a collection of actors (exogenous consumers and producers),
-    dispatchables (controllable resources like batteries), and a dispatch policy
-    that governs their interaction. It can also be connected to the public grid.
+    Usually constructed through :meth:`Environment.add_microgrid`. Powers are
+    in W; generation and export are positive, consumption and import negative.
 
     Args:
-        world: The mosaik world instance.
-        step_size: The step size of the simulation in seconds.
-        actors: The exogenous actors in the microgrid.
-        dispatchables: The dispatchable resources in the microgrid.
-        policy: The `DispatchPolicy` that controls the microgrid.
-        grid_signals: Optional signals from the public grid.
-        name: Optional name for the microgrid.
-        coords: Optional coordinates (latitude, longitude) for visualizing the
-            microgrid's location in the dashboard.
+        step_size: Positive integer sampling interval in seconds.
+        actors: Exogenous loads and generators.
+        dispatchables: Controllable resources, in dispatch order.
+        policy: Policy assigning the next power setpoints.
+        grid_signals: Context such as price or carbon intensity.
+        name: Unique name within the environment.
+        coords: Optional latitude and longitude for the viewer.
     """
 
     def __init__(
         self,
-        world: mosaik.World,
         step_size: int,
         actors: list[Actor],
         dispatchables: list[Dispatchable],
         policy: DispatchPolicy,
         grid_signals: Optional[dict[str, Signal]] = None,
-        name: Optional[str] = None,
+        name: str = "microgrid",
         coords: Optional[tuple[float, float]] = None,
     ):
         self.step_size = step_size
-        self.actors = actors
-        self.dispatchables = dispatchables
+        self.actors = list(actors)
+        self.dispatchables = list(dispatchables)
         self.policy = policy
-        self.grid_signals = grid_signals
-        self.name = name or f"microgrid_{id(self)}"
+        self.grid_signals = dict(grid_signals) if grid_signals else None
+        self.name = name
         self.coords = coords
-
-        self.actor_entities = {}
-        for actor in actors:
-            actor_step_size = actor.step_size if actor.step_size else step_size
-            if actor_step_size % step_size != 0:
-                raise ValueError("Actor step size has to be a multiple of grids step size.")
-            actor_sim = world.start(
-                "Actor",
-                sim_id=f"{self.name}.actor.{actor.name}",
-                step_size=actor_step_size,
-            )
-            # We initialize all actors before the microgrid simulation to make sure
-            # that there is already a valid p_delta at step 0
-            self.actor_entities[actor.name] = actor_sim.Actor(actor=actor)
-
-        microgrid_sim = world.start(
-            "Microgrid",
-            sim_id=f"{self.name}.microgrid",
-            step_size=step_size,
-            grid_signals=grid_signals,
-        )
-        self.entity = microgrid_sim.Microgrid(
-            dispatchables=dispatchables, policy=policy,
-        )
-        for actor_entity in self.actor_entities.values():
-            world.connect(actor_entity, self.entity, "power")
-
-    def finalize(self):
-        """Clean up in case the simulation was interrupted.
-
-        Mosaik already has a cleanup functionality but this is an additional safety net
-        in case the user interrupts the simulation before entering the mosiak event loop.
-        """
-        for actor in self.actors:
-            actor.finalize()
-
-
-class _MicrogridSim(mosaik_api_v3.Simulator):
-    """Mosaik simulator that aggregates actor power and dispatches to flexible resources."""
-
-    META = {
-        "type": "time-based",
-        "models": {
-            "Microgrid": {
-                "public": True,
-                "params": ["dispatchables", "policy", "grid_signals"],
-                "attrs": [
-                    "power",
-                    "p_delta",
-                    "grid_signals",
-                    "p_grid",
-                    "dispatch_states",
-                    "policy_state",
-                ],
-            },
-        },
-    }
-
-    def __init__(self):
-        super().__init__(self.META)
-        self.eid = "Microgrid"
-        self.step_size = None
-        self.grid_signals: Optional[dict[str, Signal]] = None
         self.p_delta = 0.0
         self.p_grid = 0.0
-        self.dispatch_states: dict = {}
-        self.policy_state: dict = {}
+        self._resolved_grid_signals: Optional[dict[str, float]] = None
+        self._actor_states: dict[str, dict] = {}
+        self._validate()
 
-    def init(self, sid, time_resolution=1.0, **sim_params):
-        self.step_size = sim_params["step_size"]
-        self.grid_signals = sim_params.get("grid_signals")
-        return self.meta
+    def _validate(self) -> None:
+        if (
+            isinstance(self.step_size, bool)
+            or not isinstance(self.step_size, int)
+            or self.step_size <= 0
+        ):
+            raise ValueError("step_size must be a positive integer number of seconds.")
+        for group in (self.actors, self.dispatchables):
+            names = [item.name for item in group]
+            if any(not isinstance(n, str) or not n for n in names):
+                raise ValueError("Component names must be nonempty strings.")
+            if len(set(names)) != len(names):
+                raise ValueError("Component names must be unique within each microgrid.")
+        for actor in self.actors:
+            period = self.step_size if actor.step_size is None else actor.step_size
+            if (
+                isinstance(period, bool)
+                or not isinstance(period, int)
+                or period <= 0
+                or period % self.step_size
+            ):
+                raise ValueError(
+                    "Actor step size has to be a positive multiple of grid step size."
+                )
+        # Capture the final scenario configuration when Environment.prepare()
+        # validates it, including changes made after add_microgrid().
+        self._sampling = [(a, a.step_size or self.step_size) for a in self.actors]
+        self._powers = {a.name: 0.0 for a in self.actors}
 
-    def create(self, num, model, **model_params):
-        assert num == 1, "Only one instance per simulation is supported"
-        self.dispatchables = model_params["dispatchables"]
-        self.policy = model_params["policy"]
-        return [{"eid": self.eid, "type": model}]
+    def sample(self, elapsed: int) -> None:
+        """Update due actors, holding slower actors' measurements between updates."""
+        for actor, period in self._sampling:
+            if elapsed % period == 0:
+                power, state = actor.sample(elapsed)
+                self._powers[actor.name] = power
+                self._actor_states[actor.name] = state
 
-    def step(self, time, inputs, max_advance):
-        assert self.step_size is not None
+    def advance(self, elapsed: int, external_power: float = 0.0) -> None:
+        """Integrate previous setpoints and dispatch the next interval.
 
-        # Phase 1: Advance dispatchable state from previous round's power setpoints
-        for d in self.dispatchables:
-            d.step(self.step_size)
-
-        # Phase 2: Aggregate actor power into p_delta
-        self.p_delta = sum(inputs[self.eid]["power"].values())
-
-        # Phase 3: Resolve grid signals at current time
-        if self.grid_signals:
-            self._resolved_grid_signals = {
-                name: signal.at(time) for name, signal in self.grid_signals.items()
-            }
-        else:
-            self._resolved_grid_signals = None
-
-        # Phase 4: Dispatch policy allocates new power setpoints
+        At tick zero the initial setpoints are integrated, as in earlier Vessim
+        releases (built-in resources initialize them to zero). No extra update
+        is performed at the exclusive simulation end.
+        """
+        for dispatchable in self.dispatchables:
+            dispatchable.step(self.step_size)
+        self.p_delta = sum(self._powers.values())
+        if external_power:
+            self.p_delta += external_power
+        self._resolved_grid_signals = (
+            {name: signal.at(elapsed) for name, signal in self.grid_signals.items()}
+            if self.grid_signals
+            else None
+        )
         self.p_grid = self.policy.apply(
             self.p_delta,
             duration=self.step_size,
@@ -168,18 +133,26 @@ class _MicrogridSim(mosaik_api_v3.Simulator):
             grid_signals=self._resolved_grid_signals,
         )
 
-        self.policy_state = self.policy.state()
-        self.dispatch_states = {d.name: d.state() for d in self.dispatchables}
+    def state(self) -> MicrogridState:
+        """Return a detached observation, safe to retain across subsequent ticks."""
+        return MicrogridState(
+            p_delta=self.p_delta,
+            p_grid=self.p_grid,
+            actor_states={name: _snapshot(state) for name, state in self._actor_states.items()},
+            policy_state=_snapshot(self.policy.state()),
+            dispatch_states={d.name: _snapshot(d.state()) for d in self.dispatchables},
+            grid_signals=(
+                dict(self._resolved_grid_signals)
+                if self._resolved_grid_signals is not None
+                else None
+            ),
+        )
 
-        return time + self.step_size
-
-    def get_data(self, outputs):
-        return {
-            self.eid: {
-                "p_delta": self.p_delta,
-                "grid_signals": self._resolved_grid_signals,
-                "p_grid": self.p_grid,
-                "dispatch_states": self.dispatch_states,
-                "policy_state": self.policy_state,
-            }
-        }
+    def finalize(self) -> None:
+        """Finalize actors and grid signals when used outside an Environment."""
+        for actor in self.actors:
+            actor.finalize()
+        actor_signals = {id(a.signal) for a in self.actors}
+        for signal in (self.grid_signals or {}).values():
+            if id(signal) not in actor_signals:
+                signal.finalize()

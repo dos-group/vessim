@@ -1,0 +1,558 @@
+{
+  "native": {
+    "static": {
+      "calls": 51323,
+      "profile_seconds": 0.0181595,
+      "top_self_time": [
+        {
+          "function": "_runtime.py:step",
+          "calls": 1000,
+          "self_seconds": 0.0038345460000000003
+        },
+        {
+          "function": "microgrid.py:_snapshot",
+          "calls": 4000,
+          "self_seconds": 0.0022114160000000003
+        },
+        {
+          "function": "microgrid.py:state",
+          "calls": 1000,
+          "self_seconds": 0.001959508
+        },
+        {
+          "function": "~:<built-in method builtins.all>",
+          "calls": 4000,
+          "self_seconds": 0.001322617
+        },
+        {
+          "function": "dispatch_policy.py:apply",
+          "calls": 1000,
+          "self_seconds": 0.001174687
+        },
+        {
+          "function": "microgrid.py:<genexpr>",
+          "calls": 10000,
+          "self_seconds": 0.0010764680000000001
+        },
+        {
+          "function": "microgrid.py:advance",
+          "calls": 1000,
+          "self_seconds": 0.000787892
+        },
+        {
+          "function": "actor.py:sample",
+          "calls": 2000,
+          "self_seconds": 0.0007067400000000001
+        }
+      ]
+    },
+    "traces": {
+      "calls": 65363,
+      "profile_seconds": 0.025803375000000003,
+      "top_self_time": [
+        {
+          "function": "_runtime.py:step",
+          "calls": 1000,
+          "self_seconds": 0.004159690000000001
+        },
+        {
+          "function": "signal.py:at",
+          "calls": 3000,
+          "self_seconds": 0.0026230290000000002
+        },
+        {
+          "function": "microgrid.py:_snapshot",
+          "calls": 4000,
+          "self_seconds": 0.0023012780000000004
+        },
+        {
+          "function": "microgrid.py:state",
+          "calls": 1000,
+          "self_seconds": 0.002107362
+        },
+        {
+          "function": "~:<method 'searchsorted' of 'numpy.ndarray' objects>",
+          "calls": 3000,
+          "self_seconds": 0.00197873
+        },
+        {
+          "function": "microgrid.py:advance",
+          "calls": 1000,
+          "self_seconds": 0.001397779
+        },
+        {
+          "function": "~:<built-in method builtins.all>",
+          "calls": 4000,
+          "self_seconds": 0.001372277
+        },
+        {
+          "function": "microgrid.py:<genexpr>",
+          "calls": 10000,
+          "self_seconds": 0.001297138
+        }
+      ]
+    },
+    "csv": {
+      "calls": 182455,
+      "profile_seconds": 0.08480845799999999,
+      "top_self_time": [
+        {
+          "function": "_util.py:flatten_dict",
+          "calls": 8000,
+          "self_seconds": 0.012109894000000001
+        },
+        {
+          "function": "~:<method 'writerows' of '_csv.writer' objects>",
+          "calls": 1000,
+          "self_seconds": 0.007683524000000001
+        },
+        {
+          "function": "_runtime.py:step",
+          "calls": 1000,
+          "self_seconds": 0.004903864
+        },
+        {
+          "function": "_compiler.py:_optimize_charset",
+          "calls": 85,
+          "self_seconds": 0.00365131
+        },
+        {
+          "function": "signal.py:at",
+          "calls": 3000,
+          "self_seconds": 0.002670427
+        },
+        {
+          "function": "microgrid.py:_snapshot",
+          "calls": 4000,
+          "self_seconds": 0.002519485
+        },
+        {
+          "function": "~:<method 'read' of '_io.BufferedReader' objects>",
+          "calls": 17,
+          "self_seconds": 0.0024306270000000003
+        },
+        {
+          "function": "~:<built-in method _imp.create_dynamic>",
+          "calls": 1,
+          "self_seconds": 0.002425291
+        }
+      ]
+    },
+    "many_grids": {
+      "calls": 127648,
+      "profile_seconds": 0.04396408400000002,
+      "top_self_time": [
+        {
+          "function": "microgrid.py:_snapshot",
+          "calls": 8000,
+          "self_seconds": 0.00502711
+        },
+        {
+          "function": "signal.py:at",
+          "calls": 6000,
+          "self_seconds": 0.004822941000000001
+        },
+        {
+          "function": "microgrid.py:state",
+          "calls": 2000,
+          "self_seconds": 0.004188787
+        },
+        {
+          "function": "~:<method 'searchsorted' of 'numpy.ndarray' objects>",
+          "calls": 6000,
+          "self_seconds": 0.0034441890000000003
+        },
+        {
+          "function": "~:<built-in method builtins.all>",
+          "calls": 8000,
+          "self_seconds": 0.0027169570000000003
+        },
+        {
+          "function": "microgrid.py:advance",
+          "calls": 2000,
+          "self_seconds": 0.002664581
+        },
+        {
+          "function": "microgrid.py:<genexpr>",
+          "calls": 20000,
+          "self_seconds": 0.002446064
+        },
+        {
+          "function": "_runtime.py:step",
+          "calls": 200,
+          "self_seconds": 0.002384373
+        }
+      ]
+    },
+    "mixed_rates": {
+      "calls": 60695,
+      "profile_seconds": 0.02475816699999999,
+      "top_self_time": [
+        {
+          "function": "_runtime.py:step",
+          "calls": 1000,
+          "self_seconds": 0.00439523
+        },
+        {
+          "function": "microgrid.py:_snapshot",
+          "calls": 4000,
+          "self_seconds": 0.0022793550000000003
+        },
+        {
+          "function": "microgrid.py:state",
+          "calls": 1000,
+          "self_seconds": 0.002157397
+        },
+        {
+          "function": "signal.py:at",
+          "calls": 2334,
+          "self_seconds": 0.002094613
+        },
+        {
+          "function": "~:<method 'searchsorted' of 'numpy.ndarray' objects>",
+          "calls": 2334,
+          "self_seconds": 0.0016393830000000001
+        },
+        {
+          "function": "microgrid.py:advance",
+          "calls": 1000,
+          "self_seconds": 0.0014011380000000001
+        },
+        {
+          "function": "~:<built-in method builtins.all>",
+          "calls": 4000,
+          "self_seconds": 0.001358012
+        },
+        {
+          "function": "microgrid.py:<genexpr>",
+          "calls": 10000,
+          "self_seconds": 0.0012567160000000002
+        }
+      ]
+    },
+    "feedback": {
+      "calls": 71358,
+      "profile_seconds": 0.029660416000000002,
+      "top_self_time": [
+        {
+          "function": "_runtime.py:step",
+          "calls": 1000,
+          "self_seconds": 0.005841608000000001
+        },
+        {
+          "function": "signal.py:at",
+          "calls": 3000,
+          "self_seconds": 0.0026770780000000003
+        },
+        {
+          "function": "microgrid.py:_snapshot",
+          "calls": 4000,
+          "self_seconds": 0.002404659
+        },
+        {
+          "function": "microgrid.py:state",
+          "calls": 1000,
+          "self_seconds": 0.002182374
+        },
+        {
+          "function": "~:<method 'searchsorted' of 'numpy.ndarray' objects>",
+          "calls": 3000,
+          "self_seconds": 0.001946435
+        },
+        {
+          "function": "~:<built-in method builtins.all>",
+          "calls": 4000,
+          "self_seconds": 0.0014418810000000001
+        },
+        {
+          "function": "microgrid.py:advance",
+          "calls": 1000,
+          "self_seconds": 0.0014259280000000001
+        },
+        {
+          "function": "dispatch_policy.py:apply",
+          "calls": 1000,
+          "self_seconds": 0.001382462
+        }
+      ]
+    }
+  },
+  "mosaik": {
+    "static": {
+      "calls": 465680,
+      "profile_seconds": 0.223740108,
+      "top_self_time": [
+        {
+          "function": "~:<built-in method marshal.loads>",
+          "calls": 348,
+          "self_seconds": 0.014357045
+        },
+        {
+          "function": "~:<built-in method _imp.create_dynamic>",
+          "calls": 4,
+          "self_seconds": 0.007610042000000001
+        },
+        {
+          "function": "~:<built-in method builtins.getattr>",
+          "calls": 58810,
+          "self_seconds": 0.00622986
+        },
+        {
+          "function": "scheduler.py:sim_process",
+          "calls": 2,
+          "self_seconds": 0.005492370000000001
+        },
+        {
+          "function": "__init__.py:__new__",
+          "calls": 433,
+          "self_seconds": 0.005373564
+        },
+        {
+          "function": "~:<built-in method posix.stat>",
+          "calls": 1290,
+          "self_seconds": 0.005216054
+        },
+        {
+          "function": "~:<built-in method _io.open_code>",
+          "calls": 348,
+          "self_seconds": 0.005043893000000001
+        },
+        {
+          "function": "backends.py:__new__",
+          "calls": 1329,
+          "self_seconds": 0.004716487
+        }
+      ]
+    },
+    "traces": {
+      "calls": 197905,
+      "profile_seconds": 0.10016691600000004,
+      "top_self_time": [
+        {
+          "function": "tiered_time.py:tuple_add",
+          "calls": 2000,
+          "self_seconds": 0.027023303000000002
+        },
+        {
+          "function": "scheduler.py:sim_process",
+          "calls": 2,
+          "self_seconds": 0.005830232
+        },
+        {
+          "function": "_runtime.py:step",
+          "calls": 1000,
+          "self_seconds": 0.005076674000000001
+        },
+        {
+          "function": "microgrid.py:_snapshot",
+          "calls": 4000,
+          "self_seconds": 0.0030813890000000003
+        },
+        {
+          "function": "signal.py:at",
+          "calls": 3000,
+          "self_seconds": 0.002906441
+        },
+        {
+          "function": "microgrid.py:state",
+          "calls": 1000,
+          "self_seconds": 0.002421302
+        },
+        {
+          "function": "~:<method 'searchsorted' of 'numpy.ndarray' objects>",
+          "calls": 3000,
+          "self_seconds": 0.002371447
+        },
+        {
+          "function": "scheduler.py:step",
+          "calls": 1000,
+          "self_seconds": 0.002180342
+        }
+      ]
+    },
+    "csv": {
+      "calls": 298877,
+      "profile_seconds": 0.1148296239999999,
+      "top_self_time": [
+        {
+          "function": "_util.py:flatten_dict",
+          "calls": 8000,
+          "self_seconds": 0.012370197000000001
+        },
+        {
+          "function": "~:<method 'writerows' of '_csv.writer' objects>",
+          "calls": 1000,
+          "self_seconds": 0.008512256000000001
+        },
+        {
+          "function": "scheduler.py:sim_process",
+          "calls": 2,
+          "self_seconds": 0.006039977
+        },
+        {
+          "function": "_runtime.py:step",
+          "calls": 1000,
+          "self_seconds": 0.005528037
+        },
+        {
+          "function": "~:<method 'items' of 'dict' objects>",
+          "calls": 28046,
+          "self_seconds": 0.0031170290000000003
+        },
+        {
+          "function": "signal.py:at",
+          "calls": 3000,
+          "self_seconds": 0.002957303
+        },
+        {
+          "function": "~:<built-in method builtins.isinstance>",
+          "calls": 33214,
+          "self_seconds": 0.0029093390000000004
+        },
+        {
+          "function": "microgrid.py:_snapshot",
+          "calls": 4000,
+          "self_seconds": 0.0025733820000000004
+        }
+      ]
+    },
+    "many_grids": {
+      "calls": 156500,
+      "profile_seconds": 0.057834542000000044,
+      "top_self_time": [
+        {
+          "function": "microgrid.py:_snapshot",
+          "calls": 8000,
+          "self_seconds": 0.006399789
+        },
+        {
+          "function": "signal.py:at",
+          "calls": 6000,
+          "self_seconds": 0.005129348000000001
+        },
+        {
+          "function": "microgrid.py:state",
+          "calls": 2000,
+          "self_seconds": 0.004204029000000001
+        },
+        {
+          "function": "~:<method 'searchsorted' of 'numpy.ndarray' objects>",
+          "calls": 6000,
+          "self_seconds": 0.0035624840000000003
+        },
+        {
+          "function": "microgrid.py:advance",
+          "calls": 2000,
+          "self_seconds": 0.002807088
+        },
+        {
+          "function": "~:<built-in method builtins.all>",
+          "calls": 8000,
+          "self_seconds": 0.002647169
+        },
+        {
+          "function": "_runtime.py:step",
+          "calls": 200,
+          "self_seconds": 0.002446812
+        },
+        {
+          "function": "microgrid.py:<genexpr>",
+          "calls": 20000,
+          "self_seconds": 0.002390475
+        }
+      ]
+    },
+    "mixed_rates": {
+      "calls": 193234,
+      "profile_seconds": 0.06977579200000003,
+      "top_self_time": [
+        {
+          "function": "scheduler.py:sim_process",
+          "calls": 2,
+          "self_seconds": 0.005578449
+        },
+        {
+          "function": "_runtime.py:step",
+          "calls": 1000,
+          "self_seconds": 0.004636137
+        },
+        {
+          "function": "microgrid.py:_snapshot",
+          "calls": 4000,
+          "self_seconds": 0.003302695
+        },
+        {
+          "function": "microgrid.py:state",
+          "calls": 1000,
+          "self_seconds": 0.0022661670000000004
+        },
+        {
+          "function": "signal.py:at",
+          "calls": 2334,
+          "self_seconds": 0.0022493260000000003
+        },
+        {
+          "function": "scheduler.py:step",
+          "calls": 1000,
+          "self_seconds": 0.002094218
+        },
+        {
+          "function": "tiered_time.py:__add__",
+          "calls": 2000,
+          "self_seconds": 0.0018694120000000002
+        },
+        {
+          "function": "scheduler.py:advance_progress",
+          "calls": 1001,
+          "self_seconds": 0.0018551440000000002
+        }
+      ]
+    },
+    "feedback": {
+      "calls": 203898,
+      "profile_seconds": 0.07441070999999998,
+      "top_self_time": [
+        {
+          "function": "scheduler.py:sim_process",
+          "calls": 2,
+          "self_seconds": 0.005604860000000001
+        },
+        {
+          "function": "_runtime.py:step",
+          "calls": 1000,
+          "self_seconds": 0.004998095
+        },
+        {
+          "function": "signal.py:at",
+          "calls": 3000,
+          "self_seconds": 0.002809971
+        },
+        {
+          "function": "microgrid.py:_snapshot",
+          "calls": 4000,
+          "self_seconds": 0.002620105
+        },
+        {
+          "function": "microgrid.py:state",
+          "calls": 1000,
+          "self_seconds": 0.0023489070000000003
+        },
+        {
+          "function": "~:<method 'searchsorted' of 'numpy.ndarray' objects>",
+          "calls": 3000,
+          "self_seconds": 0.002225574
+        },
+        {
+          "function": "scheduler.py:step",
+          "calls": 1000,
+          "self_seconds": 0.002109232
+        },
+        {
+          "function": "scheduler.py:advance_progress",
+          "calls": 1001,
+          "self_seconds": 0.002016288
+        }
+      ]
+    }
+  }
+}

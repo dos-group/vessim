@@ -4,26 +4,16 @@
     <img alt="Vessim Logo" src="assets/logo.png" width="300" />
 </div>
 
-Vessim is a **co-simulation testbed for microgrids**\*
+Vessim helps you design and test energy-aware systems. Combine applications, renewable generation, batteries, and a grid connection to understand how your system uses energy and how to improve it.
 
-Vessim lets you model how loads, (renewable) generation, energy storage, and the public grid interact, and test control and dispatch strategies against them, in pure simulation or with **real software and hardware** in the loop.
+Vessim is mainly used in two ways:
 
-*\*By "microgrid" we mean any local energy system that combines loads, generation, and storage behind a grid connection. Grids can scale from small battery-constrained systems to a GW-scale datacenter campus.*
+- **Simulation studies:** find designs and control strategies that reduce energy costs, emissions, or reliance on the grid. Compare battery sizes, explore how workloads can follow renewable generation, and test how your choices hold up under changing conditions.
+- **Live experiments:** test energy-aware software with real measurements and running systems. Connect an application to simulated solar panels and batteries, observe how it responds, and refine its behavior before deploying physical infrastructure.
 
+A **digital twin** connects these use cases. Measurements from a running system can inform studies of what could happen next and help evaluate possible changes.
 
-## What can I do with Vessim?
-
-Vessim helps you understand and optimize how loads, energy sources, and storage interact.
-It was originally designed for energy-aware and carbon-aware data centers, but has also been used for other use cases such as battery price arbitrage and demand response for cooling warehouses.
-
-- **Control and dispatch strategies**: test battery charging/discharging, load-shifting, and price- or carbon-driven dispatch.
-- **Demand response and power outages**: simulate demand response signals or power outages to understand your system's flexibility and test mitigation strategies.
-- **Microgrid composition**: experiment with adding solar panels, wind turbines, or batteries to see how they would affect your energy costs and carbon emissions.
-- **Energy- and carbon-aware computing**: develop applications that adapt their energy consumption to the carbon intensity and price of electricity.
-
-Vessim can simulate multiple distributed microgrids in parallel and easily integrates historical datasets and new simulators.
-Vessim's [software-in-the-loop](concepts/sil.md) capabilities let you run real systems against simulated microgrids. 
-
+Use the same component models for simulation studies and live experiments. Vessim runs them directly by default and supports connecting external simulators through mosaik in either mode. See [execution and coupling](concepts/execution.md).
 
 ## How Vessim Works
 
@@ -31,12 +21,11 @@ Vessim simulates local energy systems, called *microgrids*, that combine loads (
 
 ![Vessim Overview](assets/vessim_overview.png)
 
-Vessim is built on [Mosaik](https://mosaik.offis.de), a general-purpose co-simulation framework.
-Each hexagon in the diagram is a Mosaik component that can be simulated or run as real software (software-in-the-loop).
+The component models are independent of their execution backend. Multiple microgrids advance together inside one environment. Independent study runs can be distributed across Python worker processes.
 A microgrid is composed of three kinds of building blocks:
 
 - [Actors](concepts/signals.md) (red): exogenous consumers and producers whose power is determined by a [`Signal`](api_reference/signal.md). Their sum at each step is the microgrid's *power delta*.
-- [Dispatchables](concepts/dispatchables.md) (gray): controllable resources like batteries or generators. A [`DispatchPolicy`](api_reference/dispatch_policy.md) decides how to distribute the power delta across them; any remainder is exchanged with the public grid.
+- [Dispatchables](concepts/dispatchables.md) (gray): controllable resources like batteries or generators. A [`DispatchPolicy`](api_reference/dispatch_policy.md) decides how to distribute the power delta across them. Any remainder is exchanged with the public grid.
 - [Controllers](concepts/controllers.md) (yellow): observe the simulation each step. Built-in loggers record the state, and custom controllers can adjust dispatch parameters or expose the simulation via APIs.
 
 
@@ -54,6 +43,8 @@ Install the [latest release](https://pypi.org/project/vessim/) via [pip](https:/
 ```console
 pip install vessim
 ```
+
+For external simulator coupling, install `pip install 'vessim[mosaik]'`. For both integrations use `pip install 'vessim[sil,mosaik]'`.
 
 For [software-in-the-loop](concepts/sil.md) capabilities, install the `sil` extra:
 

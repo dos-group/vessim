@@ -3,8 +3,6 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Optional
 
-import mosaik_api_v3  # type: ignore
-
 from vessim.signal import Signal
 
 
@@ -63,47 +61,14 @@ class Actor:
         """Clean up resources."""
         self.signal.finalize()
 
+    def sample(self, elapsed: timedelta | float) -> tuple[float, dict]:
+        """Sample power and state once per actor update.
 
-class _ActorSim(mosaik_api_v3.Simulator):
-    META = {
-        "type": "time-based",
-        "models": {
-            "Actor": {
-                "public": True,
-                "params": ["actor"],
-                "attrs": ["power", "state"],
-            },
-        },
-    }
-
-    def __init__(self):
-        super().__init__(self.META)
-        self.eid = None
-        self.step_size = None
-        self.actor = None
-        self.power = 0
-        self.state = {}
-
-    def init(self, sid, time_resolution=1.0, **sim_params):
-        self.step_size = sim_params["step_size"]
-        return self.meta
-
-    def create(self, num, model, **model_params):
-        assert num == 1, "Only one instance per simulation is supported"
-        self.actor = model_params["actor"]
-        self.eid = self.actor.name
-        return [{"eid": self.eid, "type": model}]
-
-    def step(self, time, inputs, max_advance):
-        assert self.actor is not None
-        self.power = self.actor.power(time)
-        self.state = self.actor.state(time)
-        assert self.step_size is not None
-        return time + self.step_size
-
-    def get_data(self, outputs):
-        return {self.eid: {"power": self.power, "state": self.state}}
-
-    # TODO: implement finalize() that calls self.actor.finalize() so SiL
-    # signal background polling threads stop on normal simulation exit
-    # (currently only stopped on exception via Microgrid.finalize()).
+        The default state reuses sampled power. Overrides of ``state`` are
+        still called; expensive custom actors can override this method to
+        return both values from one computation.
+        """
+        power = self.power(elapsed)
+        default_state = type(self).state is Actor.state and "state" not in self.__dict__
+        state = {"power": power} if default_state else self.state(elapsed)
+        return power, state

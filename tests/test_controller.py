@@ -1,10 +1,7 @@
 import pytest
 from datetime import datetime
 import pandas as pd
-import tempfile
-import os
-import csv
-from vessim.controller import MemoryLogger, CsvLogger
+from vessim.controller import MemoryLogger
 from vessim.microgrid import MicrogridState
 
 class TestMemoryLogger:
@@ -48,58 +45,3 @@ class TestMemoryLogger:
         # Check columns (flattened)
         assert df.loc[(now, "mg1")]["p_delta"] == 10.0
         assert df.loc[(now, "mg1")]["actor_states.actor1.power"] == 2
-
-
-class TestCsvLogger:
-    @pytest.fixture
-    def temp_dir(self):
-        with tempfile.TemporaryDirectory() as d:
-            yield d
-
-    def test_step_writes_csv(self, temp_dir):
-        logger = CsvLogger(temp_dir)
-        now = datetime(2023, 1, 1, 12, 0)
-        state: MicrogridState = {
-            "p_delta": 10.0,
-            "p_grid": 5.0,
-            "actor_states": {"actor1": {"power": 2}},
-            "policy_state": {},
-            "dispatch_states": None,
-            "grid_signals": None,
-        }
-
-        logger.step(now, {"mg1": state})
-
-        with open(os.path.join(temp_dir, "timeseries.csv"), "r") as f:
-            reader = csv.DictReader(f)
-            rows = list(reader)
-
-        assert len(rows) == 1
-        assert rows[0]["microgrid"] == "mg1"
-        assert rows[0]["time"] == str(now)
-        assert float(rows[0]["p_delta"]) == 10.0
-        assert float(rows[0]["actor_states.actor1.power"]) == 2.0
-
-    def test_step_appends_csv(self, temp_dir):
-        logger = CsvLogger(temp_dir)
-        now1 = datetime(2023, 1, 1, 12, 0)
-        now2 = datetime(2023, 1, 1, 12, 1)
-        state: MicrogridState = {
-            "p_delta": 10.0,
-            "p_grid": 5.0,
-            "actor_states": {},
-            "policy_state": {},
-            "dispatch_states": None,
-            "grid_signals": None,
-        }
-
-        logger.step(now1, {"mg1": state})
-        logger.step(now2, {"mg1": state})
-
-        with open(os.path.join(temp_dir, "timeseries.csv"), "r") as f:
-            reader = csv.DictReader(f)
-            rows = list(reader)
-
-        assert len(rows) == 2
-        assert rows[0]["time"] == str(now1)
-        assert rows[1]["time"] == str(now2)

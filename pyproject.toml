@@ -31,14 +31,16 @@ requires-python = ">=3.9,<3.14"
 dependencies = [
     "numpy>=1.26.0",
     "pandas>=2.0.0",
-    "mosaik>=3.3.0",
-    "mosaik-api-v3>=3.0.4",
     "loguru>=0.6.0",
-    "docopt-ng>=0.9.0",  # mosaik-api-v3 depends on an outdated version of docopt, doctopt-ng is a maintained fork
     "pyyaml>=6.0.0",
 ]
 
 [project.optional-dependencies]
+mosaik = [
+    "mosaik>=3.6.0,<4",
+    "mosaik-api-v3>=3.0.4,<4",
+    "docopt-ng>=0.9.0",
+]
 sil = [
     "requests>=2.26.0",          # PrometheusSignal, WatttimeSignal, Api
     "fastapi>=0.104.0",          # Api broker
