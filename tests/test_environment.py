@@ -34,7 +34,7 @@ def test_native_setup_and_freeze():
     assert list(env.microgrids) == ["microgrid_0"]
     env.prepare()
     with pytest.raises(RuntimeError, match="frozen"):
-        env.add_controller(vs.MemoryLogger())
+        env.add_controller(vs.Recorder(metrics=False))
     env.close()
     with pytest.raises(RuntimeError, match="once"):
         env.run(until=1)

@@ -92,35 +92,33 @@ environment.add_microgrid(
 
 ## 6. Results and running
 
-For large configuration sweeps, `Summary` accumulates grid import/export energy and peak power in bounded memory. Its optional JSON output is written once at finalization:
+`Recorder` collects metrics and time series by default. With an output directory,
+it streams the trajectory to disk and writes a shared experiment record:
 
 ```python
-summary = environment.add_controller(vs.Summary("results/summary.json"))
-```
-
-`environment.run(until=...)` returns a `RunResult` with the final observation, step count, last tick timestamp, requested horizon, and execution time. An environment runs once. Build fresh batteries, policies, and controllers for each scenario, while reusing immutable traces. See the [study example](https://github.com/dos-group/vessim/blob/main/examples/battery_sizing_study.py).
-
-For this walkthrough we also retain a full trajectory so it can be explored in the viewer.
-
-### Full trajectory logging
-
-The last ingredient is a [`Controller`](api_reference/controller.md). 
-Controllers observe the simulation at every step and can react to it.
-We use the built-in [`CsvLogger`](api_reference/controller.md#vessim.CsvLogger), which writes the experiment configuration and full timeseries to a directory:
-
-```python
-environment.add_controller(vs.CsvLogger("results/basic_example"))
-
-result = environment.run(until=24 * 3600)  # 24 hours, exclusive end
+recorder = environment.add_controller(vs.Recorder("results/basic_example"))
+run = environment.run(until=24 * 3600)
+print(recorder.result.metrics["microgrids"]["datacenter"]["grid_import"])
 ```
 
 After the run, `results/basic_example/` contains:
 
-```
+```text
 results/basic_example/
-  metadata.yaml    # static experiment configuration
-  timeseries.csv   # power flows, battery state, grid signals at every step
+  experiment.json  # configuration, parameters, status, metrics and their definitions
+  timeseries.csv   # detailed observations
 ```
+
+For a large study, use `vs.Recorder(timeseries=False)` to keep compact metrics in
+memory. Without an output path, enabled time series stay in memory and are available
+through `recorder.to_df()`. See [Recording and metrics](concepts/results.md) for custom
+calculations and optimizer integration.
+
+`environment.run()` returns a `RunResult` with the final observation and execution
+information. `recorder.result` contains the complete experiment record. An environment
+runs once. Build fresh models and recorders for each scenario and reuse immutable
+traces. The [battery sizing example](https://github.com/dos-group/vessim/blob/main/examples/battery_sizing_study.py)
+collects many experiments into one study file.
 
 Custom controllers can do much more than logging: they can mutate the dispatch policy at runtime or expose the simulation as a REST API. See [Controllers](concepts/controllers.md) and [Software-in-the-Loop](concepts/sil.md).
 
@@ -161,7 +159,7 @@ environment.add_microgrid(
     },
 )
 
-environment.add_controller(vs.CsvLogger("results/basic_example"))
+environment.add_controller(vs.Recorder("results/basic_example"))
 environment.run(until=24 * 3600)
 ```
 

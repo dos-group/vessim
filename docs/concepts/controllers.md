@@ -3,53 +3,13 @@
 A [`Controller`](../api_reference/controller.md) is executed at every simulation step. 
 It can observe the state of all microgrids, log it, and modify components of the running simulation, for example by changing parameters of a [`DispatchPolicy`](../api_reference/dispatch_policy.md) on the fly.
 
-All built-in controllers use the same `start`, `step`, and `finalize` interface. Choose them according to what you need from a run:
+The built-in [`Recorder`](../api_reference/recorder.md) collects metrics and optional
+time series using the same interface as other controllers. It supports files and
+in-memory analysis. See [Recording experiments and metrics](results.md) for defaults,
+custom metrics, and the shared result format.
 
-| Controller | Purpose | What it retains or exposes |
-|---|---|---|
-| [`Summary`](../api_reference/controller.md#vessim.Summary) | Compare the outcomes of many scenarios | Grid import/export energy and peak power, with optional JSON output at completion |
-| [`MemoryLogger`](../api_reference/controller.md#vessim.MemoryLogger) | Analyze a run in Python or a notebook | Every tick in memory, accessible as a dictionary or DataFrame |
-| [`CsvLogger`](../api_reference/controller.md#vessim.CsvLogger) | Save a detailed run and open it in the viewer | Every tick in a CSV file, plus experiment metadata |
-| [`Api`](../api_reference/controller.md#vessim.Api) | Interact with a running experiment | Current state and control commands over HTTP |
-
-`Summary` is an ordinary controller that updates a few counters at each tick. It does not retain the observations it receives. The loggers remain useful when you need to see when and why something happened. You can combine controllers, or implement your own metrics and control logic by subclassing `Controller`.
-
-## Compact results for studies
-
-For configuration sweeps and Monte Carlo studies, retain aggregate results rather than full trajectories:
-
-```python
-summary = environment.add_controller(vs.Summary("results/summary.json"))
-result = environment.run(until=86400)
-print(summary.metrics)
-```
-
-The JSON file is optional and is written only on finalization. `metrics` contains grid import/export energy in Wh and peak import/export power in W for each microgrid. The final interval is clipped to the requested horizon. Failed or interrupted runs are labeled as partial. Custom metrics such as cost or emissions belong in an ordinary `Controller`. Their units and treatment of imports/exports depend on the experiment.
-
-`run()` itself retains only the final observation. `Summary` retains a fixed number of counters per microgrid. `MemoryLogger` retains every tick and therefore grows with run length.
-
-## Logging with CsvLogger
-
-Use [`CsvLogger`](../api_reference/controller.md#vessim.CsvLogger) when you want to save a detailed trajectory. It writes the static configuration and the full timeseries to a directory:
-
-```python
-environment.add_controller(vs.CsvLogger("results/my_experiment"))
-```
-
-The logger keeps one buffered file open. In study mode it flushes on close. In live mode it flushes each tick. Pass `flush=True` or `flush=False` to override this. All microgrids share a column union determined at the first tick. Later schema changes raise an error.
-
-After the run, the directory contains:
-
-```
-results/my_experiment/
-  metadata.yaml    # static experiment configuration
-  timeseries.csv   # power flows, battery state, grid signals at every step
-```
-
-These two files are exactly what the [experiment viewer](../getting_started.md#7-exploring-the-results) consumes. Open them in your browser with `vessim view results/my_experiment`.
-
-!!! tip "MemoryLogger"
-    For interactive exploration in a notebook, use [`vs.MemoryLogger()`](../api_reference/controller.md#vessim.MemoryLogger) instead. It keeps the simulation state in memory and exposes `.to_df()` for direct DataFrame analysis.
+The [`Api`](../api_reference/controller.md#vessim.Api) controller exposes a running
+experiment over HTTP. Custom controllers implement application-specific control.
 
 ## Writing a custom controller
 
@@ -99,7 +59,7 @@ Add it to the environment alongside the logger:
 
 ```python
 environment.add_controller(ScheduledCharger("datacenter"))
-environment.add_controller(vs.CsvLogger("results/scheduled"))
+environment.add_controller(vs.Recorder("results/scheduled"))
 ```
 
 The same pattern works for any policy parameter: switch between policies, raise/lower a battery's `min_soc`, or react to grid signals exposed via `microgrid_states[name]["grid_signals"]`.

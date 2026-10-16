@@ -328,6 +328,30 @@ class Environment:
                 errors.append(exc)
         if self.status in ("created", "prepared"):
             self.status = "closed"
+        if errors and self.status not in ("failed", "interrupted"):
+            self.status = "failed"
+        # Recorders collect metrics during finalize(), but must publish only after
+        # every controller, signal, and backend has had its cleanup attempted.
+        from vessim.recorder import Recorder
+
+        recorders = [c for c in self._started_controllers if isinstance(c, Recorder)]
+        publication_failed = False
+        for recorder in recorders:
+            try:
+                recorder._complete()
+            except BaseException as exc:
+                errors.append(exc)
+                publication_failed = True
+        if publication_failed:
+            if self.status != "interrupted":
+                self.status = "failed"
+            # A later writer can fail after another has published. Synchronize
+            # every result and retry publication of the final failure status.
+            for recorder in recorders:
+                try:
+                    recorder._complete()
+                except BaseException:
+                    pass  # Preserve the first error; all writers were attempted.
         if errors:
             raise errors[0]
 

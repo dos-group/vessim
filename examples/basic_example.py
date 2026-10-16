@@ -8,14 +8,14 @@ import vessim as vs
 
 DATASETS = f"{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/datasets"
 
-# The Environment manages simulation time and the synchronization between simulators.
+# Native execution runs this simulation study as fast as possible.
 # We step every 5 minutes (300 s).
 environment = vs.Environment(sim_start="2026-05-05", step_size=300)
 
 # A microgrid combines actors (consumers/producers), optional dispatchables (batteries,
 # diesel/gas generators, ...), and optional grid signals (electricity price, carbon
 # intensity, curtailment, demand response, ...).
-# Call add_microgrid() multiple times to simulate geo-distributed sites in parallel.
+# Call add_microgrid() multiple times to simulate geo-distributed sites together.
 environment.add_microgrid(
     name="datacenter",
     actors=[
@@ -25,7 +25,7 @@ environment.add_microgrid(
         vs.Actor(name="server", signal=vs.StaticSignal(value=700), consumer=True),
 
         # Trace replays a time series. The CSV is offset-indexed (first column =
-        # seconds since the trace start). Solar data is normalized 0..1; we
+        # seconds since the trace start). Solar data is normalized 0..1. We
         # scale it to a 5 kW peak.
         vs.Actor(
             name="solar_panel",
@@ -52,9 +52,9 @@ environment.add_microgrid(
     },
 )
 
-# CsvLogger writes metadata.yaml + timeseries.csv to the output directory. View the
+# Recorder writes experiment.json + timeseries.csv to the output directory. View the
 # results in your browser with: `vessim view results/basic_example`
-environment.add_controller(vs.CsvLogger(outdir="results/basic_example"))
+environment.add_controller(vs.Recorder(output="results/basic_example"))
 
 # Run the simulation for 24 hours (24 * 3600 seconds).
 environment.run(until=24 * 3600)

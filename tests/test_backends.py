@@ -66,7 +66,7 @@ def test_pre_refactor_trajectory(backend, case, tmp_path):
 def test_boundaries_and_empty_dispatchables(backend, horizon):
     env = vs.Environment("2026-01-01", backend=backend)
     env.add_microgrid([vs.Actor("a.with.dots", vs.StaticSignal(1))], name="grid.with.dots")
-    log = env.add_controller(vs.MemoryLogger())
+    log = env.add_controller(vs.Recorder(metrics=False))
     result = env.run(horizon)
     assert result.steps == len(range(0, int(np.ceil(horizon))))
     assert all(state["grid.with.dots"]["dispatch_states"] == {} for state in log.log.values())
@@ -133,7 +133,7 @@ def test_sampling_feedback_and_integration_order(backend):
     env = vs.Environment("2026-01-01", step_size=60, backend=backend)
     env.add_microgrid([vs.Actor("a", signal, step_size=120)], [battery], name="grid")
     env.add_controller(Feedback())
-    log = env.add_controller(vs.MemoryLogger())
+    log = env.add_controller(vs.Recorder(metrics=False))
     env.run(180)
     rows = [row["grid"] for row in log.log.values()]
     assert samples == [0, 120]  # One read per actor update.
@@ -217,7 +217,7 @@ def test_custom_actor_and_dispatchable_extensions(backend):
     env = vs.Environment("2026-01-01", step_size=60, backend=backend)
     device = Device()
     env.add_microgrid([Actor("a", vs.StaticSignal(100))], [device], name="grid")
-    log = env.add_controller(vs.MemoryLogger())
+    log = env.add_controller(vs.Recorder(metrics=False))
     result = env.run(120)
     rows = list(log.log.values())
     assert rows[0]["grid"]["dispatch_states"]["device"]["nested"]["energy"] == 0

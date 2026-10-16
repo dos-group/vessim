@@ -2,7 +2,14 @@
 
 from vessim.actor import Actor
 from vessim._runtime import RunResult
-from vessim.controller import Controller, MemoryLogger, CsvLogger, Summary
+from vessim.controller import Controller
+from vessim.recorder import Recorder, ExperimentResult
+from vessim.metrics import (
+    Metric,
+    ElectricityImportCost,
+    ElectricityExportRevenue,
+    GridImportEmissions,
+)
 from vessim.dispatch_policy import DispatchPolicy, DefaultDispatchPolicy
 from vessim.dispatchable import Dispatchable, Storage, SimpleBattery, ClcBattery
 from vessim.environment import Environment
@@ -11,11 +18,14 @@ from vessim.signal import Signal, Trace, StaticSignal
 
 __all__ = [
     "RunResult",
-    "Summary",
+    "Recorder",
+    "ExperimentResult",
+    "Metric",
+    "ElectricityImportCost",
+    "ElectricityExportRevenue",
+    "GridImportEmissions",
     "Actor",
     "Controller",
-    "MemoryLogger",
-    "CsvLogger",
     "Microgrid",
     "MicrogridState",
     "Environment",

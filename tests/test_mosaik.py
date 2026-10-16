@@ -27,7 +27,7 @@ def test_external_power_and_delayed_feedback(live, tmp_path):
     with env:
         source = env.world.start("Source", marker=str(marker), records=records).Source()
         env.add_microgrid([], name="external")
-        log = env.add_controller(vs.MemoryLogger())
+        log = env.add_controller(vs.Recorder(metrics=False))
         env.prepare()
         entity = env.entities["external"]
         env.world.connect(source, entity, "power")
@@ -52,7 +52,7 @@ def test_external_slower_sampling_and_cleanup(tmp_path):
     with env:
         source = env.world.start("Source", marker=str(marker), period=2).Source()
         env.add_microgrid([], name="external")
-        log = env.add_controller(vs.MemoryLogger())
+        log = env.add_controller(vs.Recorder(metrics=False))
         env.prepare()
         env.world.connect(source, env.entities["external"], "power")
         env.run(5)

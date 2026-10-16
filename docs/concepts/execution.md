@@ -20,13 +20,14 @@ with vs.Environment("2026-01-01", step_size=60) as env:
         vs.Actor("solar", solar),
         vs.Actor("load", load, consumer=True),
     ], name="site")
-    summary = env.add_controller(vs.Summary("results/summary.json"))
+    recorder = env.add_controller(vs.Recorder("results/experiment", timeseries=False))
     result = env.run(until=86400)
 ```
 
-`Summary` uses bounded memory and writes its optional JSON output only when the
-run is finalized. For detailed investigations, add `MemoryLogger` or `CsvLogger`.
-The final observation is available as `result.states`. It is not a trajectory.
+`Recorder(timeseries=False)` collects compact metrics in bounded memory and writes
+its record at completion. By default, `Recorder` also retains detailed observations.
+See [recording and metrics](results.md) for the shared format and custom calculations.
+The environment's `result.states` is the final observation.
 
 For Monte Carlo sampling and configuration exploration, assign a deterministic
 seed to each scenario, load traces once per worker, and parallelize independent
@@ -69,7 +70,7 @@ with vs.Environment("2026-01-01", backend="mosaik", sim_config={
 }) as env:
     source = env.world.start("External").Source()
     env.add_microgrid(actors=[], name="site")
-    env.add_controller(vs.Summary())
+    env.add_controller(vs.Recorder(timeseries=False))
     env.prepare()
     env.world.connect(source, env.entities["site"], ("watts", "power"))
     result = env.run(until=3600)

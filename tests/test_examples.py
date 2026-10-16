@@ -46,16 +46,20 @@ def test_battery_sizing_study_is_reproducible_across_workers(tmp_path):
             capture_output=True,
             text=True,
         )
-    assert json.loads((tmp_path / "1.json").read_text()) == json.loads(
-        (tmp_path / "2.json").read_text()
-    )
+    sequential = json.loads((tmp_path / "1.json").read_text())["experiments"]
+    parallel = json.loads((tmp_path / "2.json").read_text())["experiments"]
+    # Wall-clock execution timestamps differ, scientific results must not.
+    for first, second in zip(sequential, parallel):
+        for key in ("run_id", "parameters", "config", "metrics", "metric_definitions"):
+            assert first[key] == second[key]
+        assert first["execution"]["status"] == second["execution"]["status"] == "completed"
 
 
 def test_external_simulator_coupling():
     pytest.importorskip("mosaik")
     result = run_script("external_simulator_coupling.py")
     assert result.returncode == 0, result.stderr
-    assert "grid_import_wh" in result.stdout
+    assert "grid_import" in result.stdout
 
 
 def test_live_server_monitoring(tmp_path):
@@ -111,3 +115,16 @@ def test_live_server_monitoring(tmp_path):
         server.shutdown()
         worker.join()
         server.server_close()
+
+
+def test_custom_metrics_example():
+    import json
+
+    result = run_script("custom_metrics.py")
+    assert result.returncode == 0, result.stderr
+    assert "Objectives:" in result.stdout
+    with open("results/custom_metrics/experiment.json") as file:
+        record = json.load(file)
+    assert record["timeseries"] is None
+    assert record["metrics"]["actors"]["site"]["solar"]["area"] == 25
+    assert record["execution"]["status"] == "completed"

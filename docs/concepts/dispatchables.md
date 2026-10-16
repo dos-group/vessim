@@ -91,7 +91,7 @@ To model hardware that does not fit a battery model, subclass [`Dispatchable`](.
 |---|---|
 | `feasible_range(duration)` | Return `(min_power, max_power)` achievable for the timestep. |
 | `step(duration)` | Advance internal state after `current_power` has been set. |
-| `config()` | Return static parameters (logged once to `metadata.yaml`). |
+| `config()` | Return static parameters (logged once to `experiment.json`). |
 | `state()` | Return dynamic state (logged each step to `timeseries.csv`). |
 
 A diesel generator is stateless and only generates (negative power):

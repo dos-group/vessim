@@ -1,47 +1,31 @@
-import pytest
-from datetime import datetime
 import pandas as pd
-from vessim.controller import MemoryLogger
-from vessim.microgrid import MicrogridState
+import pytest
 
-class TestMemoryLogger:
-    @pytest.fixture
-    def logger(self):
-        return MemoryLogger()
+import vessim as vs
 
-    @pytest.fixture
-    def sample_data(self):
-        now = datetime(2023, 1, 1, 12, 0)
-        state: MicrogridState = {
-            "p_delta": 10.0,
-            "p_grid": 5.0,
-            "actor_states": {"actor1": {"power": 2}},
-            "policy_state": {"mode": "charge"},
-            "dispatch_states": {"battery": {"soc": 0.5}},
-            "grid_signals": {"co2": 100},
-        }
-        return now, {"mg1": state}
 
-    def test_step_logs_data(self, logger, sample_data):
-        now, states = sample_data
-        logger.step(now, states)
-        assert logger.log[now] == states
+def test_in_memory_record_and_dataframe(tmp_path):
+    env = vs.Environment("2026-01-01", step_size=60)
+    env.add_microgrid([vs.Actor("load", vs.StaticSignal(-100))], name="site")
+    rec = env.add_controller(vs.Recorder())
+    env.run(120)
+    frame = rec.to_df()
+    assert isinstance(frame, pd.DataFrame)
+    assert len(frame) == 2
+    assert frame.index.names == ["time", "microgrid"]
+    assert frame.iloc[0]["p_grid"] == -100
+    assert len(rec.log) == 2
+    assert rec.result.timeseries is None
+    rec.result.save(tmp_path / "experiment.json")
+    loaded = vs.ExperimentResult.load(tmp_path)
+    assert loaded.timeseries is None
+    assert loaded.metrics == rec.metrics
 
-    def test_to_dict(self, logger, sample_data):
-        now, states = sample_data
-        logger.step(now, states)
-        d = logger.to_dict()
-        assert d[now] == states
 
-    def test_to_df(self, logger, sample_data):
-        now, states = sample_data
-        logger.step(now, states)
-        df = logger.to_df()
-
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) == 1
-        # Check index
-        assert df.index[0] == (now, "mg1")
-        # Check columns (flattened)
-        assert df.loc[(now, "mg1")]["p_delta"] == 10.0
-        assert df.loc[(now, "mg1")]["actor_states.actor1.power"] == 2
+def test_no_trajectory_means_no_dataframe():
+    env = vs.Environment("2026-01-01")
+    env.add_microgrid([vs.Actor("load", vs.StaticSignal(-100))])
+    rec = env.add_controller(vs.Recorder(timeseries=False))
+    env.run(1)
+    with pytest.raises(RuntimeError, match="disabled"):
+        rec.to_df()

@@ -16,9 +16,9 @@ class Metric:
 
     Override start(), step(), or finalize() as needed. ``duration`` is the
     observation's interval in seconds, clipped at the requested horizon.
-    ``finalize`` receives all built-in metrics and earlier custom metrics in
-    registration order. Return None when a value is undefined, such as a ratio
-    with a zero denominator. Metrics must not change simulation components.
+    ``finalize()`` returns this calculator's scalar or None when undefined.
+    Attach constants and derived values with ExperimentResult.add_metric()
+    after the run. Metrics must not change simulation components.
 
     Args:
         unit: Unit of the result, such as Wh, EUR, kgCO2e, or 1 for a ratio.
@@ -52,13 +52,11 @@ class Metric:
         """Initialize counters or calculate scenario-dependent values."""
         self.value = 0.0
 
-    def step(
-        self, now: datetime, states: dict[str, MicrogridState], duration: float
-    ) -> None:
+    def step(self, now: datetime, states: dict[str, MicrogridState], duration: float) -> None:
         """Accumulate one observation without retaining the trajectory."""
 
-    def finalize(self, metrics: dict) -> Optional[float]:
-        """Return the final value or derive it from already completed metrics."""
+    def finalize(self) -> Optional[float]:
+        """Return the final scalar computed by this calculator."""
         return self.value
 
     def definition(self) -> dict:
@@ -70,33 +68,24 @@ class Metric:
         }
 
 
-class ConstantMetric(Metric):
-    """Record a supplied scenario value, such as CAPEX, embodied emissions, or area."""
-
-    def __init__(self, value: float, unit: str, **kwargs):
-        super().__init__(unit, **kwargs)
-        if not math.isfinite(value):
-            raise ValueError("A constant metric must be finite.")
-        self._constant = float(value)
-
-    def start(self, environment: Environment) -> None:
-        self.value = self._constant
-
-
 class _GridIntegral(Metric):
     def __init__(self, microgrid: str, signal: str, unit: str, direction: int, description: str):
         super().__init__(
             unit,
             microgrid=microgrid,
             description=description,
-            assumptions={"factor_signal": signal, "factor_unit": f"{unit}/kWh",
-                         "period": "simulated_intervals"},
+            assumptions={
+                "factor_signal": signal,
+                "factor_unit": f"{unit}/kWh",
+                "period": "simulated_intervals",
+            },
         )
         self.signal = signal
         self.direction = direction
 
     def start(self, environment: Environment) -> None:
         super().start(environment)
+        assert self.microgrid is not None
         grid = environment.microgrids[self.microgrid]
         if self.signal not in (grid.grid_signals or {}):
             raise ValueError(f"Metric requires grid signal '{self.signal}' on '{self.microgrid}'.")
@@ -136,5 +125,10 @@ class GridImportEmissions(_GridIntegral):
     """
 
     def __init__(self, microgrid: str, carbon_intensity: str):
-        super().__init__(microgrid, carbon_intensity, "kgCO2e", -1,
-                         "Emissions associated with imported electricity")
+        super().__init__(
+            microgrid,
+            carbon_intensity,
+            "kgCO2e",
+            -1,
+            "Emissions associated with imported electricity",
+        )
