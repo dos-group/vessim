@@ -1,5 +1,30 @@
 # Performance and engineering report
 
+## Recording update
+
+`Recorder` now combines physical metrics, optional trajectories, and a shared experiment
+record. `benchmarks/recorder-native.json` measures the expanded defaults on the same
+local environment. A sequential study of 1,000 scenarios with 288 ticks each and time
+series disabled took 4.83 s (207 scenarios/s) in this measurement. This includes actor
+production/consumption counters and scoped metric definitions, which the earlier
+`Summary` collector did not calculate.
+
+Traced peak memory for metrics-only execution was 28.4 KB at both 1,000 and 10,000 ticks.
+Keeping the complete trajectory used 1.88 MB and 18.52 MB respectively. These are
+Python allocation measurements for the benchmark scenario, not process RSS.
+
+The earlier tables below describe the initial backend refactor before the unified
+recorder. Their raw artifacts are retained as historical evidence. The current
+`run.py` uses `Recorder(metrics=False)` for comparable trajectory checks, and
+`studies.py` uses `Recorder(timeseries=False)` for compact results. The original six
+trajectory checksums still pass on both backends.
+
+Reproduce the current recorder measurement with:
+
+```console
+python benchmarks/studies.py --backend native --runs 1000 --output /tmp/recorder-native.json
+```
+
 ## Scope and methodology
 
 Measurements were taken locally on macOS 15.5 ARM64 with Python 3.13.7, NumPy 2.4.4,
@@ -116,8 +141,8 @@ Implemented improvements:
 | Workload-dependent | Larger process batches and bounded submission | Amortize process coordination for millions of tiny runs | Python example uses chunks already. A bespoke experiment scheduler is not justified. |
 | Later | Independent scenario construction from live state | Enable digital-twin what-if studies | Explicit state/ownership contract required. General branching and optimization are out of scope. |
 
-The viewer currently consumes full trajectories, not Summary JSON. A study-level
-comparison UI and richer live monitoring would be separate product work. Debugging
+The unified recorder viewer now displays metrics-only experiment records as well as
+trajectories. A study-level comparison UI and richer live monitoring are separate work. Debugging
 and replay are supporting capabilities, not the main framing of this refactor.
 
 ## Reproducing measurements

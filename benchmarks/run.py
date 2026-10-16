@@ -58,15 +58,19 @@ def build(backend, case, traces, directory):
         )
     if case == "feedback":
         env.add_controller(Feedback())
-    memory = vs.MemoryLogger()
+    memory = vs.MemoryLogger() if backend == "legacy" else vs.Recorder(metrics=False)
     env.add_controller(memory)
     if case == "csv":
-        env.add_controller(vs.CsvLogger(directory))
+        env.add_controller(
+            vs.CsvLogger(directory)
+            if backend == "legacy"
+            else vs.Recorder(directory, metrics=False)
+        )
     return env, memory
 
 
 def digest(memory):
-    rows = [(str(t), value) for t, value in memory.to_dict().items()]
+    rows = [(str(t), value) for t, value in memory.log.items()]
     return hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()
 
 

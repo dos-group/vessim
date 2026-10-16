@@ -24,9 +24,9 @@ def scenario(trace, steps, backend, output):
         name="site",
     )
     if output == "summary":
-        env.add_controller(vs.Summary())
+        env.add_controller(vs.Recorder(timeseries=False))
     elif output == "trajectory":
-        env.add_controller(vs.MemoryLogger())
+        env.add_controller(vs.Recorder())
     env.run(steps * 60)
     return env
 
