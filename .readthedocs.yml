@@ -11,7 +11,7 @@ build:
     pre_install:
       - cd viewer && npm ci && npx vite build
     post_install:
-      - uv pip install -e ".[docs,sil]"
+      - uv pip install -e ".[docs,live]"
     pre_build:
       - make docs-viewer
 

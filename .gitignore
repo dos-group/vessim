@@ -90,3 +90,8 @@ crash.log
 # Sphinx
 _build
 results.csv
+
+# Browser validation outputs
+viewer/test-results/
+viewer/playwright-report/
+/test-results/

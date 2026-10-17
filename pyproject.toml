@@ -32,7 +32,6 @@ dependencies = [
     "numpy>=1.26.0",
     "pandas>=2.0.0",
     "loguru>=0.6.0",
-    "pyyaml>=6.0.0",
 ]
 
 [project.optional-dependencies]
@@ -52,7 +51,6 @@ dev = [
     "mypy",
     "types-psutil",
     "pandas-stubs",
-    "types-PyYAML",
     "types-requests",
     "black",
     "ruff"
