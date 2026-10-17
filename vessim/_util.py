@@ -1,4 +1,12 @@
+import math
+from numbers import Real
 from typing import Any
+
+
+def require_finite(value: float, name: str) -> None:
+    """Reject invalid physical inputs before they enter simulation arithmetic."""
+    if isinstance(value, bool) or not isinstance(value, Real) or not math.isfinite(value):
+        raise ValueError(f"{name} must be a finite number, got {value!r}.")
 
 
 def flatten_dict(d: dict, parent_key: str = "") -> dict:

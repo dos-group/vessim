@@ -6,6 +6,20 @@ from typing import Optional
 import numpy as np
 from loguru import logger
 
+from vessim._util import require_finite
+
+
+def _positive_duration(duration: float) -> None:
+    require_finite(duration, "Duration")
+    if duration <= 0:
+        raise ValueError("Duration must be positive.")
+
+
+def _soc_range(value: float, name: str) -> None:
+    require_finite(value, name)
+    if not 0 <= value <= 1:
+        raise ValueError(f"{name} must be between 0 and 1.")
+
 
 class Dispatchable(ABC):
     """Abstract base class for dispatchable energy resources.
@@ -21,13 +35,17 @@ class Dispatchable(ABC):
         self.name = name
         self.current_power: float = 0.0
 
-    def set_power(self, power: float, duration: int) -> None:
+    def set_power(self, power: float, duration: float) -> None:
         """Set the power setpoint for the given duration.
 
         Raises:
             ValueError: If power is outside the feasible range.
         """
+        require_finite(power, f"Power setpoint for '{self.name}'")
+        _positive_duration(duration)
         lo, hi = self.feasible_range(duration)
+        require_finite(lo, f"Minimum feasible power for '{self.name}'")
+        require_finite(hi, f"Maximum feasible power for '{self.name}'")
         if power < lo or power > hi:
             raise ValueError(
                 f"Power {power} W is outside feasible range [{lo}, {hi}] W "
@@ -36,7 +54,7 @@ class Dispatchable(ABC):
         self.current_power = power
 
     @abstractmethod
-    def feasible_range(self, duration: int) -> tuple[float, float]:
+    def feasible_range(self, duration: float) -> tuple[float, float]:
         """Returns the (min, max) power achievable for the given timestep duration.
 
         Args:
@@ -48,7 +66,7 @@ class Dispatchable(ABC):
         """
 
     @abstractmethod
-    def step(self, duration: int) -> None:
+    def step(self, duration: float) -> None:
         """Update internal state after a timestep has elapsed.
 
         Args:
@@ -116,15 +134,22 @@ class SimpleBattery(Storage):
         c_rate: Optional[float] = None,
     ):
         super().__init__(name)
+        require_finite(capacity, "Battery capacity")
+        if capacity <= 0:
+            raise ValueError("Battery capacity must be positive (Wh).")
+        if c_rate is not None:
+            require_finite(c_rate, "Battery c_rate")
+            if c_rate < 0:
+                raise ValueError("Battery c_rate must be nonnegative.")
         self.capacity = capacity
-        assert 0 <= initial_soc <= 1, "Invalid initial state-of-charge. Has to be between 0 and 1."
+        _soc_range(initial_soc, "initial_soc")
         self.charge_level = capacity * initial_soc
         self._soc = initial_soc
-        assert 0 <= min_soc <= 1, "Invalid minimum state-of-charge. Has to be between 0 and 1."
+        _soc_range(min_soc, "min_soc")
         self.min_soc = min_soc
         self.c_rate = c_rate
 
-    def feasible_range(self, duration: int) -> tuple[float, float]:
+    def feasible_range(self, duration: float) -> tuple[float, float]:
         """Returns (min_power, max_power) achievable for the given duration.
 
         Accounts for both c_rate limits and energy capacity limits.
@@ -132,6 +157,7 @@ class SimpleBattery(Storage):
         Args:
             duration: Duration of the timestep in seconds.
         """
+        _positive_duration(duration)
         # Discharge limit (negative power)
         if self._soc <= self.min_soc:
             min_power = 0.0
@@ -158,12 +184,12 @@ class SimpleBattery(Storage):
 
         return (min_power, max_power)
 
-    def step(self, duration: int) -> None:
+    def step(self, duration: float) -> None:
         """Update battery state based on current_power setpoint and duration."""
-        if duration <= 0:
-            raise ValueError("Duration needs to be a positive value")
+        _positive_duration(duration)
 
         power = self.current_power
+        require_finite(power, f"Power setpoint for '{self.name}'")
         if power == 0.0:
             return
 
@@ -280,33 +306,57 @@ class ClcBattery(Storage):
         charging_current_cutoff: float = 0.05,
     ) -> None:
         super().__init__(name)
-        assert number_of_cells > 0, "There has to be a positive number of cells."
+        if (
+            isinstance(number_of_cells, bool)
+            or not isinstance(number_of_cells, int)
+            or number_of_cells <= 0
+        ):
+            raise ValueError("number_of_cells must be a positive integer.")
+        for key, value in {
+            "nom_voltage": nom_voltage,
+            "u_1": u_1,
+            "v_1": v_1,
+            "u_2": u_2,
+            "v_2": v_2,
+            "alpha_d": alpha_d,
+            "alpha_c": alpha_c,
+            "eta_d": eta_d,
+            "eta_c": eta_c,
+            "discharging_current_cutoff": discharging_current_cutoff,
+            "charging_current_cutoff": charging_current_cutoff,
+        }.items():
+            require_finite(value, key)
+        if nom_voltage <= 0 or v_2 <= 0:
+            raise ValueError("nom_voltage and v_2 (cell capacity) must be positive.")
         self.number_of_cells = number_of_cells
         self.u_1 = u_1
         self.v_1 = v_1
         self.u_2 = u_2
         self.v_2 = v_2
-        assert 0 <= initial_soc <= 1, "Invalid initial state-of-charge. Has to be between 0 and 1."
+        _soc_range(initial_soc, "initial_soc")
         self._soc = initial_soc
         self.charge_level = self.v_2 * initial_soc  # Charge level of one cell
-        assert 0 <= min_soc <= 1, "Invalid minimum state-of-charge. Has to be between 0 and 1."
+        _soc_range(min_soc, "min_soc")
         self.min_soc = min_soc
         self.nom_voltage = nom_voltage
         self.alpha_d = alpha_d * self.v_2
         self.alpha_c = alpha_c * self.v_2
-        assert eta_d >= 1, "Invalid discharging inefficiency. Has to be greater or equal to 1."
+        if eta_d < 1:
+            raise ValueError("eta_d must be greater than or equal to 1.")
         self.eta_d = eta_d
-        assert 0 <= eta_c <= 1, "Invalid charging inefficiency. Has to be between 0 and 1."
+        if not 0 <= eta_c <= 1:
+            raise ValueError("eta_c must be between 0 and 1.")
         self.eta_c = eta_c
         self.discharging_power_cutoff = discharging_current_cutoff * self.nom_voltage
         self.charging_power_cutoff = charging_current_cutoff * self.nom_voltage
 
-    def feasible_range(self, duration: int) -> tuple[float, float]:
+    def feasible_range(self, duration: float) -> tuple[float, float]:
         """Returns (min_power, max_power) based on CLC model constraints.
 
         Args:
             duration: Duration of the timestep in seconds.
         """
+        _positive_duration(duration)
         # Discharge limit
         if self._soc <= self.min_soc:
             min_power = 0.0
@@ -343,18 +393,18 @@ class ClcBattery(Storage):
         """Returns the state-of-charge (SoC) of the battery (0 to 1)."""
         return self._soc
 
-    def step(self, duration: int) -> None:
+    def step(self, duration: float) -> None:
         """Update battery state based on current_power setpoint and duration."""
-        if duration <= 0:
-            raise ValueError("Duration needs to be a positive value")
+        _positive_duration(duration)
 
         power = self.current_power
+        require_finite(power, f"Power setpoint for '{self.name}'")
         if power > 0:
             self._charge(power, duration)
         elif power < 0 and self.soc() > self.min_soc:
             self._discharge(power, duration)
 
-    def _charge(self, power: float, duration: int) -> None:
+    def _charge(self, power: float, duration: float) -> None:
         max_power = (
             np.minimum(
                 (self.charge_level - self.v_2)
@@ -369,7 +419,7 @@ class ClcBattery(Storage):
         self.charge_level += self.eta_c * (power / self.number_of_cells) * (duration / 3600)
         self._soc = self.charge_level / self.v_2
 
-    def _discharge(self, power: float, duration: int) -> None:
+    def _discharge(self, power: float, duration: float) -> None:
         min_power = (
             np.maximum(
                 (self.charge_level - self.v_1)
@@ -402,5 +452,3 @@ class ClcBattery(Storage):
             "soc": self._soc,
             "charge_level": self.charge_level * self.number_of_cells,
         }
-
-

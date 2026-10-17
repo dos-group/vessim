@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Optional, Literal
 
 from vessim.dispatchable import Storage
+from vessim._util import require_finite
 
 if TYPE_CHECKING:
     from vessim.dispatchable import Dispatchable
@@ -21,7 +22,7 @@ class DispatchPolicy(ABC):
     def apply(
         self,
         p_delta: float,
-        duration: int,
+        duration: float,
         dispatchables: list[Dispatchable],
         grid_signals: Optional[dict[str, float]] = None,
     ) -> float:
@@ -68,16 +69,25 @@ class DefaultDispatchPolicy(DispatchPolicy):
         mode: Literal["grid-connected", "islanded"] = "grid-connected",
         charge_power: Optional[float] = None,
     ):
+        if mode not in ("grid-connected", "islanded"):
+            raise ValueError("mode must be 'grid-connected' or 'islanded'.")
+        if charge_power is not None:
+            require_finite(charge_power, "charge_power")
         self.mode = mode
         self.charge_power = charge_power if charge_power else 0.0
 
     def apply(
         self,
         p_delta: float,
-        duration: int,
+        duration: float,
         dispatchables: list[Dispatchable],
         grid_signals: Optional[dict[str, float]] = None,
     ) -> float:
+        require_finite(p_delta, "Power delta")
+        require_finite(self.charge_power, "charge_power")
+        require_finite(duration, "Dispatch duration")
+        if duration <= 0:
+            raise ValueError("Dispatch duration must be positive.")
         remaining = p_delta
         force_charged = set()
 
@@ -111,9 +121,7 @@ class DefaultDispatchPolicy(DispatchPolicy):
 
         if self.mode == "islanded":
             if remaining < 0:
-                raise RuntimeError(
-                    "Not enough energy available to operate in islanded mode."
-                )
+                raise RuntimeError("Not enough energy available to operate in islanded mode.")
             remaining = 0.0
 
         return remaining  # p_grid

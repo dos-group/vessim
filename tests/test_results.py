@@ -361,7 +361,7 @@ def test_final_status_includes_all_cleanup_failures(tmp_path, failure_source, re
     if failure_source == "signal":
         env.add_controller(recorder)
     else:
-        for controller in ([recorder, other] if recorder_first else [other, recorder]):
+        for controller in [recorder, other] if recorder_first else [other, recorder]:
             env.add_controller(controller)
     with pytest.raises(RuntimeError, match="cleanup failed"):
         env.run(1)
@@ -441,3 +441,27 @@ def test_attached_metrics_validate_scope_and_do_not_replace_existing_values():
         result.add_metric("grid_import", 1, "Wh", microgrid="load")
     result.add_metric("undefined", None, "1")
     assert result.to_dict()["metrics"]["run"]["undefined"] is None
+
+
+@pytest.mark.parametrize("source", ["actor", "grid_signal", "policy"])
+@pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf])
+def test_nonfinite_runtime_inputs_fail_instead_of_recording_zero(tmp_path, source, value):
+    class BadSignal(vs.Signal):
+        def at(self, elapsed=None):
+            return value
+
+    class BadPolicy(vs.DefaultDispatchPolicy):
+        def apply(self, *args, **kwargs):
+            return value
+
+    env = vs.Environment("2026-01-01")
+    env.add_microgrid(
+        [vs.Actor("load", BadSignal() if source == "actor" else vs.StaticSignal(-60))],
+        grid_signals={"price": BadSignal()} if source == "grid_signal" else None,
+        policy=BadPolicy() if source == "policy" else None,
+    )
+    recorder = env.add_controller(vs.Recorder(tmp_path, timeseries=False))
+    with pytest.raises(ValueError, match="finite"):
+        env.run(60)
+    assert recorder.steps == 0
+    assert vs.ExperimentResult.load(tmp_path).execution["status"] == "failed"

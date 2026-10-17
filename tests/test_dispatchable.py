@@ -49,9 +49,7 @@ class TestSimpleBattery:
             (-10, 30, 0, 0),
         ],
     )
-    def test_step_c_rate(
-        self, battery_c, power, duration, exp_charge_level, exp_soc
-    ):
+    def test_step_c_rate(self, battery_c, power, duration, exp_charge_level, exp_soc):
         # duration in minutes and charge_level in Wh
         battery_c.set_power(power, duration=duration * 60)
         battery_c.step(duration=duration * 60)
@@ -209,12 +207,10 @@ class TestClcBattery:
         [
             (1, 5, 7.583333333333333),
             (1, 15, 7.75),
-            (0.5, 45, 7.875), # energy limit for 45 min is 1.666W. 0.5W is safe.
+            (0.5, 45, 7.875),  # energy limit for 45 min is 1.666W. 0.5W is safe.
         ],
     )
-    def test_step_upper_energy_limits(
-        self, battery_u_energy, power, duration, exp_charge_level
-    ):
+    def test_step_upper_energy_limits(self, battery_u_energy, power, duration, exp_charge_level):
         # duration in minutes
         battery_u_energy.set_power(power, duration=duration * 60)
         battery_u_energy.step(duration=duration * 60)
@@ -236,9 +232,7 @@ class TestClcBattery:
             (-0.5, 45, 2.125),
         ],
     )
-    def test_step_lower_energy_limits(
-        self, battery_l_energy, power, duration, exp_charge_level
-    ):
+    def test_step_lower_energy_limits(self, battery_l_energy, power, duration, exp_charge_level):
         # duration in minutes
         battery_l_energy.set_power(power, duration=duration * 60)
         battery_l_energy.step(duration=duration * 60)
@@ -341,3 +335,54 @@ class TestDefaultDispatchPolicy:
     def test_apply_fails_if_no_power_in_islanded_without_dispatchables(self, policy_islanded):
         with pytest.raises(RuntimeError):
             policy_islanded.apply(-1, 1, [])
+
+
+@pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf])
+@pytest.mark.parametrize("parameter", ["capacity", "initial_soc", "min_soc", "c_rate"])
+def test_simple_battery_rejects_nonfinite_parameters(parameter, value):
+    with pytest.raises(ValueError, match="finite"):
+        vs.SimpleBattery("battery", **{"capacity": 100, parameter: value})
+
+
+@pytest.mark.parametrize("capacity", [0, -1])
+def test_simple_battery_requires_positive_capacity(capacity):
+    with pytest.raises(ValueError, match="capacity.*positive"):
+        vs.SimpleBattery("battery", capacity)
+
+
+@pytest.mark.parametrize(
+    "factory", [lambda: vs.SimpleBattery("battery", 100), lambda: vs.ClcBattery("battery")]
+)
+@pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf])
+def test_invalid_setpoints_and_durations_do_not_change_battery(factory, value):
+    battery = factory()
+    original = battery.state()
+    with pytest.raises(ValueError, match="finite"):
+        battery.set_power(value, 60)
+    with pytest.raises(ValueError, match="finite"):
+        battery.step(value)
+    with pytest.raises(ValueError, match="finite"):
+        battery.feasible_range(value)
+    assert battery.current_power == 0
+    assert battery.state() == original
+
+
+@pytest.mark.parametrize(
+    "parameter",
+    [
+        "nom_voltage",
+        "u_1",
+        "v_1",
+        "u_2",
+        "v_2",
+        "alpha_d",
+        "alpha_c",
+        "eta_d",
+        "eta_c",
+        "charging_current_cutoff",
+        "discharging_current_cutoff",
+    ],
+)
+def test_clc_battery_rejects_nonfinite_parameters(parameter):
+    with pytest.raises(ValueError, match="finite"):
+        vs.ClcBattery("battery", **{parameter: math.nan})

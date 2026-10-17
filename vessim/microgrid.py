@@ -6,6 +6,7 @@ from typing import Optional, TypedDict
 import numpy as np
 
 from vessim.actor import Actor
+from vessim._util import require_finite
 from vessim.dispatchable import Dispatchable
 from vessim.dispatch_policy import DispatchPolicy
 from vessim.signal import Signal
@@ -106,6 +107,7 @@ class Microgrid:
         for actor, period in self._sampling:
             if elapsed % period == 0:
                 power, state = actor.sample(elapsed)
+                require_finite(power, f"Power from actor '{actor.name}' at {elapsed}s")
                 self._powers[actor.name] = power
                 self._actor_states[actor.name] = state
 
@@ -118,6 +120,7 @@ class Microgrid:
         """
         for dispatchable in self.dispatchables:
             dispatchable.step(self.step_size)
+        require_finite(external_power, f"External power for microgrid '{self.name}'")
         self.p_delta = sum(self._powers.values())
         if external_power:
             self.p_delta += external_power
@@ -126,12 +129,16 @@ class Microgrid:
             if self.grid_signals
             else None
         )
+        require_finite(self.p_delta, f"Total power for microgrid '{self.name}'")
+        for name, value in (self._resolved_grid_signals or {}).items():
+            require_finite(value, f"Grid signal '{name}' at {elapsed}s")
         self.p_grid = self.policy.apply(
             self.p_delta,
             duration=self.step_size,
             dispatchables=self.dispatchables,
             grid_signals=self._resolved_grid_signals,
         )
+        require_finite(self.p_grid, f"Grid power returned by policy for '{self.name}'")
 
     def state(self) -> MicrogridState:
         """Return a detached observation, safe to retain across subsequent ticks."""
