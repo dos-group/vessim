@@ -12,6 +12,8 @@ from typing import Any, Optional, Literal
 import numpy as np
 import pandas as pd
 
+from vessim._util import require_finite
+
 
 class Signal(ABC):
     """Abstract base class for signals."""
@@ -30,13 +32,14 @@ class Signal(ABC):
 
 class StaticSignal(Signal):
     def __init__(self, value: float) -> None:
-        self._v = value
+        self.set_value(value)
 
     def __repr__(self):
         """Returns a string representation for the Vessim viewer."""
         return f"StaticSignal({self._v})"
 
     def set_value(self, value: float) -> None:
+        require_finite(value, "StaticSignal value")
         self._v = value
 
     def at(self, elapsed: Optional[timedelta | float] = None):
@@ -67,7 +70,8 @@ class Trace(Signal):
         data: A pandas `Series` or `DataFrame`. See above for accepted index
             types. Each column represents one zone of data; the column name
             is the zone name. Between samples, values are interpolated using
-            `fill_method` (`ffill` or `bfill`).
+            `fill_method` (`ffill` or `bfill`). Values must be finite and
+            timestamps unique; handle missing data explicitly before loading.
         anchor: Required when `data` has a `DatetimeIndex`. Must be a value
             present in the index. The matching row is rebased to offset=0.
             Forbidden for `TimedeltaIndex` and numeric indices (which are
@@ -106,6 +110,10 @@ class Trace(Signal):
             raise ValueError(f"Incompatible type {type(data)} for 'data'.")
 
         raw_index = data.index
+        if raw_index.hasnans:
+            raise ValueError("Trace timestamps must not contain missing values (NaN or NaT).")
+        if raw_index.has_duplicates:
+            raise ValueError("Trace timestamps must be unique; resolve duplicate rows first.")
         if isinstance(raw_index, pd.DatetimeIndex):
             if anchor is None:
                 raise ValueError(
@@ -128,6 +136,8 @@ class Trace(Signal):
         elif pd.api.types.is_numeric_dtype(raw_index):
             if anchor is not None:
                 raise ValueError("anchor is only valid for datetime-indexed data.")
+            if not np.isfinite(raw_index.to_numpy()).all():
+                raise ValueError("Trace offsets must be finite numbers of seconds.")
             offsets_array = (
                 pd.to_timedelta(raw_index, unit="s").to_numpy().astype("timedelta64[ns]")
             )
@@ -139,26 +149,43 @@ class Trace(Signal):
 
         if offsets_array.size == 0:
             raise ValueError("Trace data cannot be empty.")
+        if np.isnat(offsets_array).any():
+            raise ValueError("Trace timestamps must be valid and within the supported range.")
 
         sorter = np.argsort(offsets_array)
         offsets_ns = offsets_array[sorter]
+        if np.any(offsets_ns[1:] == offsets_ns[:-1]):
+            raise ValueError("Trace timestamps must be unique at nanosecond resolution.")
 
         if offsets_ns[0] != np.timedelta64(0, "ns"):
             raise ValueError(
                 f"Trace must start at offset=0, but starts at {_td(offsets_ns[0])}. "
-                f"To delay a trace, pad the beginning of your data with zeros or NaNs."
+                f"To delay a trace, pad the beginning of your data with zeros."
             )
 
         self._offsets: dict[str, tuple[np.ndarray, np.ndarray]] = {}
-        if isinstance(data, pd.Series):
-            values = data.to_numpy(dtype=float, copy=True)[sorter]
-            mask = ~np.isnan(values)
-            self._offsets[str(data.name)] = (offsets_ns[mask], values[mask])
-        else:
-            for col in data.columns:
-                values = data[col].to_numpy(dtype=float, copy=True)[sorter]
-                mask = ~np.isnan(values)
-                self._offsets[str(col)] = (offsets_ns[mask], values[mask])
+        columns = [(data.name, data)] if isinstance(data, pd.Series) else list(data.items())
+        if not columns:
+            raise ValueError("Trace needs at least one value column.")
+        for col, series in columns:
+            name = str(col)
+            if name in self._offsets:
+                raise ValueError(f"Trace column names must be unique; duplicate {name!r}.")
+            try:
+                values = series.to_numpy(dtype=float, copy=True)[sorter]
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"Trace column {name!r} must contain numeric values.") from exc
+            invalid = np.flatnonzero(~np.isfinite(values))
+            if invalid.size:
+                raise ValueError(
+                    f"Trace column {name!r} has a missing or nonfinite value at "
+                    f"offset {_td(offsets_ns[invalid[0]])}. "
+                    "Fill or remove missing values explicitly before creating a Trace."
+                )
+            self._offsets[name] = (offsets_ns, values)
+
+        if column is not None:
+            _get_column_name(self._offsets, column)
 
         for name, (offsets, values) in self._offsets.items():
             offsets = offsets.view("i8")
@@ -213,12 +240,19 @@ class Trace(Signal):
             on_overflow: See `Trace`.
             fill_method: See `Trace`.
         """
+        require_finite(scale, "Trace scale")
         df = pd.read_csv(path, index_col=0)
         if scale != 1.0:
             df = df.astype(float) * scale
 
         if not pd.api.types.is_numeric_dtype(df.index):
-            df.index = pd.to_datetime(df.index)
+            try:
+                df.index = pd.to_datetime(df.index)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"The first column of {str(path)!r} must contain offsets in seconds "
+                    "or valid timestamps."
+                ) from exc
 
         return cls(
             df,
@@ -255,6 +289,8 @@ class Trace(Signal):
         """
         if elapsed is None:
             raise ValueError("Argument elapsed cannot be None.")
+        if not isinstance(elapsed, timedelta):
+            require_finite(elapsed, "Trace elapsed time")
         if isinstance(elapsed, timedelta):
             np_at = (
                 (elapsed.days * 86400 + elapsed.seconds) * 1_000_000 + elapsed.microseconds
@@ -270,22 +306,19 @@ class Trace(Signal):
         resolved = _get_column_name(self._offsets, column)
         offsets, values = self._offsets[resolved]
 
+        if np_at < offsets[0] or np_at > offsets[-1]:
+            boundary = "before the start" if np_at < offsets[0] else "after the end"
+            raise ValueError(
+                f"Elapsed time {elapsed} is {boundary} of column '{resolved}' "
+                f"(trace covers {_td(offsets[0])} to {_td(offsets[-1])} since sim_start). "
+                "Extend the input data or shorten the simulation."
+            )
+
         if self._fill_method == "ffill":
             index = offsets.searchsorted(np_at, side="right") - 1
-            if index >= 0:
-                return values[index]
-            raise ValueError(
-                f"Elapsed time {elapsed} is before the start of column '{resolved}' "
-                f"(trace covers {_td(offsets[0])} to {_td(offsets[-1])} since sim_start)."
-            )
         else:
             index = offsets.searchsorted(np_at, side="left")
-            if index < offsets.size:
-                return values[index]
-            raise ValueError(
-                f"Elapsed time {elapsed} is after the end of column '{resolved}' "
-                f"(trace covers {_td(offsets[0])} to {_td(offsets[-1])} since sim_start)."
-            )
+        return values[index]
 
 
 def _get_column_name(data: dict[str, Any], column: Optional[str]) -> str:
@@ -295,7 +328,7 @@ def _get_column_name(data: dict[str, Any], column: Optional[str]) -> str:
         raise ValueError("Column needs to be specified.")
     if column in data:
         return column
-    raise ValueError(f"Cannot retrieve data for column '{column}'.")
+    raise ValueError(f"Unknown trace column {column!r}. Available columns: {list(data)}.")
 
 
 def _td(value: np.timedelta64) -> timedelta:

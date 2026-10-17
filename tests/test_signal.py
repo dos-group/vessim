@@ -18,7 +18,7 @@ class TestTrace:
             ]
         )
         actual = pd.DataFrame(
-            {"a": [1, 2, 3], "b": [0, 3, 0], "c": [None, 4, None]}, index=index - index[0]
+            {"a": [1, 2, 3], "b": [0, 3, 0], "c": [0, 4, 0]}, index=index - index[0]
         )
         return vs.Trace(actual)
 
@@ -36,16 +36,12 @@ class TestTrace:
     def test_actual_single_column(self, hist_signal_single):
         assert hist_signal_single.at(timedelta(minutes=45)) == 3
 
-    def test_actual_none_values(self, hist_signal):
-        assert hist_signal.at(timedelta(hours=1, minutes=20), column="c") == 4
-
     @pytest.mark.parametrize(
         "elapsed, column, expected",
         [
             (timedelta(0), "a", 1),
             (timedelta(seconds=10), "a", 1),
             (timedelta(hours=1), "a", 3),
-            (timedelta(hours=10), "a", 3),
             (timedelta(minutes=29, seconds=59), "b", 0),
             (timedelta(minutes=30), "b", 3),
         ],
@@ -176,7 +172,63 @@ def test_trace_views_share_immutable_data_and_sample_independently():
         trace.select("missing")
 
 
-@pytest.mark.parametrize("elapsed", [0.000001, 0.0000015, 0.1234567, 1.9999999, 10.5])
+@pytest.mark.parametrize("elapsed", [0.000001, 0.0000015, 0.1234567, 1.9999999, 2.0])
 def test_trace_fractional_seconds_match_timedelta(elapsed):
     trace = vs.Trace(pd.Series([1, 2, 3], index=[0, 0.000002, 2]))
     assert trace.at(elapsed) == trace.at(timedelta(seconds=elapsed))
+
+
+@pytest.mark.parametrize("fill_method", ["ffill", "bfill"])
+def test_trace_bounds_apply_to_both_fill_methods(fill_method):
+    trace = vs.Trace(pd.Series([10, 20], index=[0, 60]), fill_method=fill_method)
+    assert trace.at(0) == 10
+    assert trace.at(60) == 20
+    assert trace.at(30) == (10 if fill_method == "ffill" else 20)
+    for elapsed, boundary in [(-1, "before the start"), (61, "after the end")]:
+        with pytest.raises(ValueError, match=boundary):
+            trace.at(elapsed)
+
+
+@pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
+def test_nonfinite_signal_inputs_fail_at_construction(value):
+    with pytest.raises(ValueError, match="finite"):
+        vs.StaticSignal(value)
+    signal = vs.StaticSignal(10)
+    with pytest.raises(ValueError, match="finite"):
+        signal.set_value(value)
+    assert signal.at() == 10
+    with pytest.raises(ValueError, match="column 'load'.*offset"):
+        vs.Trace(pd.Series([10, value], index=[0, 60], name="load"))
+    trace = vs.Trace(pd.Series([10, 20], index=[0, 60]))
+    with pytest.raises(ValueError, match="finite"):
+        trace.at(value)
+
+
+@pytest.mark.parametrize(
+    "index", [[0, 0], [0, np.nan], [0, np.inf], pd.to_timedelta([0, None], unit="s")]
+)
+def test_trace_rejects_ambiguous_or_invalid_timestamps(index):
+    with pytest.raises(ValueError, match="unique|missing|finite"):
+        vs.Trace(pd.Series([10, 20], index=index))
+
+
+def test_trace_rejects_empty_and_invalid_columns():
+    for data in [
+        pd.DataFrame(index=[0, 60]),
+        pd.Series([np.nan], index=[0]),
+        pd.DataFrame([[1, 2]], columns=["load", "load"], index=[0]),
+    ]:
+        with pytest.raises(ValueError):
+            vs.Trace(data)
+    with pytest.raises(ValueError, match="Available columns.*load"):
+        vs.Trace(pd.Series([10], name="load", index=[0]), column="missing")
+
+
+def test_csv_errors_identify_columns_and_timestamps(tmp_path):
+    path = tmp_path / "load.csv"
+    path.write_text("seconds,load\n0,10\n60,broken\n")
+    with pytest.raises(ValueError, match="column 'load'.*numeric"):
+        vs.Trace.from_csv(path)
+    path.write_text("seconds,load\nyesterday-ish,10\n")
+    with pytest.raises(ValueError, match="first column.*load.csv"):
+        vs.Trace.from_csv(path)
