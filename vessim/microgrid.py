@@ -71,6 +71,7 @@ class Microgrid:
         self.p_grid = 0.0
         self._resolved_grid_signals: Optional[dict[str, float]] = None
         self._actor_states: dict[str, dict] = {}
+        self._last_elapsed = 0.0
         self._validate()
 
     def _validate(self) -> None:
@@ -111,15 +112,16 @@ class Microgrid:
                 self._powers[actor.name] = power
                 self._actor_states[actor.name] = state
 
-    def advance(self, elapsed: int, external_power: float = 0.0) -> None:
+    def advance(
+        self, elapsed: int, external_power: float = 0.0, duration: Optional[float] = None
+    ) -> None:
         """Integrate previous setpoints and dispatch the next interval.
 
-        At tick zero the initial setpoints are integrated, as in earlier Vessim
-        releases (built-in resources initialize them to zero). No extra update
-        is performed at the exclusive simulation end.
+        Tick zero observes the initial state without integrating any energy.
+        ``duration`` clips dispatch to the remaining time in the final interval.
+        Call ``finish(until)`` to integrate that interval without another dispatch.
         """
-        for dispatchable in self.dispatchables:
-            dispatchable.step(self.step_size)
+        self.finish(elapsed)
         require_finite(external_power, f"External power for microgrid '{self.name}'")
         self.p_delta = sum(self._powers.values())
         if external_power:
@@ -134,11 +136,22 @@ class Microgrid:
             require_finite(value, f"Grid signal '{name}' at {elapsed}s")
         self.p_grid = self.policy.apply(
             self.p_delta,
-            duration=self.step_size,
+            duration=self.step_size if duration is None else duration,
             dispatchables=self.dispatchables,
             grid_signals=self._resolved_grid_signals,
         )
         require_finite(self.p_grid, f"Grid power returned by policy for '{self.name}'")
+
+    def finish(self, elapsed: float) -> None:
+        """Integrate held setpoints up to elapsed time, without sampling or dispatch."""
+        require_finite(elapsed, "Integration time")
+        duration = elapsed - self._last_elapsed
+        if duration < 0:
+            raise ValueError("Microgrid integration time must not move backwards.")
+        if duration > 0:
+            for dispatchable in self.dispatchables:
+                dispatchable.step(duration)
+        self._last_elapsed = elapsed
 
     def state(self) -> MicrogridState:
         """Return a detached observation, safe to retain across subsequent ticks."""

@@ -1,6 +1,7 @@
 """Behavioral contracts shared by native and mosaik execution."""
 
 import importlib.util
+from datetime import timedelta
 import json
 import subprocess
 import sys
@@ -139,7 +140,7 @@ def test_sampling_feedback_and_integration_order(backend):
     assert samples == [0, 120]  # One read per actor update.
     assert [row["p_delta"] for row in rows] == [100, 100, 200]
     assert rows[0]["dispatch_states"]["battery"]["soc"] == 0.5
-    assert battery.charge_level == pytest.approx(50 + 2 * 100 / 60)
+    assert battery.charge_level == pytest.approx(50 + (2 * 100 + 200) / 60)
 
 
 def test_live_wall_clock_pacing(backend):
@@ -221,7 +222,48 @@ def test_custom_actor_and_dispatchable_extensions(backend):
     result = env.run(120)
     rows = list(log.log.values())
     assert rows[0]["grid"]["dispatch_states"]["device"]["nested"]["energy"] == 0
-    assert device.energy == pytest.approx(50 / 60)
+    assert device.energy == pytest.approx(2 * 50 / 60)
     assert rows[1]["grid"]["actor_states"]["a"]["temperature"] == [80]
     result.states["grid"]["actor_states"]["a"]["temperature"][0] = 999
     assert rows[1]["grid"]["actor_states"]["a"]["temperature"] == [80]
+
+
+@pytest.mark.parametrize("horizon", [0, 0.5, 30, 60, 90, 120, 150.5])
+@pytest.mark.parametrize("record", [False, True])
+def test_final_state_covers_the_exact_horizon(backend, horizon, record):
+    env = vs.Environment("2026-01-01", step_size=60, backend=backend)
+    battery = vs.SimpleBattery("battery", capacity=2, initial_soc=1)
+    env.add_microgrid([vs.Actor("load", vs.StaticSignal(-60))], [battery], name="site")
+    rec = env.add_controller(vs.Recorder()) if record else None
+    result = env.run(horizon)
+    discharged = min(2, horizon / 60)
+    assert battery.charge_level == pytest.approx(2 - discharged)
+    if horizon:
+        assert result.states["site"]["dispatch_states"]["battery"]["charge_level"] == (
+            pytest.approx(battery.charge_level)
+        )
+        if rec:
+            metrics = rec.metrics["microgrids"]["site"]
+            assert metrics["energy_consumed"] == pytest.approx(horizon / 60)
+            assert metrics["grid_import"] + discharged == pytest.approx(horizon / 60)
+            assert len(rec.log) == int(np.ceil(horizon / 60))
+            assert (max(rec.log) - env.sim_start).total_seconds() < horizon
+    else:
+        assert result.states == {}
+
+
+def test_final_partial_interval_uses_remaining_battery_energy(backend):
+    env = vs.Environment("2026-01-01", step_size=60, backend=backend)
+    battery = vs.SimpleBattery("battery", capacity=1.5, initial_soc=1)
+    # A pre-existing setpoint must not consume energy before time zero.
+    battery.set_power(-60, 60)
+    env.add_microgrid([vs.Actor("load", vs.StaticSignal(-60))], [battery], name="site")
+    rec = env.add_controller(vs.Recorder())
+    result = env.run(90)
+    rows = list(rec.log.values())
+    assert rows[0]["site"]["dispatch_states"]["battery"]["charge_level"] == 1.5
+    assert rows[1]["site"]["dispatch_states"]["battery"]["charge_level"] == 0.5
+    assert rows[1]["site"]["p_grid"] == 0  # 0.5 Wh covers the remaining 30 s.
+    assert rec.metrics["microgrids"]["site"]["grid_import"] == 0
+    assert result.states["site"]["dispatch_states"]["battery"]["charge_level"] == 0
+    assert result.last_time == env.sim_start + timedelta(seconds=60)

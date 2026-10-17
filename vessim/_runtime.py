@@ -20,7 +20,9 @@ if TYPE_CHECKING:
 class RunResult:
     """Compact result returned by a completed run; no trajectory is retained.
 
-    ``states`` is the final tick's observation, before controller actions.
+    ``states`` contains dispatchable state at the requested horizon, together
+    with the last sampled actor powers, grid signals and dispatch. No extra
+    signal sampling, dispatch or controller call occurs at the horizon.
     ``until`` is the exclusive horizon in elapsed seconds; ``last_time`` is
     the timestamp of the last executed tick, or None for a zero-length run.
     """
@@ -62,7 +64,8 @@ class Runtime:
             for grid in self.grids:
                 grid.sample(elapsed)
             for grid in self.grids:
-                grid.advance(elapsed, (external or {}).get(grid.name, 0.0))
+                duration = min(grid.step_size, self.environment.until - elapsed)
+                grid.advance(elapsed, (external or {}).get(grid.name, 0.0), duration)
             self.steps += 1
             self.last_elapsed = elapsed
             if self.environment.controllers or self.environment.backend == "mosaik":
@@ -75,6 +78,13 @@ class Runtime:
         except BaseException as exc:
             self.error = exc
             raise
+
+    def finish(self, until: float) -> None:
+        """Advance resources through the final interval without an extra tick."""
+        if self.last_elapsed is not None:
+            for grid in self.grids:
+                grid.finish(until)
+            self.states = {grid.name: grid.state() for grid in self.grids}
 
     def result(self, wall_time: float) -> RunResult:
         env = self.environment

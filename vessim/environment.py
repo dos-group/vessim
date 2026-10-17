@@ -236,9 +236,12 @@ class Environment:
         until: Optional[timedelta | datetime | int | float] = None,
         print_progress: bool | Literal["individual"] = False,
     ) -> RunResult:
-        """Run once up to an exclusive horizon and return the last observation.
+        """Run once up to a horizon and return the state at that horizon.
 
         ``until`` accepts elapsed seconds, a timedelta, or an absolute datetime.
+        Ticks are exclusive of ``until``. Dispatch and integration cover the
+        entire duration, including a partial final interval. No additional
+        controller call or signal sample occurs at the horizon.
         Only live runs may omit it. No trajectory is retained unless a logger
         is added. All owned resources are finalized on success or failure.
         Native progress supports True/False; 'individual' requires mosaik.
@@ -270,6 +273,7 @@ class Environment:
                 run(self._runtime, self.until, bool(print_progress))
             if math.isfinite(self.until):
                 self._runtime.pace(self.until)
+                self._runtime.finish(self.until)
             self.result = self._runtime.result(time.perf_counter() - started)
             self.status = "completed"
         except BaseException as exc:
