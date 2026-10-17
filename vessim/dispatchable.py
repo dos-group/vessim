@@ -369,6 +369,15 @@ class ClcBattery(Storage):
                 )
                 * self.number_of_cells
             )
+            # Respect min_soc in dispatch, not just when step() clips the state.
+            # Otherwise the grid balance can count energy the battery cannot supply.
+            soc_limit = (
+                (self.min_soc * self.v_2 - self.charge_level)
+                * 3600
+                / (self.eta_d * duration)
+                * self.number_of_cells
+            )
+            min_power = max(min_power, soc_limit)
             if min_power > self.discharging_power_cutoff:
                 min_power = 0.0
 

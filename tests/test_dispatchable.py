@@ -198,9 +198,9 @@ class TestClcBattery:
         # Large duration: limited by energy
         # For charging: (5 - 10) / (0/3.63 - 3600*0.5/3600) = -5 / -0.5 = 10W per cell
         # 10W > alpha_c=0.5, so still limited by alpha (5W per cell * 10 cells = 50W)
-        # For discharging: (5 - 0) / (0/3.63 - 3600*2/3600) = 5 / -2 = -2.5W per cell
-        # -2.5W > alpha_d=-10, so limited by energy (-25W total)
-        assert battery.feasible_range(3600) == (-25, 50)
+        # For discharging, min_soc=0.1 reserves 1 Wh per cell. With eta_d=2,
+        # only (5 - 1) / 2 = 2 Wh per cell is deliverable over this hour.
+        assert battery.feasible_range(3600) == (-20, 50)
 
     @pytest.mark.parametrize(
         "power, duration, exp_charge_level",

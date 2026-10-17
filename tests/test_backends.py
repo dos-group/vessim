@@ -267,3 +267,23 @@ def test_final_partial_interval_uses_remaining_battery_energy(backend):
     assert rec.metrics["microgrids"]["site"]["grid_import"] == 0
     assert result.states["site"]["dispatch_states"]["battery"]["charge_level"] == 0
     assert result.last_time == env.sim_start + timedelta(seconds=60)
+
+
+def test_clc_dispatch_respects_energy_available_above_min_soc(backend):
+    env = vs.Environment("2026-01-01", step_size=3600, backend=backend)
+    battery = vs.ClcBattery(
+        "battery",
+        initial_soc=1,
+        min_soc=0.2,
+        v_2=10,
+        u_1=0,
+        u_2=0,
+        eta_d=1,
+        eta_c=1,
+        alpha_d=-10,
+    )
+    env.add_microgrid([vs.Actor("load", vs.StaticSignal(-10))], [battery], name="site")
+    rec = env.add_controller(vs.Recorder(timeseries=False))
+    env.run(3600)
+    assert battery.charge_level == pytest.approx(2)
+    assert rec.metrics["microgrids"]["site"]["grid_import"] == pytest.approx(2)
