@@ -193,7 +193,7 @@ class Microgrid:
             actor.finalize()
         signals = {
             id(value): value
-            for value in [*(a.power for a in self.actors), *(self.grid_signals or {}).values()]
+            for value in [*(a.signal for a in self.actors), *(self.grid_signals or {}).values()]
             if isinstance(value, Signal)
         }
         for signal in signals.values():

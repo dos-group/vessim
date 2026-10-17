@@ -213,3 +213,20 @@ def test_csv_errors_identify_columns_and_timestamps(tmp_path):
     path.write_text("seconds,load\nyesterday-ish,10\n")
     with pytest.raises(ValueError, match="first column.*load.csv"):
         vs.Trace.from_csv(path)
+
+
+def test_static_signal_returns_updated_value_at_any_time():
+    signal = vs.StaticSignal(700)
+    assert signal.at() == signal.at(60) == signal.at(timedelta(seconds=60)) == 700
+    signal.set_value(500)
+    assert signal.at(0) == 500
+
+
+@pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf, True, "700"])
+def test_static_signal_rejects_invalid_values_without_mutation(value):
+    with pytest.raises(ValueError, match="finite number"):
+        vs.StaticSignal(value)
+    signal = vs.StaticSignal(700)
+    with pytest.raises(ValueError, match="finite number"):
+        signal.set_value(value)
+    assert signal.at() == 700

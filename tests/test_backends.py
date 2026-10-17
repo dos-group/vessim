@@ -154,12 +154,12 @@ def test_sampling_feedback_and_integration_order(backend):
             samples.append(elapsed)
             return super().sample(elapsed)
 
-    actor = Actor("a", power=100, step_size=120)
+    actor = Actor("a", signal=100, step_size=120)
     battery = vs.SimpleBattery("battery", 100, initial_soc=0.5)
 
     class Feedback(vs.Controller):
         def step(self, now, states):
-            actor.power = 200
+            actor.signal = 200
 
     env = vs.Environment("2026-01-01", step_size=60, backend=backend)
     env.add_microgrid([actor], [battery, vs.GridConnection()], name="grid")
@@ -322,11 +322,11 @@ def test_clc_dispatch_respects_energy_available_above_min_soc(backend):
 
 @pytest.mark.parametrize("actor_period", [60, 120])
 def test_demand_response_changes_only_future_samples(backend, actor_period):
-    datacenter = vs.Consumer("dc", power=1000, step_size=actor_period)
+    datacenter = vs.Consumer("dc", signal=1000, step_size=actor_period)
 
     class DemandResponse(vs.Controller):
         def step(self, now, states):
-            datacenter.power = 700
+            datacenter.signal = 700
 
     env = vs.Environment("2026-01-01", step_size=60, backend=backend)
     env.add_microgrid([datacenter], [vs.GridConnection()], name="site")
@@ -343,7 +343,7 @@ def test_demand_response_changes_only_future_samples(backend, actor_period):
     )
     config = recorder.result.config["microgrids"]["site"]["actors"][0]
     assert config["type"] == "Consumer"
-    assert config["power"] == 1000
+    assert config["signal"] == "StaticSignal(1000)"
 
 
 def test_shared_and_replaced_signal_lifecycle(backend):
@@ -366,8 +366,8 @@ def test_shared_and_replaced_signal_lifecycle(backend):
 
     first = Input("first", 10)
     second = Input("second", 20)
-    load = vs.Consumer("load", power=first)
-    solar = vs.Producer("solar", power=first)
+    load = vs.Consumer("load", signal=first)
+    solar = vs.Producer("solar", signal=first)
     env = vs.Environment("2026-01-01", backend=backend)
     grid = env.add_microgrid(
         [load, solar], [vs.GridConnection()], grid_signals={"context": first}, name="site"
@@ -376,8 +376,8 @@ def test_shared_and_replaced_signal_lifecycle(backend):
 
     class Replace(vs.Controller):
         def step(self, now, states):
-            load.power = second
-            solar.power = 0
+            load.signal = second
+            solar.signal = 0
             grid.grid_signals["context"] = 0.25
 
     env.add_controller(Replace())
@@ -415,7 +415,7 @@ def test_signal_start_failure_closes_all_inputs(backend):
 
     env = vs.Environment("2026-01-01", backend=backend)
     env.add_microgrid(
-        [vs.Consumer("load", power=Input("load", fail=True))],
+        [vs.Consumer("load", signal=Input("load", fail=True))],
         [vs.GridConnection()],
         grid_signals={"price": Input("price")},
     )

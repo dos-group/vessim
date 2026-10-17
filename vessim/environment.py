@@ -15,7 +15,7 @@ from vessim.controller import Controller
 from vessim.dispatch_policy import DispatchPolicy, DefaultDispatchPolicy
 from vessim.dispatchable import Dispatchable
 from vessim.microgrid import Microgrid
-from vessim.signal import Signal, LiveSignal
+from vessim.signal import Signal, StaticSignal, LiveSignal
 
 ControllerT = TypeVar("ControllerT", bound=Controller)
 
@@ -298,7 +298,7 @@ class Environment:
 
     def _input_signals(self) -> Iterator[Signal]:
         for grid in self.microgrids.values():
-            for value in [*(a.power for a in grid.actors), *(grid.grid_signals or {}).values()]:
+            for value in [*(a.signal for a in grid.actors), *(grid.grid_signals or {}).values()]:
                 if isinstance(value, Signal):
                     yield value
 
@@ -307,7 +307,8 @@ class Environment:
 
     def _start_signals(self) -> None:
         for signal in self._input_signals():
-            if id(signal) in self._signals:
+            # Numeric assignments create resource-free constants on each update.
+            if type(signal) is StaticSignal or id(signal) in self._signals:
                 continue
             self._signals[id(signal)] = signal
             if isinstance(signal, LiveSignal) and not self.is_live:

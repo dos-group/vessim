@@ -70,7 +70,7 @@ def test_custom_actor_cannot_reverse_its_role(kind, wrong_power):
             return wrong_power, {}
 
     env = vs.Environment("2026-01-01")
-    env.add_microgrid([Invalid("invalid", power=0)], [vs.GridConnection()])
+    env.add_microgrid([Invalid("invalid", signal=0)], [vs.GridConnection()])
     with pytest.raises(ValueError, match="wrong direction"):
         env.run(1)
 
@@ -79,4 +79,4 @@ def test_custom_actor_cannot_reverse_its_role(kind, wrong_power):
 def test_context_constants_are_validated(value):
     env = vs.Environment("2026-01-01")
     with pytest.raises(ValueError, match="finite number"):
-        env.add_microgrid([vs.Consumer("load", power=700)], grid_signals={"price": value})
+        env.add_microgrid([vs.Consumer("load", signal=700)], grid_signals={"price": value})

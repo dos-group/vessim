@@ -39,8 +39,8 @@ def run_scenario(scenario):
         env.add_microgrid(
             name="site",
             actors=[
-                vs.Producer("solar", power=SOLAR),
-                vs.Consumer("load", power=config["load_w"]),
+                vs.Producer("solar", signal=SOLAR),
+                vs.Consumer("load", signal=config["load_w"]),
             ],
             dispatchables=[
                 vs.SimpleBattery("battery", config["capacity_wh"], initial_soc=0.5),

@@ -57,7 +57,10 @@ def run_scenario(
 
     with vs.Environment("2026-01-01", step_size=300, name="Campus energy study") as env:
         env.add_microgrid(
-            [vs.Producer("solar", power=trace(solar)), vs.Consumer("servers", power=trace(load))],
+            [
+                vs.Producer("solar", signal=trace(solar)),
+                vs.Consumer("servers", signal=trace(load)),
+            ],
             dispatchables=(
                 # Use up to 1 kW from the grid before discharging storage.
                 # The overflow connection keeps demand served if storage runs out.

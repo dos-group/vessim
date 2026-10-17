@@ -197,8 +197,8 @@ class Api(Controller):
                 elif target == "actor":
                     actor_name = cmd.get("target_name")
                     actor = next((a for a in mg.actors if a.name == actor_name), None)
-                    if actor and prop == "power":
-                        actor.power = val
+                    if actor and prop == "signal":
+                        actor.signal = val
 
         for mg_name, mg_state in microgrid_states.items():
             response = self._session.post(

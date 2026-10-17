@@ -128,3 +128,23 @@ def test_prepare_captures_actor_configuration():
     result = env.run(4)
     assert calls == [0, 2]
     assert list(result.states["microgrid_0"]["actor_states"]) == ["new_name"]
+
+
+def test_repeated_numeric_updates_do_not_retain_replaced_constants():
+    import gc
+    import weakref
+
+    actor = vs.Consumer("load", signal=700)
+    signals = []
+
+    class Update(vs.Controller):
+        def step(self, now, states):
+            signals.append(weakref.ref(actor.signal))
+            actor.signal = 500
+
+    env = vs.Environment("2026-01-01")
+    env.add_microgrid([actor], [vs.GridConnection()])
+    env.add_controller(Update())
+    env.run(100)
+    gc.collect()
+    assert all(reference() is None for reference in signals)

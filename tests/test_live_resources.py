@@ -47,7 +47,7 @@ def test_live_broker_round_trip_and_cleanup():
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
     env = vs.Environment.live()
-    load = vs.Consumer("load", power=100)
+    load = vs.Consumer("load", signal=100)
     env.add_microgrid([load], name="grid", dispatchables=[vs.GridConnection()])
     api = env.add_controller(vs.Api(broker_port=port))
     observed = []
@@ -59,7 +59,7 @@ def test_live_broker_round_trip_and_cleanup():
             observed.append(response.json())
             if len(observed) == 1:
                 response = requests.put(
-                    f"{api.broker_url}/microgrids/grid/actors/load/power",
+                    f"{api.broker_url}/microgrids/grid/actors/load/signal",
                     params={"value": 200},
                     timeout=1,
                 )
@@ -69,7 +69,8 @@ def test_live_broker_round_trip_and_cleanup():
     env.add_controller(Client())
     env.run(2.01)
     assert [row["actor_states"]["load"]["power"] for row in observed] == [-100, -100, -200]
-    assert load.power == 200
+    assert isinstance(load.signal, vs.StaticSignal)
+    assert load.signal.at() == 200
     assert not api.broker_process.is_alive()
 
 
@@ -85,7 +86,7 @@ def test_failed_prometheus_setup_starts_no_worker(monkeypatch):
     signal = vs.PrometheusSignal("http://localhost:1", "up", timeout=0.1)
     assert signal._thread is None
     env = vs.Environment.live()
-    env.add_microgrid([vs.Consumer("load", power=signal)], [vs.GridConnection()])
+    env.add_microgrid([vs.Consumer("load", signal=signal)], [vs.GridConnection()])
     with pytest.raises(ConnectionError, match="Could not connect"):
         env.run(0.01)
     assert {id(t) for t in threading.enumerate()} == before
@@ -105,7 +106,7 @@ def test_watttime_initialization_is_deferred_and_failure_is_cleaned_up(monkeypat
     assert "location=(52, 13)" in repr(signal)
     env = vs.Environment.live()
     env.add_microgrid(
-        [vs.Consumer("load", power=100)], [vs.GridConnection()], grid_signals={"carbon": signal}
+        [vs.Consumer("load", signal=100)], [vs.GridConnection()], grid_signals={"carbon": signal}
     )
     with pytest.raises(RuntimeError, match="login failed"):
         env.run(1)

@@ -16,19 +16,18 @@ solar = vs.Trace(
     )
 )
 
-with vs.Environment(sim_start="2026-01-01", step_size=60) as env:
-    env.add_microgrid(
-        name="site",
-        actors=[
-            vs.Actor("load", vs.StaticSignal(700), consumer=True),
-            vs.Actor("solar", solar),
-        ],
-        dispatchables=[vs.SimpleBattery("battery", capacity=1000), vs.GridConnection()],
-    )
-    recorder = env.add_controller(vs.Recorder("results/basic_example"))
-    run = env.run(until=6 * 3600)
+env = vs.Environment(sim_start="2026-01-01", step_size=60)
+env.add_microgrid(
+    name="site",
+    actors=[
+        vs.Consumer("load", signal=700),
+        vs.Producer("solar", signal=solar),
+    ],
+    dispatchables=[vs.SimpleBattery("battery", capacity=1000), vs.GridConnection()],
+)
+recorder = env.add_controller(vs.Recorder("results/basic_example"))
+run = env.run(until=6 * 3600)
 
 metrics = recorder.metrics["microgrids"]["site"]
 print(f"Grid import: {metrics['grid_import'] / 1000:.2f} kWh")
 print(f"Grid export: {metrics['grid_export'] / 1000:.2f} kWh")
-print("View results: python -m vessim view results/basic_example")

@@ -1,20 +1,18 @@
-"""Vessim CLI.
-
-So far only supports:
-- `vessim view <results-dir>`
-"""
+"""Serve recorded experiments and studies in the Vessim viewer."""
 
 from __future__ import annotations
 
 import argparse
 import functools
+import gzip
 import json
 import sys
 import webbrowser
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
-import yaml
+from vessim._viewer import Catalog
 
 
 def _viewer_dist_dir() -> Path:
@@ -22,118 +20,85 @@ def _viewer_dist_dir() -> Path:
 
 
 class _ViewerHandler(SimpleHTTPRequestHandler):
-    """Serves the built viewer app, /results/* files, and a /experiments JSON endpoint."""
-
-    def __init__(self, *args, viewer_dir: Path, results_dir: Path, **kwargs):
-        self.viewer_dir = viewer_dir
-        self.results_dir = results_dir
-        super().__init__(*args, **kwargs)
+    def __init__(self, *args, catalog: Catalog, viewer_dir: Path, **kwargs):
+        self.catalog = catalog
+        super().__init__(*args, directory=str(viewer_dir), **kwargs)
 
     def do_GET(self):
-        url_path = self.path.split("?", 1)[0].split("#", 1)[0]
-        if url_path == "/experiments":
-            self._serve_experiments()
-            return
-        super().do_GET()
-
-    def _serve_experiments(self):
-        root_config = self.results_dir / "metadata.yaml"
-        if root_config.exists():
-            status = self._read_status(root_config)
-            data = {"mode": "single", "experiments": [{"name": "", "status": status}]}
+        path = unquote(urlsplit(self.path).path)
+        if path == "/catalog.json":
+            self._send(
+                json.dumps(self.catalog.payload(), allow_nan=False).encode(), "application/json"
+            )
+        elif path.startswith("/data/"):
+            parts = path.strip("/").split("/")
+            try:
+                if len(parts) != 3 or parts[2] != "trajectory":
+                    raise KeyError(path)
+                content, kind = self.catalog.trajectory(parts[1])
+                self._send(content, kind)
+            except (KeyError, OSError, ValueError):
+                self.send_error(404, "Recorded trajectory is unavailable")
         else:
-            experiments = []
-            for subdir in sorted(self.results_dir.iterdir()):
-                config_file = subdir / "metadata.yaml"
-                if subdir.is_dir() and config_file.exists():
-                    experiments.append({
-                        "name": subdir.name,
-                        "status": self._read_status(config_file)
-                    })
-            data = {"mode": "multi", "experiments": experiments}
+            super().do_GET()
 
-        body = json.dumps(data).encode()
+    def _send(self, body: bytes, content_type: str) -> None:
+        compressed = len(body) > 1024 and "gzip" in self.headers.get("Accept-Encoding", "")
+        if compressed:
+            body = gzip.compress(body, compresslevel=1)
         self.send_response(200)
-        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Vary", "Accept-Encoding")
+        if compressed:
+            self.send_header("Content-Encoding", "gzip")
         self.end_headers()
         self.wfile.write(body)
 
-    def _read_status(self, config_file: Path) -> str | None:
-        try:
-            config = yaml.safe_load(config_file.read_text()) or {}
-            return config.get("execution", {}).get("status")
-        except Exception:
-            return None
-
-    def translate_path(self, path: str) -> str:
-        # Strip query string and fragment
-        path = path.split("?", 1)[0].split("#", 1)[0]
-
-        if path.startswith("/results/"):
-            rel = path[len("/results/"):]
-            return str(self.results_dir / rel)
-        if path == "/results":
-            return str(self.results_dir)
-
-        # Serve from viewer dist
-        rel = path.lstrip("/")
-        full = self.viewer_dir / rel
-        # SPA fallback: if file doesn't exist, serve index.html
-        if not full.exists() or full.is_dir():
-            if rel and not (full.exists() and full.is_dir()):
-                return str(self.viewer_dir / "index.html")
-        return str(full)
-
     def log_message(self, format, *args):
-        # Silence request logs
         pass
 
 
 def _cmd_view(args: argparse.Namespace) -> None:
-    results_dir = Path(args.directory).resolve()
-    if not results_dir.is_dir():
-        print(f"Error: '{results_dir}' is not a directory", file=sys.stderr)
+    try:
+        catalog = Catalog(Path(args.path))
+        viewer_dir = _viewer_dist_dir()
+        if not (viewer_dir / "index.html").exists():
+            raise ValueError("Viewer assets not found. Run npm run build in viewer/.")
+        if args.export:
+            catalog.export(Path(args.export), viewer_dir)
+            print(f"Static viewer exported to {args.export}")
+            return
+    except (ValueError, OSError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
-
-    viewer_dir = _viewer_dist_dir()
-    if not (viewer_dir / "index.html").exists():
-        print("Error: viewer assets not found. Rebuild with `npm run build` in viewer/.",
-              file=sys.stderr)
-        sys.exit(1)
-
-    port = args.port
-    handler = functools.partial(
-        _ViewerHandler,
-        viewer_dir=viewer_dir,
-        results_dir=results_dir,
-    )
-    server = HTTPServer(("localhost", port), handler)
-
-    url = f"http://localhost:{port}"
-    print(f"Serving experiment viewer at {url}")
-    print(f"Results directory: {results_dir}")
-    print("Press Ctrl+C to stop.\n")
-
+    handler = functools.partial(_ViewerHandler, catalog=catalog, viewer_dir=viewer_dir)
+    server = ThreadingHTTPServer(("localhost", args.port), handler)
+    url = f"http://localhost:{server.server_port}"
+    print(f"Experiment viewer: {url}\n{len(catalog.runs)} recorded runs · {catalog.source}")
+    for error in catalog.errors:
+        print(f"Skipped: {error}", file=sys.stderr)
     if not args.no_browser:
         webbrowser.open(url)
-
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\nStopped.")
+        pass
+    finally:
         server.server_close()
 
 
 def main():
     parser = argparse.ArgumentParser(prog="vessim", description="Vessim CLI")
     sub = parser.add_subparsers(dest="command")
-
-    view = sub.add_parser("view", help="View experiment results in the browser")
-    view.add_argument("directory", help="Path to a results directory")
-    view.add_argument("-p", "--port", type=int, default=8710, help="Port (default: 8710)")
-    view.add_argument("--no-browser", action="store_true", help="Don't open browser automatically")
-
+    view = sub.add_parser("view", help="Explore recorded experiments or a study")
+    view.add_argument(
+        "path", help="Experiment JSON/directory, collection directory, or study JSON"
+    )
+    view.add_argument("-p", "--port", type=int, default=8710)
+    view.add_argument("--no-browser", action="store_true")
+    view.add_argument("--export", metavar="DIRECTORY", help="Export a portable static viewer")
     args = parser.parse_args()
     if args.command == "view":
         _cmd_view(args)

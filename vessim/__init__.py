@@ -14,7 +14,7 @@ from vessim.dispatch_policy import DispatchPolicy, DefaultDispatchPolicy
 from vessim.dispatchable import Dispatchable, GridConnection, Storage, SimpleBattery, ClcBattery
 from vessim.environment import Environment
 from vessim.microgrid import Microgrid, MicrogridState
-from vessim.signal import Signal, Trace
+from vessim.signal import Signal, StaticSignal, Trace
 
 __all__ = [
     "RunResult",
@@ -39,6 +39,7 @@ __all__ = [
     "SimpleBattery",
     "ClcBattery",
     "Signal",
+    "StaticSignal",
     "Trace",
 ]
 

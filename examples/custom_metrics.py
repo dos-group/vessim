@@ -40,8 +40,8 @@ def main():
         env.add_microgrid(
             name="site",
             actors=[
-                vs.Producer("solar", power=solar),
-                vs.Consumer("server", power=700),
+                vs.Producer("solar", signal=solar),
+                vs.Consumer("server", signal=700),
             ],
             dispatchables=[
                 vs.SimpleBattery("battery", capacity_wh, initial_soc=0.5),

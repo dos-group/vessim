@@ -2,39 +2,79 @@ import subprocess
 import os
 import sys
 import pytest
+from pathlib import Path
+import shutil
+import json
+import re
 
 EXAMPLES_DIR = os.path.join(os.path.dirname(__file__), "..", "examples")
 
 
-def run_script(script_name):
+def run_script(script_name, cwd=None):
     script_path = os.path.join(EXAMPLES_DIR, script_name)
     result = subprocess.run(
         [sys.executable, script_path],
         capture_output=True,
         text=True,
-        cwd=os.path.dirname(EXAMPLES_DIR),  # Run from project root
+        cwd=cwd or os.path.dirname(EXAMPLES_DIR),
     )
     return result
 
 
-def test_basic_example():
-    result = run_script("basic_example.py")
-    assert result.returncode == 0, f"Script failed with output:\n{result.stderr}"
-    assert "Simulation finished successfully" in result.stderr or result.returncode == 0
+def test_basic_example(tmp_path):
+    # A copied script must work without access to repository datasets.
+    script = tmp_path / "basic_example.py"
+    shutil.copy(Path(EXAMPLES_DIR) / script.name, script)
+    result = run_script(str(script), cwd=tmp_path)
+    assert result.returncode == 0, result.stderr
+    assert "Grid import: 1.10 kWh" in result.stdout
+    assert "Grid export: 1.70 kWh" in result.stdout
+    record = json.loads((tmp_path / "results/basic_example/experiment.json").read_text())
+    assert record["execution"]["status"] == "completed"
+    assert record["metrics"]["microgrids"]["site"]["energy_consumed"] == pytest.approx(4200)
 
-    # Cleanup
-    if os.path.exists("results.csv"):
-        os.remove("results.csv")
+
+@pytest.mark.parametrize("document", ["README.md", "docs/getting_started.md"])
+def test_first_use_documentation_runs_as_written(tmp_path, document):
+    source = (Path(__file__).parents[1] / document).read_text()
+    code = re.findall(r"```python\n(.*?)```", source, re.S)[0]
+    for capacity, imported, exported in [(1000, "1.10", "1.70"), (2000, "0.70", "0.70")]:
+        result = subprocess.run(
+            [sys.executable, "-c", code.replace("capacity=1000", f"capacity={capacity}")],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        assert f"Grid import: {imported} kWh" in result.stdout
+        assert f"Grid export: {exported} kWh" in result.stdout
+
+
+def test_csv_walkthrough(tmp_path):
+    guide = (Path(__file__).parents[1] / "docs/concepts/signals.md").read_text()
+    data = re.findall(r"```csv\n(.*?)```", guide, re.S)[0]
+    (tmp_path / "input.csv").write_text(data)
+    script = tmp_path / "replay_csv.py"
+    shutil.copy(Path(EXAMPLES_DIR) / script.name, script)
+    result = subprocess.run(
+        [sys.executable, str(script), "input.csv", "--hours", "6"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "Grid import: 1.10 kWh" in result.stdout
+    assert "Grid export: 1.70 kWh" in result.stdout
 
 
 def test_battery_sizing_study_is_reproducible_across_workers(tmp_path):
-    import json
-
+    script = tmp_path / "battery_sizing_study.py"
+    shutil.copy(Path(EXAMPLES_DIR) / script.name, script)
     for workers in (1, 2):
         subprocess.run(
             [
                 sys.executable,
-                os.path.join(EXAMPLES_DIR, "battery_sizing_study.py"),
+                str(script),
                 "--scenarios",
                 "4",
                 "--workers",
@@ -117,14 +157,24 @@ def test_live_server_monitoring(tmp_path):
         server.server_close()
 
 
-def test_custom_metrics_example():
-    import json
-
-    result = run_script("custom_metrics.py")
+def test_custom_metrics_example(tmp_path):
+    script = tmp_path / "custom_metrics.py"
+    shutil.copy(Path(EXAMPLES_DIR) / script.name, script)
+    result = run_script(str(script), cwd=tmp_path)
     assert result.returncode == 0, result.stderr
     assert "Objectives:" in result.stdout
-    with open("results/custom_metrics/experiment.json") as file:
+    with (tmp_path / "results/custom_metrics/experiment.json").open() as file:
         record = json.load(file)
     assert record["timeseries"] is None
     assert record["metrics"]["actors"]["site"]["solar"]["area"] == 25
     assert record["execution"]["status"] == "completed"
+
+
+def test_demand_response_example():
+    result = run_script("demand_response.py")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == [
+        "00:00:00: 1000 W",
+        "00:01:00: 700 W",
+        "00:02:00: 700 W",
+    ]

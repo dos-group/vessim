@@ -37,6 +37,30 @@ class Signal(ABC):
         """Perform necessary finalization tasks of a signal."""
 
 
+class StaticSignal(Signal):
+    """A constant numeric input, also used for numeric actor input shorthand.
+
+    Args:
+        value: A finite number. Units are determined by the input using it.
+    """
+
+    def __init__(self, value: float) -> None:
+        self.set_value(value)
+
+    def __repr__(self) -> str:
+        """Describe the constant input in experiment configuration."""
+        return f"StaticSignal({self._value})"
+
+    def set_value(self, value: float) -> None:
+        """Change the value returned by subsequent samples."""
+        require_finite(value, "StaticSignal value")
+        self._value = value
+
+    def at(self, elapsed: Optional[timedelta | float] = None) -> float:
+        """Return the current value, independent of elapsed time."""
+        return self._value
+
+
 class Trace(Signal):
     """Replays a time series indexed by an *offset* since simulation start.
 

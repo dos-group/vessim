@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vessim · Study viewer proposal</title>
+    <link rel="stylesheet" href="proposal.css?v=analysis-10" />
+  </head>
+  <body>
+    <div class="prototype">
+      Interactive prototype · recorded examples ·
+      <a href="#proposal">Read data-model proposal</a>
+    </div>
+    <div class="shell">
+      <aside>
+        <a class="brand" href="#results"
+          ><img src="../../docs/assets/logo.svg" alt="" />Vessim</a
+        >
+        <label for="study">Study</label>
+        <select id="study">
+          <option value="recorded">Dispatch comparison</option>
+          <option value="optuna-recorded">Optuna search</option>
+          <option value="infrastructure-year">Annual sizing · 8 setups</option>
+          <option value="infrastructure-search">Annual sizing · Optuna</option>
+          <option value="fixed">Missing metrics · fixture</option>
+        </select>
+        <nav aria-label="Study">
+          <a href="#results" id="results-nav">Results</a>
+          <a href="#timeseries" id="timeseries-nav"
+            >Time series <span id="run-count">0</span></a
+          >
+        </nav>
+        <div class="sidebar-bottom">
+          <a href="#proposal">Data & navigation proposal</a>
+        </div>
+      </aside>
+      <main id="main" aria-live="polite"></main>
+    </div>
+    <template id="proposal">
+      <div class="heading">
+        <div>
+          <h1>Study viewer proposal</h1>
+          <p>
+            Draft for discussion. No production formats or viewer behavior have
+            changed.
+          </p>
+        </div>
+        <a class="button" href="#results">Back to mockup</a>
+      </div>
+      <article>
+        <h2>Current scope: simulation studies only</h2>
+        <p>
+          Decision recorded on 2026-10-17: this viewer analyzes completed
+          simulation runs. Live views, live-recording analysis, and comparisons
+          involving live experiments are out of scope. Python defines scenarios;
+          Optuna handles optimization. See the
+          <a href="../README.md#agreed-design-scope--2026-10-17">agreed design scope</a>.
+        </p>
+        <p>
+          Target behavior: publish simulation results only on successful completion,
+          discard interrupted output by default, and report failures through Python
+          or Optuna. The prototype now shows completed results only, with no status
+          controls. The recorder publication change is still pending implementation.
+        </p>
+        <h2>1. Vocabulary and identity</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Object</th>
+              <th>Meaning</th>
+              <th>Identity</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Study</td>
+              <td>An investigation with configurations to evaluate.</td>
+              <td>
+                <code>study_id</code>, independent of its name and directory.
+              </td>
+            </tr>
+            <tr>
+              <td>Configuration</td>
+              <td>
+                Chosen settings and evaluation conditions, including a
+                definition of uncertain inputs.
+              </td>
+              <td>
+                <code>configuration_id</code>, unique within a study. Membership
+                is explicit.
+              </td>
+            </tr>
+            <tr>
+              <td>Run</td>
+              <td>One execution with one realization of any uncertainty.</td>
+              <td>
+                Existing <code>run_id</code>, unique within an explicitly
+                grouped study.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          The existing run-level <code>config</code> is a captured model
+          description. It is not the new configuration identity. A seed change
+          alone does not create a new configuration. A change of strategy,
+          design, input model, initial-state definition, or evaluation horizon
+          does.
+        </p>
+        <p>
+          Configuration identity does not change when its display name changes
+          or another run is added. Changed scientific settings require a new ID.
+          Identical parameter values are not automatically deduplicated:
+          separate optimizer trials can remain separate candidates.
+        </p>
+
+        <h2>2. Minimal storage change</h2>
+        <p>
+          Keep <code>ExperimentResult</code>, <code>Recorder</code>, and
+          <code>vessim.experiment</code> version 1 unchanged. Introduce a
+          <strong>proposed study version 2 manifest</strong> to declare
+          configurations and reference their runs. The current viewer
+          deliberately does not accept this draft format.
+        </p>
+        <p>
+          New grouping belongs in the manifest. Keeping membership in the
+          manifest avoids changing the standalone recording contract and allows
+          a run to be analyzed in different study contexts.
+        </p>
+        <pre>
+{
+  "format": "vessim.study",
+  "schema_version": 2,
+  "study_id": "dispatch-comparison",
+  "name": "Dispatch comparison",
+  "configurations": [{
+    "configuration_id": "peak-4kwh",
+    "name": "Peak shaving / 4 kWh",
+    "parameters": {
+      "strategy": "peak_shaving",
+      "battery_capacity_wh": 4000
+    },
+    "conditions": {
+      "input_model": "demand-v1",
+      "sim_start": "2026-01-01T00:00:00Z",
+      "duration_s": 86400,
+      "grid_limit_w": 10000
+    },
+    "runs": [{
+      "run_id": "peak-4kwh-r01",
+      "path": "runs/peak-4kwh-r01/experiment.json",
+      "realization": {
+        "id": "demand-01",
+        "seeds": { "demand": 100 }
+      }
+    }]
+  }]
+}</pre>
+        <p>
+          <code>parameters</code> declares the configuration's fixed settings
+          and must match the corresponding entries in each run's recorded
+          parameters. Run parameters may additionally contain sampled values and
+          seeds. <code>conditions</code> records shared evaluation assumptions;
+          it is descriptive, not executable Python. Record supplied input/model
+          versions here, not just a friendly scenario name. No inheritance or
+          automatic parameter merging is proposed.
+        </p>
+        <p>
+          <code>realization</code> is optional. Its ID identifies the same
+          sampled inputs across configurations within this study; named seeds
+          record how random sources were initialized. Matching seeds alone do
+          not establish pairing or statistical independence. A deterministic run
+          needs no artificial realization ID.
+        </p>
+        <p>
+          Optional <code>provenance</code> on a configuration can associate it
+          with an Optuna study and trial number. Optuna retains objective
+          definitions, aggregation for optimization, constraints, search
+          history, and its own stored trial values. Recorded run metrics remain
+          the evidence used to compute those objectives.
+        </p>
+        <p>
+          Manifest paths resolve relative to <code>study.json</code>. A
+          trajectory reference still resolves relative to its own
+          <code>experiment.json</code>. Moving a study folder together with its
+          run folders preserves references. Paths must remain within the opened
+          study root.
+        </p>
+        <p>
+          Unknown configuration/run references, duplicate IDs, mismatched run
+          IDs, or conflicting fixed parameters are visible data errors. A
+          conflicting run remains inspectable but is excluded from configuration
+          summaries. Missing files remain visible as unavailable entries. An
+          empty configuration can be shown with zero recorded runs; it does not
+          imply that execution has been scheduled.
+        </p>
+
+        <h2>3. Discovery and compatibility</h2>
+        <pre>
+results/
+  dispatch-comparison/
+    study.json
+    runs/c01-r01/experiment.json
+    runs/c01-r02/experiment.json
+  infrastructure-search/
+    study.json
+    runs/trial-001/experiment.json</pre>
+        <ul>
+          <li>
+            <code>vessim view results/dispatch-comparison/</code> opens its
+            study manifest.
+          </li>
+          <li>
+            <code>vessim view results/</code> offers immediate child directories
+            with explicit <code>study.json</code> manifests. Folder nesting
+            alone does not create a scientific grouping.
+          </li>
+          <li>
+            A directory with its own study manifest opens that study. A root
+            mixing unrelated loose runs with child studies reports the loose
+            data and asks the user to open it explicitly; it does not silently
+            merge datasets.
+          </li>
+          <li>
+            Existing standalone runs, flat collections, and version 1 embedded
+            studies stay readable. Without explicit configuration membership
+            they open in a run-oriented compatibility view marked “Configuration
+            grouping unavailable.” Never infer grouping by dropping seed keys or
+            hashing parameters.
+          </li>
+          <li>
+            Legacy embedded study trajectories keep their existing origin: the
+            study file. Referenced version 2 runs keep the experiment-file
+            origin. Conversion is explicit, including path rebasing.
+          </li>
+          <li>
+            Load the study list first, the active study's summaries next, and
+            trajectories only on request. Opening ten studies should not load
+            ten complete catalogs.
+          </li>
+        </ul>
+        <p>
+          Run records can be reused in more than one study without rewriting
+          them. Their study-specific grouping and interpretation live in those
+          manifests. Standalone runs do not automatically discover every study
+          containing them.
+        </p>
+
+        <h2>4. What a configuration row means</h2>
+        <p>
+          When each configuration has one completed run, label the rows
+          configurations and display the recorded metrics directly. Hide the
+          configuration/run toggle and metric summary selector. Show them when
+          the study has repeated runs. Descriptions live under Study details.
+        </p>
+        <p>
+          Parameter and metric headers can be dragged to reorder columns; a click
+          still sorts. Known energy, power, and CO2e mass units use a consistent
+          automatic scale per column across the entire study. Override units in
+          Columns or Metrics. Display conversion also applies to metric plots,
+          comparisons, and tabular exports, without changing stored evidence.
+        </p>
+        <p>
+          At configuration level, start with fixed parameter columns,
+          completed run counts and
+          selectable metrics. With one eligible value show that value; with
+          multiple values show their
+          <strong>observed min–max range and count</strong>. These are
+          descriptive summaries of recorded values, not confidence intervals or
+          optimization objective values.
+        </p>
+        <ul>
+          <li>
+            Configuration summary eligibility: completed runs with a finite
+            metric, matching scope, unit, definition, and recorded horizon. Show
+            excluded and missing counts. Do not treat missing values as zero or
+            partial-run metrics as complete outcomes.
+          </li>
+          <li>
+            If metric definitions or horizons differ, display a compatibility
+            problem rather than pool values. Unknown horizons cannot be assumed
+            equal.
+          </li>
+          <li>
+            Configuration details show the completed simulation runs belonging
+            to that configuration. Opening a run shows its full recorded settings.
+          </li>
+          <li>
+            Results shows recorded values or configuration ranges. Configuration
+            plots offer an explicit mean, median, minimum, or maximum of eligible
+            runs. No baseline, confidence interval, or automatic ranking is inferred.
+          </li>
+          <li>
+            Later aggregation controls need a declared population, eligibility
+            policy, statistic, and any weights. Paired analysis additionally
+            needs explicit realization identity. Do not infer either policy from
+            a seed.
+          </li>
+        </ul>
+        <p>
+          The existing rule that recorded metrics are authoritative remains
+          intact: configuration ranges are labeled viewer summaries of those
+          values. They never replace or recalculate a run's metric from its
+          trajectory.
+        </p>
+
+        <h2>5. Navigation and page responsibilities</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Location</th>
+              <th>Purpose</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Left sidebar</td>
+              <td>
+                Existing logo, study selector, Results and Time series
+                with explicit selections. No slogan, overview cards, or list of
+                every run.
+              </td>
+            </tr>
+            <tr>
+              <td>Results</td>
+              <td>
+                A Configurations / Runs switch, selectable plot axes, selectable
+                columns, filters, export, and linked plot/table selection.
+                Configuration plots require an explicit summary statistic.
+              </td>
+            </tr>
+            <tr>
+              <td>Configuration details</td>
+              <td>
+                Side panel with fixed settings and its run table. Keep the study
+                table and filters in place.
+              </td>
+            </tr>
+            <tr>
+              <td>Run details</td>
+              <td>
+                Breadcrumb back to the configuration; recorded metrics,
+                execution, configuration, and optional time series. Trajectory
+                overlays explicitly select runs, not averaged configurations.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          Only one study is active. Filters, configuration selection, and the
+          opened configuration persist per study during a session. A
+          single-study input needs no selector. A single standalone run opens
+          directly in run details. Browser back/forward should traverse these
+          locations; study-qualified URLs avoid collisions between run IDs.
+        </p>
+        <p>
+          The prototype implements study switching, arbitrary recorded
+          metric/parameter axes and columns, run and configuration selection,
+          configuration summaries, and lazy
+          time-series overlays with linked zoom and cursor. The recorded example
+          adds a custom ramp-limit metric. Unknown signal units cannot be
+          overlaid across runs. On narrow screens the detail panel moves below
+          the table.
+        </p>
+        <p>
+          Time series uses an ordered run selection. New selections
+          append at the end. Drag run names to
+          reorder them, or focus a name and use the left/right arrow keys.
+          Table sorting does not
+          change this order, and selected CSV exports follow it. Reordering keeps
+          each selected run's color and the current trajectory zoom.
+        </p>
+
+        <h2>6. Examples to review</h2>
+        <p>
+          <strong>Dispatch comparison:</strong> 27 actual simulations with three
+          policies, three battery sizes, and three demand seeds.
+          <strong>Annual sizing:</strong> eight fixed wind, solar, and battery setups,
+          plus a separate Optuna search, each evaluated over 365 days at hourly
+          resolution. All scenario inputs and equipment-emissions coefficients
+          are synthetic. <strong>Missing &amp; failed results:</strong> invented
+          edge cases for testing incomplete data, separate from the simulations.
+        </p>
+        <p>
+          Inspect complete files:
+          <a href="../../results/viewer-proposal/fixed/study.json"
+            >fixed study manifest</a
+          >,
+          <a href="../../results/viewer-proposal/optimization/study.json"
+            >search manifest</a
+          >,
+          <a
+            href="../../results/viewer-proposal/fixed/runs/c01-r01/experiment.json"
+            >unchanged version 1 run record</a
+          >.
+        </p>
+        <p>
+          Generate edge-case fixtures with
+          <code>.venv/bin/python viewer/design/generate_fixtures.py</code> and
+          real recordings with
+          <code>.venv/bin/python viewer/design/generate_recorded.py</code>. The
+          latter executes 27 simulations using synthetic inputs and imports
+          previously saved Optuna trials when available. The prototype reads
+          their canonical metrics without recomputing them from CSV. Serve the
+          repository root with
+          <code>python -m http.server 8715 --bind 127.0.0.1</code> and open
+          <code>/viewer/design/</code>.
+        </p>
+        <p>
+          Generate annual data with
+          <code>python examples/infrastructure_study.py --record-trajectories</code>,
+          then run <code>python viewer/design/import_infrastructure.py</code>.
+          For the search, use <code>--trials 24 --output results/infrastructure-search</code>
+          with the same scenario script and rerun the importer. Hourly annual
+          trajectories retain all 8,760 samples for zooming. Signals above 10,000
+          samples use an extrema-preserving overview; CSV downloads retain every sample.
+        </p>
+        <p>
+          The prototype uses the existing locally installed ECharts and
+          PapaParse packages; run <code>npm --prefix viewer ci</code> if needed.
+          Data checks: <code>node --test viewer/design/model.test.mjs</code>.
+          Browser checks with installed Chrome and the preview server running:
+          <code>node viewer/design/check.cjs</code>. Set
+          <code>VIEWER_PROPOSAL_URL</code> for another preview address.
+        </p>
+
+        <h2>7. Implementation sequence after review</h2>
+        <ol>
+          <li>
+            Add manifest reading, validation, explicit study discovery, and
+            compatibility adapters. Add a small Python manifest-writing helper;
+            scenarios remain ordinary Python.
+          </li>
+          <li>
+            Extend the strategy example with repeated demand realizations and
+            the Optuna example with explicit candidate membership. For multiple
+            runs per trial, declare the objective reducer in Python.
+          </li>
+          <li>
+            Replace the current viewer navigation and visual shell with this
+            simpler structure. Reuse run metrics, lazy trajectories, and
+            existing charts.
+          </li>
+          <li>
+            Validate grouping, missing/failed data, preserved state, and scale
+            with both many configurations and many runs per configuration.
+          </li>
+        </ol>
+        <p>
+          For repeated digital-twin forecasting, begin with a study per forecast
+          issue time, containing candidate-action configurations and
+          forecast-member runs. A longer-lived study would need explicit batch
+          grouping; do not pool different forecast origins as replicates.
+        </p>
+      </article>
+    </template>
+    <script src="../node_modules/echarts/dist/echarts.min.js"></script>
+    <script type="module" src="proposal.js?v=analysis-10"></script>
+  </body>
+</html>

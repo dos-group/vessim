@@ -15,11 +15,11 @@ class DemandResponse(vs.Controller):
 
     def step(self, now, states):
         carbon = states["site"]["grid_signals"]["carbon"]
-        self.datacenter.power = 700 if carbon > 0.3 else 1000
+        self.datacenter.signal = 700 if carbon > 0.3 else 1000
 
 
 def main():
-    datacenter = vs.Consumer("datacenter", power=1000)
+    datacenter = vs.Consumer("datacenter", signal=1000)
     with vs.Environment("2026-01-01", step_size=60) as env:
         env.add_microgrid(
             name="site",

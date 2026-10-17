@@ -187,14 +187,14 @@ def set_policy_prop(name: str, prop: str, value: Any):
     return {"status": "command queued"}
 
 
-@app.put("/microgrids/{name}/actors/{actor_name}/power")
-def set_actor_power(name: str, actor_name: str, value: float):
+@app.put("/microgrids/{name}/actors/{actor_name}/signal")
+def set_actor_signal(name: str, actor_name: str, value: float):
     broker.add_command({
         "type": "set_parameter",
         "microgrid": name,
         "target": "actor",
         "target_name": actor_name,
-        "property": "power",
+        "property": "signal",
         "value": value,
     })
     return {"status": "command queued"}
