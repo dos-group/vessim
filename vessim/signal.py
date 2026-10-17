@@ -327,8 +327,8 @@ def _td(value: np.timedelta64) -> timedelta:
     return pd.Timedelta(value).to_pytimedelta()
 
 
-class SilSignal(Signal):
-    """Base class for Software-in-the-Loop signals with background polling.
+class LiveSignal(Signal):
+    """Base class for live signals with background polling.
 
     This class provides common functionality for signals that need to periodically
     fetch data from external sources (APIs, databases, etc.) and cache the results.
@@ -413,7 +413,7 @@ class SilSignal(Signal):
             self._thread.join(timeout=self.timeout + 0.1)
 
 
-class PrometheusSignal(SilSignal):
+class PrometheusSignal(LiveSignal):
     """Signal that pulls energy usage data from a Prometheus instance.
 
     Args:
@@ -500,7 +500,7 @@ class PrometheusSignal(SilSignal):
         return f"PrometheusSignal({self.query})"
 
 
-class WatttimeSignal(SilSignal):
+class WatttimeSignal(LiveSignal):
     """Real-time carbon intensity signal from WattTime API.
 
     This signal fetches real-time marginal carbon intensity data from the WattTime API.
@@ -536,7 +536,7 @@ class WatttimeSignal(SilSignal):
         except ImportError:
             raise ImportError(
                 "WatttimeSignal requires 'requests' package. "
-                "Install with: pip install 'vessim[sil]'"
+                "Install with: pip install 'vessim[live]'"
             )
 
         # Validate that not both region and location are provided

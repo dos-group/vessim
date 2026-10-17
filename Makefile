@@ -1,6 +1,6 @@
 .PHONY: docs docs-viewer serve-docs typecheck lint test check
 
-CHECK_RUN = uv run --extra dev --extra sil --extra mosaik
+CHECK_RUN = uv run --extra dev --extra live --extra mosaik
 
 check: typecheck lint test
 

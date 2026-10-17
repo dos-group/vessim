@@ -103,7 +103,7 @@ class Api(Controller):
             self.requests = requests
         except ImportError:
             raise ImportError(
-                "Api requires 'requests' package. Install with: pip install vessim[sil]"
+                "Api requires 'requests' package. Install with: pip install vessim[live]"
             )
 
         if not math.isfinite(request_timeout) or request_timeout <= 0:

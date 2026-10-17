@@ -15,7 +15,7 @@ from vessim.controller import Controller
 from vessim.dispatch_policy import DispatchPolicy, DefaultDispatchPolicy
 from vessim.dispatchable import Dispatchable
 from vessim.microgrid import Microgrid
-from vessim.signal import Signal, SilSignal
+from vessim.signal import Signal, LiveSignal
 
 ControllerT = TypeVar("ControllerT", bound=Controller)
 
@@ -209,8 +209,8 @@ class Environment:
                         "between microgrids. Only signals may be shared."
                     )
                 seen.add(id(component))
-        if self._contains_sil_signals() and not self.is_live:
-            raise RuntimeError("SiL signals detected. Use Environment.live() for live inputs.")
+        if self._contains_live_signals() and not self.is_live:
+            raise RuntimeError("Live signals detected. Use Environment.live() for live inputs.")
         self._runtime = Runtime(self)
         if self.backend == "mosaik":
             self._mosaik_backend().prepare(self._runtime)
@@ -302,16 +302,18 @@ class Environment:
                 if isinstance(value, Signal):
                     yield value
 
-    def _contains_sil_signals(self) -> bool:
-        return any(isinstance(signal, SilSignal) for signal in self._input_signals())
+    def _contains_live_signals(self) -> bool:
+        return any(isinstance(signal, LiveSignal) for signal in self._input_signals())
 
     def _start_signals(self) -> None:
         for signal in self._input_signals():
             if id(signal) in self._signals:
                 continue
             self._signals[id(signal)] = signal
-            if isinstance(signal, SilSignal) and not self.is_live:
-                raise RuntimeError("SiL signals detected. Use Environment.live() for live inputs.")
+            if isinstance(signal, LiveSignal) and not self.is_live:
+                raise RuntimeError(
+                    "Live signals detected. Use Environment.live() for live inputs."
+                )
             signal.start()
 
     def close(self) -> None:

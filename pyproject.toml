@@ -41,7 +41,7 @@ mosaik = [
     "mosaik-api-v3>=3.0.4,<4",
     "docopt-ng>=0.9.0",
 ]
-sil = [
+live = [
     "requests>=2.26.0",          # PrometheusSignal, WatttimeSignal, Api
     "fastapi>=0.104.0",          # Api broker
     "uvicorn>=0.23.0",           # Api broker

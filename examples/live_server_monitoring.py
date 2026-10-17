@@ -3,14 +3,14 @@
 Uses node_exporter CPU metrics from Prometheus as the server power consumption
 signal, demonstrating how vessim connects to real monitoring infrastructure.
 
-1. pip install 'vessim[sil]'
-2. docker compose -f examples/sil/docker-compose.yml up -d
+1. pip install 'vessim[live]'
+2. docker compose -f examples/live/docker-compose.yml up -d
 3. Wait ~15s for Prometheus to collect initial node_exporter scrapes
 4. python examples/live_server_monitoring.py
 5. API available at http://localhost:8700
 
 Grafana visualization (run in a second terminal):
-  - docker compose -f examples/sil/docker-compose.grafana.yml up -d
+  - docker compose -f examples/live/docker-compose.grafana.yml up -d
 """
 
 import argparse

@@ -10,7 +10,7 @@ def test_signal_worker_stops_after_run_and_after_interruption():
     for interrupted in (False, True):
         fetched = Event()
 
-        class Signal(vs.SilSignal):
+        class Signal(vs.LiveSignal):
             def _fetch_current_value(self):
                 fetched.set()
                 return 123

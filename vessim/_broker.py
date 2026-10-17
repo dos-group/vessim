@@ -16,7 +16,7 @@ class PrometheusMetrics:
         except ImportError as e:
             raise ImportError(
                 "prometheus_client is required for Prometheus metrics export. "
-                "Install with: pip install vessim[sil]"
+                "Install with: pip install vessim[live]"
             ) from e
 
         self.microgrid_p_delta = Gauge(
@@ -210,7 +210,7 @@ def get_prometheus_metrics():
     except ImportError as e:
         raise ImportError(
             "prometheus_client is required for Prometheus metrics export. "
-            "Install with: pip install vessim[sil]"
+            "Install with: pip install vessim[live]"
         ) from e
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 

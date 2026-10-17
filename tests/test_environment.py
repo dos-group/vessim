@@ -85,7 +85,7 @@ def test_duplicate_names_and_models():
 
 
 def test_grid_live_signal_is_validated_and_closed():
-    class Live(vs.SilSignal):
+    class Live(vs.LiveSignal):
         def __init__(self):
             self.closed = False
 
@@ -102,7 +102,7 @@ def test_grid_live_signal_is_validated_and_closed():
         grid_signals={"live": signal},
         dispatchables=[vs.GridConnection()],
     )
-    with pytest.raises(RuntimeError, match="SiL signals"):
+    with pytest.raises(RuntimeError, match="Live signals"):
         env.run(1)
     assert signal.closed
 
