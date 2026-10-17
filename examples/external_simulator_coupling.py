@@ -52,7 +52,7 @@ def main():
         },
     ) as env:
         load = env.world.start("Load").Load()
-        env.add_microgrid(actors=[], name="site")
+        env.add_microgrid(actors=[], name="site", dispatchables=[vs.GridConnection()])
         recorder = env.add_controller(vs.Recorder(timeseries=False))
         env.prepare()
         env.world.connect(load, env.entities["site"], "power")

@@ -11,7 +11,7 @@ from vessim.metrics import (
     GridImportEmissions,
 )
 from vessim.dispatch_policy import DispatchPolicy, DefaultDispatchPolicy
-from vessim.dispatchable import Dispatchable, Storage, SimpleBattery, ClcBattery
+from vessim.dispatchable import Dispatchable, GridConnection, Storage, SimpleBattery, ClcBattery
 from vessim.environment import Environment
 from vessim.microgrid import Microgrid, MicrogridState
 from vessim.signal import Signal, Trace, StaticSignal
@@ -32,6 +32,7 @@ __all__ = [
     "DispatchPolicy",
     "DefaultDispatchPolicy",
     "Dispatchable",
+    "GridConnection",
     "Storage",
     "SimpleBattery",
     "ClcBattery",

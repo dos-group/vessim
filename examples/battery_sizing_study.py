@@ -14,6 +14,7 @@ import multiprocessing
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import vessim as vs
 
 SOLAR: vs.Trace
@@ -21,8 +22,10 @@ SOLAR: vs.Trace
 
 def initialize_worker():
     global SOLAR
-    path = Path(__file__).resolve().parents[1] / "datasets/solar_example.csv"
-    SOLAR = vs.Trace.from_csv(path, column="Berlin", scale=5000)
+    # Synthetic one-day profile, shared by all scenarios in this worker.
+    seconds = np.arange(0, 86401, 300)
+    watts = 5000 * np.maximum(0, np.sin((seconds / 3600 - 6) * np.pi / 12))
+    SOLAR = vs.Trace(pd.Series(watts, index=seconds))
 
 
 def run_scenario(scenario):
@@ -39,7 +42,10 @@ def run_scenario(scenario):
                 vs.Actor("solar", SOLAR),
                 vs.Actor("load", vs.StaticSignal(config["load_w"]), consumer=True),
             ],
-            dispatchables=[vs.SimpleBattery("battery", config["capacity_wh"], initial_soc=0.5)],
+            dispatchables=[
+                vs.SimpleBattery("battery", config["capacity_wh"], initial_soc=0.5),
+                vs.GridConnection(),
+            ],
         )
         recorder = env.add_controller(
             vs.Recorder(

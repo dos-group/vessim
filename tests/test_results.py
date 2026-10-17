@@ -10,10 +10,12 @@ import vessim as vs
 
 def environment(backend="native"):
     env = vs.Environment("2026-01-01", step_size=60, backend=backend)
-    env.add_microgrid([vs.Actor("load", vs.StaticSignal(-120))], name="load")
+    env.add_microgrid(
+        [vs.Actor("load", vs.StaticSignal(-120))], name="load", dispatchables=[vs.GridConnection()]
+    )
     env.add_microgrid(
         [vs.Actor("solar", vs.StaticSignal(60))],
-        dispatchables=[vs.SimpleBattery("battery", 1)],
+        dispatchables=[vs.SimpleBattery("battery", 1), vs.GridConnection()],
         name="solar",
     )
     return env
@@ -111,6 +113,7 @@ def test_production_and_consumption_are_separate_not_net():
             vs.Actor("load", vs.StaticSignal(60), consumer=True),
         ],
         name="grid",
+        dispatchables=[vs.GridConnection()],
     )
     recorder = env.add_controller(vs.Recorder(timeseries=False))
     env.run(150)
@@ -129,7 +132,10 @@ def test_metrics_use_sampled_power_independent_of_custom_state():
             return {"temperature": 20, "power": 9999}
 
     env = vs.Environment("2026-01-01")
-    env.add_microgrid([DiagnosticActor("device", vs.StaticSignal(-3600), step_size=2)])
+    env.add_microgrid(
+        [DiagnosticActor("device", vs.StaticSignal(-3600), step_size=2)],
+        dispatchables=[vs.GridConnection()],
+    )
     recorder = env.add_controller(vs.Recorder(timeseries=False))
     env.run(2.5)
     assert recorder.metrics["actors"]["microgrid_0"]["device"]["energy_consumed"] == 2.5
@@ -188,6 +194,7 @@ def test_optional_price_and_carbon_integrals(backend):
             "sell": vs.StaticSignal(-0.1),
             "carbon": vs.StaticSignal(0.4),
         },
+        dispatchables=[vs.GridConnection()],
     )
     rec = env.add_controller(
         vs.Recorder(
@@ -300,7 +307,9 @@ def test_same_custom_metric_name_in_multiple_scopes():
 
 def test_live_record_is_available_before_first_tick_and_finalized(tmp_path):
     env = vs.Environment.live()
-    env.add_microgrid([vs.Actor("load", vs.StaticSignal(-100))])
+    env.add_microgrid(
+        [vs.Actor("load", vs.StaticSignal(-100))], dispatchables=[vs.GridConnection()]
+    )
     rec = env.add_controller(vs.Recorder(tmp_path))
 
     class Inspect(vs.Controller):
@@ -351,7 +360,7 @@ def test_final_status_includes_all_cleanup_failures(tmp_path, failure_source, re
 
     env = vs.Environment("2026-01-01")
     signal = BadSignal(-100) if failure_source == "signal" else vs.StaticSignal(-100)
-    env.add_microgrid([vs.Actor("load", signal)])
+    env.add_microgrid([vs.Actor("load", signal)], dispatchables=[vs.GridConnection()])
     recorder = vs.Recorder(tmp_path / "main")
     other = (
         vs.Recorder(tmp_path / "other", custom_metrics={"bad": BadMetric("1")})
@@ -404,6 +413,7 @@ def test_csv_preserves_identifier_strings_and_distinct_nested_fields(tmp_path):
                 NestedActor("a", vs.StaticSignal(-10)),
             ],
             name=name,
+            dispatchables=[vs.GridConnection()],
         )
     rec = env.add_controller(vs.Recorder(tmp_path))
     env.run(1)
@@ -452,13 +462,14 @@ def test_nonfinite_runtime_inputs_fail_instead_of_recording_zero(tmp_path, sourc
 
     class BadPolicy(vs.DefaultDispatchPolicy):
         def apply(self, *args, **kwargs):
-            return value
+            kwargs["dispatchables"][0].current_power = value
 
     env = vs.Environment("2026-01-01")
     env.add_microgrid(
         [vs.Actor("load", BadSignal() if source == "actor" else vs.StaticSignal(-60))],
         grid_signals={"price": BadSignal()} if source == "grid_signal" else None,
         policy=BadPolicy() if source == "policy" else None,
+        dispatchables=[vs.GridConnection()],
     )
     recorder = env.add_controller(vs.Recorder(tmp_path, timeseries=False))
     with pytest.raises(ValueError, match="finite"):

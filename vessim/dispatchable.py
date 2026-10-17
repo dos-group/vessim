@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import math
 from typing import Optional
 
 import numpy as np
@@ -24,8 +25,8 @@ def _soc_range(value: float, name: str) -> None:
 class Dispatchable(ABC):
     """Abstract base class for dispatchable energy resources.
 
-    Dispatchables are energy resources whose power output can be controlled by a
-    dispatch policy (e.g., batteries, diesel generators, gas turbines).
+    Dispatchables are controllable energy resources whose power setpoint is chosen
+    by a dispatch policy (e.g., batteries, generators, loads, grid connections).
 
     Args:
         name: The name of the dispatchable.
@@ -43,15 +44,19 @@ class Dispatchable(ABC):
         """
         require_finite(power, f"Power setpoint for '{self.name}'")
         _positive_duration(duration)
-        lo, hi = self.feasible_range(duration)
-        require_finite(lo, f"Minimum feasible power for '{self.name}'")
-        require_finite(hi, f"Maximum feasible power for '{self.name}'")
+        lo, hi = self._validated_range(duration)
         if power < lo or power > hi:
             raise ValueError(
                 f"Power {power} W is outside feasible range [{lo}, {hi}] W "
                 f"for '{self.name}' with duration {duration}s."
             )
         self.current_power = power
+
+    def _validated_range(self, duration: float) -> tuple[float, float]:
+        lo, hi = self.feasible_range(duration)
+        if math.isnan(lo) or math.isnan(hi) or lo > hi or lo == math.inf or hi == -math.inf:
+            raise ValueError(f"Invalid feasible range [{lo}, {hi}] for '{self.name}'.")
+        return lo, hi
 
     @abstractmethod
     def feasible_range(self, duration: float) -> tuple[float, float]:
@@ -63,6 +68,8 @@ class Dispatchable(ABC):
         Returns:
             (min_power, max_power) tuple. Negative values indicate discharging/generation,
             positive values indicate charging/consumption.
+            Bounds may be infinite for an unlimited resource. Zero need not be
+            feasible, for example when ramp constraints require continued operation.
         """
 
     @abstractmethod
@@ -91,6 +98,107 @@ class Dispatchable(ABC):
 
 
 # TODO: Document units consistently across the API (Wh for capacity, W for power).
+
+
+class GridConnection(Dispatchable):
+    """Connection to an external grid with power and per-step ramp limits.
+
+    Negative power imports energy. Positive power exports it. Setpoints are held
+    constant over each interval. Ramp limits apply to changes between dispatch
+    steps, including the first change from ``initial_power`` at tick zero. They
+    are not scaled by the interval duration. Repeated set_power() calls within
+    one interval share the same ramp bounds. step() commits the held setpoint
+    as the reference for the next dispatch.
+
+    Args:
+        name: Resource name. Defaults to "grid".
+        max_import: Maximum import power in W, or None for unlimited.
+        max_export: Maximum export power in W, or None for unlimited.
+        ramp_up: Maximum increase in signed power per step in W (toward export).
+            None disables this limit.
+        ramp_down: Maximum decrease in signed power per step in W (toward import).
+            None disables this limit.
+        initial_power: Initial ramp reference in W. Defaults to zero.
+        connected: Whether the connection is available. Disconnection forces zero
+            at the next dispatch, overriding ramp limits. Can be changed during a run.
+    """
+
+    def __init__(
+        self,
+        name: str = "grid",
+        *,
+        max_import: Optional[float] = None,
+        max_export: Optional[float] = None,
+        ramp_up: Optional[float] = None,
+        ramp_down: Optional[float] = None,
+        initial_power: float = 0.0,
+        connected: bool = True,
+    ):
+        super().__init__(name)
+        self.max_import = max_import
+        self.max_export = max_export
+        self.ramp_up = ramp_up
+        self.ramp_down = ramp_down
+        self.initial_power = initial_power
+        self.connected = connected
+        self._validate_limits()
+        require_finite(initial_power, "initial_power")
+        lo, hi = self._power_limits()
+        if not lo <= initial_power <= hi:
+            raise ValueError("initial_power must be within the connection's power limits.")
+        self.current_power = initial_power
+        self._previous_power = initial_power
+
+    def _validate_limits(self) -> None:
+        for name in ("max_import", "max_export", "ramp_up", "ramp_down"):
+            value = getattr(self, name)
+            if value is not None:
+                require_finite(value, name)
+                if value < 0:
+                    raise ValueError(f"{name} must be nonnegative or None.")
+        if not isinstance(self.connected, bool):
+            raise ValueError("connected must be a boolean.")
+
+    def _power_limits(self) -> tuple[float, float]:
+        if not self.connected:
+            return 0.0, 0.0
+        return (
+            -self.max_import if self.max_import is not None else -math.inf,
+            self.max_export if self.max_export is not None else math.inf,
+        )
+
+    def feasible_range(self, duration: float) -> tuple[float, float]:
+        """Intersect connection limits with ramps from the previous interval."""
+        _positive_duration(duration)
+        self._validate_limits()
+        lo, hi = self._power_limits()
+        if self.connected:
+            if self.ramp_down is not None:
+                lo = max(lo, self._previous_power - self.ramp_down)
+            if self.ramp_up is not None:
+                hi = min(hi, self._previous_power + self.ramp_up)
+        if lo > hi:
+            raise ValueError(f"Connection limits and ramp limits conflict for '{self.name}'.")
+        return lo, hi
+
+    def step(self, duration: float) -> None:
+        """Remember the held power for the next dispatch's ramp constraints."""
+        _positive_duration(duration)
+        require_finite(self.current_power, f"Power setpoint for '{self.name}'")
+        self._previous_power = self.current_power
+
+    def config(self) -> dict:
+        return {
+            "max_import": self.max_import,
+            "max_export": self.max_export,
+            "ramp_up": self.ramp_up,
+            "ramp_down": self.ramp_down,
+            "initial_power": self.initial_power,
+            "connected": self.connected,
+        }
+
+    def state(self) -> dict:
+        return {"current_power": self.current_power, "connected": self.connected}
 
 
 class Storage(Dispatchable):

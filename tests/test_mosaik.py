@@ -13,20 +13,21 @@ sys.path.insert(0, str(SIMULATOR.parent))
 
 
 @pytest.mark.parametrize("live", [False, True])
-def test_external_power_and_delayed_feedback(live, tmp_path):
+@pytest.mark.parametrize("source_name", ["Source", "Vessim"])
+def test_external_power_and_delayed_feedback(live, source_name, tmp_path):
     create = vs.Environment.live if live else vs.Environment
     env = create(
         sim_start="2026-01-01",
         backend="mosaik",
         sim_config={
-            "Source": {"python": "power_source:PowerSource"},
+            source_name: {"python": "power_source:PowerSource"},
         },
     )
     marker = tmp_path / "closed"
     records = []
     with env:
-        source = env.world.start("Source", marker=str(marker), records=records).Source()
-        env.add_microgrid([], name="external")
+        source = env.world.start(source_name, marker=str(marker), records=records).Source()
+        env.add_microgrid([], name="external", dispatchables=[vs.GridConnection()])
         log = env.add_controller(vs.Recorder(metrics=False))
         env.prepare()
         entity = env.entities["external"]
@@ -51,7 +52,7 @@ def test_external_slower_sampling_and_cleanup(tmp_path):
     marker = tmp_path / "closed"
     with env:
         source = env.world.start("Source", marker=str(marker), period=2).Source()
-        env.add_microgrid([], name="external")
+        env.add_microgrid([], name="external", dispatchables=[vs.GridConnection()])
         log = env.add_controller(vs.Recorder(metrics=False))
         env.prepare()
         env.world.connect(source, env.entities["external"], "power")
@@ -74,7 +75,7 @@ def test_external_failure_and_setup_failure_cleanup(tmp_path):
                 source = env.world.start("Source", marker=str(marker), failure=True).Source()
                 if fail_setup:
                     raise RuntimeError("setup failed")
-                env.add_microgrid([], name="external")
+                env.add_microgrid([], name="external", dispatchables=[vs.GridConnection()])
                 env.prepare()
                 env.world.connect(source, env.entities["external"], "power")
                 env.run(3)
@@ -91,7 +92,7 @@ def test_remote_process_coupling(tmp_path):
         },
     ) as env:
         source = env.world.start("Remote", marker=str(marker)).Source()
-        env.add_microgrid([], name="external")
+        env.add_microgrid([], name="external", dispatchables=[vs.GridConnection()])
         env.prepare()
         env.world.connect(source, env.entities["external"], "power")
         result = env.run(3)
@@ -101,7 +102,7 @@ def test_remote_process_coupling(tmp_path):
 
 def test_missing_external_input_is_explicit():
     env = vs.Environment("2026-01-01", backend="mosaik")
-    env.add_microgrid([], name="external")
+    env.add_microgrid([], name="external", dispatchables=[vs.GridConnection()])
     with pytest.raises(ValueError, match="requires external power"):
         env.run(1)
 
@@ -115,7 +116,9 @@ def test_unsupported_input_is_explicit():
         },
     ) as env:
         source = env.world.start("Source").Source()
-        env.add_microgrid([vs.Actor("a", vs.StaticSignal(0))], name="grid")
+        env.add_microgrid(
+            [vs.Actor("a", vs.StaticSignal(0))], name="grid", dispatchables=[vs.GridConnection()]
+        )
         env.prepare()
         env.world.connect(source, env.entities["grid"], ("power", "policy_state"))
         with pytest.raises(ValueError, match="Only the 'power' input"):
@@ -133,7 +136,9 @@ def test_remote_sink_failure_at_last_tick_is_not_reported_as_success(tmp_path):
     )
     with env:
         sink = env.world.start("Sink", marker=str(marker), failure=True).Source()
-        env.add_microgrid([vs.Actor("a", vs.StaticSignal(100))], name="grid")
+        env.add_microgrid(
+            [vs.Actor("a", vs.StaticSignal(100))], name="grid", dispatchables=[vs.GridConnection()]
+        )
         env.prepare()
         env.world.connect(env.entities["grid"], sink, ("p_grid", "feedback"))
         with pytest.raises(RuntimeError, match="all simulators completed"):

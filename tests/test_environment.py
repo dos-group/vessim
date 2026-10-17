@@ -8,7 +8,9 @@ import vessim as vs
 
 def environment(**kwargs):
     env = vs.Environment(sim_start="2026-01-01", **kwargs)
-    env.add_microgrid([vs.Actor("load", vs.StaticSignal(-100))])
+    env.add_microgrid(
+        [vs.Actor("load", vs.StaticSignal(-100))], dispatchables=[vs.GridConnection()]
+    )
     return env
 
 
@@ -73,9 +75,13 @@ def test_invalid_end(until):
 def test_duplicate_names_and_models():
     env = environment()
     with pytest.raises(ValueError, match="already exists"):
-        env.add_microgrid([vs.Actor("x", vs.StaticSignal(1))], name="microgrid_0")
+        env.add_microgrid(
+            [vs.Actor("x", vs.StaticSignal(1))],
+            name="microgrid_0",
+            dispatchables=[vs.GridConnection()],
+        )
     actor = env.microgrids["microgrid_0"].actors[0]
-    env.add_microgrid([actor])
+    env.add_microgrid([actor], dispatchables=[vs.GridConnection()])
     with pytest.raises(ValueError, match="cannot be shared"):
         env.run(1)
 
@@ -93,7 +99,11 @@ def test_grid_live_signal_is_validated_and_closed():
 
     signal = Live()
     env = vs.Environment(sim_start="2026-01-01")
-    env.add_microgrid([vs.Actor("a", vs.StaticSignal(0))], grid_signals={"live": signal})
+    env.add_microgrid(
+        [vs.Actor("a", vs.StaticSignal(0))],
+        grid_signals={"live": signal},
+        dispatchables=[vs.GridConnection()],
+    )
     with pytest.raises(RuntimeError, match="SiL signals"):
         env.run(1)
     assert signal.closed
@@ -102,7 +112,9 @@ def test_grid_live_signal_is_validated_and_closed():
 def test_actor_sampling_interval_rejected():
     env = vs.Environment(sim_start="2026-01-01", step_size=3)
     with pytest.raises(ValueError, match="positive multiple"):
-        env.add_microgrid([vs.Actor("a", vs.StaticSignal(1), step_size=2)])
+        env.add_microgrid(
+            [vs.Actor("a", vs.StaticSignal(1), step_size=2)], dispatchables=[vs.GridConnection()]
+        )
 
 
 def test_prepare_captures_actor_configuration():
@@ -114,7 +126,7 @@ def test_prepare_captures_actor_configuration():
     calls = []
     env = vs.Environment(sim_start="2026-01-01")
     actor = vs.Actor("old_name", CountingSignal(1))
-    env.add_microgrid([actor])
+    env.add_microgrid([actor], dispatchables=[vs.GridConnection()])
     actor.name = "new_name"
     actor.step_size = 2
     result = env.run(4)

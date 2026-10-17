@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -49,8 +50,6 @@ class Record(vs.Controller):
     "case", ["static", "traces", "csv", "many_grids", "mixed_rates", "feedback"]
 )
 def test_pre_refactor_trajectory(backend, case, tmp_path):
-    # The checksum fixture was recorded against cd417e18 before changing the
-    # engine. This catches shared mistakes that backend-to-backend tests cannot.
     from benchmarks.run import build, digest
 
     fixture = Path(__file__).parents[1] / "benchmarks/input.csv"
@@ -60,17 +59,38 @@ def test_pre_refactor_trajectory(backend, case, tmp_path):
     env, memory = build(backend, case, traces, tmp_path / "output")
     result = env.run(expected["steps"] * 60)
     assert result.steps == expected["steps"]
-    assert digest(memory) == expected["trajectory_sha256"]
+    legacy_log = {
+        now: {
+            name: {
+                **state,
+                "policy_state": {"mode": "grid-connected", **state["policy_state"]},
+                "dispatch_states": {
+                    k: v for k, v in state["dispatch_states"].items() if k != "grid"
+                },
+            }
+            for name, state in states.items()
+        }
+        for now, states in memory.log.items()
+    }
+    assert digest(SimpleNamespace(log=legacy_log)) == expected["trajectory_sha256"]
 
 
 @pytest.mark.parametrize("horizon", [0, 0.5, 1, 2, 2.5])
-def test_boundaries_and_empty_dispatchables(backend, horizon):
+def test_boundaries_with_explicit_grid(backend, horizon):
     env = vs.Environment("2026-01-01", backend=backend)
-    env.add_microgrid([vs.Actor("a.with.dots", vs.StaticSignal(1))], name="grid.with.dots")
+    env.add_microgrid(
+        [vs.Actor("a.with.dots", vs.StaticSignal(1))],
+        name="grid.with.dots",
+        dispatchables=[vs.GridConnection()],
+    )
     log = env.add_controller(vs.Recorder(metrics=False))
     result = env.run(horizon)
     assert result.steps == len(range(0, int(np.ceil(horizon))))
-    assert all(state["grid.with.dots"]["dispatch_states"] == {} for state in log.log.values())
+    assert all(
+        state["grid.with.dots"]["dispatch_states"]
+        == {"grid": {"current_power": 1, "connected": True}}
+        for state in log.log.values()
+    )
 
 
 @pytest.mark.parametrize("failure", [RuntimeError("test failure"), KeyboardInterrupt()])
@@ -82,7 +102,11 @@ def test_step_failure_cleanup(backend, failure):
             closed.append("signal")
 
     env = vs.Environment("2026-01-01", backend=backend)
-    env.add_microgrid([vs.Actor("a", Signal(1))], grid_signals={"x": Signal(2)})
+    env.add_microgrid(
+        [vs.Actor("a", Signal(1))],
+        grid_signals={"x": Signal(2)},
+        dispatchables=[vs.GridConnection()],
+    )
     record = env.add_controller(Record(failure=failure))
     with pytest.raises(type(failure)):
         env.run(3)
@@ -106,7 +130,7 @@ def test_partial_initialization_and_cleanup_errors(backend):
             raise RuntimeError("cleanup failed")
 
     env = vs.Environment("2026-01-01", backend=backend)
-    env.add_microgrid([vs.Actor("a", vs.StaticSignal(1))])
+    env.add_microgrid([vs.Actor("a", vs.StaticSignal(1))], dispatchables=[vs.GridConnection()])
     env.add_controller(Broken(events))
     unstarted = env.add_controller(Record())
     with pytest.raises(ValueError, match="start failed"):
@@ -132,7 +156,9 @@ def test_sampling_feedback_and_integration_order(backend):
             signal.set_value(200)
 
     env = vs.Environment("2026-01-01", step_size=60, backend=backend)
-    env.add_microgrid([vs.Actor("a", signal, step_size=120)], [battery], name="grid")
+    env.add_microgrid(
+        [vs.Actor("a", signal, step_size=120)], [battery, vs.GridConnection()], name="grid"
+    )
     env.add_controller(Feedback())
     log = env.add_controller(vs.Recorder(metrics=False))
     env.run(180)
@@ -151,7 +177,7 @@ def test_live_wall_clock_pacing(backend):
             timestamps.append(time.monotonic())
 
     env = vs.Environment.live(backend=backend)
-    env.add_microgrid([vs.Actor("a", vs.StaticSignal(1))])
+    env.add_microgrid([vs.Actor("a", vs.StaticSignal(1))], dispatchables=[vs.GridConnection()])
     env.add_controller(Observe())
     t0 = time.monotonic()
     env.run(1.05)
@@ -170,7 +196,7 @@ class BlockMosaik:
 sys.meta_path.insert(0, BlockMosaik())
 import vessim as vs
 e = vs.Environment('2026-01-01')
-e.add_microgrid([vs.Actor('a',vs.StaticSignal(1))])
+e.add_microgrid([vs.Actor('a',vs.StaticSignal(1))], [vs.GridConnection()])
 assert e.run(2).steps == 2
 assert not any(n.startswith('mosaik') for n in sys.modules)
 try:
@@ -185,7 +211,7 @@ else:
 
 def test_unbounded_live_interrupt(backend):
     env = vs.Environment.live(backend=backend)
-    env.add_microgrid([vs.Actor("a", vs.StaticSignal(1))])
+    env.add_microgrid([vs.Actor("a", vs.StaticSignal(1))], dispatchables=[vs.GridConnection()])
     record = env.add_controller(Record(failure=KeyboardInterrupt()))
     with pytest.raises(KeyboardInterrupt):
         env.run()
@@ -217,7 +243,9 @@ def test_custom_actor_and_dispatchable_extensions(backend):
 
     env = vs.Environment("2026-01-01", step_size=60, backend=backend)
     device = Device()
-    env.add_microgrid([Actor("a", vs.StaticSignal(100))], [device], name="grid")
+    env.add_microgrid(
+        [Actor("a", vs.StaticSignal(100))], [device, vs.GridConnection()], name="grid"
+    )
     log = env.add_controller(vs.Recorder(metrics=False))
     result = env.run(120)
     rows = list(log.log.values())
@@ -233,7 +261,9 @@ def test_custom_actor_and_dispatchable_extensions(backend):
 def test_final_state_covers_the_exact_horizon(backend, horizon, record):
     env = vs.Environment("2026-01-01", step_size=60, backend=backend)
     battery = vs.SimpleBattery("battery", capacity=2, initial_soc=1)
-    env.add_microgrid([vs.Actor("load", vs.StaticSignal(-60))], [battery], name="site")
+    env.add_microgrid(
+        [vs.Actor("load", vs.StaticSignal(-60))], [battery, vs.GridConnection()], name="site"
+    )
     rec = env.add_controller(vs.Recorder()) if record else None
     result = env.run(horizon)
     discharged = min(2, horizon / 60)
@@ -257,7 +287,9 @@ def test_final_partial_interval_uses_remaining_battery_energy(backend):
     battery = vs.SimpleBattery("battery", capacity=1.5, initial_soc=1)
     # A pre-existing setpoint must not consume energy before time zero.
     battery.set_power(-60, 60)
-    env.add_microgrid([vs.Actor("load", vs.StaticSignal(-60))], [battery], name="site")
+    env.add_microgrid(
+        [vs.Actor("load", vs.StaticSignal(-60))], [battery, vs.GridConnection()], name="site"
+    )
     rec = env.add_controller(vs.Recorder())
     result = env.run(90)
     rows = list(rec.log.values())
@@ -282,7 +314,9 @@ def test_clc_dispatch_respects_energy_available_above_min_soc(backend):
         eta_c=1,
         alpha_d=-10,
     )
-    env.add_microgrid([vs.Actor("load", vs.StaticSignal(-10))], [battery], name="site")
+    env.add_microgrid(
+        [vs.Actor("load", vs.StaticSignal(-10))], [battery, vs.GridConnection()], name="site"
+    )
     rec = env.add_controller(vs.Recorder(timeseries=False))
     env.run(3600)
     assert battery.charge_level == pytest.approx(2)

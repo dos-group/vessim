@@ -158,8 +158,7 @@ python benchmarks/profile_workloads.py --output /tmp/profiles.json
 python -m pstats /tmp/native.prof
 ```
 
-Use the benchmark script and input fixture with the original revision and
-`--backend legacy` to reproduce its API path. Absolute timings will vary.
+The benchmark supports the native and mosaik backends. Absolute timings will vary.
 
 ## Interface decisions
 

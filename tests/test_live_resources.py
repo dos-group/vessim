@@ -18,7 +18,7 @@ def test_signal_worker_stops_after_run_and_after_interruption():
         signal = Signal(update_interval=60, timeout=0.5)
         assert fetched.wait(1)
         env = vs.Environment.live()
-        env.add_microgrid([vs.Actor("live", signal)])
+        env.add_microgrid([vs.Actor("live", signal)], dispatchables=[vs.GridConnection()])
 
         class Finish(vs.Controller):
             def step(self, now, states):
@@ -43,7 +43,7 @@ def test_live_broker_round_trip_and_cleanup():
         port = sock.getsockname()[1]
     env = vs.Environment.live()
     signal = vs.StaticSignal(100)
-    env.add_microgrid([vs.Actor("load", signal)], name="grid")
+    env.add_microgrid([vs.Actor("load", signal)], name="grid", dispatchables=[vs.GridConnection()])
     api = env.add_controller(vs.Api(broker_port=port))
     observed = []
 

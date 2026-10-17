@@ -1,7 +1,6 @@
 """Reproducible backend comparison using public Vessim APIs.
 
 Run from the repository: python benchmarks/run.py --backend native --output result.json
-The legacy option runs against the pre-refactor checkout without a backend argument.
 """
 
 from __future__ import annotations
@@ -37,8 +36,7 @@ class Feedback(vs.Controller):
 
 
 def build(backend, case, traces, directory):
-    kwargs = {} if backend == "legacy" else {"backend": backend}
-    env = vs.Environment(sim_start="2026-01-01", step_size=60, **kwargs)
+    env = vs.Environment(sim_start="2026-01-01", step_size=60, backend=backend)
     for i in range(10 if case == "many_grids" else 1):
         traced = case != "static"
         env.add_microgrid(
@@ -53,19 +51,18 @@ def build(backend, case, traces, directory):
                     "load", traces["load"] if traced else vs.StaticSignal(600), consumer=True
                 ),
             ],
-            dispatchables=[vs.SimpleBattery("battery", 1500, initial_soc=0.5, min_soc=0.1)],
+            dispatchables=[
+                vs.SimpleBattery("battery", 1500, initial_soc=0.5, min_soc=0.1),
+                vs.GridConnection(),
+            ],
             grid_signals={"carbon": traces["carbon"]} if traced else None,
         )
     if case == "feedback":
         env.add_controller(Feedback())
-    memory = vs.MemoryLogger() if backend == "legacy" else vs.Recorder(metrics=False)
+    memory = vs.Recorder(metrics=False)
     env.add_controller(memory)
     if case == "csv":
-        env.add_controller(
-            vs.CsvLogger(directory)
-            if backend == "legacy"
-            else vs.Recorder(directory, metrics=False)
-        )
+        env.add_controller(vs.Recorder(directory, metrics=False))
     return env, memory
 
 
@@ -76,7 +73,7 @@ def digest(memory):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--backend", choices=["legacy", "native", "mosaik"], required=True)
+    parser.add_argument("--backend", choices=["native", "mosaik"], required=True)
     parser.add_argument("--steps", type=int, default=1000)
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--output", type=Path, required=True)

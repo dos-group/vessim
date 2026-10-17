@@ -4,7 +4,8 @@ python examples/custom_metrics.py
 All prices and equipment figures below are illustrative assumptions.
 """
 
-from pathlib import Path
+import numpy as np
+import pandas as pd
 
 import vessim as vs
 
@@ -27,16 +28,25 @@ class HighImportDuration(vs.Metric):
 
 
 def main():
-    trace_path = Path(__file__).resolve().parents[1] / "datasets/solar_example.csv"
+    seconds = np.arange(0, 86401, 300)
+    solar = vs.Trace(
+        pd.Series(
+            5000 * np.maximum(0, np.sin((seconds / 3600 - 6) * np.pi / 12)),
+            index=seconds,
+        )
+    )
     capacity_wh = 1500
     with vs.Environment("2026-01-01", step_size=300) as env:
         env.add_microgrid(
             name="site",
             actors=[
-                vs.Actor("solar", vs.Trace.from_csv(trace_path, column="Berlin", scale=5000)),
+                vs.Actor("solar", solar),
                 vs.Actor("server", vs.StaticSignal(700), consumer=True),
             ],
-            dispatchables=[vs.SimpleBattery("battery", capacity_wh, initial_soc=0.5)],
+            dispatchables=[
+                vs.SimpleBattery("battery", capacity_wh, initial_soc=0.5),
+                vs.GridConnection(),
+            ],
             grid_signals={
                 "buy_price": vs.StaticSignal(0.30),  # EUR/kWh
                 "sell_price": vs.StaticSignal(0.08),  # EUR/kWh

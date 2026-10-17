@@ -24,16 +24,16 @@ class Environment:
     """Run a simulation study or a live experiment using shared component models.
 
     An environment runs once. Construct a fresh environment and mutable models
-    for each scenario; immutable traces can be reused. Use as a context manager
+    for each scenario. Immutable traces can be reused. Use as a context manager
     when setup may acquire live resources or start external simulators.
 
     Args:
-        sim_start: Timestamp labeling tick zero; required for studies.
+        sim_start: Timestamp labeling tick zero. Required for studies.
         step_size: Positive integer tick interval in seconds.
         name: Optional experiment name.
         backend: ``native`` (default) or ``mosaik`` for external coupling.
         sim_config: Additional mosaik simulator configurations. Only accepted
-            with backend="mosaik"; the name "Vessim" is reserved.
+            with backend="mosaik".
     """
 
     def __init__(
@@ -57,8 +57,6 @@ class Environment:
             raise ValueError("backend must be 'native' or 'mosaik'.")
         if sim_config is not None and backend != "mosaik":
             raise ValueError("sim_config requires backend='mosaik'.")
-        if sim_config and "Vessim" in sim_config:
-            raise ValueError("The simulator name 'Vessim' is reserved.")
         if not math.isfinite(_behind_threshold) or _behind_threshold < 0:
             raise ValueError("behind_threshold must be finite and nonnegative.")
         self.sim_start = pd.Timestamp(sim_start) if sim_start is not None else None
@@ -93,7 +91,7 @@ class Environment:
     ) -> Environment:
         """Create a wall-clock-paced experiment with either backend.
 
-        ``sim_start`` labels output; signals receive elapsed seconds from tick
+        ``sim_start`` labels output. Signals receive elapsed seconds from tick
         zero. When omitted, the label is captured when run() starts. Lateness
         is reported after ``behind_threshold`` seconds, without skipping ticks.
         """
@@ -110,7 +108,7 @@ class Environment:
     def _require_setup(self) -> None:
         if self._closed or self.status != "created":
             raise RuntimeError(
-                "The scenario is frozen after prepare() or run(); create a new one."
+                "The scenario is frozen after prepare() or run(). Create a new one."
             )
 
     def add_microgrid(
@@ -127,6 +125,10 @@ class Environment:
         An empty actor list is supported only with mosaik, for microgrids fed
         entirely by external power measurements. Names default to microgrid_0,
         microgrid_1, etc. and must be unique within this environment.
+
+        Include GridConnection explicitly in dispatchables for grid-connected
+        operation. Without one, the microgrid is islanded. Every dispatch must
+        balance exactly. Unmet demand and unabsorbed surplus raise RuntimeError.
         """
         self._require_setup()
         if not actors and self.backend != "mosaik":
@@ -203,7 +205,7 @@ class Environment:
                 if id(component) in seen:
                     raise ValueError(
                         "Mutable actors, dispatchables and policies cannot be shared "
-                        "between microgrids; only signals may be shared."
+                        "between microgrids. Only signals may be shared."
                     )
                 seen.add(id(component))
         if self._contains_sil_signals() and not self.is_live:
@@ -244,10 +246,10 @@ class Environment:
         controller call or signal sample occurs at the horizon.
         Only live runs may omit it. No trajectory is retained unless a logger
         is added. All owned resources are finalized on success or failure.
-        Native progress supports True/False; 'individual' requires mosaik.
+        Native progress supports True/False. 'individual' requires mosaik.
         """
         if self._closed or self.status not in ("created", "prepared"):
-            raise RuntimeError("An Environment can only run once; create a fresh scenario.")
+            raise RuntimeError("An Environment can only run once. Create a fresh scenario.")
         started = time.perf_counter()
         failure = None
         try:
@@ -287,7 +289,7 @@ class Environment:
                 if failure is None:
                     self.status = "failed"
                     raise
-                logger.exception("Cleanup also failed; preserving the original simulation error")
+                logger.exception("Cleanup also failed. Preserving the original simulation error")
         assert self.result is not None
         self.result = replace(self.result, wall_time=time.perf_counter() - started)
         return self.result
@@ -303,7 +305,7 @@ class Environment:
         """Release owned resources once, including when setup never reached run().
 
         Every cleanup is attempted even if another fails. The first cleanup
-        error is raised; an existing run error takes precedence in run().
+        error is raised. An existing run error takes precedence in run().
         """
         if self._closed:
             return
@@ -355,7 +357,7 @@ class Environment:
                 try:
                     recorder._complete()
                 except BaseException:
-                    pass  # Preserve the first error; all writers were attempted.
+                    pass  # Preserve the first error. All writers were attempted.
         if errors:
             raise errors[0]
 

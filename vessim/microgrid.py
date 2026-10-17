@@ -6,8 +6,8 @@ from typing import Optional, TypedDict
 import numpy as np
 
 from vessim.actor import Actor
-from vessim._util import require_finite
-from vessim.dispatchable import Dispatchable
+from vessim._util import require_balanced, require_finite
+from vessim.dispatchable import Dispatchable, GridConnection
 from vessim.dispatch_policy import DispatchPolicy
 from vessim.signal import Signal
 
@@ -38,12 +38,15 @@ class Microgrid:
     """Energy-system models and current state, independent of an execution backend.
 
     Usually constructed through :meth:`Environment.add_microgrid`. Powers are
-    in W; generation and export are positive, consumption and import negative.
+    in W. Actor generation is positive and consumption negative. Dispatchable
+    supply/import is negative. Absorption/export is positive.
 
     Args:
         step_size: Positive integer sampling interval in seconds.
         actors: Exogenous loads and generators.
-        dispatchables: Controllable resources, in dispatch order.
+        dispatchables: Controllable resources, in dispatch order. Include a
+            GridConnection explicitly for grid-connected operation. Without one,
+            the microgrid is islanded.
         policy: Policy assigning the next power setpoints.
         grid_signals: Context such as price or carbon intensity.
         name: Unique name within the environment.
@@ -134,13 +137,23 @@ class Microgrid:
         require_finite(self.p_delta, f"Total power for microgrid '{self.name}'")
         for name, value in (self._resolved_grid_signals or {}).items():
             require_finite(value, f"Grid signal '{name}' at {elapsed}s")
-        self.p_grid = self.policy.apply(
+        interval = self.step_size if duration is None else duration
+        bounds = [d._validated_range(interval) for d in self.dispatchables]
+        self.policy.apply(
             self.p_delta,
-            duration=self.step_size if duration is None else duration,
-            dispatchables=self.dispatchables,
+            duration=interval,
+            dispatchables=list(self.dispatchables),
             grid_signals=self._resolved_grid_signals,
         )
-        require_finite(self.p_grid, f"Grid power returned by policy for '{self.name}'")
+        for d, (lo, hi) in zip(self.dispatchables, bounds):
+            require_finite(d.current_power, f"Power setpoint for '{d.name}'")
+            if not lo <= d.current_power <= hi:
+                raise ValueError(f"Policy set power outside the feasible range for '{d.name}'.")
+        require_balanced(self.p_delta, (d.current_power for d in self.dispatchables))
+        self.p_grid = sum(
+            d.current_power for d in self.dispatchables if isinstance(d, GridConnection)
+        )
+        require_finite(self.p_grid, f"Grid power for '{self.name}'")
 
     def finish(self, elapsed: float) -> None:
         """Integrate held setpoints up to elapsed time, without sampling or dispatch."""

@@ -59,7 +59,7 @@ def main():
         environment.add_microgrid(
             name="your_computer",
             actors=[server, solar],
-            dispatchables=[battery],
+            dispatchables=[battery, vs.GridConnection()],
         )
 
         # The API controller exposes a REST API and a /metrics endpoint for Prometheus.

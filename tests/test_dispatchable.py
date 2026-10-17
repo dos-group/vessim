@@ -252,10 +252,6 @@ class TestDefaultDispatchPolicy:
     def policy_charge(self) -> vs.DefaultDispatchPolicy:
         return vs.DefaultDispatchPolicy(charge_power=10)
 
-    @pytest.fixture
-    def policy_islanded(self) -> vs.DefaultDispatchPolicy:
-        return vs.DefaultDispatchPolicy(mode="islanded")
-
     @pytest.mark.parametrize(
         "power, duration, exp_delta, exp_soc",
         [
@@ -271,9 +267,11 @@ class TestDefaultDispatchPolicy:
     )
     def test_apply_merit_order(self, battery, policy, power, duration, exp_delta, exp_soc):
         # duration in hours
-        p_grid = policy.apply(power, duration * 3600, [battery])
+        grid = vs.GridConnection()
+        result = policy.apply(power, duration * 3600, [battery, grid])
         battery.step(duration * 3600)
-        assert p_grid == exp_delta
+        assert result is None
+        assert grid.current_power == exp_delta
         assert math.isclose(battery.soc(), exp_soc)
 
     @pytest.mark.parametrize(
@@ -290,9 +288,11 @@ class TestDefaultDispatchPolicy:
     )
     def test_apply_charge_power(self, battery, policy_charge, power, duration, exp_delta, exp_soc):
         # duration in hours
-        p_grid = policy_charge.apply(power, duration * 3600, [battery])
+        grid = vs.GridConnection()
+        result = policy_charge.apply(power, duration * 3600, [battery, grid])
         battery.step(duration * 3600)
-        assert p_grid == exp_delta
+        assert result is None
+        assert grid.current_power == exp_delta
         assert math.isclose(battery.soc(), exp_soc)
 
     @pytest.mark.parametrize(
@@ -302,17 +302,17 @@ class TestDefaultDispatchPolicy:
             (0, 1000, 0, 0.8),
             # Charge
             (5, 2, 0, 0.9),
-            (100, 4, 0, 1),
             # Discharge
             (-5, 2, 0, 0.7),
             (-10, 7, 0, 0.1),
         ],
     )
-    def test_apply_islanded(self, battery, policy_islanded, power, duration, exp_delta, exp_soc):
+    def test_apply_islanded(self, battery, policy, power, duration, exp_delta, exp_soc):
         # duration in hours
-        p_grid = policy_islanded.apply(power, duration * 3600, [battery])
+        result = policy.apply(power, duration * 3600, [battery])
         battery.step(duration * 3600)
-        assert p_grid == exp_delta
+        assert result is None
+        assert battery.current_power == power
         assert math.isclose(battery.soc(), exp_soc)
 
     @pytest.mark.parametrize(
@@ -324,17 +324,21 @@ class TestDefaultDispatchPolicy:
         ],
     )
     def test_apply_no_dispatchables(self, policy, power, duration):
-        # With no dispatchables, all power goes to grid
-        p_grid = policy.apply(power, duration, [])
-        assert p_grid == power
+        if power == 0:
+            assert policy.apply(power, duration, []) is None
+        else:
+            with pytest.raises(RuntimeError, match="dispatch must balance exactly"):
+                policy.apply(power, duration, [])
 
-    def test_apply_fails_if_no_power_in_islanded(self, battery, policy_islanded):
-        with pytest.raises(RuntimeError):
-            policy_islanded.apply(-1, 71 * 3600, [battery])
+    def test_apply_rejects_unmet_demand(self, battery, policy):
+        with pytest.raises(RuntimeError, match="Unmet demand"):
+            policy.apply(-1, 71 * 3600, [battery])
+        assert battery.current_power == 0
 
-    def test_apply_fails_if_no_power_in_islanded_without_dispatchables(self, policy_islanded):
-        with pytest.raises(RuntimeError):
-            policy_islanded.apply(-1, 1, [])
+    def test_apply_rejects_surplus(self, battery, policy):
+        with pytest.raises(RuntimeError, match="Unabsorbed surplus"):
+            policy.apply(100, 4 * 3600, [battery])
+        assert battery.current_power == 0
 
 
 @pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf])

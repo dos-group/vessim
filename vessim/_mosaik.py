@@ -17,8 +17,11 @@ from vessim._runtime import Runtime
 
 class MosaikBackend:
     def __init__(self, sim_config: dict):
+        self._simulator_name = "Vessim"
+        while self._simulator_name in sim_config:
+            self._simulator_name += "_"
         self.world = mosaik.World(
-            {**sim_config, "Vessim": {"python": "vessim._mosaik:VessimSimulator"}},
+            {**sim_config, self._simulator_name: {"python": "vessim._mosaik:VessimSimulator"}},
             skip_greetings=True,
             configure_logging=False,
         )
@@ -27,7 +30,7 @@ class MosaikBackend:
 
     def prepare(self, runtime: Runtime) -> None:
         self.runtime = runtime
-        sim = self.world.start("Vessim", runtime=runtime)
+        sim = self.world.start(self._simulator_name, runtime=runtime)
         for grid in runtime.grids:
             self.entities[grid.name] = sim.Microgrid(name=grid.name)
 

@@ -20,7 +20,7 @@ def scenario(trace, steps, backend, output):
     env = vs.Environment("2026-01-01", step_size=60, backend=backend)
     env.add_microgrid(
         [vs.Actor("load", trace, consumer=True)],
-        [vs.SimpleBattery("battery", 1500, initial_soc=0.5)],
+        [vs.SimpleBattery("battery", 1500, initial_soc=0.5), vs.GridConnection()],
         name="site",
     )
     if output == "summary":

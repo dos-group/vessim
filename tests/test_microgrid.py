@@ -7,14 +7,14 @@ def test_model_construction_has_no_backend():
     grid = vs.Microgrid(
         step_size=60,
         actors=[vs.Actor("a", vs.StaticSignal(100))],
-        dispatchables=[],
+        dispatchables=[vs.GridConnection()],
         policy=vs.DefaultDispatchPolicy(),
     )
     assert not hasattr(grid, "world")
     grid.sample(0)
     grid.advance(0)
     assert grid.state()["p_grid"] == 100
-    assert grid.state()["dispatch_states"] == {}
+    assert grid.state()["dispatch_states"] == {"grid": {"current_power": 100, "connected": True}}
 
 
 def test_duplicate_actor_names_rejected():
