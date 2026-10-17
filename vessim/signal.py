@@ -16,7 +16,14 @@ from vessim._util import require_finite
 
 
 class Signal(ABC):
-    """Abstract base class for signals."""
+    """A numeric simulation input sampled at elapsed time.
+
+    Use for actor power or contextual data such as prices and carbon intensity.
+    The environment calls start() before sampling and finalize() during cleanup.
+    """
+
+    def start(self) -> None:
+        """Acquire resources before the first simulation sample."""
 
     @abstractmethod
     def at(self, elapsed: Optional[timedelta | float] = None) -> float:
@@ -28,22 +35,6 @@ class Signal(ABC):
 
     def finalize(self) -> None:
         """Perform necessary finalization tasks of a signal."""
-
-
-class StaticSignal(Signal):
-    def __init__(self, value: float) -> None:
-        self.set_value(value)
-
-    def __repr__(self):
-        """Returns a string representation for the Vessim viewer."""
-        return f"StaticSignal({self._v})"
-
-    def set_value(self, value: float) -> None:
-        require_finite(value, "StaticSignal value")
-        self._v = value
-
-    def at(self, elapsed: Optional[timedelta | float] = None):
-        return self._v
 
 
 class Trace(Signal):
@@ -360,8 +351,21 @@ class SilSignal(Signal):
         self._last_update: Optional[float] = None
         self._cached_value: float = 0.0
         self._stop = Event()
-        self._thread = Thread(target=self._poll, daemon=True, name=f"vessim-{type(self).__name__}")
-        self._thread.start()
+        self._thread: Optional[Thread] = None
+
+    def start(self) -> None:
+        """Start background polling when the environment starts using this signal."""
+        if self._stop.is_set():
+            raise RuntimeError("A closed live signal cannot be reused. Create a new signal.")
+        if self._thread is None:
+            self._initialize()
+            self._thread = Thread(
+                target=self._poll, daemon=True, name=f"vessim-{type(self).__name__}"
+            )
+            self._thread.start()
+
+    def _initialize(self) -> None:
+        """Prepare the external source before starting a polling worker."""
 
     def __repr__(self):
         """Returns a string representation for the Vessim viewer."""
@@ -405,7 +409,7 @@ class SilSignal(Signal):
     def finalize(self) -> None:
         """Stop background polling and clean up resources."""
         self._stop.set()
-        if current_thread() is not self._thread:
+        if self._thread is not None and current_thread() is not self._thread:
             self._thread.join(timeout=self.timeout + 0.1)
 
 
@@ -449,11 +453,10 @@ class PrometheusSignal(SilSignal):
         if username and password:
             self._auth = requests.auth.HTTPBasicAuth(username, password)
 
-        # Validate before starting a worker: failed construction has no owner
-        # that could finalize a background thread.
-        self.timeout = timeout
-        self._validate_connection()
         super().__init__(update_interval=update_interval, timeout=timeout)
+
+    def _initialize(self) -> None:
+        self._validate_connection()
 
     def _validate_connection(self) -> None:
         """Validate that we can connect to the Prometheus server."""
@@ -551,22 +554,19 @@ class WatttimeSignal(SilSignal):
         self._token: Optional[str] = None
         self._token_expires: Optional[float] = None
 
-        # Try to get initial token (will auto-register if needed)
-        self._get_token()
-
-        # Determine region from coordinates if location is provided
-        if location is not None:
-            self._region = self._get_region_from_location(location)
-        else:
-            # region is guaranteed to be not None due to validation above
-            assert region is not None
-            self._region = region
-
-        # Initialize parent class (starts background polling)
+        self._region = region
+        self._location = location
         super().__init__(update_interval=update_interval, timeout=timeout)
+
+    def _initialize(self) -> None:
+        self._get_token()
+        if self._location is not None:
+            self._region = self._get_region_from_location(self._location)
 
     def __repr__(self):
         """Returns a string representation for the Vessim viewer."""
+        if self._location is not None:
+            return f"WatttimeSignal(location={self._location})"
         return f"WatttimeSignal(region={self._region})"
 
     def _get_token(self) -> str:

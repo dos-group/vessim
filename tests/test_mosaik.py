@@ -116,9 +116,7 @@ def test_unsupported_input_is_explicit():
         },
     ) as env:
         source = env.world.start("Source").Source()
-        env.add_microgrid(
-            [vs.Actor("a", vs.StaticSignal(0))], name="grid", dispatchables=[vs.GridConnection()]
-        )
+        env.add_microgrid([vs.Actor("a", 0)], name="grid", dispatchables=[vs.GridConnection()])
         env.prepare()
         env.world.connect(source, env.entities["grid"], ("power", "policy_state"))
         with pytest.raises(ValueError, match="Only the 'power' input"):
@@ -136,9 +134,7 @@ def test_remote_sink_failure_at_last_tick_is_not_reported_as_success(tmp_path):
     )
     with env:
         sink = env.world.start("Sink", marker=str(marker), failure=True).Source()
-        env.add_microgrid(
-            [vs.Actor("a", vs.StaticSignal(100))], name="grid", dispatchables=[vs.GridConnection()]
-        )
+        env.add_microgrid([vs.Actor("a", 100)], name="grid", dispatchables=[vs.GridConnection()])
         env.prepare()
         env.world.connect(env.entities["grid"], sink, ("p_grid", "feedback"))
         with pytest.raises(RuntimeError, match="all simulators completed"):

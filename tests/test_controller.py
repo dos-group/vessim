@@ -6,9 +6,7 @@ import vessim as vs
 
 def test_in_memory_record_and_dataframe(tmp_path):
     env = vs.Environment("2026-01-01", step_size=60)
-    env.add_microgrid(
-        [vs.Actor("load", vs.StaticSignal(-100))], name="site", dispatchables=[vs.GridConnection()]
-    )
+    env.add_microgrid([vs.Actor("load", -100)], name="site", dispatchables=[vs.GridConnection()])
     rec = env.add_controller(vs.Recorder())
     env.run(120)
     frame = rec.to_df()
@@ -26,9 +24,7 @@ def test_in_memory_record_and_dataframe(tmp_path):
 
 def test_no_trajectory_means_no_dataframe():
     env = vs.Environment("2026-01-01")
-    env.add_microgrid(
-        [vs.Actor("load", vs.StaticSignal(-100))], dispatchables=[vs.GridConnection()]
-    )
+    env.add_microgrid([vs.Actor("load", -100)], dispatchables=[vs.GridConnection()])
     rec = env.add_controller(vs.Recorder(timeseries=False))
     env.run(1)
     with pytest.raises(RuntimeError, match="disabled"):

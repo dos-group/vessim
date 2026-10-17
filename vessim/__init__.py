@@ -1,6 +1,6 @@
 """A co-simulation testbed for microgrids and energy-aware systems."""
 
-from vessim.actor import Actor
+from vessim.actor import Actor, Consumer, Producer
 from vessim._runtime import RunResult
 from vessim.controller import Controller
 from vessim.recorder import Recorder, ExperimentResult
@@ -14,7 +14,7 @@ from vessim.dispatch_policy import DispatchPolicy, DefaultDispatchPolicy
 from vessim.dispatchable import Dispatchable, GridConnection, Storage, SimpleBattery, ClcBattery
 from vessim.environment import Environment
 from vessim.microgrid import Microgrid, MicrogridState
-from vessim.signal import Signal, Trace, StaticSignal
+from vessim.signal import Signal, Trace
 
 __all__ = [
     "RunResult",
@@ -25,6 +25,8 @@ __all__ = [
     "ElectricityExportRevenue",
     "GridImportEmissions",
     "Actor",
+    "Consumer",
+    "Producer",
     "Controller",
     "Microgrid",
     "MicrogridState",
@@ -37,7 +39,6 @@ __all__ = [
     "SimpleBattery",
     "ClcBattery",
     "Signal",
-    "StaticSignal",
     "Trace",
 ]
 

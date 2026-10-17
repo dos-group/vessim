@@ -59,7 +59,7 @@ class Microgrid:
         actors: list[Actor],
         dispatchables: list[Dispatchable],
         policy: DispatchPolicy,
-        grid_signals: Optional[dict[str, Signal]] = None,
+        grid_signals: Optional[dict[str, float | Signal]] = None,
         name: str = "microgrid",
         coords: Optional[tuple[float, float]] = None,
     ):
@@ -101,6 +101,9 @@ class Microgrid:
                 raise ValueError(
                     "Actor step size has to be a positive multiple of grid step size."
                 )
+        for name, value in (self.grid_signals or {}).items():
+            if not isinstance(value, Signal):
+                require_finite(value, f"Grid signal '{name}'")
         # Capture the final scenario configuration when Environment.prepare()
         # validates it, including changes made after add_microgrid().
         self._sampling = [(a, a.step_size or self.step_size) for a in self.actors]
@@ -111,9 +114,9 @@ class Microgrid:
         for actor, period in self._sampling:
             if elapsed % period == 0:
                 power, state = actor.sample(elapsed)
-                require_finite(power, f"Power from actor '{actor.name}' at {elapsed}s")
+                actor._validate_sample(power)
                 self._powers[actor.name] = power
-                self._actor_states[actor.name] = state
+                self._actor_states[actor.name] = {**state, "power": power}
 
     def advance(
         self, elapsed: int, external_power: float = 0.0, duration: Optional[float] = None
@@ -130,7 +133,10 @@ class Microgrid:
         if external_power:
             self.p_delta += external_power
         self._resolved_grid_signals = (
-            {name: signal.at(elapsed) for name, signal in self.grid_signals.items()}
+            {
+                name: signal.at(elapsed) if isinstance(signal, Signal) else signal
+                for name, signal in self.grid_signals.items()
+            }
             if self.grid_signals
             else None
         )
@@ -185,7 +191,10 @@ class Microgrid:
         """Finalize actors and grid signals when used outside an Environment."""
         for actor in self.actors:
             actor.finalize()
-        actor_signals = {id(a.signal) for a in self.actors}
-        for signal in (self.grid_signals or {}).values():
-            if id(signal) not in actor_signals:
-                signal.finalize()
+        signals = {
+            id(value): value
+            for value in [*(a.power for a in self.actors), *(self.grid_signals or {}).values()]
+            if isinstance(value, Signal)
+        }
+        for signal in signals.values():
+            signal.finalize()

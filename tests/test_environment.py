@@ -8,9 +8,7 @@ import vessim as vs
 
 def environment(**kwargs):
     env = vs.Environment(sim_start="2026-01-01", **kwargs)
-    env.add_microgrid(
-        [vs.Actor("load", vs.StaticSignal(-100))], dispatchables=[vs.GridConnection()]
-    )
+    env.add_microgrid([vs.Actor("load", -100)], dispatchables=[vs.GridConnection()])
     return env
 
 
@@ -76,7 +74,7 @@ def test_duplicate_names_and_models():
     env = environment()
     with pytest.raises(ValueError, match="already exists"):
         env.add_microgrid(
-            [vs.Actor("x", vs.StaticSignal(1))],
+            [vs.Actor("x", 1)],
             name="microgrid_0",
             dispatchables=[vs.GridConnection()],
         )
@@ -100,7 +98,7 @@ def test_grid_live_signal_is_validated_and_closed():
     signal = Live()
     env = vs.Environment(sim_start="2026-01-01")
     env.add_microgrid(
-        [vs.Actor("a", vs.StaticSignal(0))],
+        [vs.Actor("a", 0)],
         grid_signals={"live": signal},
         dispatchables=[vs.GridConnection()],
     )
@@ -112,20 +110,18 @@ def test_grid_live_signal_is_validated_and_closed():
 def test_actor_sampling_interval_rejected():
     env = vs.Environment(sim_start="2026-01-01", step_size=3)
     with pytest.raises(ValueError, match="positive multiple"):
-        env.add_microgrid(
-            [vs.Actor("a", vs.StaticSignal(1), step_size=2)], dispatchables=[vs.GridConnection()]
-        )
+        env.add_microgrid([vs.Actor("a", 1, step_size=2)], dispatchables=[vs.GridConnection()])
 
 
 def test_prepare_captures_actor_configuration():
-    class CountingSignal(vs.StaticSignal):
+    class CountingSignal(vs.Signal):
         def at(self, elapsed):
             calls.append(elapsed)
-            return super().at(elapsed)
+            return 1
 
     calls = []
     env = vs.Environment(sim_start="2026-01-01")
-    actor = vs.Actor("old_name", CountingSignal(1))
+    actor = vs.Actor("old_name", CountingSignal())
     env.add_microgrid([actor], dispatchables=[vs.GridConnection()])
     actor.name = "new_name"
     actor.step_size = 2

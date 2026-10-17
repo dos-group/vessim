@@ -4,7 +4,7 @@ import math
 import time
 from dataclasses import replace
 from datetime import datetime, timedelta
-from typing import Any, Literal, Optional, TypeVar
+from typing import Any, Iterator, Literal, Optional, TypeVar
 
 import pandas as pd
 from loguru import logger
@@ -76,6 +76,7 @@ class Environment:
         self._mosaik: Any = None
         self._runtime: Optional[Runtime] = None
         self._started_controllers: list[Controller] = []
+        self._signals: dict[int, Signal] = {}
         self._closed = False
 
     @classmethod
@@ -116,7 +117,7 @@ class Environment:
         actors: list[Actor],
         dispatchables: Optional[list[Dispatchable]] = None,
         policy: Optional[DispatchPolicy] = None,
-        grid_signals: Optional[dict[str, Signal]] = None,
+        grid_signals: Optional[dict[str, float | Signal]] = None,
         name: Optional[str] = None,
         coords: Optional[tuple[float, float]] = None,
     ) -> Microgrid:
@@ -266,6 +267,7 @@ class Environment:
             for controller in self.controllers:
                 self._started_controllers.append(controller)
                 controller.start(self)
+            self._start_signals()
             self._runtime.started = time.monotonic()
             if self.backend == "mosaik":
                 self._mosaik.run(self.until, self.is_live, print_progress)
@@ -294,12 +296,23 @@ class Environment:
         self.result = replace(self.result, wall_time=time.perf_counter() - started)
         return self.result
 
+    def _input_signals(self) -> Iterator[Signal]:
+        for grid in self.microgrids.values():
+            for value in [*(a.power for a in grid.actors), *(grid.grid_signals or {}).values()]:
+                if isinstance(value, Signal):
+                    yield value
+
     def _contains_sil_signals(self) -> bool:
-        return any(
-            isinstance(signal, SilSignal)
-            for grid in self.microgrids.values()
-            for signal in [*(a.signal for a in grid.actors), *(grid.grid_signals or {}).values()]
-        )
+        return any(isinstance(signal, SilSignal) for signal in self._input_signals())
+
+    def _start_signals(self) -> None:
+        for signal in self._input_signals():
+            if id(signal) in self._signals:
+                continue
+            self._signals[id(signal)] = signal
+            if isinstance(signal, SilSignal) and not self.is_live:
+                raise RuntimeError("SiL signals detected. Use Environment.live() for live inputs.")
+            signal.start()
 
     def close(self) -> None:
         """Release owned resources once, including when setup never reached run().
@@ -313,18 +326,13 @@ class Environment:
         errors: list[BaseException] = []
         callbacks = [c.finalize for c in self._started_controllers]
         seen: set[int] = set()
-        actor_signals: set[int] = set()
         for grid in self.microgrids.values():
             for actor in grid.actors:
-                actor_signals.add(id(actor.signal))
                 if id(actor) not in seen:
                     callbacks.append(actor.finalize)
                     seen.add(id(actor))
-        for grid in self.microgrids.values():
-            for signal in (grid.grid_signals or {}).values():
-                if id(signal) not in actor_signals:
-                    callbacks.append(signal.finalize)
-                    actor_signals.add(id(signal))
+        signals = {**self._signals, **{id(s): s for s in self._input_signals()}}
+        callbacks.extend(signal.finalize for signal in signals.values())
         if self._mosaik is not None:
             callbacks.append(self._mosaik.close)
         for callback in callbacks:

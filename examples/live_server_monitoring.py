@@ -35,19 +35,18 @@ def main():
 
         # Server load driven by actual host CPU usage via Prometheus + node_exporter.
         # The query returns CPU utilization (0.0-1.0), scaled to 0-1000W.
-        server = vs.Actor(
+        server = vs.Consumer(
             name="server",
-            consumer=True,
-            signal=vs.PrometheusSignal(
+            power=vs.PrometheusSignal(
                 url=args.prometheus_url,
                 query='(1 - avg(rate(node_cpu_seconds_total{mode="idle"}[1m]))) * 1000',
             ),
         )
 
         # Solar simulation based on historical trace data, scaled to 2 kW peak.
-        solar = vs.Actor(
+        solar = vs.Producer(
             name="solar",
-            signal=vs.Trace.from_csv(
+            power=vs.Trace.from_csv(
                 f"{DATASETS}/solar_example.csv",
                 column="Berlin",
                 scale=2000,

@@ -136,8 +136,7 @@ def test_constraints_can_require_both_consumption_and_generation():
 
 def make_environment(power, resources, policy=None, backend="native", step_size=60):
     env = vs.Environment("2026-01-01", step_size=step_size, backend=backend)
-    signal = power if isinstance(power, vs.Signal) else vs.StaticSignal(power)
-    env.add_microgrid([vs.Actor("net", signal)], resources, policy=policy, name="site")
+    env.add_microgrid([vs.Actor("net", power=power)], resources, policy=policy, name="site")
     return env
 
 

@@ -40,17 +40,17 @@ def main():
         env.add_microgrid(
             name="site",
             actors=[
-                vs.Actor("solar", solar),
-                vs.Actor("server", vs.StaticSignal(700), consumer=True),
+                vs.Producer("solar", power=solar),
+                vs.Consumer("server", power=700),
             ],
             dispatchables=[
                 vs.SimpleBattery("battery", capacity_wh, initial_soc=0.5),
                 vs.GridConnection(),
             ],
             grid_signals={
-                "buy_price": vs.StaticSignal(0.30),  # EUR/kWh
-                "sell_price": vs.StaticSignal(0.08),  # EUR/kWh
-                "carbon": vs.StaticSignal(0.25),  # kgCO2e/kWh
+                "buy_price": 0.30,  # EUR/kWh
+                "sell_price": 0.08,  # EUR/kWh
+                "carbon": 0.25,  # kgCO2e/kWh
             },
         )
         recorder = env.add_controller(

@@ -42,14 +42,12 @@ def build(backend, case, traces, directory):
         env.add_microgrid(
             name=f"grid{i}",
             actors=[
-                vs.Actor(
+                vs.Producer(
                     "solar",
-                    traces["solar"] if traced else vs.StaticSignal(900),
+                    traces["solar"] if traced else 900,
                     step_size=180 if case == "mixed_rates" else None,
                 ),
-                vs.Actor(
-                    "load", traces["load"] if traced else vs.StaticSignal(600), consumer=True
-                ),
+                vs.Consumer("load", traces["load"] if traced else 600),
             ],
             dispatchables=[
                 vs.SimpleBattery("battery", 1500, initial_soc=0.5, min_soc=0.1),

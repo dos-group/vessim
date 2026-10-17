@@ -147,19 +147,6 @@ class TestTrace:
             vs.Trace(pd.Series([1, 2], index=index), on_overflow="loop")  # type: ignore[arg-type]
 
 
-class TestStaticSignal:
-    def test_returns_value(self):
-        s = vs.StaticSignal(42)
-        assert s.at() == 42
-        assert s.at(timedelta(hours=5)) == 42
-        assert s.at(60) == 42  # int seconds
-
-    def test_set_value(self):
-        s = vs.StaticSignal(1)
-        s.set_value(7)
-        assert s.at() == 7
-
-
 def test_trace_views_share_immutable_data_and_sample_independently():
     trace = vs.Trace(pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}, index=[0, 1, 2]))
     a, b = trace.select("a"), trace.select("b")
@@ -191,12 +178,6 @@ def test_trace_bounds_apply_to_both_fill_methods(fill_method):
 
 @pytest.mark.parametrize("value", [np.nan, np.inf, -np.inf])
 def test_nonfinite_signal_inputs_fail_at_construction(value):
-    with pytest.raises(ValueError, match="finite"):
-        vs.StaticSignal(value)
-    signal = vs.StaticSignal(10)
-    with pytest.raises(ValueError, match="finite"):
-        signal.set_value(value)
-    assert signal.at() == 10
     with pytest.raises(ValueError, match="column 'load'.*offset"):
         vs.Trace(pd.Series([10, value], index=[0, 60], name="load"))
     trace = vs.Trace(pd.Series([10, 20], index=[0, 60]))

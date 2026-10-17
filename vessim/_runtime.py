@@ -60,6 +60,7 @@ class Runtime:
     def step(self, elapsed: int, external: Optional[dict[str, float]] = None) -> None:
         try:
             self.pace(elapsed)
+            self.environment._start_signals()
             # All actors are sampled before any policy or controller can mutate them.
             for grid in self.grids:
                 grid.sample(elapsed)

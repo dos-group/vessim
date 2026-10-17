@@ -14,9 +14,7 @@ from vessim._viewer import Catalog
 
 def record(directory, **kwargs):
     env = vs.Environment("2026-01-01")
-    env.add_microgrid(
-        [vs.Actor("load", vs.StaticSignal(-100))], name="site", dispatchables=[vs.GridConnection()]
-    )
+    env.add_microgrid([vs.Actor("load", -100)], name="site", dispatchables=[vs.GridConnection()])
     recorder = env.add_controller(vs.Recorder(directory, **kwargs))
     env.run(1)
     return recorder.result

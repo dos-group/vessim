@@ -10,11 +10,9 @@ import vessim as vs
 
 def environment(backend="native"):
     env = vs.Environment("2026-01-01", step_size=60, backend=backend)
+    env.add_microgrid([vs.Actor("load", -120)], name="load", dispatchables=[vs.GridConnection()])
     env.add_microgrid(
-        [vs.Actor("load", vs.StaticSignal(-120))], name="load", dispatchables=[vs.GridConnection()]
-    )
-    env.add_microgrid(
-        [vs.Actor("solar", vs.StaticSignal(60))],
+        [vs.Actor("solar", 60)],
         dispatchables=[vs.SimpleBattery("battery", 1), vs.GridConnection()],
         name="solar",
     )
@@ -75,7 +73,7 @@ def test_csv_flush_and_schema_change_failure(tmp_path):
         def step(self, now, states):
             assert recorder.csv_path.read_text()
             assert vs.ExperimentResult.load(tmp_path).execution["status"] == "running"
-            env.microgrids["load"].actors[0].state = lambda t: {"new_column": 1}
+            env.microgrids["load"].actors[0].sample = lambda t: (-120, {"new_column": 1})
 
     env.add_controller(Changing())
     with pytest.raises(ValueError, match="fields not in fieldnames"):
@@ -110,7 +108,7 @@ def test_production_and_consumption_are_separate_not_net():
     env.add_microgrid(
         [
             vs.Actor("bidirectional", trace),
-            vs.Actor("load", vs.StaticSignal(60), consumer=True),
+            vs.Consumer("load", 60),
         ],
         name="grid",
         dispatchables=[vs.GridConnection()],
@@ -128,12 +126,13 @@ def test_production_and_consumption_are_separate_not_net():
 
 def test_metrics_use_sampled_power_independent_of_custom_state():
     class DiagnosticActor(vs.Actor):
-        def state(self, elapsed):
-            return {"temperature": 20, "power": 9999}
+        def sample(self, elapsed):
+            power, _ = super().sample(elapsed)
+            return power, {"temperature": 20, "power": 9999}
 
     env = vs.Environment("2026-01-01")
     env.add_microgrid(
-        [DiagnosticActor("device", vs.StaticSignal(-3600), step_size=2)],
+        [DiagnosticActor("device", -3600, step_size=2)],
         dispatchables=[vs.GridConnection()],
     )
     recorder = env.add_controller(vs.Recorder(timeseries=False))
@@ -191,8 +190,8 @@ def test_optional_price_and_carbon_integrals(backend):
         name="grid",
         grid_signals={
             "buy": vs.Trace(pd.Series([0.2, 0.5], index=[0, 60])),
-            "sell": vs.StaticSignal(-0.1),
-            "carbon": vs.StaticSignal(0.4),
+            "sell": -0.1,
+            "carbon": 0.4,
         },
         dispatchables=[vs.GridConnection()],
     )
@@ -307,9 +306,7 @@ def test_same_custom_metric_name_in_multiple_scopes():
 
 def test_live_record_is_available_before_first_tick_and_finalized(tmp_path):
     env = vs.Environment.live()
-    env.add_microgrid(
-        [vs.Actor("load", vs.StaticSignal(-100))], dispatchables=[vs.GridConnection()]
-    )
+    env.add_microgrid([vs.Actor("load", -100)], dispatchables=[vs.GridConnection()])
     rec = env.add_controller(vs.Recorder(tmp_path))
 
     class Inspect(vs.Controller):
@@ -350,7 +347,10 @@ def test_final_status_includes_all_cleanup_failures(tmp_path, failure_source, re
         def finalize(self):
             raise RuntimeError("cleanup failed")
 
-    class BadSignal(vs.StaticSignal):
+    class BadSignal(vs.Signal):
+        def at(self, elapsed):
+            return -100
+
         def finalize(self):
             raise RuntimeError("cleanup failed")
 
@@ -359,7 +359,7 @@ def test_final_status_includes_all_cleanup_failures(tmp_path, failure_source, re
             raise RuntimeError("cleanup failed")
 
     env = vs.Environment("2026-01-01")
-    signal = BadSignal(-100) if failure_source == "signal" else vs.StaticSignal(-100)
+    signal = BadSignal() if failure_source == "signal" else -100
     env.add_microgrid([vs.Actor("load", signal)], dispatchables=[vs.GridConnection()])
     recorder = vs.Recorder(tmp_path / "main")
     other = (
@@ -402,15 +402,15 @@ def test_publication_failure_updates_other_recorders(tmp_path, monkeypatch):
 
 def test_csv_preserves_identifier_strings_and_distinct_nested_fields(tmp_path):
     class NestedActor(vs.Actor):
-        def state(self, elapsed):
-            return {"b": {"power": 7}, "power": -10, "literal.key": 3, "literal%2Ekey": 4}
+        def sample(self, elapsed):
+            return -10, {"b": {"power": 7}, "literal.key": 3, "literal%2Ekey": 4}
 
     env = vs.Environment("2026-01-01")
     for name in ("123", "true", "NA"):
         env.add_microgrid(
             [
-                vs.Actor("a.b", vs.StaticSignal(-100)),
-                NestedActor("a", vs.StaticSignal(-10)),
+                vs.Actor("a.b", -100),
+                NestedActor("a", -10),
             ],
             name=name,
             dispatchables=[vs.GridConnection()],
@@ -466,7 +466,7 @@ def test_nonfinite_runtime_inputs_fail_instead_of_recording_zero(tmp_path, sourc
 
     env = vs.Environment("2026-01-01")
     env.add_microgrid(
-        [vs.Actor("load", BadSignal() if source == "actor" else vs.StaticSignal(-60))],
+        [vs.Actor("load", BadSignal() if source == "actor" else -60)],
         grid_signals={"price": BadSignal()} if source == "grid_signal" else None,
         policy=BadPolicy() if source == "policy" else None,
         dispatchables=[vs.GridConnection()],

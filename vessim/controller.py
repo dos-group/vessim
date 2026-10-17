@@ -7,6 +7,8 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
+from vessim.signal import Signal
+
 
 if TYPE_CHECKING:
     from vessim.environment import Environment
@@ -35,7 +37,10 @@ def _build_experiment_config(environment: Environment) -> dict:
                     **mg.policy.state(),
                 },
                 "grid_signals": (
-                    {name: str(signal) for name, signal in mg.grid_signals.items()}
+                    {
+                        name: str(signal) if isinstance(signal, Signal) else signal
+                        for name, signal in mg.grid_signals.items()
+                    }
                     if mg.grid_signals
                     else None
                 ),
@@ -192,8 +197,8 @@ class Api(Controller):
                 elif target == "actor":
                     actor_name = cmd.get("target_name")
                     actor = next((a for a in mg.actors if a.name == actor_name), None)
-                    if actor and hasattr(actor.signal, "set_value"):
-                        actor.signal.set_value(val)
+                    if actor and prop == "power":
+                        actor.power = val
 
         for mg_name, mg_state in microgrid_states.items():
             response = self._session.post(
