@@ -54,16 +54,21 @@ export function indexStudy(study) {
     })
     return id
   }
-  const configurations = study.configurations.map((c) => ({
-    ...c,
-    key: c.configuration_id,
-    values: Object.fromEntries(
-      Object.entries(flatten(c.parameters)).map(([p, v]) => [
-        parameter(p, v, true),
-        v,
-      ]),
-    ),
-  }))
+  const runParameters = new Set(study.run_parameters || [])
+  const configurations = study.configurations.map((c) => {
+    const inputs = c.runs.map((r) => flatten(r.record.parameters))
+    // Membership is explicit in the index. Only displayed shared values are derived.
+    const shared = Object.entries(inputs[0] || {}).filter(([path, value]) =>
+      !runParameters.has(JSON.parse(path)[0]) &&
+      inputs.every((input) => Object.hasOwn(input, path) && stable(input[path]) === stable(value)),
+    )
+    return {
+      ...c,
+      name: c.name || c.configuration_id,
+      key: c.configuration_id,
+      values: Object.fromEntries(shared.map(([p, v]) => [parameter(p, v, true), v])),
+    }
+  })
   const runs = configurations.flatMap((c) =>
     c.runs.map((run) => {
       const values = {},
@@ -109,46 +114,118 @@ export function indexStudy(study) {
           )
       return {
         ...run,
-        key: run.run_id,
-        name: run.run_id,
+        run_id: run.record.run_id,
+        key: run.record.run_id,
+        name: run.record.run_id,
         configuration: c,
         values,
         definitions,
       }
     }),
   )
-  for (const c of configurations)
-    c.runs = runs.filter((r) => r.configuration === c)
-  return { ...study, configurations, runs, columns: [...columns.values()] }
+  for (const c of configurations) c.runs = []
+  for (const run of runs) run.configuration.runs.push(run)
+  for (const column of columns.values()) {
+    if (column.parameterPath?.length === 1 && column.parameterPath[0] === 'seed')
+      column.fixedSeed = new Set(runs.map(r => stable(r.values[column.id]))).size === 1
+  }
+  if (new Set(runs.map((r) => r.key)).size !== runs.length)
+    throw new Error('A run appears more than once in this study.')
+  const microgrids = [...new Set(runs.flatMap((run) => [
+    ...Object.keys(run.record.config?.microgrids || {}),
+    ...Object.keys(run.record.metrics.microgrids || {}),
+    ...Object.keys(run.record.metrics.actors || {}),
+  ]))]
+  return { ...study, name: study.name || study.study_id, configurations, runs,
+    microgrids, singleMicrogrid: microgrids.length === 1, columns: [...columns.values()] }
 }
-export function columnGroups(columns) {
+export function metricCategory(column) {
+  const name = column.label.toLowerCase(), unit = column.unit || ''
+  if (/carbon|emission|co2/.test(name) || /CO2/i.test(unit)) return 'Carbon'
+  if (/cost|revenue|capex|opex|profit|price/.test(name) || /^(EUR|USD|GBP|€|\$|£)(\/|$)/.test(unit)) return 'Cost'
+  if (/energy|power|grid import|grid export/.test(name) || /^(k|M|G|T)?Wh?$/.test(unit)) return 'Energy'
+  return 'Other results'
+}
+export function columnGroups(columns, singleMicrogrid = false) {
   const groups = new Map()
   for (const column of columns) {
     // Explicit presentation grouping; these remain recorded input parameters.
     const simulationSetting = column.parameterPath?.length === 1 &&
-      ['days', 'step_seconds', 'input_model_version'].includes(column.parameterPath[0])
+      (['days', 'step_seconds', 'input_model_version'].includes(column.parameterPath[0]) || column.fixedSeed)
     const path = column.kind === 'parameter'
       ? [simulationSetting ? 'settings' : column.configurationInput ? 'configuration' : 'inputs']
-      : column.metricPath
+      : singleMicrogrid && ['run', 'microgrids'].includes(column.metricPath[0])
+        ? ['results', metricCategory(column)] : column.metricPath
     const key = JSON.stringify(path)
     if (!groups.has(key)) {
       const labels = {
         configuration: 'Configuration inputs',
         inputs: 'Run inputs',
-        run: 'Run results',
+        run: 'Whole-system results',
         microgrids: 'Microgrid results',
         actors: 'Actor results',
         settings: 'Simulation settings',
       }
       groups.set(key, {
-        label: [labels[path[0]], ...path.slice(1)].join(' · '),
-        order: ['configuration', 'inputs', 'run', 'microgrids', 'actors', 'settings'].indexOf(path[0]),
+        label: path[0] === 'results' ? path[1] : [labels[path[0]], ...path.slice(singleMicrogrid && ['actors', 'microgrids'].includes(path[0]) ? 2 : 1)].join(' · '),
+        order: path[0] === 'results'
+          ? 2 + ['Energy', 'Cost', 'Carbon', 'Other results'].indexOf(path[1]) / 10
+          : ['configuration', 'inputs', 'run', 'microgrids', 'actors', 'settings'].indexOf(path[0]),
         columns: [],
       })
     }
     groups.get(key).columns.push(column)
   }
-  return [...groups.values()].sort((a, b) => a.order - b.order)
+  return [...groups.values()].sort((a, b) => a.order - b.order).map(group => ({
+    ...group,
+    columns: group.columns.sort((a, b) => {
+      if (a.kind !== 'metric' || b.kind !== 'metric') return 0
+      const categories = ['Energy', 'Cost', 'Carbon', 'Other results']
+      const preferred = ['energy produced', 'energy consumed', 'grid import', 'grid export',
+        'peak grid import', 'peak grid export', 'annual cost', 'annualized equipment cost',
+        'electricity cost', 'export revenue', 'equipment capex', 'grid emissions', 'initial embodied emissions']
+      const rank = c => preferred.includes(c.label) ? preferred.indexOf(c.label) : preferred.length
+      return categories.indexOf(metricCategory(a)) - categories.indexOf(metricCategory(b)) || rank(a) - rank(b)
+    }),
+  }))
+}
+export function visibleSignals(signals, recordings) {
+  const redundant = new Set(), gridPowers = new Set()
+  for (const signal of signals.filter(s => s.field === 'p_grid')) {
+    const relevant = recordings.filter(r => r.series.some(s => s.grid === signal.grid))
+    const replacements = relevant.map(r => {
+      const grids = r.config?.microgrids?.[signal.grid]?.dispatchables?.filter(d => d.type === 'GridConnection') || []
+      if (grids.length !== 1) return null
+      const name = grids[0].name.replaceAll('%', '%25').replaceAll('.', '%2E')
+      return r.series.find(s => s.grid === signal.grid && s.field === `dispatch_states.${name}.current_power`)
+    })
+    if (relevant.length && replacements.every(Boolean) && new Set(replacements.map(s => s.id)).size === 1) {
+      redundant.add(signal.id)
+      gridPowers.add(replacements[0].id)
+    }
+  }
+  return signals.filter(s => !redundant.has(s.id)).map(s => ({
+    ...s, gridPower: s.field === 'p_grid' || gridPowers.has(s.id),
+  }))
+}
+export function signalGroups(signals) {
+  const labels = ['Dispatchables', 'Actors', 'Grid inputs', 'Policy', 'Other signals']
+  const sites = new Map()
+  for (const signal of signals) {
+    const prefix = signal.field.split('.')[0]
+    const label = signal.field === 'p_grid' ? 'Dispatchables' : signal.field === 'p_delta'
+      ? 'Actors'
+      : ({ dispatch_states: 'Dispatchables', actor_states: 'Actors',
+          grid_signals: 'Grid inputs', policy_state: 'Policy' })[prefix] || 'Other signals'
+    if (!sites.has(signal.grid)) sites.set(signal.grid, new Map())
+    const groups = sites.get(signal.grid)
+    if (!groups.has(label)) groups.set(label, [])
+    groups.get(label).push(signal)
+  }
+  return [...sites].sort(([a], [b]) => a.localeCompare(b)).map(([site, groups]) => ({
+    site,
+    groups: labels.filter((label) => groups.has(label)).map((label) => ({ label, signals: groups.get(label).sort((a, b) => Number(b.field === 'p_delta') - Number(a.field === 'p_delta')) })),
+  }))
 }
 export const columnLabel = (c) =>
   `${c.scope} · ${c.label}${c.unit && c.unit !== '1' ? ` (${c.unit})` : ''}`
@@ -160,7 +237,7 @@ export function sample(config, column) {
   if (column.kind === 'parameter')
     return { points: [], excluded: 0, reason: '' }
   const signatures = new Set(
-    candidates.map((r) => stable(r.definitions[column.id])),
+    [...new Set(candidates.map(r => r.definitions[column.id]))].map(stable),
   )
   const horizons = new Set(
     candidates.map((r) => r.record.execution.simulated_duration),

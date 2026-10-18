@@ -65,7 +65,11 @@ def test_pre_refactor_trajectory(backend, case, tmp_path):
                 **state,
                 "policy_state": {"mode": "grid-connected", **state["policy_state"]},
                 "dispatch_states": {
-                    k: v for k, v in state["dispatch_states"].items() if k != "grid"
+                    # Battery power is now recorded for viewer overlays; the
+                    # historical digest still checks every original state field.
+                    k: {field: value for field, value in v.items() if field != "current_power"}
+                    for k, v in state["dispatch_states"].items()
+                    if k != "grid"
                 },
             }
             for name, state in states.items()

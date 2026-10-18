@@ -88,8 +88,16 @@ def test_battery_sizing_study_is_reproducible_across_workers(tmp_path):
             capture_output=True,
             text=True,
         )
-    sequential = json.loads((tmp_path / "1.json").read_text())["experiments"]
-    parallel = json.loads((tmp_path / "2.json").read_text())["experiments"]
+    sequential = [
+        json.loads((tmp_path / r["path"]).read_text())
+        for c in json.loads((tmp_path / "1.json").read_text())["configurations"]
+        for r in c["runs"]
+    ]
+    parallel = [
+        json.loads((tmp_path / r["path"]).read_text())
+        for c in json.loads((tmp_path / "2.json").read_text())["configurations"]
+        for r in c["runs"]
+    ]
     # Wall-clock execution timestamps differ, scientific results must not.
     for first, second in zip(sequential, parallel):
         for key in ("run_id", "parameters", "config", "metrics", "metric_definitions"):

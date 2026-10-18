@@ -28,28 +28,16 @@ def import_study(source: Path, study_id: str, title: str):
         parameters = {k: v for k, v in record.parameters.items() if k != "seed"}
         key = json.dumps(parameters, sort_keys=True)
         if key not in configurations:
-            sizes = record.parameters
             configurations[key] = {
                 "configuration_id": f"setup-{len(configurations):03d}",
-                "name": (
-                    f"Wind {sizes['wind_kw']:g} kW · Solar {sizes['solar_kw']:g} kW · "
-                    f"Battery {sizes['battery_kwh']:g} kWh"
-                ),
-                "parameters": parameters,
-                "conditions": {
-                    "duration_s": record.execution["simulated_duration"],
-                    "start": "2026-01-01",
-                    "inputs": "Synthetic seasonal load, wind, solar, and carbon intensity",
-                },
+                "name": record.run_id.replace("-", " ").capitalize(),
                 "runs": [],
             }
         configurations[key]["runs"].append(
             {
-                "run_id": record.run_id,
                 "path": os.path.relpath(path, destination),
                 "realization": {
                     "id": f"synthetic-{record.parameters['seed']}",
-                    "seeds": {"inputs": record.parameters["seed"]},
                 },
             }
         )
@@ -66,6 +54,7 @@ def import_study(source: Path, study_id: str, title: str):
                     "Synthetic inputs and illustrative emissions coefficients. "
                     "Lossless 0.5C battery, starts empty; unrestricted grid connection."
                 ),
+                "run_parameters": ["seed"],
                 "configurations": list(configurations.values()),
             },
             indent=2,

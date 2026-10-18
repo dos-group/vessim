@@ -26,8 +26,6 @@ def main():
             config = {
                 "configuration_id": key,
                 "name": f"{strategy.replace('_', ' ').capitalize()} / {capacity / 1000:g} kWh",
-                "parameters": {"strategy": strategy, "battery_capacity_wh": capacity},
-                "conditions": {"input_model": "strategy_comparison.py", "duration_s": 86400},
                 "runs": [],
             }
             for seed in (41, 42, 43):
@@ -45,9 +43,8 @@ def main():
                 result.save(destination / "runs" / run_id / "experiment.json")
                 config["runs"].append(
                     {
-                        "run_id": run_id,
                         "path": f"runs/{run_id}/experiment.json",
-                        "realization": {"id": f"demand-{seed}", "seeds": {"demand": seed}},
+                        "realization": {"id": f"demand-{seed}"},
                     }
                 )
             configurations.append(config)
@@ -62,6 +59,7 @@ def main():
                     "Three strategies × three battery sizes × three demand seeds. "
                     "Recorded Vessim simulations with synthetic one-day inputs."
                 ),
+                "run_parameters": ["seed"],
                 "configurations": configurations,
             },
             indent=2,
@@ -79,13 +77,9 @@ def main():
         candidates.append(
             {
                 "configuration_id": key,
-                "name": key,
-                "parameters": {k: v for k, v in record["parameters"].items() if k != "seed"},
-                "conditions": {"duration_s": record["execution"].get("until")},
                 "provenance": {"optuna": {"trial_number": int(key.split("-")[-1])}},
                 "runs": [
                     {
-                        "run_id": key,
                         "path": f"runs/{key}/experiment.json",
                         "realization": {"id": f"demand-{record['parameters'].get('seed', 42)}"},
                     }
@@ -103,6 +97,7 @@ def main():
                     "description": (
                         "Previously recorded optimization trials; synthetic scenario inputs."
                     ),
+                    "run_parameters": ["seed"],
                     "configurations": candidates,
                 },
                 indent=2,

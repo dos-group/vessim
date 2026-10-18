@@ -22,5 +22,5 @@ serve-docs: docs-viewer
 docs-viewer:
 	npm --prefix viewer ci
 	npm --prefix viewer run build
-	uv run python examples/strategy_comparison.py
+	uv run --with optuna python viewer/design/build_studies.py --trials 100
 	uv run python viewer/export_docs.py

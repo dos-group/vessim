@@ -91,9 +91,26 @@ def main():
                 )
             )
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    configurations = []
+    for result in results:
+        relative = Path(args.output.stem + "-runs") / result["run_id"] / "experiment.json"
+        destination = args.output.parent / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(json.dumps(result, indent=2) + "\n")
+        configurations.append(
+            {"configuration_id": result["run_id"], "runs": [{"path": relative.as_posix()}]}
+        )
     args.output.write_text(
         json.dumps(
-            {"format": "vessim.study", "schema_version": 1, "experiments": results}, indent=2
+            {
+                "format": "vessim.study",
+                "schema_version": 2,
+                "study_id": args.output.stem,
+                "name": "Battery sizing",
+                "run_parameters": ["seed"],
+                "configurations": configurations,
+            },
+            indent=2,
         )
         + "\n"
     )

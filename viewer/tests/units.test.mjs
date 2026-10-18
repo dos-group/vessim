@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { displayUnit, inDisplayUnit, unitOptions } from './units.js'
+import { displayUnit, inDisplayUnit, unitOptions } from '../src/units.js'
 
 test('large energy totals use one consistent column scale', () => {
   const spec = displayUnit('Wh', 8.9e9)

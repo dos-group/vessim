@@ -24,13 +24,6 @@ def write_study(study_id, name, candidates, repeats):
         configuration = {
             "configuration_id": configuration_id,
             "name": f"{strategy.replace('_', ' ').capitalize()} / {capacity / 1000:g} kWh",
-            "parameters": parameters,
-            "conditions": {
-                "input_model": "illustrative-demand-v1",
-                "sim_start": "2026-01-01T00:00:00Z",
-                "duration_s": 86400,
-                "grid_limit_w": 10000,
-            },
             "runs": [],
         }
         if study_id == "optimization":
@@ -55,7 +48,7 @@ def write_study(study_id, name, candidates, repeats):
                 run_id=run_id,
                 config={
                     "environment": {
-                        "sim_start": configuration["conditions"]["sim_start"],
+                        "sim_start": "2026-01-01T00:00:00Z",
                         "step_size": 300,
                     },
                     "microgrids": {"campus": {"fixture": True}},
@@ -98,11 +91,9 @@ def write_study(study_id, name, candidates, repeats):
             assert ExperimentResult.load(run_path).to_dict() == result.to_dict()
             configuration["runs"].append(
                 {
-                    "run_id": run_id,
                     "path": str(run_path.relative_to(directory)),
                     "realization": {
                         "id": f"demand-{repeat + 1:02d}",
-                        "seeds": {"demand": 100 + repeat},
                     },
                 }
             )
@@ -113,6 +104,7 @@ def write_study(study_id, name, candidates, repeats):
         "study_id": study_id,
         "name": name,
         "description": "Synthetic design fixture; not measured or simulated evidence.",
+        "run_parameters": ["demand_seed"],
         "configurations": configurations,
     }
     (directory / "study.json").write_text(json.dumps(study, indent=2) + "\n")
@@ -121,7 +113,7 @@ def write_study(study_id, name, candidates, repeats):
 def main():
     write_study(
         "fixed",
-        "Dispatch comparison",
+        "Missing metrics",
         [
             (strategy, capacity)
             for capacity in (1000, 4000, 8000)

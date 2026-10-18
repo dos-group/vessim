@@ -32,11 +32,13 @@ def test_cli_discovers_and_serves_full_and_compact_records(tmp_path):
         with urlopen(base + "/catalog.json", timeout=5) as response:
             listing = json.load(response)
         assert listing["errors"] == []
-        compact, full = listing["runs"]
+        with urlopen(base + "/" + listing["studies"][0]["url"], timeout=5) as response:
+            study = json.load(response)
+        compact, full = [r for c in study["configurations"] for r in c["runs"]]
         assert compact["record"]["execution"]["status"] == "completed"
-        assert compact["trajectory"] is None
+        assert compact["trajectoryUrl"] is None
         assert compact["record"]["metrics"]["microgrids"]["site"]["grid_import"] > 0
-        with urlopen(base + "/" + full["trajectory"]["url"], timeout=5) as response:
+        with urlopen(base + "/" + full["trajectoryUrl"], timeout=5) as response:
             assert "actor_states.load.power" in response.read().decode()
     finally:
         server.shutdown()

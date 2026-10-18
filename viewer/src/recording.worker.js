@@ -1,5 +1,5 @@
 /* global Papa */
-importScripts('../node_modules/papaparse/papaparse.min.js')
+importScripts('./vendor/papaparse.min.js')
 function timestamp(raw) {
   const text = String(raw).replace(' ', 'T')
   return Date.parse(/(?:Z|[+-]\d\d:?\d\d)$/.test(text) ? text : `${text}Z`)
