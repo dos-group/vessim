@@ -207,6 +207,11 @@ class Trace(Signal):
             offsets.setflags(write=False)
             values.setflags(write=False)
             self._offsets[name] = (offsets, values)
+        offsets = offsets_ns.view("i8")
+        spacing = np.diff(offsets)
+        self._regular_step = (
+            int(spacing[0]) if spacing.size and np.all(spacing == spacing[0]) else None
+        )
 
     def select(self, column: str) -> Trace:
         """Return a column view sharing immutable arrays with this trace.
@@ -329,6 +334,11 @@ class Trace(Signal):
                 "Extend the input data or shorten the simulation."
             )
 
+        if self._regular_step is not None:
+            position, remainder = divmod(np_at, self._regular_step)
+            if self._fill_method == "bfill" and remainder:
+                position += 1
+            return values[position]
         if self._fill_method == "ffill":
             index = offsets.searchsorted(np_at, side="right") - 1
         else:

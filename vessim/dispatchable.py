@@ -48,7 +48,13 @@ class Dispatchable(ABC):
         """
         require_finite(power, f"Power setpoint for '{self.name}'")
         _positive_duration(duration)
-        lo, hi = self._validated_range(duration)
+        self._set_power_in_range(power, duration, self._validated_range(duration))
+
+    def _set_power_in_range(
+        self, power: float, duration: float, bounds: tuple[float, float]
+    ) -> None:
+        """Commit a finite setpoint using bounds validated for this dispatch."""
+        lo, hi = bounds
         if power < lo or power > hi:
             raise ValueError(
                 f"Power {power} W is outside feasible range [{lo}, {hi}] W "
@@ -310,13 +316,13 @@ class SimpleBattery(Storage):
 
         if self.c_rate is not None:
             max_power = self.c_rate * self.capacity
-            if power >= max_power:
+            if power > max_power:
                 logger.info(
                     f"Trying to charge '{self.name}' with "
                     f"{power} W but only {max_power} W are supported."
                 )
                 power = max_power
-            if power <= -max_power:
+            if power < -max_power:
                 logger.info(
                     f"Trying to discharge '{self.name}' "
                     f"with {power} W but only {max_power} W are supported."

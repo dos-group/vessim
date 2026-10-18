@@ -3,10 +3,18 @@ from numbers import Real
 from typing import Any
 from collections.abc import Iterable
 
+from numpy import float64
+
+
+_REAL_SCALARS = (float, int, float64)
+
 
 def require_finite(value: float, name: str) -> None:
     """Reject invalid physical inputs before they enter simulation arithmetic."""
-    if isinstance(value, bool) or not isinstance(value, Real) or not math.isfinite(value):
+    if (
+        type(value) not in _REAL_SCALARS
+        and (isinstance(value, bool) or not isinstance(value, Real))
+    ) or not math.isfinite(value):
         raise ValueError(f"{name} must be a finite number, got {value!r}.")
 
 

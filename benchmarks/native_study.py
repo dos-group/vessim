@@ -24,6 +24,7 @@ import time
 
 import numpy as np
 import pandas as pd
+from loguru import logger
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "examples"))
@@ -115,6 +116,11 @@ def worker(task):
     return run_one(config, seed, output=output)
 
 
+def configure_logging(quiet):
+    if quiet:
+        logger.disable("vessim")
+
+
 def summary(rows):
     return {
         name: {
@@ -132,7 +138,12 @@ def main():
     parser.add_argument("--repeats", type=int, default=6)
     parser.add_argument("--jobs", type=int, default=100)
     parser.add_argument("--workers", nargs="+", type=int, default=[1, 2, 4, 8])
+    parser.add_argument("--quiet", action="store_true", help="Disable Vessim log messages")
+    parser.add_argument("--throughput-only", action="store_true")
     args = parser.parse_args()
+    if args.repeats < 1 or args.jobs < 1 or any(w < 1 for w in args.workers):
+        parser.error("repeats, jobs and workers must be positive")
+    configure_logging(args.quiet)
     args.output.mkdir(parents=True, exist_ok=True)
     report = {
         "system": {
@@ -144,6 +155,7 @@ def main():
             "pandas": pd.__version__,
         },
         "scope": "365 days, three actors, battery where configured, grid, six traces",
+        "logging": "disabled" if args.quiet else "default",
         "ablations": {},
         "parallel": [],
     }
@@ -165,7 +177,7 @@ def main():
         ]
         rows = {mode: [] for mode in modes}
         # Rotate execution order so later modes do not always get a warmer CPU.
-        for repeat in range(args.repeats):
+        for repeat in range(0 if args.throughput_only else args.repeats):
             order = modes[repeat % len(modes) :] + modes[: repeat % len(modes)]
             for mode in order:
                 output = (
@@ -178,16 +190,19 @@ def main():
                 )
             print(f"Ablations {repeat + 1}/{args.repeats}", flush=True)
         for mode in modes:
+            if not rows[mode]:
+                continue
             report["ablations"][mode] = {"summary": summary(rows[mode]), "runs": rows[mode]}
             print(mode, json.dumps(summary(rows[mode])), flush=True)
         save()
 
-        fine = [run_one(CONFIGS[1], 10000 + i, step_seconds=300) for i in range(3)]
-        report["five_minute"] = {"summary": summary(fine), "runs": fine}
-        save()
-        print("Five-minute", json.dumps(summary(fine)), flush=True)
+        if not args.throughput_only:
+            fine = [run_one(CONFIGS[1], 10000 + i, step_seconds=300) for i in range(3)]
+            report["five_minute"] = {"summary": summary(fine), "runs": fine}
+            save()
+            print("Five-minute", json.dumps(summary(fine)), flush=True)
 
-        for mode in ("none", "summary", "trajectory_csv"):
+        for mode in (() if args.throughput_only else ("none", "summary", "trajectory_csv")):
             profiler = cProfile.Profile()
             for i in range(3):
                 profiler.runcall(
@@ -229,7 +244,10 @@ def main():
                 results = list(map(worker, tasks))
             else:
                 with ProcessPoolExecutor(
-                    max_workers=workers, mp_context=multiprocessing.get_context("spawn")
+                    max_workers=workers,
+                    mp_context=multiprocessing.get_context("spawn"),
+                    initializer=configure_logging,
+                    initargs=(args.quiet,),
                 ) as pool:
                     results = list(pool.map(worker, tasks, chunksize=1))
             elapsed = time.perf_counter() - started

@@ -8,7 +8,7 @@ import numpy as np
 from vessim.actor import Actor
 from vessim._util import require_balanced, require_finite
 from vessim.dispatchable import Dispatchable, GridConnection
-from vessim.dispatch_policy import DispatchPolicy
+from vessim.dispatch_policy import DispatchPolicy, DefaultDispatchPolicy, _BUILTIN_DISPATCHABLES
 from vessim.signal import Signal
 
 
@@ -159,12 +159,17 @@ class Microgrid:
             require_finite(value, f"Grid signal '{name}' at {elapsed}s")
         interval = self.step_size if duration is None else duration
         bounds = [d._validated_range(interval) for d in self.dispatchables]
-        self.policy.apply(
-            self.p_delta,
-            duration=interval,
-            dispatchables=list(self.dispatchables),
-            grid_signals=self._resolved_grid_signals,
-        )
+        if type(self.policy) is DefaultDispatchPolicy and all(
+            type(d) in _BUILTIN_DISPATCHABLES for d in self.dispatchables
+        ):
+            self.policy._apply(self.p_delta, interval, self.dispatchables, bounds)
+        else:
+            self.policy.apply(
+                self.p_delta,
+                duration=interval,
+                dispatchables=list(self.dispatchables),
+                grid_signals=self._resolved_grid_signals,
+            )
         for d, (lo, hi) in zip(self.dispatchables, bounds):
             require_finite(d.current_power, f"Power setpoint for '{d.name}'")
             if not lo <= d.current_power <= hi:

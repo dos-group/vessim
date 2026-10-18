@@ -3,11 +3,14 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Optional
 
-from vessim.dispatchable import Storage
+from vessim.dispatchable import ClcBattery, GridConnection, SimpleBattery, Storage
 from vessim._util import require_balanced, require_finite
 
 if TYPE_CHECKING:
     from vessim.dispatchable import Dispatchable
+
+
+_BUILTIN_DISPATCHABLES = (SimpleBattery, ClcBattery, GridConnection)
 
 
 class DispatchPolicy(ABC):
@@ -68,12 +71,24 @@ class DefaultDispatchPolicy(DispatchPolicy):
         dispatchables: list[Dispatchable],
         grid_signals: Optional[dict[str, float]] = None,
     ) -> None:
+        self._apply(p_delta, duration, dispatchables)
+
+    def _apply(
+        self,
+        p_delta: float,
+        duration: float,
+        dispatchables: list[Dispatchable],
+        ranges: Optional[list[tuple[float, float]]] = None,
+    ) -> None:
+        """Allocate with optional bounds from the microgrid's current dispatch."""
         require_finite(p_delta, "Power delta")
         require_finite(self.charge_power, "charge_power")
         require_finite(duration, "Dispatch duration")
         if duration <= 0:
             raise ValueError("Dispatch duration must be positive.")
-        ranges = [d._validated_range(duration) for d in dispatchables]
+        reuse_ranges = ranges is not None
+        if ranges is None:
+            ranges = [d._validated_range(duration) for d in dispatchables]
         fixed = [bool(self.charge_power) and isinstance(d, Storage) for d in dispatchables]
         powers = [
             max(lo, min(hi, self.charge_power if force else 0))
@@ -94,8 +109,12 @@ class DefaultDispatchPolicy(DispatchPolicy):
             remaining -= powers[i]
 
         require_balanced(p_delta, powers)
-        for d, power in zip(dispatchables, powers):
-            d.set_power(power, duration)
+        for d, power, bounds in zip(dispatchables, powers, ranges):
+            if reuse_ranges:
+                require_finite(power, f"Power setpoint for '{d.name}'")
+                d._set_power_in_range(power, duration, bounds)
+            else:
+                d.set_power(power, duration)
 
     def state(self) -> dict:
         return {"charge_power": self.charge_power}
