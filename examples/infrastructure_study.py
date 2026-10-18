@@ -7,6 +7,8 @@ python -m vessim view results/infrastructure-study
 Inspired by dos-group/vessim-opt, not a reproduction of its models or results.
 All traces and embodied-emissions coefficients are illustrative synthetic inputs.
 Optuna is optional; without --trials this evaluates eight named configurations.
+Use --financial with --trials and a fresh output directory to minimize annual
+cost and grid emissions. Financial runs require a full 365-day horizon.
 """
 
 from __future__ import annotations
@@ -27,6 +29,9 @@ START = "2026-01-01"
 # kgCO2e/kW for generation; kgCO2e/kWh for storage. Demonstration coefficients,
 # not measured equipment inventories, annualized emissions, or lifecycle factors.
 EMBODIED = {"wind_kw": 400, "solar_kw": 600, "battery_kwh": 100}
+# Illustrative installed EUR/kW and EUR/kWh, with straight-line annual allocation.
+CAPEX = {"wind_kw": 1300, "solar_kw": 700, "battery_kwh": 300}
+LIFETIMES = {"wind_kw": 20, "solar_kw": 25, "battery_kwh": 10}
 SETUPS = {
     "grid-only": (0, 0, 0),
     "solar": (0, 3000, 0),
@@ -83,11 +88,17 @@ def run_scenario(
     step_seconds: int = 3600,
     seed: int = 42,
     timeseries: bool = False,
+    financial: bool = False,
+    battery_c_rate: float = 0.5,
 ) -> vs.ExperimentResult:
     """Record one configuration with a common input realization and explicit assumptions."""
     sizes = {"wind_kw": wind_kw, "solar_kw": solar_kw, "battery_kwh": battery_kwh}
     if any(not math.isfinite(value) or value < 0 for value in sizes.values()):
         raise ValueError("Equipment sizes must be finite and nonnegative")
+    if not math.isfinite(battery_c_rate) or battery_c_rate <= 0:
+        raise ValueError("Battery C-rate must be finite and positive")
+    if financial and days != 365:
+        raise ValueError("Annual financial metrics require a 365-day simulation")
     if (output / run_id).exists():
         raise FileExistsError(f"Preserving existing run: {output / run_id}")
     frame = inputs(days, step_seconds, seed)
@@ -98,18 +109,38 @@ def run_scenario(
     dispatchables = []
     if battery_kwh:
         dispatchables.append(
-            vs.SimpleBattery("battery", battery_kwh * 1000, initial_soc=0, c_rate=0.5)
+            vs.SimpleBattery("battery", battery_kwh * 1000, initial_soc=0, c_rate=battery_c_rate)
         )
     dispatchables.append(vs.GridConnection())
-    emissions = vs.GridImportEmissions("site", "carbon")
+    emissions = vs.GridImportEmissions("Microgrid 1", "carbon")
     emissions.assumptions.update(
         {
             "source": "synthetic hourly carbon intensity; not a regional forecast",
             "input_model_version": MODEL_VERSION,
             "export_credit": False,
-            "battery": "lossless, 0.5C, starts empty; no credit for terminal stored energy",
+            "battery": f"lossless, {battery_c_rate:g}C, starts empty; no terminal energy credit",
         }
     )
+    grid_signals = {"carbon": trace(frame.carbon)}
+    metrics = {"grid_emissions": emissions}
+    if financial:
+        hours = (frame.index.to_numpy() / 3600) % 24
+        grid_signals.update(
+            {
+                "price": trace(
+                    pd.Series(
+                        np.where((hours >= 17) & (hours < 21), 0.30, 0.15), index=frame.index
+                    )
+                ),
+                "export_price": trace(pd.Series(0.04, index=frame.index)),
+            }
+        )
+        metrics.update(
+            {
+                "electricity_cost": vs.ElectricityImportCost("Microgrid 1", "price"),
+                "export_revenue": vs.ElectricityExportRevenue("Microgrid 1", "export_price"),
+            }
+        )
     with vs.Environment(START, step_size=step_seconds, name="Infrastructure sizing") as env:
         env.add_microgrid(
             [
@@ -118,8 +149,8 @@ def run_scenario(
                 vs.Consumer("datacenter", signal=trace(frame.load_kw * 1000)),
             ],
             dispatchables=dispatchables,
-            name="site",
-            grid_signals={"carbon": trace(frame.carbon)},
+            name="Microgrid 1",
+            grid_signals=grid_signals,
         )
         recorder = env.add_controller(
             vs.Recorder(
@@ -132,8 +163,9 @@ def run_scenario(
                     "step_seconds": step_seconds,
                     "seed": seed,
                     "input_model_version": MODEL_VERSION,
+                    **({"battery_c_rate": battery_c_rate} if financial else {}),
                 },
-                custom_metrics={"grid_emissions": emissions},
+                custom_metrics=metrics,
             )
         )
         env.run(days * 86400)
@@ -152,17 +184,47 @@ def run_scenario(
             "annualized": False,
         },
     )
+    if financial:
+        assumptions = {
+            "source": "illustrative synthetic costs, not a financial forecast",
+            "installed_costs": CAPEX,
+            "lifetimes_years": LIFETIMES,
+            "allocation": "straight-line annual capital allocation; no discounting",
+            "import_eur_per_kwh": {"17:00-21:00": 0.30, "otherwise": 0.15},
+            "export_eur_per_kwh": 0.04,
+            "excludes": (
+                "financing, maintenance, demand charges, taxes, "
+                "equipment replacement scheduling"
+            ),
+        }
+        capital = sum(sizes[k] * CAPEX[k] for k in sizes)
+        annual_capital = sum(sizes[k] * CAPEX[k] / LIFETIMES[k] for k in sizes)
+        grid = result.metrics["microgrids"]["Microgrid 1"]
+        for name, value, description in (
+            ("equipment_capex", capital, "Upfront equipment investment"),
+            (
+                "annualized_equipment_cost",
+                annual_capital,
+                "One year of straight-line equipment cost allocation",
+            ),
+            (
+                "annual_cost",
+                annual_capital + grid["electricity_cost"] - grid["export_revenue"],
+                "Annual import cost minus export revenue plus equipment allocation",
+            ),
+        ):
+            result.add_metric(name, value, "EUR", description=description, assumptions=assumptions)
     result.save(output / run_id / "experiment.json")
     return result
 
 
-def objective_values(result: vs.ExperimentResult) -> tuple[float, float]:
+def objective_values(result: vs.ExperimentResult, financial: bool = False) -> tuple[float, float]:
     """Return recorded objectives, rejecting unsuccessful or undefined evidence."""
     if result.execution["status"] != "completed":
         raise ValueError(f"Run {result.run_id} did not complete")
     values = (
-        result.metrics["run"]["initial_embodied_emissions"],
-        result.metrics["microgrids"]["site"]["grid_emissions"],
+        result.metrics["run"]["annual_cost" if financial else "initial_embodied_emissions"],
+        result.metrics["microgrids"]["Microgrid 1"]["grid_emissions"],
     )
     if any(value is None or not math.isfinite(value) for value in values):
         raise ValueError("Objectives must be finite recorded metrics")
@@ -179,7 +241,10 @@ def main():
         "--trials", type=int, default=0, help="Optuna trials; 0 = eight fixed setups"
     )
     parser.add_argument("--record-trajectories", action="store_true")
+    parser.add_argument("--financial", action="store_true", help="Annual cost/emissions search")
     args = parser.parse_args()
+    if args.financial and args.days != 365:
+        parser.error("Annual financial metrics require a 365-day simulation")
     if args.trials < 0:
         parser.error("trials must be nonnegative")
     try:
@@ -192,12 +257,14 @@ def main():
         "step_seconds": args.step_seconds,
         "seed": args.seed,
         "timeseries": args.record_trajectories,
+        **({"financial": True} if args.financial else {}),
     }
     # Resuming an optimization must not silently mix different evaluation conditions.
     contract = {
         **settings,
         "mode": "optuna" if args.trials else "fixed",
         "embodied": EMBODIED,
+        **({"capex": CAPEX, "lifetimes": LIFETIMES} if args.financial else {}),
         "sampler": {"name": "NSGAII", "population_size": 8} if args.trials else None,
     }
     args.output.mkdir(parents=True, exist_ok=True)
@@ -216,14 +283,19 @@ def main():
             ) from exc
         storage = f"sqlite:///{(args.output / 'optuna.db').resolve()}"
         study = optuna.create_study(
-            study_name="infrastructure-emissions",
+            study_name=(
+                "infrastructure-cost-emissions" if args.financial else "infrastructure-emissions"
+            ),
             storage=storage,
             load_if_exists=True,
             directions=["minimize", "minimize"],
             sampler=optuna.samplers.NSGAIISampler(seed=args.seed, population_size=8),
         )
         study.set_metric_names(
-            ["Upfront equipment emissions (kgCO2e)", "Grid-import emissions (kgCO2e)"]
+            [
+                "Annual cost (EUR)" if args.financial else "Upfront equipment emissions (kgCO2e)",
+                "Grid-import emissions (kgCO2e)",
+            ]
         )
         if not study.trials:
             # Include interpretable reference setups alongside the search candidates.
@@ -236,11 +308,15 @@ def main():
                 "solar_kw": trial.suggest_int("solar_kw", 0, 6000, step=500),
                 "battery_kwh": trial.suggest_int("battery_kwh", 0, 12000, step=1000),
             }
+            if args.financial:
+                sizes["battery_c_rate"] = trial.suggest_categorical(
+                    "battery_c_rate", [0.25, 0.5, 1.0]
+                )
             run_id = f"trial-{trial.number:05d}"
             trial.set_user_attr("vessim_run_id", run_id)
             trial.set_user_attr("vessim_experiment", f"{run_id}/experiment.json")
             result = run_scenario(args.output, run_id, **sizes, **scenario_args)
-            return objective_values(result)
+            return objective_values(result, financial=args.financial)
 
         study.optimize(objective, n_trials=args.trials)
         print(f"Pareto trial numbers: {[trial.number for trial in study.best_trials]}")

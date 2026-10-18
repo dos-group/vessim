@@ -1,4 +1,4 @@
-"""Couple an independent simulator to a Vessim microgrid in either mode.
+"""Connect a small datacenter load simulator to a Vessim microgrid.
 
 Install vessim[mosaik], then run:
     python examples/external_simulator_coupling.py
@@ -13,13 +13,13 @@ import mosaik_api_v3
 import vessim as vs
 
 
-class LoadSimulator(mosaik_api_v3.Simulator):
+class DatacenterSimulator(mosaik_api_v3.Simulator):
     def __init__(self):
         super().__init__(
             {
                 "type": "time-based",
                 "models": {
-                    "Load": {"public": True, "params": [], "attrs": ["power"]},
+                    "Datacenter": {"public": True, "params": [], "attrs": ["power"]},
                 },
             }
         )
@@ -32,8 +32,9 @@ class LoadSimulator(mosaik_api_v3.Simulator):
         return [{"eid": str(i), "type": model} for i in range(num)]
 
     def step(self, time, inputs, max_advance):
-        self.power = -100 - 10 * time
-        return time + 1
+        # More jobs arrive each minute, increasing demand from 1 kW to 2 kW.
+        self.power = -(1000 + 500 * (time // 60))
+        return time + 60
 
     def get_data(self, outputs):
         return {eid: {"power": self.power} for eid in outputs}
@@ -47,16 +48,17 @@ def main():
     with create(
         sim_start="2026-01-01",
         backend="mosaik",
+        step_size=60,
         sim_config={
-            "Load": {"python": "external_simulator_coupling:LoadSimulator"},
+            "Datacenter": {"python": "external_simulator_coupling:DatacenterSimulator"},
         },
     ) as env:
-        load = env.world.start("Load").Load()
+        datacenter = env.world.start("Datacenter").Datacenter()
         env.add_microgrid(actors=[], name="site", dispatchables=[vs.GridConnection()])
         recorder = env.add_controller(vs.Recorder(timeseries=False))
         env.prepare()
-        env.world.connect(load, env.entities["site"], "power")
-        result = env.run(until=3)
+        env.world.connect(datacenter, env.entities["site"], "power")
+        result = env.run(until=180)
         print(result.states["site"])
         print(recorder.result.metrics)
 

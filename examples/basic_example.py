@@ -1,22 +1,22 @@
-"""A six-hour simulation with synthetic inputs. No data downloads required.
+"""Three days of constant demand and Berlin solar generation from a bundled CSV.
 
 Run: python basic_example.py
 View: python -m vessim view results/basic_example
 Walkthrough: https://vessim.readthedocs.io/en/latest/getting_started/
 """
 
-import pandas as pd
+from pathlib import Path
+
 import vessim as vs
 
-# An illustrative hourly solar profile, in W. Values are held until the next sample.
-solar = vs.Trace(
-    pd.Series(
-        [0, 1200, 2400, 1200, 0, 0, 0],
-        index=[hour * 3600 for hour in range(7)],
-    )
+# Scale the normalized solar profile to a 2.4 kW installation.
+solar = vs.Trace.from_csv(
+    Path(__file__).resolve().parents[1] / "datasets/solar_example.csv",
+    column="Berlin",
+    scale=2400,
 )
 
-env = vs.Environment(sim_start="2026-01-01", step_size=60)
+env = vs.Environment(sim_start="2026-01-01", step_size=5 * 60)
 env.add_microgrid(
     name="site",
     actors=[
@@ -26,7 +26,7 @@ env.add_microgrid(
     dispatchables=[vs.SimpleBattery("battery", capacity=1000), vs.GridConnection()],
 )
 recorder = env.add_controller(vs.Recorder("results/basic_example"))
-run = env.run(until=6 * 3600)
+run = env.run(until=3 * 24 * 3600)
 
 metrics = recorder.metrics["microgrids"]["site"]
 print(f"Grid import: {metrics['grid_import'] / 1000:.2f} kWh")

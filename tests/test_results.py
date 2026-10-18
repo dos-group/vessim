@@ -57,6 +57,8 @@ def test_defaults_stream_csv_and_use_one_schema(tmp_path):
     assert [r["microgrid"] for r in rows] == ["load", "solar"] * 3
     assert all(None not in row for row in rows)
     assert rows[0]["dispatch_states.battery.soc"] == ""
+    assert rows[0]["dispatch_states.battery.current_power"] == ""
+    assert float(rows[1]["dispatch_states.battery.current_power"]) == 60
     assert rows[1]["actor_states.solar.power"] == "60"
     result = vs.ExperimentResult.load(tmp_path)
     assert result.execution["status"] == "completed"

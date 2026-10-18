@@ -37,7 +37,7 @@ def test_annual_inputs_and_shared_realization():
 def test_grid_baseline_matches_input_integrals_and_preserves_output(tmp_path):
     result = scenario.run_scenario(tmp_path, "baseline", 0, 0, 0, days=2)
     frame = scenario.inputs(days=2)
-    metrics = result.metrics["microgrids"]["site"]
+    metrics = result.metrics["microgrids"]["Microgrid 1"]
     assert metrics["grid_import"] == pytest.approx(frame.load_kw.sum() * 1000)
     assert metrics["grid_emissions"] == pytest.approx((frame.load_kw * frame.carbon).sum())
     assert metrics["grid_export"] == 0
@@ -50,7 +50,7 @@ def test_grid_baseline_matches_input_integrals_and_preserves_output(tmp_path):
     )
     with pytest.raises(FileExistsError, match="Preserving"):
         scenario.run_scenario(tmp_path, "baseline", 0, 0, 0, days=2)
-    result.metrics["microgrids"]["site"]["grid_emissions"] = None
+    result.metrics["microgrids"]["Microgrid 1"]["grid_emissions"] = None
     with pytest.raises(ValueError, match="finite"):
         scenario.objective_values(result)
     result.execution["status"] = "failed"
@@ -64,7 +64,7 @@ def test_storage_energy_balance_and_recorded_emissions(tmp_path):
     imports = (-frame.p_grid).clip(lower=0)
     expected_emissions = (imports.to_numpy() / 1000 * scenario.inputs(days=3).carbon).sum()
     assert scenario.objective_values(result) == pytest.approx((3800000, expected_emissions))
-    metrics = result.metrics["microgrids"]["site"]
+    metrics = result.metrics["microgrids"]["Microgrid 1"]
     # Empty initial storage, no battery losses: net input equals final stored energy.
     stored = (
         metrics["energy_produced"]
@@ -109,3 +109,35 @@ def test_optional_optuna_records_objectives_and_rejects_mixed_horizons(tmp_path)
     assert rejected.returncode != 0
     assert "Evaluation settings changed" in rejected.stderr
     assert json.loads((tmp_path / "scenario.json").read_text())["days"] == 1
+
+
+def test_financial_metrics_match_recorded_cashflows_and_annual_allocation(tmp_path):
+    result = scenario.run_scenario(
+        tmp_path,
+        "financial",
+        1500,
+        2000,
+        4000,
+        financial=True,
+        battery_c_rate=0.25,
+        timeseries=True,
+    )
+    frame = pd.read_csv(tmp_path / "financial/timeseries.csv")
+    grid = result.metrics["microgrids"]["Microgrid 1"]
+    imports = (-frame.p_grid).clip(lower=0) / 1000
+    exports = frame.p_grid.clip(lower=0) / 1000
+    assert grid["electricity_cost"] == pytest.approx((imports * frame["grid_signals.price"]).sum())
+    assert grid["export_revenue"] == pytest.approx(
+        (exports * frame["grid_signals.export_price"]).sum()
+    )
+    capital = 1500 * 1300 + 2000 * 700 + 4000 * 300
+    annual = 1500 * 1300 / 20 + 2000 * 700 / 25 + 4000 * 300 / 10
+    assert result.metrics["run"]["equipment_capex"] == capital
+    assert result.metrics["run"]["annualized_equipment_cost"] == annual
+    assert scenario.objective_values(result, financial=True)[0] == pytest.approx(
+        annual + grid["electricity_cost"] - grid["export_revenue"]
+    )
+    assert result.parameters["battery_c_rate"] == 0.25
+    assert len(frame) == 8760
+    with pytest.raises(ValueError, match="365-day"):
+        scenario.run_scenario(tmp_path, "short-finance", 0, 0, 0, financial=True, days=1)

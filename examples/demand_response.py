@@ -1,35 +1,65 @@
-"""Reduce datacenter demand after observing grid carbon intensity.
+"""Respond to a temporary import limit under a flexible connection agreement.
 
 python examples/demand_response.py
 
-This illustrative model changes demand at the next actor sample. It does not
-model job deadlines, deferred work, or the energy needed to finish that work.
+Limits are announced one simulation step before they take effect. The toy
+simulator adjusts concurrent jobs, assuming enough flexible work is available.
+It does not model job completion, deadlines, or the cost of pausing work.
 """
+
+import pandas as pd
 
 import vessim as vs
 
 
-class DemandResponse(vs.Controller):
+class DatacenterSimulator:
+    """Model a 400 W base load and up to six concurrent 100 W jobs."""
+
+    def __init__(self):
+        self.active_jobs = 6
+
+    def set_power_budget(self, watts):
+        if watts < 400:
+            raise ValueError("The power budget cannot cover the base load.")
+        self.active_jobs = min(6, int((watts - 400) // 100))
+
+    def power(self):
+        return 400 + 100 * self.active_jobs
+
+
+class DatacenterPower(vs.Signal):
     def __init__(self, datacenter):
         self.datacenter = datacenter
 
+    def at(self, elapsed=None):
+        return self.datacenter.power()
+
+
+class DemandResponse(vs.Controller):
+    def __init__(self, datacenter, grid):
+        self.datacenter = datacenter
+        self.grid = grid
+
     def step(self, now, states):
-        carbon = states["site"]["grid_signals"]["carbon"]
-        self.datacenter.signal = 700 if carbon > 0.3 else 1000
+        limit = states["site"]["grid_signals"]["next_import_limit"]
+        self.datacenter.set_power_budget(limit)
+        self.grid.max_import = limit
 
 
 def main():
-    datacenter = vs.Consumer("datacenter", signal=1000)
+    datacenter = DatacenterSimulator()
+    grid = vs.GridConnection(max_import=1000)
+    notices = vs.Trace(pd.Series([700, 700, 1000, 1000], index=[0, 60, 120, 180]))
     with vs.Environment("2026-01-01", step_size=60) as env:
         env.add_microgrid(
             name="site",
-            actors=[datacenter],
-            dispatchables=[vs.GridConnection()],
-            grid_signals={"carbon": 0.4},  # kgCO2e/kWh
+            actors=[vs.Consumer("datacenter", signal=DatacenterPower(datacenter))],
+            dispatchables=[grid],
+            grid_signals={"next_import_limit": notices},
         )
-        env.add_controller(DemandResponse(datacenter))
+        env.add_controller(DemandResponse(datacenter, grid))
         recorder = env.add_controller(vs.Recorder())
-        env.run(180)
+        env.run(240)
 
     for now, states in recorder.log.items():
         demand = -states["site"]["actor_states"]["datacenter"]["power"]

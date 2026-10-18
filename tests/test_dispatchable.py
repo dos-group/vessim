@@ -4,6 +4,21 @@ import math
 import vessim as vs
 
 
+@pytest.mark.parametrize("factory", [vs.SimpleBattery, vs.ClcBattery])
+def test_battery_records_held_power(factory):
+    battery = (
+        factory("battery", initial_soc=0.5)
+        if factory is vs.ClcBattery
+        else factory("battery", 1000, initial_soc=0.5)
+    )
+    assert battery.state()["current_power"] == 0
+    for power in (1, -1, 0):
+        battery.set_power(power, 1)
+        assert battery.state()["current_power"] == power
+        battery.step(1)
+        assert battery.state()["current_power"] == power
+
+
 class TestSimpleBattery:
     @pytest.fixture
     def battery(self) -> vs.SimpleBattery:

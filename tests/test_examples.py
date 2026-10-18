@@ -22,23 +22,25 @@ def run_script(script_name, cwd=None):
 
 
 def test_basic_example(tmp_path):
-    # A copied script must work without access to repository datasets.
-    script = tmp_path / "basic_example.py"
-    shutil.copy(Path(EXAMPLES_DIR) / script.name, script)
-    result = run_script(str(script), cwd=tmp_path)
+    result = run_script("basic_example.py", cwd=tmp_path)
     assert result.returncode == 0, result.stderr
-    assert "Grid import: 1.10 kWh" in result.stdout
-    assert "Grid export: 1.70 kWh" in result.stdout
+    assert "Grid import: 26.71 kWh" in result.stdout
+    assert "Grid export: 11.08 kWh" in result.stdout
     record = json.loads((tmp_path / "results/basic_example/experiment.json").read_text())
     assert record["execution"]["status"] == "completed"
-    assert record["metrics"]["microgrids"]["site"]["energy_consumed"] == pytest.approx(4200)
+    assert record["execution"]["steps"] == 864
+    assert record["execution"]["simulated_duration"] == 3 * 24 * 3600
+    assert record["metrics"]["microgrids"]["site"]["energy_consumed"] == pytest.approx(50400)
 
 
 @pytest.mark.parametrize("document", ["README.md", "docs/getting_started.md"])
 def test_first_use_documentation_runs_as_written(tmp_path, document):
+    shutil.copy(
+        Path(__file__).parents[1] / "datasets/solar_example.csv", tmp_path / "solar_example.csv"
+    )
     source = (Path(__file__).parents[1] / document).read_text()
-    code = re.findall(r"```python\n(.*?)```", source, re.S)[0]
-    for capacity, imported, exported in [(1000, "1.10", "1.70"), (2000, "0.70", "0.70")]:
+    code = "\n".join(re.findall(r"```python\n(.*?)```", source, re.S))
+    for capacity, imported, exported in [(1000, "26.71", "11.08"), (2000, "24.71", "9.08")]:
         result = subprocess.run(
             [sys.executable, "-c", code.replace("capacity=1000", f"capacity={capacity}")],
             cwd=tmp_path,
@@ -177,4 +179,5 @@ def test_demand_response_example():
         "00:00:00: 1000 W",
         "00:01:00: 700 W",
         "00:02:00: 700 W",
+        "00:03:00: 1000 W",
     ]

@@ -33,9 +33,15 @@ class _ViewerHandler(SimpleHTTPRequestHandler):
         elif path.startswith("/data/"):
             parts = path.strip("/").split("/")
             try:
-                if len(parts) != 3 or parts[2] != "trajectory":
+                if len(parts) != 3:
                     raise KeyError(path)
-                content, kind = self.catalog.trajectory(parts[1])
+                if parts[2] == "study.json":
+                    content = json.dumps(self.catalog.study(parts[1]), allow_nan=False).encode()
+                    kind = "application/json"
+                elif parts[2] == "trajectory":
+                    content, kind = self.catalog.trajectory(parts[1])
+                else:
+                    raise KeyError(path)
                 self._send(content, kind)
             except (KeyError, OSError, ValueError):
                 self.send_error(404, "Recorded trajectory is unavailable")
