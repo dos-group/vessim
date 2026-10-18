@@ -25,9 +25,11 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Programming Language :: Python :: 3 :: Only",
 ]
-requires-python = ">=3.9,<3.14"
+requires-python = ">=3.9,<3.16"
 dependencies = [
     "numpy>=1.26.0",
     "pandas>=2.0.0",
@@ -43,6 +45,7 @@ mosaik = [
 live = [
     "requests>=2.26.0",          # PrometheusSignal, WatttimeSignal, Api
     "fastapi>=0.104.0",          # Api broker
+    "pydantic>=2.14.0; python_version >= '3.15'",  # Python 3.15 support
     "uvicorn>=0.23.0",           # Api broker
     "prometheus_client>0.22.0",  # Api /metrics export
 ]

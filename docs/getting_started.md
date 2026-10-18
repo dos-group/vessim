@@ -2,7 +2,7 @@
 
 ## Install
 
-Install Vessim with Python 3.9 to 3.13:
+Install Vessim with Python 3.9 to 3.15:
 
 ```console
 python -m pip install vessim
