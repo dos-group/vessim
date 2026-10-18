@@ -76,17 +76,17 @@ class Trace(Signal):
       as-is. Must start at offset=0. `anchor` must not be provided. This is
       the canonical form.
     - `DatetimeIndex`: a convenience for calendar-stamped data. `anchor` is
-      required and must match an existing row exactly; that row is rebased
+      required and must match an existing row exactly. That row is rebased
       to offset=0 and earlier rows are dropped.
 
     For loading offset-indexed or datetime-indexed CSVs, use `Trace.from_csv`.
 
     Args:
         data: A pandas `Series` or `DataFrame`. See above for accepted index
-            types. Each column represents one zone of data; the column name
+            types. Each column represents one zone of data. The column name
             is the zone name. Between samples, values are interpolated using
             `fill_method` (`ffill` or `bfill`). Values must be finite and
-            timestamps unique; handle missing data explicitly before loading.
+            timestamps unique. Handle missing data explicitly before loading.
         anchor: Required when `data` has a `DatetimeIndex`. Must be a value
             present in the index. The matching row is rebased to offset=0.
             Forbidden for `TimedeltaIndex` and numeric indices (which are
@@ -212,7 +212,7 @@ class Trace(Signal):
         """Return a column view sharing immutable arrays with this trace.
 
         Load a multi-column CSV once and use views for different actors or
-        scenarios. Sampling is stateless; no per-run cursor is stored here.
+        scenarios. Sampling is stateless. No per-run cursor is stored here.
         """
         _get_column_name(self._offsets, column)
         selected = copy(self)
@@ -241,12 +241,12 @@ class Trace(Signal):
 
         As a utility, datetime-indexed CSVs are also accepted and converted on
         load: pass `anchor=<timestamp>` to mark which row corresponds to
-        offset=0. See [Signals and Datasets](../concepts/signals.md) for the
-        full schema and recipes for fetching data from public APIs.
+        offset=0. See [Actors and signals](../concepts/signals.md#trace-signals)
+        for pandas and CSV examples.
 
         Args:
             path: Path to the CSV file.
-            anchor: Required if the first column is a datetime; must match a
+            anchor: Required if the first column is a datetime. Must match a
                 row in the data exactly. That row becomes `offset=0` and
                 earlier rows are dropped. Forbidden if the first column is
                 already numeric.

@@ -26,6 +26,10 @@ class Metric:
         actor: Actor name within microgrid, or None for a microgrid-level metric.
         description: Human-readable definition of the calculation.
         assumptions: JSON-compatible assumptions, such as lifetime or allocation rules.
+
+    Attributes:
+        value (float): Accumulated result, initialized to zero by start() and
+            returned by the default finalize() implementation.
     """
 
     def __init__(
@@ -104,6 +108,11 @@ class ElectricityImportCost(_GridIntegral):
 
     This excludes maintenance, demand charges, and other operating costs.
     Negative electricity prices are supported. No price signal is inferred.
+
+    Args:
+        microgrid: Name of the microgrid to evaluate.
+        price: Grid signal containing the import price in currency/kWh.
+        currency: Currency label for the resulting metric.
     """
 
     def __init__(self, microgrid: str, price: str, currency: str = "EUR"):
@@ -111,7 +120,13 @@ class ElectricityImportCost(_GridIntegral):
 
 
 class ElectricityExportRevenue(_GridIntegral):
-    """Integrate exported electricity times an explicit sale price in currency/kWh."""
+    """Integrate exported electricity times a sale price in currency/kWh.
+
+    Args:
+        microgrid: Name of the microgrid to evaluate.
+        price: Grid signal containing the export price in currency/kWh.
+        currency: Currency label for the resulting metric.
+    """
 
     def __init__(self, microgrid: str, price: str, currency: str = "EUR"):
         super().__init__(microgrid, price, currency, 1, "Electricity export revenue")
@@ -122,6 +137,10 @@ class GridImportEmissions(_GridIntegral):
 
     This excludes onsite fuel use and embodied emissions. Exported electricity
     does not offset the result. The supplied factor determines the accounting basis.
+
+    Args:
+        microgrid: Name of the microgrid to evaluate.
+        carbon_intensity: Grid signal containing emissions intensity in kgCO2e/kWh.
     """
 
     def __init__(self, microgrid: str, carbon_intensity: str):

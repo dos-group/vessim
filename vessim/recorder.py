@@ -258,7 +258,7 @@ class Recorder(Controller):
                 values["energy_consumed"] += consumed
 
     def finalize(self) -> None:
-        """Close the CSV and finalize independent metrics; Environment publishes afterward."""
+        """Close the CSV and finalize metrics before Environment publishes the result."""
         if self._result is None or self._finalized:
             return
         self._finalized = True
@@ -302,7 +302,15 @@ class Recorder(Controller):
         self.result.save(self.output / "experiment.json")
 
     def to_df(self):
-        """Read the retained or saved trajectory as a pandas DataFrame."""
+        """Read the retained or saved time series as a pandas DataFrame.
+
+        The index has "time" and "microgrid" levels. Columns use dot-separated
+        state paths, such as "actor_states.load.power" and
+        "dispatch_states.battery.soc".
+
+        Raises:
+            RuntimeError: If time-series recording is disabled.
+        """
         import pandas as pd
 
         if not self.collect_timeseries:

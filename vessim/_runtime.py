@@ -18,13 +18,19 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class RunResult:
-    """Compact result returned by a completed run; no trajectory is retained.
+    """Final state and execution timing returned by Environment.run().
 
-    ``states`` contains dispatchable state at the requested horizon, together
-    with the last sampled actor powers, grid signals and dispatch. No extra
-    signal sampling, dispatch or controller call occurs at the horizon.
-    ``until`` is the exclusive horizon in elapsed seconds; ``last_time`` is
-    the timestamp of the last executed tick, or None for a zero-length run.
+    Attributes:
+        steps: Number of simulation ticks executed.
+        until: Simulation horizon in elapsed seconds.
+        last_time: Timestamp of the last tick, or None for a zero-length run.
+        states: Microgrid observations keyed by name. Dispatchable states are
+            advanced to the horizon. Actor power, grid signals, and dispatch
+            values come from the last tick.
+        wall_time: Execution time in seconds.
+
+    Use Recorder for time series and aggregate metrics. No extra observation
+    or controller call occurs at the horizon.
     """
 
     steps: int

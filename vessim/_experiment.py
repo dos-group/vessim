@@ -114,7 +114,19 @@ def validate_record(raw: dict) -> None:
 
 @dataclass
 class ExperimentResult:
-    """A summary with scoped metrics and an optional relative CSV reference.
+    """Recorded configuration, execution status, and metrics for one experiment.
+
+    Access through Recorder.result or load an existing record with load().
+
+    Attributes:
+        run_id: Identifier for this experiment.
+        config: Recorded component configuration.
+        parameters: User-supplied study parameters, such as battery capacity or seed.
+        execution: Status and timing information. Check "status" before comparing
+            results from completed, failed, or interrupted runs.
+        metrics: Values grouped under "run", "microgrids", and "actors".
+        metric_definitions: Matching units, descriptions, and assumptions.
+        timeseries: Relative path to the recorded CSV, or None.
 
     In-memory observations belong to Recorder.log, never to the persisted JSON.
     Loaded and recorded results remember their trajectory directory. Saving to
@@ -158,11 +170,11 @@ class ExperimentResult:
         return (self._directory / self.timeseries).resolve()
 
     def save(self, path: str | Path) -> None:
-        """Save JSON atomically; copy a referenced CSV when exporting elsewhere.
+        """Save JSON atomically and copy a referenced CSV when exporting elsewhere.
 
         The copied CSV is named <JSON stem>.timeseries.csv. Saving in the source
         directory keeps the existing reference. In-memory recordings save only
-        their summary; use Recorder(output=...) to persist their trajectory.
+        their summary. Use Recorder(output=...) to persist their trajectory.
         """
         path = Path(path).resolve()
         data = self.to_dict()
@@ -220,10 +232,10 @@ class ExperimentResult:
         description: str = "",
         assumptions: Optional[dict] = None,
     ) -> None:
-        """Attach a scalar after the run; call save() to persist the updated record.
+        """Attach a scalar after the run. Call save() to persist the updated record.
 
         Names must be new within their scope. Compute derived values in ordinary
-        Python before calling this method; no calculator dependencies are inferred.
+        Python before calling this method. No calculator dependencies are inferred.
         """
         if self.execution["status"] == "running":
             raise RuntimeError("Add scalar metrics after the run has finished")

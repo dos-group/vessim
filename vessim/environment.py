@@ -90,11 +90,20 @@ class Environment:
         backend: Literal["native", "mosaik"] = "native",
         sim_config: Optional[dict] = None,
     ) -> Environment:
-        """Create a wall-clock-paced experiment with either backend.
+        """Create an environment that advances alongside real time.
 
-        ``sim_start`` labels output. Signals receive elapsed seconds from tick
-        zero. When omitted, the label is captured when run() starts. Lateness
-        is reported after ``behind_threshold`` seconds, without skipping ticks.
+        Args:
+            sim_start: Timestamp labeling tick zero. Defaults to the time run()
+                starts. Signals still receive elapsed seconds from tick zero.
+            step_size: Simulation interval in seconds.
+            behind_threshold: Warn when the simulation falls this many seconds
+                behind real time. No ticks are skipped.
+            name: Optional experiment name.
+            backend: "native" or "mosaik" for external simulators.
+            sim_config: Additional simulator configurations for Mosaik.
+
+        Returns:
+            An Environment configured for live simulation.
         """
         return cls(
             sim_start,
@@ -121,7 +130,19 @@ class Environment:
         name: Optional[str] = None,
         coords: Optional[tuple[float, float]] = None,
     ) -> Microgrid:
-        """Add models without creating any backend entities.
+        """Create a microgrid and register it with this environment.
+
+        Args:
+            actors: Consumers, producers, or custom actors supplying power inputs.
+            dispatchables: Controllable resources, in dispatch priority order.
+                Include a GridConnection for grid-connected operation.
+            policy: Dispatch policy. Defaults to DefaultDispatchPolicy.
+            grid_signals: Named numbers or signals, such as price or carbon intensity.
+            name: Unique microgrid name. Defaults to microgrid_0, microgrid_1, etc.
+            coords: Optional (latitude, longitude) for the viewer.
+
+        Returns:
+            The registered Microgrid.
 
         An empty actor list is supported only with mosaik, for microgrids fed
         entirely by external power measurements. Names default to microgrid_0,
@@ -245,9 +266,18 @@ class Environment:
         Ticks are exclusive of ``until``. Dispatch and integration cover the
         entire duration, including a partial final interval. No additional
         controller call or signal sample occurs at the horizon.
-        Only live runs may omit it. No trajectory is retained unless a logger
-        is added. All owned resources are finalized on success or failure.
-        Native progress supports True/False. 'individual' requires mosaik.
+        Add a Recorder to retain time series or calculate metrics.
+        All owned resources are finalized on success or failure.
+
+        Args:
+            until: Simulation horizon as elapsed seconds, a timedelta, or an
+                absolute datetime. Only live simulations may omit it to run
+                until interrupted.
+            print_progress: Show a progress bar. The value "individual" shows
+                per-simulator progress and requires the Mosaik backend.
+
+        Returns:
+            Final component states and execution timing in a RunResult.
         """
         if self._closed or self.status not in ("created", "prepared"):
             raise RuntimeError("An Environment can only run once. Create a fresh scenario.")

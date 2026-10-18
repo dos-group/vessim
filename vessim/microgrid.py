@@ -13,7 +13,20 @@ from vessim.signal import Signal
 
 
 class MicrogridState(TypedDict):
-    """Observation at a tick, after dispatch and before controllers execute."""
+    """Observation at a tick, after dispatch and before controllers execute.
+
+    Attributes:
+        p_delta: Net actor and external simulator power in W. Positive means
+            surplus generation, negative means a demand deficit.
+        p_grid: Net exchange across grid connections in W. Positive means export,
+            negative means import.
+        actor_states: Actor names mapped to their observations, including signed
+            "power" in W.
+        dispatch_states: Resource names mapped to their observations, such as
+            "current_power", "soc", and "charge_level".
+        policy_state: Diagnostic state returned by the dispatch policy.
+        grid_signals: Sampled contextual signals keyed by name, or None.
+    """
 
     p_delta: float
     p_grid: float
@@ -37,7 +50,8 @@ def _snapshot(state: dict) -> dict:
 class Microgrid:
     """Energy-system models and current state, independent of an execution backend.
 
-    Usually constructed through :meth:`Environment.add_microgrid`. Powers are
+    Usually constructed through
+    [Environment.add_microgrid()][vessim.Environment.add_microgrid]. Powers are
     in W. Actor generation is positive and consumption negative. Dispatchable
     supply/import is negative. Absorption/export is positive.
 

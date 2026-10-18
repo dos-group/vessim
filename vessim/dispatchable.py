@@ -39,6 +39,10 @@ class Dispatchable(ABC):
     def set_power(self, power: float, duration: float) -> None:
         """Set the power setpoint for the given duration.
 
+        Args:
+            power: Power in W. Positive absorbs power, negative supplies power.
+            duration: Upcoming interval length in seconds, used to check limits.
+
         Raises:
             ValueError: If power is outside the feasible range.
         """
@@ -228,9 +232,9 @@ class SimpleBattery(Storage):
             If current SoC is below or equal to the minimum SoC, battery is not discharged
             further. Defaults to 0. Can be altered during simulation.
         c_rate: Optional C-rate, which defines the charge and discharge rate of the battery.
-            For more information on C-rate, see
-            `C-rate explanation <https://www.batterydesign.net/electrical/c-rate/>`_.
-            Defaults to None.
+            A value of 1 limits power in W to the capacity in Wh, corresponding
+            to a full charge or discharge in one hour. None imposes no power
+            limit beyond the available energy and remaining capacity.
     """
 
     def __init__(
@@ -348,6 +352,7 @@ class SimpleBattery(Storage):
         return {
             "soc": self._soc,
             "charge_level": self.charge_level,
+            "current_power": self.current_power,
         }
 
 
@@ -362,9 +367,9 @@ class ClcBattery(Storage):
         Kazhamiaka, F., Rosenberg, C. & Keshav, S.
         Tractable lithium-ion storage models for optimizing energy systems.
         Energy Inform 2, 4 (2019).
-        `doi:10.1186/s42162-019-0070-6 <https://doi.org/10.1186/s42162-019-0070-6>`_
+        [doi:10.1186/s42162-019-0070-6](https://doi.org/10.1186/s42162-019-0070-6)
 
-    The default parameterization models a pack of LGM50 21700 rechargable lithium-ion cells.
+    The default parameterization models a pack of LGM50 21700 rechargeable lithium-ion cells.
     This model should not be used in combination with large step sizes.
 
     Args:
@@ -568,4 +573,5 @@ class ClcBattery(Storage):
         return {
             "soc": self._soc,
             "charge_level": self.charge_level * self.number_of_cells,
+            "current_power": self.current_power,
         }
