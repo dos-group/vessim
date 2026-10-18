@@ -1,114 +1,92 @@
-# Signals and Datasets
+# Actors and signals
 
-A [`Signal`](../api_reference/signal.md) provides a time-varying value to the simulation: the power consumed by a server, the power produced by a solar panel, the carbon intensity of the public grid. Every [`Actor`](../api_reference/actor.md) and every entry in a microgrid's `grid_signals` is backed by a `Signal`.
+[`vs.Consumer`](../api_reference/actor.md#vessim.Consumer) represents electrical loads, such as computing equipment or cooling.
+[`vs.Producer`](../api_reference/actor.md#vessim.Producer) represents generation, such as solar panels or wind turbines.
+Both are subclasses of [`vs.Actor`](../api_reference/actor.md#vessim.Actor), which also supports prosumers that consume and produce power.
 
-Vessim ships three signal types: [`StaticSignal`](../api_reference/signal.md#vessim.StaticSignal) for constant values, [`Trace`](../api_reference/signal.md#vessim.Trace) for replaying historical data, and [`SilSignal`](../api_reference/signal.md#vessim.SilSignal) for live data sources.
-You can easily write your own, only take care that `signal.at(elapsed)` returns the value at the elapsed time the simulation has accumulated since `sim_start`.
+Add these components to your microgrid's `actors` list.
+Their inputs can be static, follow a recorded trace, or come from live measurements.
 
-## StaticSignal
+## Static signals
 
-[`StaticSignal`](../api_reference/signal.md#vessim.StaticSignal) always returns the same value. It is useful for baseline loads, fixed production, or as a placeholder during testing:
+Actors with static inputs are the simplest form of actor.
+Pass a number to model fixed demand or generation:
 
 ```python
 import vessim as vs
 
-signal = vs.StaticSignal(value=42)
+load = vs.Consumer("load", signal=700)
+solar = vs.Producer("solar", signal=1000)
 ```
 
-You can update a `StaticSignal` at runtime via `set_value()`. This allows a [`Controller`](../api_reference/controller.md) to toggle loads or follow a schedule.
+A [controller](controllers.md#demand-response) can change demand with `load.signal = 500`, which takes effect at the next actor update.
 
-## Trace
+## Trace signals
 
-[`Trace`](../api_reference/signal.md#vessim.Trace) replays a time series row-by-row. Its index is an *offset* in seconds since the trace's start (row 0 at `0`). As the simulation advances, `Trace` returns the value at the matching offset.
-
-### From in-memory data
-
-`Trace` accepts a pandas `Series` or `DataFrame` with either a numeric index (interpreted as seconds) or a `TimedeltaIndex`:
+Use [`vs.Trace`](../api_reference/signal.md#vessim.Trace) to describe demand or generation over time.
+Create a trace from a pandas Series or DataFrame:
 
 ```python
 import pandas as pd
-import vessim as vs
 
-trace = vs.Trace(pd.Series([50, 200, 50], index=[0, 3600, 7200]))
-
-trace = vs.Trace(pd.Series(
-    [50, 200, 50],
-    index=pd.to_timedelta(["0s", "1h", "2h"]),
-))
+profile = pd.Series([0, 1000, 0], index=[0, 3600, 7200])
+solar = vs.Producer("solar", signal=vs.Trace(profile))
 ```
 
-Sampling does not need to be uniform. The index must start at 0.
+<a id="load-a-csv"></a>
 
-### Loading from a CSV
+You can also load a trace from a CSV file.
+For example, save this hourly profile as `input.csv`, with elapsed seconds in the first column:
 
-[`Trace.from_csv`](../api_reference/signal.md#vessim.Trace.from_csv) reads a CSV whose first column is the offset in seconds and remaining columns hold values:
-
-```text
-time,trace_a,trace_b
-0,0.10,0.35
-3600,0.22,0.47
-7200,0.38,0.41
+```csv
+seconds,load,solar
+0,700,0
+3600,700,1200
+7200,700,2400
+10800,700,1200
+14400,700,0
+18000,700,0
+21600,700,0
 ```
+
+Select the column for each actor:
 
 ```python
-load = vs.Trace.from_csv(
-    "datasets/load_example.csv",
-    column="trace_a",  # required if the CSV has multiple value columns
-)
+inputs = vs.Trace.from_csv("input.csv")
+load = vs.Consumer("load", signal=inputs.select("load"))
+solar = vs.Producer("solar", signal=inputs.select("solar"))
 ```
 
-`scale=` multiplies all values (handy for normalized data), and missing cells (per column) are dropped.
+The trace holds each value until the next timestamp.
+Use a profile covering your simulation period.
+See the [Trace reference](../api_reference/signal.md#vessim.Trace) for calendar timestamps, scaling, and data requirements.
 
-### Datetime data and `anchor`
+The [CSV example](https://github.com/dos-group/vessim/blob/main/examples/replay_csv.py) runs this profile:
 
-Calendar-stamped data is also supported. Pass an `anchor` to mark which row should sit at offset=0. Earlier rows are dropped. This works both for in-memory data and for CSVs with a datetime first column:
-
-```text
-datetime,Berlin,Stockholm,Mumbai
-2022-06-08 00:05:00,0.0,0.0,0.0
-2022-06-08 00:10:00,0.0,0.0,0.0
-2022-06-08 00:15:00,0.0,0.0,0.0
+```console
+python examples/replay_csv.py input.csv --hours 6
 ```
+
+## Live signals
+
+Live signals read measurements from a running system.
+For example, [`vs.PrometheusSignal`](../api_reference/signal.md#vessim.PrometheusSignal) can supply measured server power from Prometheus.
+See [live measurements](live.md#use-live-measurements) for setup and an example.
+
+## Custom signals
+
+To calculate an input yourself, implement [`vs.Signal.at()`](../api_reference/signal.md#vessim.Signal.at) as a function of elapsed simulation time in seconds:
 
 ```python
-solar = vs.Trace.from_csv(
-    "datasets/solcast.csv",
-    anchor="2022-06-09 00:00:00",
-    column="Berlin",
-    scale=5000,
-)
+class DemandProfile(vs.Signal):
+    def at(self, elapsed):
+        return 700 if elapsed < 3600 else 1200
+
+load = vs.Consumer("load", signal=DemandProfile())
 ```
 
-## Public data sources
+Signals can also supply electricity prices or carbon intensity to policies, controllers, and metrics.
+Add them through the microgrid's `grid_signals`, for example `grid_signals={"price": price_trace}`.
+See [costs and emissions](results.md#costs-and-emissions) for a complete use case.
 
-Vessim's CSV schema is intentionally minimal so you can produce it from any source. Common providers for simulation data include:
-
-- Carbon intensity: [Electricity Maps](https://www.electricitymaps.com/) or [WattTime](https://watttime.org/).
-- Weather and solar: [Open-Meteo](https://open-meteo.com/) (free historical archive), [Solcast](https://solcast.com/) (commercial irradiance and PV forecasts), or [NREL NSRDB](https://nsrdb.nrel.gov/) (high-resolution US data). For an example for a public live station feed, see [HTW Berlin](https://wetter.htw-berlin.de/).
-- Electricity prices: [ENTSO-E Transparency Platform](https://transparency.entsoe.eu/) (European day-ahead and balancing markets), [EIA Open Data](https://www.eia.gov/opendata/) (US wholesale and retail), [Nord Pool](https://www.nordpoolgroup.com/) (Nordic and Baltic spot markets), or [Electricity Maps](https://www.electricitymaps.com/) (price data alongside carbon intensity).
-
-For real-time data instead of historical traces, see the [Software-in-the-Loop signals](#software-in-the-loop-signals) below.
-
-## Software-in-the-Loop signals
-
-For real-time simulations, [Software-in-the-Loop (SiL)](sil.md) signals poll data from external sources in the background:
-
-- [`PrometheusSignal`](../api_reference/signal.md#vessim.PrometheusSignal): pull live metrics (e.g. server power) from a Prometheus server.
-- [`WatttimeSignal`](../api_reference/signal.md#vessim.WatttimeSignal): fetch live grid carbon intensity from the WattTime API.
-
-SiL signals are time-independent: they ignore the `elapsed` argument and always return their most recent cached value. Use them with [`Environment.live`](../api_reference/environment.md#vessim.Environment.live) rather than `Environment(...)`. See [Software-in-the-Loop](sil.md).
-
-You can subclass [`SilSignal`](../api_reference/signal.md#vessim.SilSignal) to wrap any other live data source.
-
-
-## Reusing inputs across a study
-
-A trace holds read-only NumPy arrays and samples without a mutable cursor. Load a multi-column CSV once per worker, then select views without copying its arrays:
-
-```python
-traces = vs.Trace.from_csv("input.csv")
-solar = traces.select("solar")
-load = traces.select("load")
-```
-
-Reuse these traces in independent environments. Construct fresh actors, batteries, and policies for each run. This avoids repeated CSV parsing and data allocation. Do not change a shared trace's configuration while it is in use. Forward fill holds the last value beyond the final sample. Backward fill raises when no future sample exists.
+For a component with its own behavior, such as a datacenter with a job queue, implement a [custom actor](../api_reference/actor.md#vessim.Actor.sample).

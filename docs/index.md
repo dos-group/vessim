@@ -1,58 +1,98 @@
+---
+hide:
+  - toc
+---
+
 #
 
 <div style="text-align: center; margin-top: -50px">
     <img alt="Vessim Logo" src="assets/logo.png" width="300" />
 </div>
 
-Vessim helps you design and test energy-aware systems. Combine applications, renewable generation, batteries, and a grid connection to understand how your system uses energy and how to improve it.
+Vessim is a Python library for simulating datacenter energy systems.
 
-Vessim is mainly used in two ways:
+Vessim models the interaction between datacenter demand and energy infrastructure, helping you understand how design and control decisions affect cost, carbon emissions, and resilience.
 
-- **Simulation studies:** find designs and control strategies that reduce energy costs, emissions, or reliance on the grid. Compare battery sizes, explore how workloads can follow renewable generation, and test how your choices hold up under changing conditions.
-- **Live experiments:** test energy-aware software with real measurements and running systems. Connect an application to simulated solar panels and batteries, observe how it responds, and refine its behavior before deploying physical infrastructure.
+<div class="vessim-use-cases" markdown="1">
 
-A **digital twin** connects these use cases. Measurements from a running system can inform studies of what could happen next and help evaluate possible changes.
+<div class="vessim-use-case" markdown="1">
 
-Use the same component models for simulation studies and live experiments. Vessim runs them directly by default and supports connecting external simulators through mosaik in either mode. See [execution and coupling](concepts/execution.md).
+### Simulation studies
 
-## How Vessim Works
+Evaluate configurations and control strategies across variations in operating conditions.
+Use parameter sweeps, what-if scenarios, and probabilistic inputs to explore design choices and assess their sensitivity to uncertainty.
 
-Vessim simulates local energy systems, called *microgrids*, that combine loads (such as computing equipment, cooling, or charging) with energy sources, dispatchable resources like batteries, and a connection to the public grid.
+</div>
 
-![Vessim Overview](assets/vessim_overview.png)
+<div class="vessim-use-case" markdown="1">
 
-The component models are independent of their execution backend. Multiple microgrids advance together inside one environment. Independent study runs can be distributed across Python worker processes.
-A microgrid is composed of three kinds of building blocks:
+### Live modeling
 
-- [Actors](concepts/signals.md) (red): exogenous consumers and producers whose power is determined by a [`Signal`](api_reference/signal.md). Their sum at each step is the microgrid's *power delta*.
-- [Dispatchables](concepts/dispatchables.md) (gray): controllable resources like batteries or generators. A [`DispatchPolicy`](api_reference/dispatch_policy.md) decides how to distribute the power delta across them. Any remainder is exchanged with the public grid.
-- [Controllers](concepts/controllers.md) (yellow): observe the simulation each step. Built-in loggers record the state, and custom controllers can adjust dispatch parameters or expose the simulation via APIs.
+Connect real applications to Vessim as they would connect to a physical energy system.
+Through REST APIs and software-in-the-loop simulation, applications can observe and control simulated components in real time.
 
+</div>
 
-## Try it now
+<div class="vessim-use-case" markdown="1">
 
-Head to [Getting Started](getting_started.md) for a step-by-step walkthrough that builds a complete microgrid in a few lines of code.
+### Digital twins
 
-You can also explore a finished simulation in your browser: [open the Experiment Viewer beta](viewer/index.html){target="_blank"} to see the interactive dashboard for the Getting Started run.
+Model your energy system alongside the real installation, using live measurements and updating parameters as conditions change.
+Explore future scenarios such as prolonged low renewable generation or a complete grid outage.
 
+</div>
 
-## Installation
+</div>
 
-Install the [latest release](https://pypi.org/project/vessim/) via [pip](https://pip.pypa.io/en/stable/getting-started/):
+<div class="vessim-actions" markdown="1">
 
-```console
-pip install vessim
-```
+[Get started](getting_started.md){ .md-button .md-button--primary }
+[Explore example results](viewer/index.html?study=getting-started#results){ .md-button }
 
-For external simulator coupling, install `pip install 'vessim[mosaik]'`. For both integrations use `pip install 'vessim[sil,mosaik]'`.
+</div>
 
-For [software-in-the-loop](concepts/sil.md) capabilities, install the `sil` extra:
+<section class="vessim-news" markdown="1">
 
-```console
-pip install vessim[sil]
-```
+## News
 
+<div class="vessim-news-item" markdown="1">
 
-## Contact
+<time datetime="2026-10">October 2026</time>
 
-Please reach out via [GitHub Discussions](https://github.com/dos-group/vessim/discussions) in case of questions.
+Vessim 0.16.0 is out!
+See the [release notes](https://github.com/dos-group/vessim/releases) for what’s new.
+
+</div>
+
+<div class="vessim-news-item" markdown="1">
+
+<time datetime="2026-04">April 2026</time>
+
+Philipp Wiesner gave a keynote on [“Co-Simulating Computing and Energy Systems”](https://tdis.gitlab.io/tdis26/) at the TDIS workshop at [EuroSys'26](https://2026.eurosys.org/) in Edinburgh.
+
+</div>
+
+<div class="vessim-news-item" markdown="1">
+
+<time datetime="2026-02">February 2026</time>
+
+Together with [Exalsius](https://www.exalsius.ai/) and [Deep Science Ventures](https://www.deepscienceventures.com/), we presented a prototype for [distributed LLM pretraining during renewable curtailment windows](https://arxiv.org/abs/2602.22760).
+Vessim was used to model geographically distributed energy systems.
+
+</div>
+
+</section>
+
+<div class="vessim-project" markdown="1">
+
+Vessim is developed at the [University of Cambridge](https://www.cam.ac.uk/).
+
+<div class="vessim-project-links" markdown="1">
+
+- [Examples](https://github.com/dos-group/vessim/tree/main/examples)
+- [Discussions](https://github.com/dos-group/vessim/discussions)
+- [About & contact](about.md)
+
+</div>
+
+</div>

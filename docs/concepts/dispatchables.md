@@ -1,170 +1,162 @@
-# Dispatchables and Dispatch Policies
+# Dispatchables and policies
 
-A [`Dispatchable`](../api_reference/dispatchable.md) is a controllable energy resource (a battery, diesel/gas generator, or electrolyzer) whose power setpoint is decided each step by a [`DispatchPolicy`](../api_reference/dispatch_policy.md). 
-Unlike actors (whose power comes from a signal), a dispatchable's power is allocated by the policy from the microgrid's current power delta.
+Dispatchables are resources whose power is chosen by a dispatch policy, such as batteries, generators, and grid connections.
+Each microgrid can contain any combination of them.
+At each step, the policy decides how to use these resources to handle the actors' combined power surplus or deficit.
 
-Each `Dispatchable` reports a *feasible range* `(min_power, max_power)` for the upcoming timestep. Negative values represent discharging/generation. Positive values represent charging/consumption.
+## Dispatchables
 
-## Battery models
+A dispatchable can:
 
-### SimpleBattery
+- **Absorb surplus power**, for example a dump load or a mechanism for accounting for curtailed generation.
+- **Supply missing power**, for example a diesel or gas generator.
+- **Do both**, for example a battery or a grid connection.
 
-[`SimpleBattery`](../api_reference/dispatchable.md#vessim.SimpleBattery) is an ideal, capacity-based model which is fast and easy to parameterize. It is a sensible default for simple simulations:
+Each resource defines its operating constraints.
+Batteries have capacity and charge-rate limits, grid connections can limit power and ramp rates, and a generator model may include startup delays or minimum output.
+
+### Batteries
+
+[`vs.SimpleBattery`](../api_reference/dispatchable.md#vessim.SimpleBattery) stores surplus energy and supplies it later.
+This creates a 1 kWh battery, initially half full, with a charge and discharge limit of 500 W:
 
 ```python
 import vessim as vs
 
-battery = vs.SimpleBattery(
-    name="battery",
-    capacity=5000,        # Wh (total energy capacity
-    initial_soc=0.8,      # 80 % charged at simulation start
-    min_soc=0.2,          # never discharge below 20 % SoC
-    c_rate=0.5,           # optional: cap charge/discharge rate at 0.5C
-)
+battery = vs.SimpleBattery("battery", capacity=1000, initial_soc=0.5, c_rate=0.5)
 ```
 
-`c_rate` is the maximum charge/discharge rate as a fraction of capacity per hour. A 1 kWh battery with `c_rate=0.5` can charge or discharge at most 500 W. If omitted, the only limit is the available energy.
+The simple model assumes ideal charging and discharging.
+[`vs.ClcBattery`](../api_reference/dispatchable.md#vessim.ClcBattery) adds conversion losses and current-dependent limits for more detailed battery simulations.
 
-### ClcBattery
+### Grid connections
 
-[`ClcBattery`](../api_reference/dispatchable.md#vessim.ClcBattery) implements the C-L-C model for lithium-ion batteries ([Kazhamiaka et al., 2019](https://doi.org/10.1186/s42162-019-0070-6)). It captures realistic degradation of charge/discharge limits as a function of current and is appropriate for high-fidelity studies. The default parameterization models a pack of LGM50 21700 Li-ion cells:
+[`vs.GridConnection`](../api_reference/dispatchable.md#vessim.GridConnection) imports power to meet demand and exports surplus.
+For example, limit imports to 5 kW and exports to 2 kW:
 
 ```python
-battery = vs.ClcBattery(
-    name="battery",
-    number_of_cells=100,
-    initial_soc=0.5,
-    min_soc=0.1,
-)
+grid = vs.GridConnection("grid", max_import=5000, max_export=2000)
 ```
 
-!!! note
-    `ClcBattery` should not be used with large simulation step sizes. For coarse-grained simulations (15 min or more), prefer `SimpleBattery`.
+Optional `ramp_up` and `ramp_down` constrain changes in power, measured in W per simulation step.
+A [controller](controllers.md) can set `grid.connected = False` to simulate an outage and `True` to reconnect.
+Omit the grid connection to model an islanded system.
 
-## Multiple dispatchables
+### Custom dispatchables
 
-[`add_microgrid`](../api_reference/environment.md#vessim.Environment.add_microgrid) accepts a list of dispatchables. The default policy serves them in order, so the first one is used until it is exhausted before the next one is touched:
+Subclass [`vs.Dispatchable`](../api_reference/dispatchable.md#vessim.Dispatchable) to model other resources, such as diesel or gas generators.
+A custom resource can also account for curtailed generation as an absorption of surplus power.
+
+This example models a running gas turbine with minimum and maximum output and a ramp limit.
+The illustrative turbine supplies between 1 and 5 MW and can change its output by up to 0.5 MW per simulation step:
 
 ```python
-environment.add_microgrid(
-    name="datacenter",
-    actors=[...],
-    dispatchables=[
-        vs.SimpleBattery(name="primary", capacity=10000, initial_soc=0.9),
-        vs.SimpleBattery(name="backup",  capacity=5000,  initial_soc=0.5),
-    ],
-)
+class GasTurbine(vs.Dispatchable):
+    def __init__(self, name, min_output, max_output, ramp_limit):
+        super().__init__(name)
+        self.min_output = min_output
+        self.max_output = max_output
+        self.ramp_limit = ramp_limit
+        self.output = min_output
+        self.current_power = -min_output
+
+    def feasible_range(self, duration):
+        lower = max(self.min_output, self.output - self.ramp_limit)
+        upper = min(self.max_output, self.output + self.ramp_limit)
+        return -upper, -lower  # Generation uses negative dispatchable power.
+
+    def step(self, duration):
+        self.output = -self.current_power
+
+    def config(self):
+        return {
+            "min_output": self.min_output,
+            "max_output": self.max_output,
+            "ramp_limit": self.ramp_limit,
+        }
+
+    def state(self):
+        return {"current_power": self.current_power}
+
+
+turbine = GasTurbine("gas_turbine", min_output=1e6, max_output=5e6, ramp_limit=0.5e6)
+dispatchables = [turbine, vs.GridConnection()]
 ```
+
+`feasible_range()` combines the output and ramp constraints.
+`step()` remembers the dispatched output for the next step.
+`config()` and `state()` expose model parameters and observations for recording.
+
+The turbine starts at its minimum output and stays running.
+If demand falls below what it can supply, the grid exports the excess.
+Startup, shutdown, and fuel consumption would require extending the model.
 
 ## Dispatch policies
 
-A [`DispatchPolicy`](../api_reference/dispatch_policy.md) receives the microgrid's power delta and allocates it across dispatchables. It returns the power that needs to be exchanged with the public grid.
+A policy receives the actors' net power, called `p_delta`, and the microgrid's set of dispatchables.
+A positive delta is surplus generation, and a negative delta is unmet demand.
+The policy assigns power to the resources within their operating constraints.
 
-### DefaultDispatchPolicy
+**After dispatch, the remaining power imbalance must be zero.**
+If a surplus or deficit remains, the dispatch is infeasible.
+Vessim raises an error and records the run as failed.
 
-[`DefaultDispatchPolicy`](../api_reference/dispatch_policy.md#vessim.DefaultDispatchPolicy) is used when no `policy` argument is given to `add_microgrid`. It supports three modes:
+### Default policy
 
-Grid-connected (default): allocate the delta in priority order, exchange the remainder with the grid.
+[`vs.DefaultDispatchPolicy`](../api_reference/dispatch_policy.md#vessim.DefaultDispatchPolicy) uses resources in list order while respecting their constraints.
+For example:
 
 ```python
-policy = vs.DefaultDispatchPolicy(mode="grid-connected")
+dispatchables = [battery, grid]
 ```
 
-Islanded: fully disconnect the microgrid from the grid. If dispatchables cannot cover a deficit, a `RuntimeError` is raised. Use this to verify a self-sufficient design.
+This uses the battery first and exchanges the remaining power with the grid.
+Reversing the order prioritizes grid exchange.
+Add a generator or curtailment resource to the list when the system needs those options.
+
+The default policy is used automatically.
+To request a fixed battery charging power, pass `policy=vs.DefaultDispatchPolicy(charge_power=200)` to `env.add_microgrid()`.
+The policy balances this target using available generation and the other resources.
+
+### Custom policies
+
+Choosing when to charge, generate, import, or export is often the main control problem in an energy system.
+Policies can range from a simple priority order to forecast-based optimization or reinforcement learning.
+Vessim lets you test your own strategies across demand, weather, and price scenarios through [simulation studies](studies.md), including probabilistic inputs.
+
+For the gas turbine and grid connection above, prioritize the cheaper source.
+This policy compares the current electricity price with an assumed turbine cost per kWh, then lets the default policy allocate power in that order:
 
 ```python
-policy = vs.DefaultDispatchPolicy(mode="islanded")
-```
-
-Fixed charge power: force storage to charge or discharge at a constant rate, balancing the difference with the grid. Useful for scheduled charging strategies. Only works in grid-connected mode.
-
-```python
-policy = vs.DefaultDispatchPolicy(charge_power=200.0)   # charge at 200 W
-policy = vs.DefaultDispatchPolicy(charge_power=-500.0)  # discharge at 500 W
-```
-
-## Custom dispatchables
-
-To model hardware that does not fit a battery model, subclass [`Dispatchable`](../api_reference/dispatchable.md) and implement four methods:
-
-| Method | Description |
-|---|---|
-| `feasible_range(duration)` | Return `(min_power, max_power)` achievable for the timestep. |
-| `step(duration)` | Advance internal state after `current_power` has been set. |
-| `config()` | Return static parameters (logged once to `experiment.json`). |
-| `state()` | Return dynamic state (logged each step to `timeseries.csv`). |
-
-A diesel generator is stateless and only generates (negative power):
-
-```python
-class DieselGenerator(vs.Dispatchable):
-    def __init__(self, name: str, max_power_w: float):
-        super().__init__(name)
-        self.max_power_w = max_power_w
-
-    def feasible_range(self, duration: int) -> tuple[float, float]:
-        return (-self.max_power_w, 0.0)  # negative = generation
-
-    def step(self, duration: int) -> None:
-        pass  # no internal state
-
-    def config(self) -> dict:
-        return {"max_power_w": self.max_power_w}
-
-    def state(self) -> dict:
-        return {"current_power": self.current_power}
-```
-
-Combined with a battery, the default policy will exhaust the battery first and only call on the generator for the remaining deficit:
-
-```python
-environment.add_microgrid(
-    name="datacenter",
-    actors=[...],
-    dispatchables=[
-        vs.SimpleBattery(name="battery", capacity=10000, initial_soc=0.9),
-        DieselGenerator(name="generator", max_power_w=5000),
-    ],
-)
-```
-
-## Custom dispatch policies
-
-For advanced energy management, subclass [`DispatchPolicy`](../api_reference/dispatch_policy.md) and implement `apply`. The microgrid's grid signals are passed in directly, so the policy can be carbon- or price-aware without extra wiring:
-
-```python
-class GreenChargePolicy(vs.DispatchPolicy):
-    """Only charge batteries when grid carbon intensity is low."""
-
-    def __init__(self, carbon_threshold: float):
-        self.carbon_threshold = carbon_threshold
+class CostBasedPolicy(vs.DefaultDispatchPolicy):
+    def __init__(self, turbine_cost):
+        super().__init__()
+        self.turbine_cost = turbine_cost
 
     def apply(self, p_delta, duration, dispatchables, grid_signals=None):
-        remaining = p_delta
-        carbon = (grid_signals or {}).get("carbon_intensity")
+        grid_price = grid_signals["price"]
+        ordered = sorted(
+            dispatchables,
+            key=lambda resource: (
+                grid_price if isinstance(resource, vs.GridConnection)
+                else self.turbine_cost
+            ),
+        )
+        super().apply(p_delta, duration, ordered, grid_signals)
 
-        for d in dispatchables:
-            lo, hi = d.feasible_range(duration)
-            if remaining > 0:
-                # Excess: only charge if grid is clean
-                if carbon is not None and carbon > self.carbon_threshold:
-                    d.set_power(0.0, duration)
-                    continue
-                allocated = min(hi, remaining)
-            else:
-                # Deficit: always discharge
-                allocated = max(lo, remaining)
-            d.set_power(allocated, duration)
-            remaining -= allocated
-
-        return remaining  # remainder goes to the grid
-
-
-environment.add_microgrid(
-    name="datacenter",
-    actors=[...],
-    dispatchables=[vs.SimpleBattery(name="battery", capacity=5000, initial_soc=0.8)],
-    policy=GreenChargePolicy(carbon_threshold=200),
-    grid_signals={"carbon_intensity": vs.Trace.from_csv("datasets/watttime_example.csv")},
-)
+    def state(self):
+        return {"turbine_cost": self.turbine_cost}
 ```
+
+Pass `policy=CostBasedPolicy(turbine_cost=0.15)` and `grid_signals={"price": 0.10}` to `env.add_microgrid()`, using EUR/kWh for both.
+The grid is preferred at this price.
+If the price rises above 0.15, the turbine is preferred.
+Use a price trace to vary it during the run.
+
+The turbine's minimum output and ramp limits still apply, so the grid supplies any remaining demand or receives excess generation.
+This policy covers a turbine and a grid connection.
+To add other resource types, define their costs or priority in the ordering rule.
+
+For a different allocation algorithm, implement [`vs.DispatchPolicy.apply()`](../api_reference/dispatch_policy.md#vessim.DispatchPolicy.apply) and assign resource power through `set_power()`, ensuring the final balance is zero.
+
+The [strategy comparison example](https://github.com/dos-group/vessim/blob/main/examples/strategy_comparison.py) compares self-consumption, peak-shaving, and carbon-aware policies.

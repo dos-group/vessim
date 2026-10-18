@@ -1,174 +1,127 @@
-# Getting Started
+# Getting started
 
-This walkthrough builds a simulation study using the default native backend. The same component models can be used in live experiments.
+## Install
 
-The final code matches [`examples/basic_example.py`](https://github.com/dos-group/vessim/blob/main/examples/basic_example.py) in the repository, so you can follow along by running that file directly.
-
-## 1. The Environment
-
-The [`Environment`](api_reference/environment.md) manages simulation time and the synchronization between all components. We start by creating one with a step size of 5 minutes (300 seconds):
-
-```python
-import vessim as vs
-
-environment = vs.Environment(sim_start="2026-05-03", step_size=300)
-```
-
-Vessim has two modes:
-
-- *simulation studies* (used here) run as fast as possible. The `sim_start` parameter labels output timestamps. Inputs are indexed by elapsed seconds.
-- *live* (via [`Environment.live`](api_reference/environment.md#vessim.Environment.live)) advances at wall-clock speed and can connect to real systems, see [Software-in-the-Loop](concepts/sil.md). Here, `sim_start` is optional and defaults to `datetime.now()`.
-
-## 2. Actors
-
-Actors are the energy consumers and producers in your microgrid. 
-Each actor wraps a [`Signal`](concepts/signals.md) that provides its power value at any point in time.
-
-We start with a server that constantly draws 700 W. 
-By Vessim convention, production yields positives and consumption negative values. 
-Passing `consumer=True` flips the sign of the signal:
-
-```python
-server = vs.Actor(name="server", signal=vs.StaticSignal(value=700), consumer=True)
-```
-
-Next, we add a solar panel. We point it at a CSV from the repository's `datasets/` directory, pick the Berlin column, and scale the normalized data to a 5 kW peak:
-
-```python
-solar = vs.Actor(
-    name="solar_panel",
-    signal=vs.Trace.from_csv(
-        "datasets/solar_example.csv",
-        column="Berlin",
-        scale=5000,
-    ),
-)
-```
-
-A [`Trace`](api_reference/signal.md#vessim.Trace) samples a CSV loaded into memory, indexed by an offset in seconds since the trace's start. See [Signals and Datasets](concepts/signals.md) for all available signal types, the CSV schema, and how to fetch more data.
-
-At every step, Vessim sums the actors' powers into the microgrid's *power delta*. Again, positive means surplus, negative means deficit.
-
-## 3. Dispatchables (optional)
-
-Dispatchables are controllable resources whose power is decided at each step by a [`DispatchPolicy`](api_reference/dispatch_policy.md). The most common dispatchable is a battery. Vessim's [`SimpleBattery`](api_reference/dispatchable.md#vessim.SimpleBattery) is an ideal capacity-based model:
-
-```python
-battery = vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3)
-```
-
-Without a custom policy, Vessim uses the [`DefaultDispatchPolicy`](api_reference/dispatch_policy.md#vessim.DefaultDispatchPolicy) which charges on surplus, discharges on deficit, and exchanges any leftover power with the public grid. See [Dispatchables and Dispatch Policies](concepts/dispatchables.md) for islanded mode, custom policies, and how to model anything beyond batteries.
-
-## 4. Grid Signals (optional)
-
-A microgrid can also carry *grid signals*: time-varying contextual data such as local electricity price or carbon intensity.
-They don't consume or produce power, but custom dispatch policies and controllers can use them to make decisions.
-
-We add carbon intensity from a WattTime CAISO-North trace. 
-This CSV is datetime-indexed, so we pass an `anchor=` to mark which row maps to our simulation start with offset=0:
-
-```python
-grid_signals = {
-    "carbon_intensity": vs.Trace.from_csv(
-        "datasets/watttime_example.csv",
-        anchor="2023-06-08 00:00:00",
-    ),
-}
-```
-
-## 5. Putting the microgrid together
-
-[`add_microgrid`](api_reference/environment.md#vessim.Environment.add_microgrid) combines actors, dispatchables, and grid signals into one simulated system. 
-You can call it multiple times to simulate several geo-distributed microgrids together. Parallelize independent scenarios using separate worker processes.
-
-```python
-environment.add_microgrid(
-    name="datacenter",
-    actors=[server, solar],
-    dispatchables=[battery],
-    grid_signals=grid_signals,
-)
-```
-
-## 6. Results and running
-
-`Recorder` collects metrics and time series by default. With an output directory,
-it streams the trajectory to disk and writes a shared experiment record:
-
-```python
-recorder = environment.add_controller(vs.Recorder("results/basic_example"))
-run = environment.run(until=24 * 3600)
-print(recorder.result.metrics["microgrids"]["datacenter"]["grid_import"])
-```
-
-After the run, `results/basic_example/` contains:
-
-```text
-results/basic_example/
-  experiment.json  # configuration, parameters, status, metrics and their definitions
-  timeseries.csv   # detailed observations
-```
-
-For a large study, use `vs.Recorder(timeseries=False)` to keep compact metrics in
-memory. Without an output path, enabled time series stay in memory and are available
-through `recorder.to_df()`. See [Recording and metrics](concepts/results.md) for custom
-calculations and optimizer integration.
-
-`environment.run()` returns a `RunResult` with the final observation and execution
-information. `recorder.result` contains the complete experiment record. An environment
-runs once. Build fresh models and recorders for each scenario and reuse immutable
-traces. The [battery sizing example](https://github.com/dos-group/vessim/blob/main/examples/battery_sizing_study.py)
-collects many experiments into one study file.
-
-Custom controllers can do much more than logging: they can mutate the dispatch policy at runtime or expose the simulation as a REST API. See [Controllers](concepts/controllers.md) and [Software-in-the-Loop](concepts/sil.md).
-
-## 7. Exploring the results
-
-Vessim ships with a browser-based experiment viewer. Launch it on your results directory:
+Install Vessim with Python 3.9 to 3.13:
 
 ```console
-vessim view results/basic_example
+python -m pip install vessim
 ```
 
-This opens an interactive dashboard with charts for power flows, battery state of charge, and grid signals.
+Optional integrations:
 
-You can also [open the live demo of this exact run](viewer/index.html){target="_blank"}, served as a static page from the documentation site.
+| Install | Use |
+| --- | --- |
+| `pip install 'vessim[live]'` | [Live measurements and REST APIs](concepts/live.md) |
+| `pip install 'vessim[mosaik]'` | [Connect external simulators](concepts/coupling.md) |
 
-## The complete example
+## How Vessim works
+
+Vessim models local energy systems, called *microgrids*.
+Each combines electrical loads, such as computing equipment and cooling, with generation, storage, and grid connections.
+An [environment](#run-your-first-simulation) advances one or more microgrids on a shared clock, for example to model geographically distributed datacenters.
+
+![Actors, dispatchables, and controllers in simulated and live microgrids](assets/vessim_overview.png)
+
+- **[Actors](concepts/signals.md)** (red) provide demand and generation.
+  [`vs.Consumer`](api_reference/actor.md#vessim.Consumer) and [`vs.Producer`](api_reference/actor.md#vessim.Producer) use static inputs or a [signal](concepts/signals.md), such as a load trace or live measurement.
+  Their combined power gives the surplus or deficit to balance at each step.
+- **[Dispatchables](concepts/dispatchables.md)** (gray) supply or absorb power within their operating limits.
+  A [dispatch policy](concepts/dispatchables.md#dispatch-policies) allocates the surplus or deficit across batteries, generators, and grid connections.
+  Policies can use electricity prices or carbon intensity to guide those decisions.
+- **[Controllers](concepts/controllers.md)** (yellow) observe all microgrids after dispatch.
+  They can change demand or policy parameters for subsequent steps, [record results](concepts/results.md), or let external applications monitor and control the system through a [REST API](concepts/live.md#connect-an-application).
+
+## Run your first simulation
+
+The following steps build a three-day experiment with a datacenter load, solar generation, and battery storage.
+The complete script is available as [basic_example.py](https://github.com/dos-group/vessim/blob/main/examples/basic_example.py).
+
+### 1. Choose how to run
+
+| Create an environment with | To |
+| --- | --- |
+| `vs.Environment(...)` | Run as fast as computation allows for [simulation studies](concepts/studies.md) |
+| `vs.Environment.live(...)` | Run alongside wall-clock time for [live applications and measurements](concepts/live.md) |
+
+Both modes use the same component models.
+Here we use simulation mode and update the system every five minutes:
 
 ```python
 import vessim as vs
 
-environment = vs.Environment(sim_start="2022-06-09", step_size=300)
-
-environment.add_microgrid(
-    name="datacenter",
-    actors=[
-        vs.Actor(name="server", signal=vs.StaticSignal(value=700), consumer=True),
-        vs.Actor(name="solar_panel", signal=vs.Trace.from_csv(
-            "datasets/solar_example.csv", column="Berlin", scale=5000
-        )),
-    ],
-    dispatchables=[
-        vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3)
-    ],
-    grid_signals={
-        "carbon_intensity": vs.Trace.from_csv(
-            "datasets/watttime_example.csv", anchor="2023-06-08 00:00:00"
-        ),
-    },
-)
-
-environment.add_controller(vs.Recorder("results/basic_example"))
-environment.run(until=24 * 3600)
+env = vs.Environment(sim_start="2026-01-01", step_size=5 * 60)
 ```
 
+### 2. Assemble the energy system
 
-## Next steps
+Add demand, generation, and the resources that supply or store power to a microgrid.
+Download [solar_example.csv](https://raw.githubusercontent.com/dos-group/vessim/main/datasets/solar_example.csv) into your working directory.
+Its first column contains elapsed seconds and the remaining columns contain normalized solar profiles for different cities.
+Here we select Berlin and scale its profile to a 2.4 kW installation, alongside a constant 700 W load, a 1 kWh battery, and the public grid:
 
-- [Execution and Coupling](concepts/execution.md): study/live modes, backends, tick semantics, and multi-run studies.
+```python
+# Scale the normalized solar profile to a 2.4 kW installation.
+solar = vs.Trace.from_csv("solar_example.csv", column="Berlin", scale=2400)
 
-- [Signals and Datasets](concepts/signals.md): replay historical data, build constant or custom signals.
-- [Dispatchables and Dispatch Policies](concepts/dispatchables.md): battery models, custom dispatchables, custom policies.
-- [Controllers](concepts/controllers.md): observe and modify a running simulation.
-- [Software-in-the-Loop](concepts/sil.md): connect Vessim to live data sources and real applications.
+env.add_microgrid(
+    name="site",
+    actors=[
+        vs.Consumer("load", signal=700),
+        vs.Producer("solar", signal=solar),
+    ],
+    dispatchables=[vs.SimpleBattery("battery", capacity=1000), vs.GridConnection()],
+)
+```
+
+The default policy uses the battery before exchanging power with the grid.
+Choose different [inputs](concepts/signals.md) or [resources and policies](concepts/dispatchables.md) to represent your system.
+Call `add_microgrid()` again to model another site.
+
+### 3. Add recording or control
+
+Register a `Recorder` to save results:
+
+```python
+recorder = env.add_controller(vs.Recorder("results/basic_example"))
+```
+
+Add [custom controllers](concepts/controllers.md) to adjust demand or resource operation as the simulation progresses.
+Controllers can observe all sites in the environment.
+
+### 4. Run and inspect
+
+Run the model for three simulated days:
+
+```python
+run = env.run(until=3 * 24 * 3600)
+metrics = recorder.metrics["microgrids"]["site"]
+print(f"Grid import: {metrics['grid_import'] / 1000:.2f} kWh")
+print(f"Grid export: {metrics['grid_export'] / 1000:.2f} kWh")
+```
+
+```text
+Grid import: 26.71 kWh
+Grid export: 11.08 kWh
+```
+
+Open the saved results:
+
+```console
+python -m vessim view results/basic_example
+```
+
+[Explore this example in the viewer](viewer/index.html?study=getting-started#results), or open [Time series](viewer/index.html?study=getting-started#timeseries) and select the basic example to inspect its power flows.
+
+## Where next
+
+| To… | Read |
+| --- | --- |
+| Use your own demand and generation data | [Load a CSV](concepts/signals.md#load-a-csv) |
+| Model resource limits and outages | [Dispatchables and policies](concepts/dispatchables.md#grid-connections) |
+| Implement control strategies or demand response | [Controllers](concepts/controllers.md) |
+| Calculate costs, emissions, or custom metrics | [Results and metrics](concepts/results.md#costs-and-emissions) |
+| Compare configurations and uncertain scenarios | [Simulation studies](concepts/studies.md) and [optimization](concepts/optimization.md) |
+| Test an application against a simulated energy system | [Live simulation](concepts/live.md#connect-an-application) |
+| Model an existing energy system using live measurements | [Digital-twin workflows](concepts/live.md#build-a-digital-twin) |
+| Connect another simulator | [Connect external simulators](concepts/coupling.md) |

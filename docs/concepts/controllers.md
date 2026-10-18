@@ -1,71 +1,64 @@
 # Controllers
 
-A [`Controller`](../api_reference/controller.md) is executed at every simulation step. 
-It can observe the state of all microgrids, log it, and modify components of the running simulation, for example by changing parameters of a [`DispatchPolicy`](../api_reference/dispatch_policy.md) on the fly.
+Controllers let you observe and influence a running simulation.
+Use them to record results, connect an application, or adjust how a datacenter operates.
+A controller can access every microgrid in its environment.
 
-The built-in [`Recorder`](../api_reference/recorder.md) collects metrics and optional
-time series using the same interface as other controllers. It supports files and
-in-memory analysis. See [Recording experiments and metrics](results.md) for defaults,
-custom metrics, and the shared result format.
+Register controllers with `env.add_controller()` before running the simulation.
+You can combine several, for example to record results while testing a control strategy.
 
-The [`Api`](../api_reference/controller.md#vessim.Api) controller exposes a running
-experiment over HTTP. Custom controllers implement application-specific control.
+## Recorder
 
-## Writing a custom controller
-
-Subclass [`Controller`](../api_reference/controller.md) and implement `step`. Optionally override `start` to grab references to the environment before the simulation begins:
+[`vs.Recorder`](../api_reference/recorder.md#vessim.Recorder) collects time series and calculates metrics such as grid imports and exports:
 
 ```python
-import vessim as vs
-
-class MyController(vs.Controller):
-    def start(self, environment):
-        # Called once before the simulation starts
-        self.microgrids = environment.microgrids
-
-    def step(self, now, microgrid_states):
-        # Called at every simulation step
-        ...
+recorder = env.add_controller(vs.Recorder("results/experiment"))
 ```
 
-The `step` method receives:
+See [Results and metrics](results.md) to inspect recordings and add your own calculations.
 
-- `now`: the current simulation time as a `datetime`.
-- `microgrid_states`: a `dict[str, MicrogridState]` keyed by microgrid name. Each [`MicrogridState`](../api_reference/microgrid.md#vessim.MicrogridState) exposes `p_delta`, `p_grid`, `actor_states`, `dispatch_states`, `policy_state`, and `grid_signals`.
+## Api
 
-## Example: a scheduled charger
+[`vs.Api`](../api_reference/controller.md#vessim.Api) lets an external application read simulation state and send commands through a REST API.
+For example, a job scheduler can observe available solar power and adjust datacenter demand.
 
-Cheap and clean grid hours are typically at night. Let's force-charge the battery between midnight and 6 AM by mutating the `charge_power` of the dispatch policy at runtime:
+Use it with `vs.Environment.live()` to test the application against a simulation running in real time.
+[Live simulation](live.md#connect-an-application) walks through the setup and requests.
+
+## Custom controllers
+
+Subclass [`vs.Controller`](../api_reference/controller.md#vessim.Controller) and implement `step()` to respond to observations.
+Vessim calls it after each dispatch.
+Changes to model inputs or parameters affect subsequent steps.
+
+### Demand response
+
+Consider a datacenter with a flexible connection agreement.
+In this scenario, the grid operator can temporarily lower its import limit with advance notice.
+The datacenter responds by pausing flexible workloads until more power is available.
+
+The controller passes the announced limit to a datacenter simulator, whose `set_power_budget()` method adjusts workload concurrency.
+Its power consumption feeds a `vs.Consumer` through a [custom signal](signals.md#custom-signals).
 
 ```python
-import vessim as vs
+class DemandResponse(vs.Controller):
+    def __init__(self, datacenter, grid):
+        self.datacenter = datacenter
+        self.grid = grid
 
-class ScheduledCharger(vs.Controller):
-    """Force-charges storage at 500 W between 00:00 and 06:00."""
-
-    def __init__(self, microgrid_name: str):
-        self.microgrid_name = microgrid_name
-
-    def start(self, environment):
-        mg = environment.microgrids[self.microgrid_name]
-        assert isinstance(mg.policy, vs.DefaultDispatchPolicy)
-        self.policy = mg.policy
-
-    def step(self, now, microgrid_states):
-        self.policy.charge_power = 500.0 if now.hour < 6 else 0.0
+    def step(self, now, states):
+        limit = states["site"]["grid_signals"]["next_import_limit"]
+        self.datacenter.set_power_budget(limit)
+        self.grid.max_import = limit
 ```
 
-Add it to the environment alongside the logger:
+Here, each notice applies to the next simulation step, when both the reduced workload and the new connection limit take effect.
+When the limit rises again, the simulator resumes more workloads.
+`set_power_budget()` belongs to your datacenter model, so you decide how it responds and which workloads can wait.
 
-```python
-environment.add_controller(ScheduledCharger("datacenter"))
-environment.add_controller(vs.Recorder("results/scheduled"))
-```
+A controller changes how the system operates.
+The [dispatch policy](dispatchables.md#dispatch-policies) then allocates resource power to serve the resulting demand.
+Use a policy to choose battery or generator power, and a controller to adjust workload or coordinate several sites.
 
-The same pattern works for any policy parameter: switch between policies, raise/lower a battery's `min_soc`, or react to grid signals exposed via `microgrid_states[name]["grid_signals"]`.
-
-## Going further: real-time control
-
-Observations are detached from component state. Treat them as read-only. Controller actions take effect in subsequent computation. Controllers start after scenario preparation and are finalized on completion, errors, and interruption.
-
-Custom controllers can also expose the simulation to the outside world. The built-in [`Api`](../api_reference/controller.md#vessim.Api) controller starts a REST server that lets external programs query the state and send control commands while the simulation runs. See [Software-in-the-Loop](sil.md) for the full picture.
+The [complete example](https://github.com/dos-group/vessim/blob/main/examples/demand_response.py) connects a simple datacenter model and runs through a temporary restriction.
+See the [Controller API](../api_reference/controller.md) for initialization and cleanup hooks.

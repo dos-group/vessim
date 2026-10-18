@@ -1,11 +1,10 @@
-# Dispatch Policy
+# Dispatch policy
 
-A dispatch policy receives the microgrid's current power delta and allocates it
-across [Dispatchables](dispatchable.md), returning the remainder to be exchanged
-with the public grid. Subclass [`DispatchPolicy`](#vessim.DispatchPolicy) to
-implement custom strategies. See the
-[Dispatchables and Dispatch Policies](../concepts/dispatchables.md) concept page
-for usage examples.
+A dispatch policy allocates the microgrid's power surplus or deficit across [dispatchables](dispatchable.md).
+Each `apply()` call assigns feasible resource setpoints and returns `None`.
+The microgrid validates bounds and power balance.
 
-::: vessim.DispatchPolicy
+See [Dispatchables and policies](../concepts/dispatchables.md) for examples.
+
 ::: vessim.DefaultDispatchPolicy
+::: vessim.DispatchPolicy

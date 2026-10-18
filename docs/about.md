@@ -1,21 +1,21 @@
 # About Vessim
 
-Research on microgrids and energy management, and in particular on energy- and carbon-aware computing where Vessim originated, often relies on simulation, as physical testbeds are rare and costly.
-Vessim addresses this gap by simplifying and unifying simulation-based evaluations and enabling continuous testing of emerging applications.
+Vessim is developed by [Philipp Wiesner](https://philippwiesner.org) at the [University of Cambridge](https://www.cam.ac.uk/) in the [Machine Learning Systems Lab](https://mlsys.cst.cam.ac.uk/).
+For feedback, ideas, or questions, feel free to post on [GitHub Discussions](https://github.com/dos-group/vessim/discussions).
+If you’re interested in collaborating or want advice on using Vessim in a commercial project, drop me an email at _pw560 at cam.ac.uk_.
 
-Vessim is developed by [Philipp Wiesner](https://philippwiesner.org) at the [Distributed and Operating Systems (DOS)](https://www.dos.tu-berlin.de) group at TU Berlin.
-Active development for Vessim began in March 2023 with initial funding from the [German Federal Ministry of Education and Research (BMBF)](https://www.bmbf.de/) as part of the Software Campus project [SYNERGY](https://softwarecampus.de/en/projekt/synergy-synergies-of-distributed-artificial-intelligence-and-renewable-energy-generation/).
-We thank everyone who has contributed to Vessim over the past years, especially Marvin Steinke, Paul Kilian, and Amanda Malkowski.
+Development of Vessim began in March 2023 at the [Distributed and Operating Systems (DOS)](https://www.dos.tu-berlin.de) group at TU Berlin, with initial funding from the [German Federal Ministry of Education and Research (BMBF)](https://www.bmbf.de/) as part of the Software Campus project [SYNERGY](https://softwarecampus.de/en/projekt/synergy-synergies-of-distributed-artificial-intelligence-and-renewable-energy-generation/).
+
+We thank everyone who has contributed to Vessim over the past years, especially Marvin Steinke, Paul Kilian, Amanda Malkowski, and Julius Irion.
 
 ## Roadmap
 
 We are currently working on the following aspects and features:
 
-- Datasets: We are working on better integrating exiting data sources like electricity prices, carbon intensity data, or weather forecasts into Vessim.
+- Probabilistic modelling: Better support for Monte Carlo simulation runs with inputs sampled from probability distributions.
+- Datasets: We are working on better integrating existing data sources like electricity prices, carbon intensity data, or weather forecasts into Vessim.
 - System Advisor Model (SAM): We are working on integrating NREL's [SAM](https://sam.nrel.gov/) as a subsystem in Vessim, allowing for better simulation of solar arrays, wind farms, and other types of renewable energy generators.
 - Battery degradation: We are working on integrating NREL's [BLAST-Lite](https://github.com/NREL/BLAST-Lite) for modeling battery lifetime and degradation
-- Improved modeling: We are working on more sophisticated modeling of e.g. demand response signals, time-varying PUE, ...
-- Calibration: We are working on a methodology for calibrating Vessim simulations on real hardware testbeds.
 
 ## License
 

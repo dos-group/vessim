@@ -14,20 +14,25 @@ nav:
   - Overview: index.md
   - Getting Started: getting_started.md
   - Concepts:
-    - Execution and Coupling: concepts/execution.md
-    - Signals and Datasets: concepts/signals.md
-    - Dispatchables and Dispatch Policies: concepts/dispatchables.md
+    - Actors and Signals: concepts/signals.md
+    - Dispatchables and Policies: concepts/dispatchables.md
     - Controllers: concepts/controllers.md
-    - Live Experiments and Digital Twins: concepts/sil.md
+    - Results and Metrics: concepts/results.md
+    - Connect External Simulators: concepts/coupling.md
+    - Optimization: concepts/optimization.md
+  - Use Cases:
+    - Simulation Studies: concepts/studies.md
+    - Live Simulation: concepts/live.md
+  - Vessim Viewer: vessim_viewer.md
   - API Reference:
     - Environment: api_reference/environment.md
     - Microgrid: api_reference/microgrid.md
-    - Actor: api_reference/actor.md
-    - Signal: api_reference/signal.md
-    - Dispatchable: api_reference/dispatchable.md
-    - Dispatch Policy: api_reference/dispatch_policy.md
-    - Controller: api_reference/controller.md
-    - CLI: api_reference/cli.md
+    - Actors: api_reference/actor.md
+    - Signals: api_reference/signal.md
+    - Dispatchables: api_reference/dispatchable.md
+    - Dispatch Policies: api_reference/dispatch_policy.md
+    - Controllers: api_reference/controller.md
+    - Recording and Metrics: api_reference/recorder.md
   - Publications: publications.md
   - About: about.md
 
@@ -37,6 +42,7 @@ theme:
   logo: assets/logo_white.svg
   favicon: assets/favicon.svg
   features:
+    - toc.integrate
     - content.code.copy
     - content.code.annotate
   palette:
@@ -52,7 +58,14 @@ plugins:
           options:
             show_root_heading: true
             show_root_full_path: false
-            show_signature: false
+            heading_level: 2
+            show_signature: true
+            separate_signature: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+            merge_init_into_class: true
+            show_source: false
+            line_length: 80
             show_symbol_type_heading: true
             show_labels: true
             members_order: source
@@ -60,6 +73,8 @@ plugins:
               - "!^_"
 
 markdown_extensions:
+  - toc:
+      toc_depth: 2
   - admonition
   - attr_list
   - pymdownx.highlight:
