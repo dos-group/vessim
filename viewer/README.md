@@ -124,10 +124,18 @@ npm --prefix viewer test
 cd viewer && npx playwright test
 ```
 
-`src/` is the sole interface implementation. `build.mjs` copies self-contained assets,
-local ECharts/PapaParse and licenses into `vessim/_viewer_dist`, using content-derived
-cache versions. The same assets ship in the Python wheel. No React or Node runtime is
-needed to use the viewer. Rebuild after frontend edits, then run `vessim view`.
+`src/` contains the React interface and the independent analysis modules.
+`components/controls.jsx` defines shared selects, multi-choice menus, and unit controls.
+Field selectors and column menus use the same ordering from `columnGroups()`.
+`Chart` manages ECharts instances and their cleanup, while plot calculations stay outside React.
+`view-link.js` owns the versioned sharing format and validates links against the loaded study.
+Keep its v1 field names stable and retain the saved-link regression tests when changing view state.
+
+`build.mjs` uses Vite to bundle React and the recording worker with relative asset URLs.
+ECharts and dependency licenses are included in `vessim/_viewer_dist` alongside the bundle.
+The same files ship in the Python wheel, exported reports, and documentation gallery.
+Users do not need Node installed.
+Rebuild after frontend edits, then run `vessim view`.
 
 Browser tests start CLI and static-export servers on ports 8721/8722 and exercise both
 interfaces, repeated runs, multi-microgrid groups, missing recordings and 10,000 summary

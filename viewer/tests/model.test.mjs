@@ -111,8 +111,8 @@ test('column groups use explicit configuration membership and metric scope', () 
   const groups = columnGroups(study.columns)
   assert.deepEqual(groups.map(g => g.label), [
     'Configuration inputs', 'Whole-system results',
-    'Microgrid results · site', 'Actor results · site · solar',
-    'Actor results · other · solar', 'Simulation settings',
+    'Microgrid results · site', 'Actor results · other · solar',
+    'Actor results · site · solar', 'Simulation settings',
   ])
   assert.deepEqual(groups[0].columns.map(c => c.label), ['size'])
   assert.deepEqual(groups.at(-1).columns.map(c => c.label), ['seed'])

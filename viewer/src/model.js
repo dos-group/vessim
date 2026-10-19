@@ -1,4 +1,4 @@
-// Shared, DOM-free analysis helpers for the interactive prototype.
+// Shared, DOM-free analysis helpers for the viewer.
 export const numeric = (v) => typeof v === 'number' && Number.isFinite(v)
 export const stable = (v) =>
   JSON.stringify(
@@ -176,16 +176,16 @@ export function columnGroups(columns, singleMicrogrid = false) {
     }
     groups.get(key).columns.push(column)
   }
-  return [...groups.values()].sort((a, b) => a.order - b.order).map(group => ({
+  return [...groups.values()].sort((a, b) => a.order - b.order || a.label.localeCompare(b.label, undefined, {numeric: true})).map(group => ({
     ...group,
     columns: group.columns.sort((a, b) => {
-      if (a.kind !== 'metric' || b.kind !== 'metric') return 0
+      if (a.kind !== 'metric' || b.kind !== 'metric') return a.label.localeCompare(b.label, undefined, {numeric: true})
       const categories = ['Energy', 'Cost', 'Carbon', 'Other results']
       const preferred = ['energy produced', 'energy consumed', 'grid import', 'grid export',
         'peak grid import', 'peak grid export', 'annual cost', 'annualized equipment cost',
         'electricity cost', 'export revenue', 'equipment capex', 'grid emissions', 'initial embodied emissions']
       const rank = c => preferred.includes(c.label) ? preferred.indexOf(c.label) : preferred.length
-      return categories.indexOf(metricCategory(a)) - categories.indexOf(metricCategory(b)) || rank(a) - rank(b)
+      return categories.indexOf(metricCategory(a)) - categories.indexOf(metricCategory(b)) || rank(a) - rank(b) || a.label.localeCompare(b.label, undefined, {numeric: true}) || a.id.localeCompare(b.id)
     }),
   }))
 }

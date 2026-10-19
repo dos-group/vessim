@@ -962,3 +962,25 @@ article code {
 
 .main-area { min-width: 0; }
 .data-issues { margin: 16px 30px; color: #80551c; font-size: 13px; overflow-wrap: anywhere; }
+
+/* Shared form controls used by the study, results and trajectory views. */
+.select-control { display: flex; flex-direction: column; gap: 4px; min-width: 0; margin: 0; }
+.select-control select { min-width: 0; max-width: 100%; }
+.field-control { display: flex; align-items: end; gap: 10px; min-width: 0; }
+.field-control > .select-control:first-child { flex: 1; }
+.unit-control { flex: 0 0 auto; }
+.unit-control > span { font-size: 11px; }
+.column-option { align-items: center; }
+.column-option .unit-control { max-width: 140px; }
+.column-option .unit-control > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.chart-heading { flex-wrap: wrap; }
+.chart-heading .unit-control { margin-left: auto; }
+.representation .select-control { flex-direction: row; align-items: center; }
+@media (max-width: 600px) {
+  .field-control { flex-wrap: wrap; }
+  .field-control > .select-control:first-child { flex-basis: 100%; }
+  .chart-heading .unit-control { margin-left: 0; }
+}
+.share-link { display: grid; gap: 8px; margin-top: 24px; }
+.share-link [role="status"] { color: var(--muted); font-size: 12px; }
+.share-link input { width: 100%; min-width: 0; }

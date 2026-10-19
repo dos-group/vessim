@@ -4,29 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Vessim Viewer</title>
-    <link rel="icon" href="logo.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="icon" href="./logo.svg" type="image/svg+xml" />
   </head>
   <body>
-    <div class="shell">
-      <aside>
-        <a class="brand" href="#results"
-          ><img src="logo.svg" alt="" />Vessim</a
-        >
-        <label for="study">Study</label>
-        <select id="study" disabled>
-          <option>Loading studies…</option>
-        </select>
-        <nav aria-label="Study">
-          <a href="#results" id="results-nav">Results</a>
-          <a href="#timeseries" id="timeseries-nav"
-            >Time series <span id="run-count">0</span></a
-          >
-        </nav>
-      </aside>
-      <div class="main-area"><div id="catalog-notice"></div><main id="main" aria-live="polite"></main></div>
-    </div>
-    <script src="vendor/echarts.min.js"></script>
-    <script type="module" src="app.js"></script>
+    <div id="root"></div>
+    <script src="/vendor/echarts.min.js"></script>
+    <script type="module" src="./main.jsx"></script>
   </body>
 </html>
