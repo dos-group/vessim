@@ -251,6 +251,21 @@ function ResultsPlot({ rows }) {
                   ]}
                 />
               ))}
+            {s.pareto && (
+              <button
+                disabled={!prepared.paretoKeys.length}
+                title="Replace the current selection with the Pareto front of the filtered results"
+                onClick={() =>
+                  patch({
+                    [s.mode === 'runs' ? 'runs' : 'configs']: new Set(
+                      prepared.paretoKeys,
+                    ),
+                  })
+                }
+              >
+                Select Pareto front
+              </button>
+            )}
           </div>
         )}
         <button onClick={() => patch({ plotZoom: [] })}>Reset zoom</button>

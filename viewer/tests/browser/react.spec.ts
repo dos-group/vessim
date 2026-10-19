@@ -4,6 +4,37 @@ for (const [kind, base] of [
   ['CLI', 'http://localhost:8721/'],
   ['export', 'http://127.0.0.1:8722/report/'],
 ]) {
+  test(`${kind}: select the filtered Pareto front for configurations and runs`, async ({ page }) => {
+    await page.goto(`${base}?study=sampling`)
+    await page.locator('[data-plot-view="scatter"]').click()
+    await page.locator('#x').selectOption('m:["run","annual_cost","EUR"]')
+    await page.locator('#y').selectOption('m:["microgrids","Microgrid 1","grid_import","Wh"]')
+    await page.locator('#pareto').check()
+    const select = page.getByRole('button', { name: 'Select Pareto front', exact: true })
+    const selected = () => page.locator('[data-select]:checked').evaluateAll(
+      (inputs) => inputs.map((input) => input.getAttribute('data-select')),
+    )
+    await page.locator('#select-page').check()
+    await select.click()
+    expect(await selected()).toEqual(['config-0'])
+    await page.locator('#paretoX').selectOption('max')
+    await page.locator('#paretoY').selectOption('max')
+    await select.click()
+    expect(await selected()).toEqual(['config-2'])
+    await page.locator('#search').fill('Setup 2')
+    await select.click()
+    expect(await selected()).toEqual(['config-1'])
+    await expect(page.locator('.selection-toolbar')).toContainText('1 configurations selected')
+    await page.locator('#search').fill('no matching configuration')
+    await expect(select).toBeDisabled()
+    await page.locator('#search').fill('')
+    await page.getByRole('button', { name: 'Individual runs', exact: true }).click()
+    await select.click()
+    expect(await selected()).toEqual(['config-2-seed-43'])
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expect(select).toBeVisible()
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  })
   test(`${kind}: consistent field order, shared units, stable controls and charts`, async ({
     page,
   }) => {

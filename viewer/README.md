@@ -78,6 +78,8 @@ are relative to the batch.
   and range/IQR. Distribution, trade-off and empirical-distribution plots; optional faint
   runs and a selectable Pareto front. Fronts describe the displayed metrics and selected
   minimize/maximize directions; they are not an optimization engine.
+  With the front enabled, **Select Pareto front** replaces the current selection with
+  its configurations or runs, using all filtered results.
 - **Details:** configuration inputs, realization inputs, grouped metrics with recorded
   descriptions and assumptions, actor metrics, and simulation settings.
 - **Time series:** select runs/configurations, overlay compatible signals, choose

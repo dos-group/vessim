@@ -8,6 +8,7 @@ export function resultPlot(study, current, rows) {
   const selected = () => current[current.mode === 'runs' ? 'runs' : 'configs']
   const configColor = (config) => current.configColors[config.key]
   let note = ''
+  let paretoKeys = []
   let option = null,
     empty = ''
   const setOption = (settings) => {
@@ -339,6 +340,7 @@ export function resultPlot(study, current, rows) {
       s.pareto && !definitionsVary
         ? paretoFront(points, s.paretoX, s.paretoY)
         : []
+    paretoKeys = front.map((p) => p.key)
     if (s.pareto) {
       if (definitionsVary)
         note += ' Pareto front unavailable for incompatible results.'
@@ -430,5 +432,5 @@ export function resultPlot(study, current, rows) {
   if (current.plotType === 'distribution') renderDistribution(rows)
   else if (current.plotType === 'ecdf') renderOutcomeDistribution(rows)
   else renderScatter(rows)
-  return { option, note: note, empty }
+  return { option, note: note, empty, paretoKeys }
 }
