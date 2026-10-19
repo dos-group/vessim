@@ -1,7 +1,6 @@
 """Check the example's accounting and reproducible evaluation contract."""
 
 import importlib.util
-import json
 from pathlib import Path
 import subprocess
 import sys
@@ -15,6 +14,7 @@ from vessim import ExperimentResult
 SCRIPT = Path(__file__).resolve().parents[1] / "examples/infrastructure_study.py"
 spec = importlib.util.spec_from_file_location("infrastructure_study", SCRIPT)
 scenario = importlib.util.module_from_spec(spec)
+sys.path.insert(0, str(SCRIPT.parent))
 spec.loader.exec_module(scenario)
 
 
@@ -35,7 +35,7 @@ def test_annual_inputs_and_shared_realization():
 
 
 def test_grid_baseline_matches_input_integrals_and_preserves_output(tmp_path):
-    result = scenario.run_scenario(tmp_path, "baseline", 0, 0, 0, days=2)
+    result = scenario.run_scenario(tmp_path, "baseline", 0, 0, 0, days=2, timeseries=False)
     frame = scenario.inputs(days=2)
     metrics = result.metrics["microgrids"]["Microgrid 1"]
     assert metrics["grid_import"] == pytest.approx(frame.load_kw.sum() * 1000)
@@ -49,7 +49,7 @@ def test_grid_baseline_matches_input_integrals_and_preserves_output(tmp_path):
         result
     )
     with pytest.raises(FileExistsError, match="Preserving"):
-        scenario.run_scenario(tmp_path, "baseline", 0, 0, 0, days=2)
+        scenario.run_scenario(tmp_path, "baseline", 0, 0, 0, days=2, timeseries=False)
     result.metrics["microgrids"]["Microgrid 1"]["grid_emissions"] = None
     with pytest.raises(ValueError, match="finite"):
         scenario.objective_values(result)
@@ -81,7 +81,7 @@ def test_storage_energy_balance_and_recorded_emissions(tmp_path):
     assert len(frame) == 72
 
 
-def test_optional_optuna_records_objectives_and_rejects_mixed_horizons(tmp_path):
+def test_optuna_records_objectives_and_preserves_existing_output(tmp_path):
     optuna = pytest.importorskip("optuna")
     command = [
         sys.executable,
@@ -95,20 +95,24 @@ def test_optional_optuna_records_objectives_and_rejects_mixed_horizons(tmp_path)
     ]
     result = subprocess.run(command, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
-    study = optuna.load_study(
-        study_name="infrastructure-emissions", storage=f"sqlite:///{tmp_path / 'optuna.db'}"
-    )
-    completed = study.get_trials(states=(optuna.trial.TrialState.COMPLETE,))
+    storage = optuna.storages.RDBStorage(f"sqlite:///{tmp_path / 'optuna.db'}")
+    try:
+        study = optuna.load_study(study_name="infrastructure-emissions", storage=storage)
+        completed = study.get_trials(states=(optuna.trial.TrialState.COMPLETE,))
+    finally:
+        storage.remove_session()
+        storage.engine.dispose()
     assert len(completed) == 2
     for trial in completed:
         record = ExperimentResult.load(tmp_path / trial.user_attrs["vessim_experiment"])
         assert trial.user_attrs["vessim_run_id"] == record.run_id
         assert trial.values == list(scenario.objective_values(record))
+    before = (tmp_path / "study.json").read_bytes()
     command[command.index("--days") + 1] = "2"
     rejected = subprocess.run(command, capture_output=True, text=True)
     assert rejected.returncode != 0
-    assert "Evaluation settings changed" in rejected.stderr
-    assert json.loads((tmp_path / "scenario.json").read_text())["days"] == 1
+    assert "Output is not empty" in rejected.stderr
+    assert (tmp_path / "study.json").read_bytes() == before
 
 
 def test_financial_metrics_match_recorded_cashflows_and_annual_allocation(tmp_path):

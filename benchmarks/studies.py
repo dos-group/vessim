@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pandas as pd
 from loguru import logger
 import vessim as vs
+from benchmarks.run import environment_info
 
 
 def scenario(trace, steps, backend, output):
@@ -23,7 +24,7 @@ def scenario(trace, steps, backend, output):
         [vs.SimpleBattery("battery", 1500, initial_soc=0.5), vs.GridConnection()],
         name="site",
     )
-    if output == "summary":
+    if output == "metrics":
         env.add_controller(vs.Recorder(timeseries=False))
     elif output == "trajectory":
         env.add_controller(vs.Recorder())
@@ -36,20 +37,32 @@ def main():
     parser.add_argument("--backend", choices=["native", "mosaik"], default="native")
     parser.add_argument("--runs", type=int, default=100)
     parser.add_argument("--steps", type=int, default=288)
+    parser.add_argument("--memory-steps", nargs="+", type=int, default=[1000, 10000])
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    if args.runs < 1 or args.steps < 1 or any(n < 1 for n in args.memory_steps):
+        parser.error("runs, steps, and memory-steps must be positive")
     logger.remove()
-    trace = vs.Trace(pd.Series([500, 700, 600], index=[0, 3600, 7200]))
-    result = {"backend": args.backend, "runs": args.runs, "steps_per_run": args.steps}
-    scenario(trace, 1, args.backend, "summary")  # Optional import warm-up.
+    data = pd.Series([500, 700, 600], index=[0, 3600, 7200])
+    horizon = max(args.steps, *args.memory_steps) * 60
+    if horizon > data.index[-1]:
+        data.loc[horizon] = data.iloc[-1]
+    trace = vs.Trace(data)
+    result = {
+        **environment_info(),
+        "backend": args.backend,
+        "runs": args.runs,
+        "steps_per_run": args.steps,
+    }
+    scenario(trace, 1, args.backend, "metrics")  # Optional import warm-up.
     t0 = time.perf_counter()
     for _ in range(args.runs):
-        scenario(trace, args.steps, args.backend, "summary")
+        scenario(trace, args.steps, args.backend, "metrics")
     result["total_seconds"] = time.perf_counter() - t0
     result["scenarios_per_second"] = args.runs / result["total_seconds"]
     result["memory"] = []
-    for output in ("none", "summary", "trajectory"):
-        for steps in (1000, 10000):
+    for output in ("none", "metrics", "trajectory"):
+        for steps in args.memory_steps:
             gc.collect()
             tracemalloc.start()
             env = scenario(trace, steps, args.backend, output)
@@ -57,6 +70,7 @@ def main():
             tracemalloc.stop()
             result["memory"].append({"output": output, "steps": steps, "peak_traced_bytes": peak})
             del env
+    args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result, indent=2))
 

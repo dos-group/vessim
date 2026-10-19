@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test'
 
-// Optional validation of the real, generated annual/Optuna/Monte Carlo examples.
+// Optional validation of the real, generated annual/Optuna/dispatch examples.
 const base = process.env.VIEWER_GALLERY_URL
-test('recorded gallery: annual overlays, Optuna outcomes and Monte Carlo distributions', async ({page}) => {
+test('recorded gallery: annual overlays, Optuna outcomes and dispatch distributions', async ({page}) => {
   test.skip(!base, 'Generate the documentation gallery and set VIEWER_GALLERY_URL')
   const errors: string[] = [], recordings: string[] = []
   page.on('pageerror', error => errors.push(error.message))
@@ -11,6 +11,12 @@ test('recorded gallery: annual overlays, Optuna outcomes and Monte Carlo distrib
   const rows = page.locator('.results-table tbody > tr')
   await expect(rows).toHaveCount(8)
   expect(recordings).toHaveLength(0)
+  await expect(page.locator('.heading')).toContainText('Exploring microgrid configurations')
+  await expect(page.locator('.study-description')).toBeVisible()
+  await expect(page.locator('.study-description')).toContainText('Eight microgrid configurations')
+  await expect(page.getByRole('link', {name: 'Optimizing Microgrid Composition for Sustainable Data Centers'}))
+    .toHaveAttribute('href', 'https://arxiv.org/abs/2508.04284')
+  await page.screenshot({path:'../results/viewer-release/default-columns.png',fullPage:true})
   for (const key of ['wind','mixed-storage']) await page.locator(`[data-select="${key}"]`).check()
   await page.getByRole('button',{name:'Time series',exact:true}).click()
   await expect(page.locator('.time-chart canvas')).toHaveCount(2)
@@ -22,21 +28,23 @@ test('recorded gallery: annual overlays, Optuna outcomes and Monte Carlo distrib
   await expect(page.locator('.table-footer')).toContainText('100 matching configurations')
   await page.locator('[data-plot-view="scatter"]').click()
   await page.locator('#pareto').check()
-  // Emissions assumptions include differing battery rates in these recordings.
-  // Keep that compatibility guard, then exercise a consistently defined pair.
-  await expect(page.locator('#plot-note')).toContainText('Pareto front unavailable for incompatible results')
-  await page.locator('#y').selectOption('m:["microgrids","Microgrid 1","grid_import","Wh"]')
+  await page.locator('#x').selectOption('m:["run","annual_cost","EUR"]')
+  await page.locator('#y').selectOption('m:["microgrids","Microgrid 1","grid_emissions","kgCO2e"]')
   expect(await page.locator('#scatter').evaluate(el => (window as any).echarts.getInstanceByDom(el)
     .getOption().series.find(s=>s.name==='Pareto front').data.length)).toBeGreaterThan(0)
   await page.screenshot({path:'../results/viewer-release/optuna.png',fullPage:true})
-  await page.locator('#study').selectOption('optuna-2')
+  await page.locator('#study').selectOption('dispatch-comparison')
   await expect(rows).toHaveCount(3)
-  await expect(page.locator('.heading')).toContainText('3000 runs')
+  await expect(page.locator('.heading')).toContainText('15 runs')
   await page.locator('[data-plot-view="ecdf"]').click()
   expect(await page.locator('#scatter').evaluate(el => (window as any).echarts.getInstanceByDom(el)
     .getOption().series[0].data.at(-1).value[1])).toBe(100)
   await page.getByRole('button',{name:'Individual runs',exact:true}).click()
-  await expect(rows).toHaveCount(50)
-  await expect(page.locator('.table-footer')).toContainText('3000 matching runs')
+  await expect(rows).toHaveCount(15)
+  await expect(page.locator('.table-footer')).toContainText('15 matching runs')
+  await page.locator('#study').selectOption('getting-started')
+  await page.locator('#timeseries-nav').click()
+  await expect(page.locator('.time-chart canvas')).toHaveCount(2)
+  await expect(page.locator('#study option')).toHaveCount(4)
   expect(errors).toEqual([])
 })

@@ -68,7 +68,7 @@ The referenced `vessim.viewer.run-batch` v1 JSON contains `shared` experiment fi
 an array of `runs` overriding those fields. Parameters are merged by key. Each expanded
 record is validated as a canonical experiment; execution, metrics and definitions are
 preserved. Batch references are relative to the study; any batch recording references
-are relative to the batch. See `examples/monte_carlo_replay.py` for a runnable producer.
+are relative to the batch.
 
 ## Analysis workflow
 
@@ -85,8 +85,8 @@ are relative to the batch. See `examples/monte_carlo_replay.py` for a runnable p
 
 Single-microgrid studies combine run and microgrid metrics under Energy, Cost, Carbon,
 then Other results. Multiple microgrids retain Whole-system results and each microgrid's
-results. These headings do not change recorded scope or units. Fixed seeds belong under
-Simulation settings; varying seeds remain Run inputs. Integer inputs have no decimals;
+results. These headings do not change recorded scope or units. Inputs shared by every run appear under Fixed inputs.
+Varying realization inputs remain Run inputs. Integer inputs have no decimals;
 metric columns normally have two, with extra precision for tiny quantities. Decimal
 alignment is consistent, missing values are not zero, and exports retain full precision.
 Currency is recorded per metric; the viewer does not perform currency conversion.
@@ -129,6 +129,7 @@ cd viewer && npx playwright test
 Field selectors and column menus use the same ordering from `columnGroups()`.
 `Chart` manages ECharts instances and their cleanup, while plot calculations stay outside React.
 `view-link.js` owns the versioned sharing format and validates links against the loaded study.
+View changes replace the current URL, while page and study navigation add history entries.
 Keep its v1 field names stable and retain the saved-link regression tests when changing view state.
 
 `build.mjs` uses Vite to bundle React and the recording worker with relative asset URLs.
@@ -146,18 +147,25 @@ partial data, duplicate identities, batches and exports.
 ## Recorded examples and documentation
 
 ```sh
-python viewer/design/build_studies.py --trials 100 --workers 8
-python viewer/export_docs.py
+python examples/build_gallery.py --output results/gallery
+python viewer/export_docs.py --source results/gallery
 python -m http.server --directory docs
 ```
 
-The example builder preserves existing recorded results. The documentation exporter
-uses the same Catalog and packaged assets as the CLI, and validates all references
-before replacing generated output. It includes Getting started, Equipment comparison,
-Optuna search, Probabilistic sampling, Multiple microgrids, and Optuna 2 when its batch
-study is available. Optuna is optional and is not a core Vessim dependency.
+The builder runs the four published examples through their normal command-line interfaces.
+It uses a fresh output directory, a fixed seed, and 100 sequential Optuna trials by default.
+It never reuses old recordings or resumes an existing search.
+Each example writes its own study index alongside the recorded runs.
 
-To inspect optimization trials, associate each trial with its saved experiment path
-and Vessim run ID, then open the resulting study here. Use Optuna Dashboard for optimizer
-history and diagnostics. `examples/infrastructure_study.py --financial --trials 100`
-provides the annual cost/emissions example with recorded financial assumptions.
+`make docs-viewer` builds the frontend, generates the examples in a temporary directory, and exports the gallery.
+The exporter validates every study and recording before replacing generated documentation output.
+The gallery contains Getting started, Exploring microgrid configurations, Optuna search, and Probabilistic sampling.
+
+## Initial display
+
+The results table starts with up to four varying configuration inputs and three metrics.
+Fixed inputs remain available in the column picker and run details.
+Metrics prefer varying values, whole-system scope, and a mix of Energy, Cost, Carbon, and other results.
+The first two selected metrics become the plot axes.
+Column menus use category and alphabetical order, with no study-specific rules.
+Saved URLs override these defaults.

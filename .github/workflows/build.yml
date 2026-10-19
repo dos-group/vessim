@@ -48,6 +48,12 @@ jobs:
         uv pip install dist/*.whl
         .venv/bin/python viewer/tests/prepare.py
 
+    - name: Generate the published examples from scratch
+      run: |
+        uv pip install -r examples/requirements.txt
+        .venv/bin/python examples/build_gallery.py --output results/gallery
+        .venv/bin/python viewer/export_docs.py --source results/gallery --output results/viewer-release/gallery
+
     - name: Install browser
       run: npx playwright install --with-deps chromium
       working-directory: viewer
@@ -57,6 +63,7 @@ jobs:
       working-directory: viewer
       env:
         PLAYWRIGHT_CHANNEL: chromium
+        VIEWER_GALLERY_URL: http://127.0.0.1:8722/gallery/index.html
 
     - name: Upload dist
       uses: actions/upload-artifact@v4

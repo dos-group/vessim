@@ -8,8 +8,6 @@ build:
   jobs:
     post_create_environment:
       - pip install uv
-    pre_install:
-      - cd viewer && npm ci && npm run build
     post_install:
       - uv pip install -e ".[docs,live]"
     pre_build:

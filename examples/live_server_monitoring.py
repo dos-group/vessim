@@ -1,11 +1,11 @@
 """Monitor a real server alongside simulated solar generation and a battery.
 
-Uses node_exporter CPU metrics from Prometheus as the server power consumption
-signal, demonstrating how vessim connects to real monitoring infrastructure.
+Estimates server power from node_exporter CPU utilization in Prometheus.
+This linear 0–1000 W proxy is not a measurement of electrical power.
 
 1. pip install 'vessim[live]'
 2. docker compose -f examples/live/docker-compose.yml up -d
-3. Wait ~15s for Prometheus to collect initial node_exporter scrapes
+3. Wait at least one minute for Prometheus to collect initial node_exporter scrapes
 4. python examples/live_server_monitoring.py
 5. API available at http://localhost:8700
 
@@ -14,11 +14,11 @@ Grafana visualization (run in a second terminal):
 """
 
 import argparse
-import os
+from pathlib import Path
 
 import vessim as vs
 
-DATASETS = f"{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/datasets"
+DATASETS = Path(__file__).resolve().parents[1] / "datasets"
 
 
 def main():
@@ -33,7 +33,7 @@ def main():
     # sim_start, so the solar trace starts replaying from "now".
     with vs.Environment.live(step_size=1, backend=args.backend) as environment:
 
-        # Server load driven by actual host CPU usage via Prometheus + node_exporter.
+        # Estimated server load driven by CPU usage via Prometheus + node_exporter.
         # The query returns CPU utilization (0.0-1.0), scaled to 0-1000W.
         server = vs.Consumer(
             name="server",
@@ -47,7 +47,7 @@ def main():
         solar = vs.Producer(
             name="solar",
             signal=vs.Trace.from_csv(
-                f"{DATASETS}/solar_example.csv",
+                DATASETS / "solar_example.csv",
                 column="Berlin",
                 scale=2000,
             ),

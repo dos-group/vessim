@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { navigate } from '../navigation.js'
 import { columnGroups } from '../model.js'
 import { displayUnit, unitOptions } from '../units.js'
 
@@ -177,5 +178,28 @@ export function Issues({ errors = [] }) {
         </ul>
       </details>
     )
+  )
+}
+
+export function NavLink({ href, children, ...props }) {
+  return (
+    <a
+      {...props}
+      href={href}
+      onClick={(event) => {
+        if (
+          event.button ||
+          event.metaKey ||
+          event.ctrlKey ||
+          event.shiftKey ||
+          event.altKey
+        )
+          return
+        event.preventDefault()
+        navigate(href.slice(1))
+      }}
+    >
+      {children}
+    </a>
   )
 }

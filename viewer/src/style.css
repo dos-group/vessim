@@ -825,17 +825,6 @@ article code {
 .results-table th.drop-after {
   box-shadow: inset -3px 0 var(--accent);
 }
-.study-details {
-  margin: -8px 0 18px;
-  color: var(--muted);
-  font-size: 12px;
-}
-.study-details summary {
-  cursor: pointer;
-}
-.study-details p {
-  max-width: 900px;
-}
 .column-option {
   display: flex;
   align-items: center;
@@ -981,6 +970,3 @@ article code {
   .field-control > .select-control:first-child { flex-basis: 100%; }
   .chart-heading .unit-control { margin-left: 0; }
 }
-.share-link { display: grid; gap: 8px; margin-top: 24px; }
-.share-link [role="status"] { color: var(--muted); font-size: 12px; }
-.share-link input { width: 100%; min-width: 0; }

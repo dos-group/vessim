@@ -1,26 +1,27 @@
 """Compare wind, solar, and battery sizes over a configurable simulation horizon.
 
-python examples/infrastructure_study.py --record-trajectories
+python examples/infrastructure_study.py
 python examples/infrastructure_study.py --trials 24 --output results/infrastructure-search
 python -m vessim view results/infrastructure-study
 
 Inspired by dos-group/vessim-opt, not a reproduction of its models or results.
 All traces and embodied-emissions coefficients are illustrative synthetic inputs.
 Optuna is optional; without --trials this evaluates eight named configurations.
-Use --financial with --trials and a fresh output directory to minimize annual
+Use --financial with --trials to minimize annual
 cost and grid emissions. Financial runs require a full 365-day horizon.
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import math
 from pathlib import Path
 import time
 
 import numpy as np
 import pandas as pd
+
+from _common import fresh_output, write_study
 
 import vessim as vs
 
@@ -87,7 +88,7 @@ def run_scenario(
     days: int = 365,
     step_seconds: int = 3600,
     seed: int = 42,
-    timeseries: bool = False,
+    timeseries: bool = True,
     financial: bool = False,
     battery_c_rate: float = 0.5,
 ) -> vs.ExperimentResult:
@@ -118,7 +119,7 @@ def run_scenario(
             "source": "synthetic hourly carbon intensity; not a regional forecast",
             "input_model_version": MODEL_VERSION,
             "export_credit": False,
-            "battery": f"lossless, {battery_c_rate:g}C, starts empty; no terminal energy credit",
+            "battery": "lossless, starts empty, C-rate limited; no terminal energy credit",
         }
     )
     grid_signals = {"carbon": trace(frame.carbon)}
@@ -163,7 +164,7 @@ def run_scenario(
                     "step_seconds": step_seconds,
                     "seed": seed,
                     "input_model_version": MODEL_VERSION,
-                    **({"battery_c_rate": battery_c_rate} if financial else {}),
+                    "battery_c_rate": battery_c_rate,
                 },
                 custom_metrics=metrics,
             )
@@ -240,7 +241,7 @@ def main():
     parser.add_argument(
         "--trials", type=int, default=0, help="Optuna trials; 0 = eight fixed setups"
     )
-    parser.add_argument("--record-trajectories", action="store_true")
+    parser.add_argument("--no-timeseries", action="store_true")
     parser.add_argument("--financial", action="store_true", help="Annual cost/emissions search")
     args = parser.parse_args()
     if args.financial and args.days != 365:
@@ -256,22 +257,10 @@ def main():
         "days": args.days,
         "step_seconds": args.step_seconds,
         "seed": args.seed,
-        "timeseries": args.record_trajectories,
+        "timeseries": not args.no_timeseries,
         **({"financial": True} if args.financial else {}),
     }
-    # Resuming an optimization must not silently mix different evaluation conditions.
-    contract = {
-        **settings,
-        "mode": "optuna" if args.trials else "fixed",
-        "embodied": EMBODIED,
-        **({"capex": CAPEX, "lifetimes": LIFETIMES} if args.financial else {}),
-        "sampler": {"name": "NSGAII", "population_size": 8} if args.trials else None,
-    }
-    args.output.mkdir(parents=True, exist_ok=True)
-    contract_path = args.output / "scenario.json"
-    if contract_path.exists() and json.loads(contract_path.read_text()) != contract:
-        parser.error("Evaluation settings changed; choose a fresh --output directory")
-    contract_path.write_text(json.dumps(contract, indent=2) + "\n")
+    fresh_output(args.output)
     scenario_args = {k: v for k, v in settings.items() if k != "model_version"}
     started = time.perf_counter()
     if args.trials:
@@ -287,7 +276,6 @@ def main():
                 "infrastructure-cost-emissions" if args.financial else "infrastructure-emissions"
             ),
             storage=storage,
-            load_if_exists=True,
             directions=["minimize", "minimize"],
             sampler=optuna.samplers.NSGAIISampler(seed=args.seed, population_size=8),
         )
@@ -297,10 +285,6 @@ def main():
                 "Grid-import emissions (kgCO2e)",
             ]
         )
-        if not study.trials:
-            # Include interpretable reference setups alongside the search candidates.
-            for wind, solar, battery in SETUPS.values():
-                study.enqueue_trial({"wind_kw": wind, "solar_kw": solar, "battery_kwh": battery})
 
         def objective(trial):
             sizes = {
@@ -321,11 +305,51 @@ def main():
         study.optimize(objective, n_trials=args.trials)
         print(f"Pareto trial numbers: {[trial.number for trial in study.best_trials]}")
         print(f"Optuna Dashboard: optuna-dashboard {storage}")
+        groups = [
+            (
+                trial.user_attrs["vessim_run_id"],
+                f"Trial {trial.number}",
+                [trial.user_attrs["vessim_run_id"]],
+            )
+            for trial in study.trials
+        ]
     else:
+        groups = [(name, name.replace("-", " ").capitalize(), [name]) for name in SETUPS]
         for name, (wind, solar, battery) in SETUPS.items():
             result = run_scenario(args.output, name, wind, solar, battery, **scenario_args)
             upfront, operational = objective_values(result)
             print(f"{name}: upfront {upfront:,.0f}; operating {operational:,.0f} kgCO2e")
+    if args.trials:
+        objectives = (
+            "annual electricity and equipment costs against grid emissions"
+            if args.financial
+            else "upfront equipment emissions against grid emissions"
+        )
+        description = (
+            f"Optuna explores {args.trials} wind, solar, and battery configurations "
+            "for a datacenter, "
+            f"weighing {objectives}. "
+            f"Each candidate faces the same {args.days} days of synthetic demand and weather. "
+            "The Pareto front highlights configurations where improving one objective "
+            "comes at the expense of the other."
+        )
+    else:
+        description = (
+            "Eight microgrid configurations supply the same datacenter "
+            f"over {args.days} days of synthetic demand and weather. "
+            "Compare how wind, solar, and battery sizing affect grid dependence and the balance "
+            "between upfront equipment emissions and emissions from grid electricity. "
+            "The idea is inspired by our paper "
+            "[Optimizing Microgrid Composition for Sustainable Data Centers](https://arxiv.org/abs/2508.04284)."
+        )
+    write_study(
+        args.output,
+        "optuna-search" if args.trials else "infrastructure-year",
+        "Optuna search" if args.trials else "Exploring microgrid configurations",
+        groups,
+        run_parameters=["seed"],
+        description=description,
+    )
     print(f"Elapsed: {time.perf_counter() - started:.2f}s")
     print(f"View recorded results: python -m vessim view {args.output}")
 

@@ -1,7 +1,6 @@
 services:
   prometheus:
-    container_name: prometheus
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.15.0
     ports:
       - "9090:9090"
     volumes:
@@ -12,8 +11,7 @@ services:
     restart: unless-stopped
 
   node-exporter:
-    container_name: node-exporter
-    image: prom/node-exporter:latest
+    image: prom/node-exporter:v1.12.1
     ports:
       - "9100:9100"
     restart: unless-stopped

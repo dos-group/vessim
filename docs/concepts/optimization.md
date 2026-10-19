@@ -12,7 +12,7 @@ Suppose your datacenter has solar generation and you are choosing a battery.
 More storage can reduce grid imports by saving surplus solar power for later, but it also costs more.
 Rather than choosing a single weighting between these goals, we can search for designs that offer different trade-offs.
 
-This example uses the solar profile from Getting Started and searches battery capacities between 0.5 and 5 kWh.
+This example uses a synthetic solar profile and searches battery capacities between 0.5 and 5 kWh.
 It minimizes both battery purchase cost and grid imports over the six-hour scenario.
 Install Optuna with `pip install optuna`.
 
@@ -43,7 +43,10 @@ def objective(trial):
     return battery_cost, grid_import
 
 
-study = optuna.create_study(directions=["minimize", "minimize"])
+study = optuna.create_study(
+    directions=["minimize", "minimize"],
+    sampler=optuna.samplers.NSGAIISampler(seed=42),
+)
 study.optimize(objective, n_trials=20)
 
 for trial in study.best_trials:
@@ -61,9 +64,14 @@ The same approach can search renewable capacity, generator sizing, or dispatch p
 Use cost and emissions metrics as objectives, or assess resilience by simulating outages.
 To account for uncertain demand or weather, evaluate each candidate across several scenarios and compare its average or worst-case performance.
 
-The [complete Optuna example](https://github.com/dos-group/vessim/blob/main/examples/optuna_study.py) searches battery sizes and dispatch strategies, records each run, and compares purchase cost with grid-import emissions.
-The [infrastructure example](https://github.com/dos-group/vessim/blob/main/examples/infrastructure_study.py) extends the search to wind, solar, and batteries over a full year.
+The [complete infrastructure example](https://github.com/dos-group/vessim/blob/main/examples/infrastructure_study.py) searches wind, solar, and battery sizes over a full year and records each candidate's results.
 Its `--financial` mode compares annual cost with grid-import emissions using illustrative inputs.
+After following the [example setup instructions](https://github.com/dos-group/vessim/blob/main/examples/README.md), run:
+
+```console
+python examples/infrastructure_study.py --financial --trials 100 --output results/infrastructure-search
+python -m vessim view results/infrastructure-search
+```
 
 Explore the [annual optimization results](../viewer/index.html?study=optuna-search#results) from 100 equipment configurations in the viewer.
 

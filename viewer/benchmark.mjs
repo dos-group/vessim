@@ -1,6 +1,6 @@
 // Isolated indexing benchmark, not a browser or network benchmark.
-// Run: node viewer/design/benchmark.mjs [configuration-count]
-import { indexStudy } from '../src/model.js'
+// Run: node viewer/benchmark.mjs [configuration-count]
+import { indexStudy } from './src/model.js'
 
 const count = Number(process.argv[2] || 10000)
 if (!Number.isSafeInteger(count) || count < 1) throw Error('Count must be a positive integer')

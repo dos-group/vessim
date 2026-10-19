@@ -10,10 +10,10 @@ import re
 EXAMPLES_DIR = os.path.join(os.path.dirname(__file__), "..", "examples")
 
 
-def run_script(script_name, cwd=None):
+def run_script(script_name, cwd=None, args=()):
     script_path = os.path.join(EXAMPLES_DIR, script_name)
     result = subprocess.run(
-        [sys.executable, script_path],
+        [sys.executable, script_path, *args],
         capture_output=True,
         text=True,
         cwd=cwd or os.path.dirname(EXAMPLES_DIR),
@@ -56,8 +56,7 @@ def test_csv_walkthrough(tmp_path):
     guide = (Path(__file__).parents[1] / "docs/concepts/signals.md").read_text()
     data = re.findall(r"```csv\n(.*?)```", guide, re.S)[0]
     (tmp_path / "input.csv").write_text(data)
-    script = tmp_path / "replay_csv.py"
-    shutil.copy(Path(EXAMPLES_DIR) / script.name, script)
+    script = Path(EXAMPLES_DIR).resolve() / "replay_csv.py"
     result = subprocess.run(
         [sys.executable, str(script), "input.csv", "--hours", "6"],
         cwd=tmp_path,
@@ -70,8 +69,7 @@ def test_csv_walkthrough(tmp_path):
 
 
 def test_battery_sizing_study_is_reproducible_across_workers(tmp_path):
-    script = tmp_path / "battery_sizing_study.py"
-    shutil.copy(Path(EXAMPLES_DIR) / script.name, script)
+    script = Path(EXAMPLES_DIR).resolve() / "battery_sizing_study.py"
     for workers in (1, 2):
         subprocess.run(
             [
@@ -82,20 +80,20 @@ def test_battery_sizing_study_is_reproducible_across_workers(tmp_path):
                 "--workers",
                 str(workers),
                 "--output",
-                str(tmp_path / f"{workers}.json"),
+                str(tmp_path / str(workers)),
             ],
             check=True,
             capture_output=True,
             text=True,
         )
     sequential = [
-        json.loads((tmp_path / r["path"]).read_text())
-        for c in json.loads((tmp_path / "1.json").read_text())["configurations"]
+        json.loads((tmp_path / "1" / r["path"]).read_text())
+        for c in json.loads((tmp_path / "1/study.json").read_text())["configurations"]
         for r in c["runs"]
     ]
     parallel = [
-        json.loads((tmp_path / r["path"]).read_text())
-        for c in json.loads((tmp_path / "2.json").read_text())["configurations"]
+        json.loads((tmp_path / "2" / r["path"]).read_text())
+        for c in json.loads((tmp_path / "2/study.json").read_text())["configurations"]
         for r in c["runs"]
     ]
     # Wall-clock execution timestamps differ, scientific results must not.
@@ -105,9 +103,9 @@ def test_battery_sizing_study_is_reproducible_across_workers(tmp_path):
         assert first["execution"]["status"] == second["execution"]["status"] == "completed"
 
 
-def test_external_simulator_coupling():
+def test_external_simulator_coupling(tmp_path):
     pytest.importorskip("mosaik")
-    result = run_script("external_simulator_coupling.py")
+    result = run_script("external_simulator_coupling.py", cwd=tmp_path)
     assert result.returncode == 0, result.stderr
     assert "grid_import" in result.stdout
 
@@ -168,9 +166,7 @@ def test_live_server_monitoring(tmp_path):
 
 
 def test_custom_metrics_example(tmp_path):
-    script = tmp_path / "custom_metrics.py"
-    shutil.copy(Path(EXAMPLES_DIR) / script.name, script)
-    result = run_script(str(script), cwd=tmp_path)
+    result = run_script("custom_metrics.py", cwd=tmp_path)
     assert result.returncode == 0, result.stderr
     assert "Objectives:" in result.stdout
     with (tmp_path / "results/custom_metrics/experiment.json").open() as file:
@@ -180,8 +176,8 @@ def test_custom_metrics_example(tmp_path):
     assert record["execution"]["status"] == "completed"
 
 
-def test_demand_response_example():
-    result = run_script("demand_response.py")
+def test_demand_response_example(tmp_path):
+    result = run_script("demand_response.py", cwd=tmp_path)
     assert result.returncode == 0, result.stderr
     assert result.stdout.splitlines() == [
         "00:00:00: 1000 W",
@@ -189,3 +185,43 @@ def test_demand_response_example():
         "00:02:00: 700 W",
         "00:03:00: 1000 W",
     ]
+
+
+@pytest.mark.parametrize(
+    "script, options",
+    [
+        ("basic_example.py", []),
+        ("replay_csv.py", []),
+        ("custom_metrics.py", []),
+        ("demand_response.py", []),
+        ("strategy_comparison.py", ["--scenarios", "2"]),
+        ("microgrid_comparison.py", ["--days", "1"]),
+        ("infrastructure_study.py", ["--days", "1", "--trials", "12"]),
+    ],
+)
+def test_examples_reproduce_recorded_results_and_keep_existing_output(tmp_path, script, options):
+    if "--trials" in options:
+        pytest.importorskip("optuna")
+    outputs = [tmp_path / "first", tmp_path / "second"]
+    for output in outputs:
+        result = run_script(script, cwd=tmp_path, args=[*options, "--output", str(output)])
+        assert result.returncode == 0, result.stderr
+    first = sorted(outputs[0].rglob("experiment.json"))
+    assert first
+    for file in first:
+        relative = file.relative_to(outputs[0])
+        a, b = json.loads(file.read_text()), json.loads((outputs[1] / relative).read_text())
+        for field in ("run_id", "parameters", "config", "metrics", "metric_definitions"):
+            assert a[field] == b[field], (script, relative, field)
+        for field in ("status", "steps", "simulated_duration"):
+            assert a["execution"][field] == b["execution"][field]
+        csv = file.parent / "timeseries.csv"
+        if csv.exists():
+            assert csv.read_bytes() == (outputs[1] / csv.relative_to(outputs[0])).read_bytes()
+    if (outputs[0] / "study.json").exists():
+        assert (outputs[0] / "study.json").read_bytes() == (outputs[1] / "study.json").read_bytes()
+    before = first[0].read_bytes()
+    rejected = run_script(script, cwd=tmp_path, args=[*options, "--output", str(outputs[0])])
+    assert rejected.returncode != 0
+    assert "Output is not empty" in rejected.stderr
+    assert first[0].read_bytes() == before

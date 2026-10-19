@@ -1,4 +1,4 @@
-"""Benchmark native Vessim using the sampled annual infrastructure scenario.
+"""Benchmark annual simulation throughput and recorder overhead.
 
 Run with .venv/bin/python benchmarks/native_study.py.
 Writes raw timings and profiles under results/benchmark-native.
@@ -30,8 +30,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "examples"))
 
 import vessim as vs  # noqa: E402
-from monte_carlo_replay import sampled_inputs  # noqa: E402
-
+from infrastructure_study import inputs  # noqa: E402
 
 CONFIGS = [
     dict(wind_kw=0, solar_kw=0, battery_kwh=0, battery_c_rate=0.5),
@@ -47,11 +46,12 @@ class Observer(vs.Controller):
         pass
 
 
-def run_one(config, seed, mode="summary", step_seconds=3600, output=None):
+def run_one(config, seed, mode="metrics", step_seconds=3600, output=None):
     started = time.perf_counter()
-    frame, _ = sampled_inputs(seed)
-    if step_seconds != 3600:
-        frame = frame.reindex(np.arange(0, 365 * 86400, step_seconds), method="ffill")
+    frame = inputs(seed=seed, step_seconds=step_seconds)
+    hours = (frame.index.to_numpy() / 3600) % 24
+    frame["price"] = np.where((hours >= 17) & (hours < 21), 0.30, 0.15)
+    frame["export_price"] = 0.04
     input_done = time.perf_counter()
     battery = (
         vs.SimpleBattery("battery", config["battery_kwh"] * 1000, c_rate=config["battery_c_rate"])
@@ -155,6 +155,7 @@ def main():
             "pandas": pd.__version__,
         },
         "scope": "365 days, three actors, battery where configured, grid, six traces",
+        "input_source": "examples/infrastructure_study.py:inputs",
         "logging": "disabled" if args.quiet else "default",
         "ablations": {},
         "parallel": [],
@@ -170,8 +171,8 @@ def main():
             "none",
             "observer",
             "physical",
-            "summary",
-            "summary_disk",
+            "metrics",
+            "metrics_disk",
             "trajectory_memory",
             "trajectory_csv",
         ]
@@ -182,11 +183,11 @@ def main():
             for mode in order:
                 output = (
                     Path(scratch) / f"{mode}-{repeat}"
-                    if mode in ("summary_disk", "trajectory_csv")
+                    if mode in ("metrics_disk", "trajectory_csv")
                     else None
                 )
                 rows[mode].append(
-                    run_one(CONFIGS[repeat % 3], 10000 + repeat, mode, output=output)
+                    run_one(CONFIGS[repeat % len(CONFIGS)], 10000 + repeat, mode, output=output)
                 )
             print(f"Ablations {repeat + 1}/{args.repeats}", flush=True)
         for mode in modes:
@@ -202,7 +203,7 @@ def main():
             save()
             print("Five-minute", json.dumps(summary(fine)), flush=True)
 
-        for mode in (() if args.throughput_only else ("none", "summary", "trajectory_csv")):
+        for mode in (() if args.throughput_only else ("none", "metrics", "trajectory_csv")):
             profiler = cProfile.Profile()
             for i in range(3):
                 profiler.runcall(
@@ -222,17 +223,8 @@ def main():
             (args.output / f"{mode}-profile.txt").write_text(stream.getvalue())
             print(f"Profiled {mode}", flush=True)
 
-        source = ROOT / "results/viewer-proposal/optuna-search/study.json"
-        if source.exists():
-            configs = []
-            for config in json.loads(source.read_text())["configurations"]:
-                record = json.loads((source.parent / config["runs"][0]["path"]).read_text())
-                configs.append({key: record["parameters"][key] for key in CONFIGS[0]})
-        else:
-            configs = CONFIGS
-        report["parallel_configuration_source"] = (
-            str(source) if source.exists() else "three references"
-        )
+        configs = CONFIGS
+        report["parallel_configuration_source"] = "three reference configurations"
         reference = None
         for workers in args.workers:
             tasks = [
@@ -260,9 +252,8 @@ def main():
                 "runs": args.jobs,
                 "wall_seconds": elapsed,
                 "runs_per_second": args.jobs / elapsed,
-                "projected_100000_hours": elapsed / args.jobs * 100000 / 3600,
                 "includes_pool_startup": True,
-                "includes_summary_json": True,
+                "includes_recorded_json": True,
                 "timings": results,
             }
             report["parallel"].append(item)

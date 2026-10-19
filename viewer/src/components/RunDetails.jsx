@@ -1,7 +1,7 @@
 import { useViewer } from '../context.jsx'
 import { columnGroups } from '../model.js'
 import { toggle } from '../state.js'
-import { Heading } from './controls.jsx'
+import { Heading, NavLink } from './controls.jsx'
 export function RunDetails({ runId }) {
   const { study, patch, presentation: p, navigate } = useViewer()
   const run = study.runs.find((r) => r.key === runId)
@@ -9,7 +9,7 @@ export function RunDetails({ runId }) {
     return (
       <>
         <h1>Run unavailable</h1>
-        <a href="#results">Back to results</a>
+        <NavLink href="#results">Back to results</NavLink>
       </>
     )
   const single = run.configuration.runs.length === 1
@@ -20,7 +20,7 @@ export function RunDetails({ runId }) {
   return (
     <>
       <p className="breadcrumb">
-        <a href="#results">{study.name}</a> /{' '}
+        <NavLink href="#results">{study.name}</NavLink> /{' '}
         {single ? (
           run.configuration.name
         ) : (

@@ -319,10 +319,20 @@ export function Results() {
         {study.singleRun ? '' : ` · ${study.runs.length} runs`}
       </Heading>
       {study.description && (
-        <details className="study-details">
-          <summary>Study details</summary>
-          <p>{study.description}</p>
-        </details>
+        <p className="study-description">
+          {study.description
+            .split(/(\[[^\]]+\]\(https?:\/\/[^\s)]+\))/g)
+            .map((part, i) => {
+              const link = part.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/)
+              return link ? (
+                <a key={i} href={link[2]}>
+                  {link[1]}
+                </a>
+              ) : (
+                part
+              )
+            })}
+        </p>
       )}
       <div className="toolbar">
         <label className="inline-label">

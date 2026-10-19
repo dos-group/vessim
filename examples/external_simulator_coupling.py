@@ -10,6 +10,9 @@ from __future__ import annotations
 import argparse
 
 import mosaik_api_v3
+from pathlib import Path
+from _common import fresh_output
+
 import vessim as vs
 
 
@@ -43,7 +46,9 @@ class DatacenterSimulator(mosaik_api_v3.Simulator):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--live", action="store_true")
+    parser.add_argument("--output", type=Path, default=Path("results/external_simulator_coupling"))
     args = parser.parse_args()
+    fresh_output(args.output)
     create = vs.Environment.live if args.live else vs.Environment
     with create(
         sim_start="2026-01-01",
@@ -55,7 +60,7 @@ def main():
     ) as env:
         datacenter = env.world.start("Datacenter").Datacenter()
         env.add_microgrid(actors=[], name="site", dispatchables=[vs.GridConnection()])
-        recorder = env.add_controller(vs.Recorder(timeseries=False))
+        recorder = env.add_controller(vs.Recorder(args.output, run_id="external-simulator"))
         env.prepare()
         env.world.connect(datacenter, env.entities["site"], "power")
         result = env.run(until=180)

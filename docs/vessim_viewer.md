@@ -11,10 +11,9 @@ Explore simulation studies in your browser, from individual runs to comparisons 
 | Example | What it shows |
 | --- | --- |
 | [Getting started](viewer/index.html?study=getting-started#results) | Three days of demand, solar generation, and battery operation |
-| [Equipment comparison](viewer/index.html?study=infrastructure-year#results) | Wind, solar, and storage configurations over a year |
+| [Exploring microgrid configurations](viewer/index.html?study=infrastructure-year#results) | Wind, solar, and storage configurations over a year |
 | [Optimization](viewer/index.html?study=optuna-search#results) | Cost and emissions trade-offs across 100 equipment configurations |
 | [Probabilistic sampling](viewer/index.html?study=dispatch-comparison#results) | Dispatch strategies evaluated across different demand realizations |
-| [Multiple microgrids](viewer/index.html?study=multiple-microgrids#results) | Equipment choices across three sites |
 
 ## Open and share your results
 

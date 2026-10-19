@@ -22,6 +22,8 @@ Vessim models the interaction between datacenter demand and energy infrastructur
 Evaluate configurations and control strategies across variations in operating conditions.
 Use parameter sweeps, what-if scenarios, and probabilistic inputs to explore design choices and assess their sensitivity to uncertainty.
 
+[Explore example results](viewer/index.html?study=infrastructure-year#results){ .md-button }
+
 </div>
 
 <div class="vessim-use-case" markdown="1">
@@ -47,7 +49,6 @@ Explore future scenarios such as prolonged low renewable generation or a complet
 <div class="vessim-actions" markdown="1">
 
 [Get started](getting_started.md){ .md-button .md-button--primary }
-[Explore example results](viewer/index.html?study=getting-started#results){ .md-button }
 
 </div>
 

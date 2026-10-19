@@ -15,6 +15,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from _common import fresh_output, write_study
+
 import vessim as vs
 
 
@@ -44,6 +46,10 @@ def run_scenario(
     timeseries: bool = True,
 ) -> vs.ExperimentResult:
     """Execute one fresh simulation and return its canonical experiment record."""
+    if strategy not in ("self_consumption", "peak_shaving", "carbon_aware"):
+        raise ValueError(f"Unknown strategy: {strategy}")
+    if (output / run_id).exists():
+        raise FileExistsError(f"Preserving existing run: {output / run_id}")
     rng = np.random.default_rng(seed)
     seconds = np.arange(0, 86400, 300)
     hours = seconds / 3600
@@ -111,12 +117,44 @@ def run_scenario(
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=Path("results/strategy-comparison"))
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--scenarios", type=int, default=5)
+    parser.add_argument("--capacity-wh", type=float, default=4000)
+    parser.add_argument("--no-timeseries", action="store_true")
     args = parser.parse_args()
+    if args.seed < 0 or args.scenarios < 1 or args.capacity_wh <= 0:
+        parser.error("seed must be nonnegative, scenarios and capacity must be positive")
+    fresh_output(args.output)
+    groups = []
     for strategy in ("self_consumption", "peak_shaving", "carbon_aware"):
-        for capacity in (1000, 2500, 5000, 8000):
-            run_id = f"{strategy}-{capacity}"
-            run_scenario(args.output, run_id, capacity, strategy)
-    print(f"View results: python -m vessim view {args.output}")
+        runs = []
+        for seed in range(args.seed, args.seed + args.scenarios):
+            run_id = f"{strategy}-s{seed}"
+            run_scenario(
+                args.output,
+                run_id,
+                args.capacity_wh,
+                strategy,
+                seed,
+                timeseries=not args.no_timeseries,
+            )
+            runs.append(run_id)
+        groups.append((strategy, strategy.replace("_", " ").capitalize(), runs))
+    write_study(
+        args.output,
+        "dispatch-comparison",
+        "Probabilistic sampling",
+        groups,
+        run_parameters=["seed"],
+        description=(
+            "How much does a battery's dispatch strategy matter when demand is uncertain? "
+            "Self-consumption, peak shaving, and carbon-aware dispatch each face the same "
+            f"{args.scenarios} synthetic daily demand scenarios. "
+            "Compare their costs, emissions, and peak grid imports, "
+            "including how outcomes vary across scenarios."
+        ),
+    )
+    print(f"View: python -m vessim view {args.output}")
 
 
 if __name__ == "__main__":

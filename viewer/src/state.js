@@ -1,4 +1,4 @@
-import { numeric, cell } from './model.js'
+import { numeric, cell, stable, columnGroups, metricCategory } from './model.js'
 export const colors = [
   '#087f72',
   '#b65429',
@@ -29,36 +29,41 @@ export const configurationColorAt = (index) => {
   return `#${channel(0)}${channel(8)}${channel(4)}`
 }
 export function initState(study) {
-  const metrics = study.columns.filter((c) => c.kind === 'metric')
-  // Prefer non-constant recorded metrics; no metric name is required by the UI.
-  const varying = metrics.filter(
-    (c) => new Set(study.runs.map((r) => r.values[c.id])).size > 1,
+  const ordered = columnGroups(study.columns, study.singleMicrogrid).flatMap(
+    (g) => g.columns,
   )
+  const varies = (column) =>
+    new Set(
+      study.runs
+        .map((run) => run.values[column.id])
+        .filter((value) => value != null)
+        .map(stable),
+    ).size > 1
+  const parameters = ordered.filter(
+    (c) =>
+      c.kind === 'parameter' &&
+      (study.singleRun || c.configurationInput) &&
+      varies(c),
+  )
+  const metrics = ordered.filter(
+    (c) =>
+      c.kind === 'metric' &&
+      study.runs.some((run) => numeric(run.values[c.id])),
+  )
+  const varying = metrics.filter(varies)
   const candidates = varying.length ? varying : metrics
-  const defaults = [
-    ...candidates.filter((c) => c.scope === 'Run'),
-    ...candidates.filter((c) => c.scope !== 'Run'),
-  ]
-  // Example-specific initial axes; all recorded fields remain selectable.
-  if (
-    study.study_id?.startsWith('infrastructure-') ||
-    ['optuna-search', 'optuna-2', 'dispatch-comparison'].includes(
-      study.study_id,
-    )
-  ) {
-    const preferred = ['optuna-search', 'optuna-2'].includes(study.study_id)
-      ? ['annual cost', 'grid emissions', 'equipment capex']
-      : study.study_id === 'dispatch-comparison'
-        ? ['electricity cost', 'grid emissions', 'peak grid import']
-        : ['initial embodied emissions', 'grid emissions']
-    defaults.sort((a, b) => {
-      const rank = (c) => {
-        const i = preferred.indexOf(c.label)
-        return i < 0 ? preferred.length : i
-      }
-      return rank(a) - rank(b)
-    })
-  }
+  // Prefer whole-system outcomes, then site outcomes, then individual actors.
+  const scope = (c) => ['run', 'microgrids', 'actors'].indexOf(c.metricPath[0])
+  candidates.sort((a, b) => scope(a) - scope(b))
+  // Show a useful cross-section of results instead of three similar energy totals.
+  const categories = new Set()
+  const defaults = candidates.filter((c) => {
+    const category = metricCategory(c)
+    if (categories.has(category)) return false
+    categories.add(category)
+    return true
+  })
+  defaults.push(...candidates.filter((c) => !defaults.includes(c)))
   return {
     mode: study.singleRun ? 'runs' : 'configurations',
     runColors: Object.fromEntries(
@@ -73,7 +78,9 @@ export function initState(study) {
     paretoX: 'min',
     paretoY: 'min',
     timeMode: study.singleRun ? 'runs' : 'configurations',
-    timeConfigs: new Set(),
+    timeConfigs: new Set(
+      study.configurations.length === 1 ? [study.configurations[0].key] : [],
+    ),
     timeStat: 'median',
     timeSpread: 'range',
     timeIndividuals: false,
@@ -102,7 +109,7 @@ export function initState(study) {
         ),
       ]),
     ),
-    runs: new Set(),
+    runs: new Set(study.runs.length === 1 ? [study.runs[0].key] : []),
     configs: new Set(),
     query: '',
     configFilter: [],
@@ -110,16 +117,7 @@ export function initState(study) {
     x: defaults[0]?.id,
     y: defaults[1]?.id || defaults[0]?.id,
     visible: [
-      ...study.columns
-        .filter(
-          (c) =>
-            c.kind === 'parameter' && (study.singleRun || c.configurationInput),
-        )
-        .slice(
-          0,
-          ['optuna-search', 'optuna-2'].includes(study.study_id) ? 4 : 3,
-        )
-        .map((c) => c.id),
+      ...parameters.slice(0, 4).map((c) => c.id),
       ...defaults.slice(0, 3).map((c) => c.id),
     ],
     sort: 'name',
@@ -127,7 +125,6 @@ export function initState(study) {
     selectedFirst: false,
     zoom: { start: 0, end: 100 },
     signals: null,
-    closedSignalSites: new Set(),
     alignment: 'elapsed',
     plot: study.runs.length > 1,
     opened: null,

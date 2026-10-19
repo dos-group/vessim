@@ -12,14 +12,12 @@ for (const [kind, base] of [
     await page.goto(`${base}?study=sampling`)
     await expect(page.locator('.results-table tbody > tr')).toHaveCount(3)
     await page.locator('[data-plot-view="scatter"]').click()
-    const axisGroups = await page
-      .locator('#x optgroup')
-      .evaluateAll((groups) =>
-        groups.map((g) => ({
-          name: g.label,
-          ids: [...g.querySelectorAll('option')].map((o) => o.value),
-        })),
-      )
+    const axisGroups = await page.locator('#x optgroup').evaluateAll((groups) =>
+      groups.map((g) => ({
+        name: g.label,
+        ids: [...g.querySelectorAll('option')].map((o) => o.value),
+      })),
+    )
     await page.getByText('Columns', { exact: true }).click()
     const columnGroups = await page
       .locator('.column-picker fieldset')
@@ -113,11 +111,9 @@ for (const [kind, base] of [
       })
       .selectOption('kW')
     await expect(
-      page
-        .locator('[data-signal-panel]')
-        .filter({
-          has: page.getByRole('heading', { name: 'grid / Power', exact: true }),
-        }),
+      page.locator('[data-signal-panel]').filter({
+        has: page.getByRole('heading', { name: 'grid / Power', exact: true }),
+      }),
     ).toContainText('kW')
     await page.screenshot({
       path: `../results/viewer-release/${kind}-react-desktop.png`,
@@ -141,14 +137,14 @@ for (const [kind, base] of [
   }) => {
     const errors: string[] = []
     page.on('pageerror', (e) => errors.push(e.message))
-    await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     await page.goto(`${base}?study=sampling`)
+    const initialHistory = await page.evaluate(() => history.length)
     await page.locator('[data-plot-view="scatter"]').click()
     await page.locator('#stat').selectOption('mean')
     await page.locator('[data-select="config-1"]').check()
-    await page.getByRole('button', { name: 'Copy link', exact: true }).click()
-    await expect(page.getByRole('status')).toHaveText('Link copied')
-    const link = await page.evaluate(() => navigator.clipboard.readText())
+    await expect(page).toHaveURL(/view=/)
+    const link = page.url()
+    expect(await page.evaluate(() => history.length)).toBe(initialHistory)
     expect(new URL(link).searchParams.get('study')).toBe('sampling')
     const other = await context.newPage()
     other.on('pageerror', (e) => errors.push(e.message))
@@ -172,11 +168,23 @@ for (const [kind, base] of [
         exact: true,
       })
       .click()
-    await other.getByRole('button', { name: 'Copy link', exact: true }).click()
-    await expect(other.getByRole('status')).toHaveText('Link copied')
-    const trajectoryLink = await other.evaluate(() =>
-      navigator.clipboard.readText(),
-    )
+    await expect
+      .poll(
+        () =>
+          JSON.parse(new URL(other.url()).searchParams.get('view')!).signals
+            ?.length,
+      )
+      .toBe(1)
+    const trajectoryLink = other.url()
+    await other.goBack()
+    await expect(other.locator('#stat')).toHaveValue('mean')
+    await expect(other.locator('[data-select="config-1"]')).toBeChecked()
+    await other.goForward()
+    await expect(other.locator('#alignment')).toHaveValue('absolute')
+    await expect(other.locator('.time-chart canvas')).toHaveCount(1)
+    await other.reload()
+    await expect(other.locator('.time-chart canvas')).toHaveCount(1)
+    await expect(other.locator('#alignment')).toHaveValue('absolute')
     await page.goto(trajectoryLink)
     await expect(page.locator('.time-chart canvas')).toHaveCount(1)
     await expect(page.locator('#alignment')).toHaveValue('absolute')
@@ -187,5 +195,40 @@ for (const [kind, base] of [
     await expect(page.locator('.time-chart canvas')).toHaveCount(1)
     await expect(page.locator('#alignment')).toHaveValue('absolute')
     expect(errors).toEqual([])
+  })
+  test(`${kind}: late study responses do not replace the active view`, async ({
+    page,
+  }) => {
+    let release!: () => void
+    let requested!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const started = new Promise<void>((resolve) => {
+      requested = resolve
+    })
+    let requests = 0
+    await page.route('**/data/0/study.json', async (route) => {
+      requests++
+      const response = await route.fetch()
+      requested()
+      await held
+      await route.fulfill({ response })
+    })
+    await page.goto(`${base}?study=sampling`)
+    await expect(page.locator('.results-table tbody > tr')).toHaveCount(3)
+    await page.locator('#study').selectOption('comparison')
+    await started
+    await page.locator('#study').selectOption('multi')
+    await expect(page.locator('.heading')).toContainText('Multiple microgrids')
+    const completed = page.waitForResponse('**/data/0/study.json')
+    release()
+    await completed
+    await expect(page.locator('#study')).toHaveValue('multi')
+    await expect(page.locator('.heading')).toContainText('Multiple microgrids')
+    await expect(page).toHaveURL(/study=multi/)
+    await page.locator('#study').selectOption('comparison')
+    await expect(page.locator('.heading')).toContainText('Equipment comparison')
+    expect(requests).toBe(1)
   })
 }

@@ -3,12 +3,13 @@ import { useViewer } from '../context.jsx'
 import { signalGroups, visibleSignals, human } from '../model.js'
 import { signalLabel } from '../presentation.js'
 import { inSelectionOrder, toggle } from '../state.js'
-import { displayUnit, inDisplayUnit, unitOptions } from '../units.js'
-import { time, trajectorySeries } from '../trajectory.js'
+import { unitOptions } from '../units.js'
+import { prepareTrajectory, trajectoryOptions } from '../trajectory.js'
 import {
   Checkbox,
   ChoiceGroup,
   Heading,
+  NavLink,
   Picker,
   Select,
   UnitSelect,
@@ -19,107 +20,62 @@ import { Chart } from './Chart.jsx'
 
 function TrajectoryChart({ signal, runs, chosen }) {
   const { study, view: s, patch, recordings } = useViewer()
-  const matches = useMemo(
-    () =>
-      runs.map((run) => ({
-        run,
-        signal: recordings
-          .get(run)
-          .series.find(
-            (sig) => sig.id === signal.id && sig.unit === signal.unit,
-          ),
-      })),
-    [runs, recordings, signal],
-  )
-  const supported = useMemo(() => matches.filter((m) => m.signal), [matches]),
-    missing = matches.filter((m) => !m.signal).map((m) => m.run.key)
-  const magnitude = supported.reduce(
-    (max, m) =>
-      m.signal.points.reduce(
-        (max, p) => Math.max(max, Math.abs(p[1] || 0)),
-        max,
-      ),
-    0,
-  )
+  const {
+    alignment,
+    timeMode,
+    timeConfigs,
+    timeStat,
+    timeSpread,
+    timeIndividuals,
+    runColors,
+    configColors,
+  } = s
   const preference = s.signalUnits[signal.id]
-  const spec = useMemo(
-    () =>
-      displayUnit(
-        signal.unit,
-        magnitude,
-        unitOptions(signal.unit).some((option) => option.unit === preference)
-          ? preference
-          : 'auto',
-      ),
-    [signal.unit, magnitude, preference],
-  )
-  const error =
-    signal.unit === 'unknown' && supported.length > 1
-      ? 'Unit not recorded. Select a single run to inspect this signal.'
-      : s.alignment === 'elapsed' &&
-          supported.some(
-            (m) =>
-              !Number.isFinite(
-                time(m.run.record.config.environment?.sim_start),
-              ),
-          )
-        ? 'Simulation start missing. Use recorded UTC time.'
-        : ''
   const prepared = useMemo(
     () =>
-      error
-        ? { series: [], notes: [] }
-        : trajectorySeries(
-            study,
-            s,
-            supported.map((m) => ({
-              ...m,
-              signal: {
-                ...m.signal,
-                points: m.signal.points.map(([t, v]) => [
-                  t,
-                  inDisplayUnit(v, spec),
-                ]),
-              },
-            })),
-          ),
-    [study, s, supported, error, spec],
-  )
-  const option = useMemo(
-    () => ({
-      useUTC: true,
-      tooltip: { trigger: 'axis', renderMode: 'richText', confine: true },
-      axisPointer: { link: [{ xAxisIndex: 'all' }] },
-      grid: { top: 20, left: 80, right: 30, bottom: 75 },
-      xAxis: {
-        type: s.alignment === 'elapsed' ? 'value' : 'time',
-        name: s.alignment === 'elapsed' ? 'Hours' : 'UTC',
-        nameGap: 35,
-        nameLocation: 'middle',
-        axisLabel: {
-          hideOverlap: true,
-          showMinLabel: false,
-          showMaxLabel: false,
-        },
-      },
-      yAxis: {
-        type: 'value',
-        scale: true,
-        splitLine: { lineStyle: { color: '#e5e9e7' } },
-      },
-      dataZoom: [
-        { type: 'inside', filterMode: 'none', ...s.zoom },
+      prepareTrajectory(
+        study,
         {
-          type: 'slider',
-          bottom: 4,
-          height: 18,
-          filterMode: 'none',
-          ...s.zoom,
+          alignment,
+          timeMode,
+          timeConfigs,
+          timeStat,
+          timeSpread,
+          timeIndividuals,
+          runColors,
+          configColors,
         },
-      ],
-      series: prepared.series,
-    }),
-    [s.alignment, s.zoom, prepared],
+        signal,
+        runs.map((run) => ({
+          run,
+          signal: recordings
+            .get(run)
+            .series.find(
+              (sig) => sig.id === signal.id && sig.unit === signal.unit,
+            ),
+        })),
+        preference,
+      ),
+    [
+      study,
+      alignment,
+      timeMode,
+      timeConfigs,
+      timeStat,
+      timeSpread,
+      timeIndividuals,
+      runColors,
+      configColors,
+      signal,
+      runs,
+      recordings,
+      preference,
+    ],
+  )
+  const { missing, magnitude, spec, error } = prepared
+  const option = useMemo(
+    () => trajectoryOptions(prepared.series, alignment, s.zoom),
+    [prepared, alignment, s.zoom],
   )
   return (
     <section className="panel trajectory-panel" data-signal-panel={signal.id}>
@@ -304,9 +260,9 @@ export function TimeSeries() {
       <Heading
         title="Time series"
         actions={
-          <a className="button" href="#results">
+          <NavLink className="button" href="#results">
             Back to results
-          </a>
+          </NavLink>
         }
       >
         {study.name} · {entries.length} selected{' '}

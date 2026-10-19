@@ -25,6 +25,18 @@ import pandas as pd
 from loguru import logger
 import vessim as vs
 
+CASES = ("static", "traces", "csv", "many_grids", "mixed_rates", "feedback")
+
+
+def environment_info():
+    versions = {}
+    for package in ("vessim", "numpy", "pandas", "mosaik"):
+        try:
+            versions[package] = importlib.metadata.version(package)
+        except importlib.metadata.PackageNotFoundError:
+            versions[package] = None
+    return {"python": platform.python_version(), "platform": platform.platform(), **versions}
+
 
 class Feedback(vs.Controller):
     def start(self, environment):
@@ -71,19 +83,18 @@ def digest(memory):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--backend", choices=["native", "mosaik"], required=True)
+    parser.add_argument("--backend", choices=["native", "mosaik"], default="native")
     parser.add_argument("--steps", type=int, default=1000)
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--profile", type=Path)
+    parser.add_argument("--profile", type=Path, help="Directory for per-workload cProfile files")
     args = parser.parse_args()
+    if args.steps < 1 or args.repeats < 1:
+        parser.error("steps and repeats must be positive")
     logger.remove()
     results = {
         "backend": args.backend,
-        "python": platform.python_version(),
-        "platform": platform.platform(),
-        "numpy": np.__version__,
-        "mosaik": importlib.metadata.version("mosaik"),
+        **environment_info(),
         "cases": {},
     }
     with tempfile.TemporaryDirectory() as tmp:
@@ -108,21 +119,25 @@ def main():
             for c in ("solar", "load", "carbon")
         }
         results["trace_load_seconds"] = time.perf_counter() - t0
-        for case in ("static", "traces", "csv", "many_grids", "mixed_rates", "feedback"):
-            steps = args.steps // 5 if case == "many_grids" else args.steps
+        for case in CASES:
+            steps = max(1, args.steps // 5) if case == "many_grids" else args.steps
             timings, setups = [], []
-            for _ in range(args.repeats):
+            checksums = set()
+            for repeat in range(args.repeats):
                 gc.collect()
                 t0 = time.perf_counter()
-                env, memory = build(args.backend, case, traces, directory / "output")
+                env, memory = build(args.backend, case, traces, directory / f"{case}-{repeat}")
                 setups.append(time.perf_counter() - t0)
                 t0 = time.perf_counter()
                 env.run(until=steps * 60, print_progress=False)
                 timings.append(time.perf_counter() - t0)
                 checksum = digest(memory)
+                checksums.add(checksum)
+            if len(checksums) != 1:
+                raise RuntimeError(f"Repeated {case} runs produced different trajectories")
             gc.collect()
             tracemalloc.start()
-            env, memory = build(args.backend, case, traces, directory / "output")
+            env, memory = build(args.backend, case, traces, directory / f"{case}-memory")
             env.run(until=steps * 60, print_progress=False)
             _, peak = tracemalloc.get_traced_memory()
             tracemalloc.stop()
@@ -135,11 +150,13 @@ def main():
                 "trajectory_sha256": checksum,
             }
             print(case, results["cases"][case], flush=True)
-        if args.profile:
-            env, _ = build(args.backend, "traces", traces, directory / "output")
-            profiler = cProfile.Profile()
-            profiler.runcall(env.run, until=args.steps * 60, print_progress=False)
-            profiler.dump_stats(str(args.profile))
+            if args.profile:
+                args.profile.mkdir(parents=True, exist_ok=True)
+                env, _ = build(args.backend, case, traces, directory / f"{case}-profile")
+                profiler = cProfile.Profile()
+                profiler.runcall(env.run, until=steps * 60, print_progress=False)
+                profiler.dump_stats(str(args.profile / f"{case}.prof"))
+    args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(results, indent=2) + "\n")
 
 

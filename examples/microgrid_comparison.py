@@ -13,6 +13,7 @@ from pathlib import Path
 
 import vessim as vs
 from infrastructure_study import inputs
+from _common import fresh_output, write_study
 
 SETUPS = {"grid-only": (0, 0), "renewables": (1500, 0), "with-storage": (1500, 3000)}
 
@@ -32,7 +33,13 @@ class CoincidentImportPeak(vs.Metric):
 
 
 def run_scenario(
-    output: Path, run_id: str, solar_kw: float, battery_kwh: float, days: int = 7
+    output: Path,
+    run_id: str,
+    solar_kw: float,
+    battery_kwh: float,
+    days: int = 7,
+    seed: int = 42,
+    timeseries: bool = True,
 ) -> vs.ExperimentResult:
     """Execute one three-microgrid configuration, preserving existing output."""
     if (output / run_id).exists():
@@ -41,7 +48,7 @@ def run_scenario(
         metrics = {"coincident_import_peak": CoincidentImportPeak(), "grid_emissions": []}
         for index, scale in enumerate((0.7, 1.0, 1.3), start=1):
             name = f"Microgrid {index}"
-            frame = inputs(days=days, seed=40 + index)
+            frame = inputs(days=days, seed=seed + index - 1)
             dispatchables = []
             if battery_kwh:
                 dispatchables.append(
@@ -63,12 +70,13 @@ def run_scenario(
             vs.Recorder(
                 output / run_id,
                 run_id=run_id,
-                timeseries=True,
+                timeseries=timeseries,
                 parameters={
                     "solar_kw_per_microgrid": solar_kw,
                     "wind_kw_per_microgrid": solar_kw,
                     "battery_kwh_per_microgrid": battery_kwh,
                     "days": days,
+                    "seed": seed,
                     "step_seconds": 3600,
                 },
                 custom_metrics=metrics,
@@ -98,9 +106,31 @@ def run_scenario(
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=Path("results/multiple-microgrids"))
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--days", type=int, default=7)
+    parser.add_argument("--no-timeseries", action="store_true")
     args = parser.parse_args()
+    if args.seed < 0 or args.days < 1:
+        parser.error("seed must be nonnegative and days must be positive")
+    fresh_output(args.output)
     for name, (solar, battery) in SETUPS.items():
-        run_scenario(args.output, name, solar, battery)
+        run_scenario(
+            args.output,
+            name,
+            solar,
+            battery,
+            days=args.days,
+            seed=args.seed,
+            timeseries=not args.no_timeseries,
+        )
+    write_study(
+        args.output,
+        "multiple-microgrids",
+        "Multiple microgrids",
+        [(name, name.replace("-", " ").capitalize(), [name]) for name in SETUPS],
+        run_parameters=["seed"],
+        description="Equipment choices for three sites with distinct demand and weather.",
+    )
     print(f"View: python -m vessim view {args.output}")
 
 

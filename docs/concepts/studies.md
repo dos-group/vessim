@@ -62,7 +62,7 @@ python -m vessim view results/study
 Each run records its battery capacity and scenario seed, so you can identify the conditions behind a result.
 To investigate when a battery filled or ran out, enable time series by removing `timeseries=False` from the recorder.
 
-Explore the larger [equipment comparison](../viewer/index.html?study=infrastructure-year#results), [probabilistic dispatch study](../viewer/index.html?study=dispatch-comparison#results), or [multiple-microgrid study](../viewer/index.html?study=multiple-microgrids#results) in the viewer.
+Explore [microgrid configurations](../viewer/index.html?study=infrastructure-year#results) or the [probabilistic dispatch study](../viewer/index.html?study=dispatch-comparison#results) in the viewer.
 
 ## Extend the study
 
@@ -74,14 +74,14 @@ Independent runs can execute in parallel.
 The [battery-sizing example](https://github.com/dos-group/vessim/blob/main/examples/battery_sizing_study.py) shows how to distribute scenarios across worker processes.
 The [infrastructure example](https://github.com/dos-group/vessim/blob/main/examples/infrastructure_study.py) compares wind, solar, and storage over a full year.
 
-The [Monte Carlo example](https://github.com/dos-group/vessim/blob/main/examples/monte_carlo_replay.py) tests how saved equipment configurations perform under uncertain demand, renewable generation, and electricity prices.
-It uses configurations from the annual Optuna study in the example gallery and evaluates each against the same synthetic scenarios.
+Run the battery study with the same demand scenarios for each capacity:
 
 ```console
-python examples/monte_carlo_replay.py --runs 1000 --workers 8 --output results/native-replay
+python examples/battery_sizing_study.py --scenarios 100 --workers 4
+python -m vessim view results/battery-sizing
 ```
 
-This runs 1,000 sampled years per configuration across eight worker processes and saves summary metrics to compare costs and emissions across scenarios.
-Use `--source` to select another saved study with the same equipment parameters.
+Each configuration has its own group of recorded runs, so the viewer can show distributions and summary statistics.
+See the [example setup instructions](https://github.com/dos-group/vessim/blob/main/examples/README.md) to run the examples locally.
 
 When the design space is too large to enumerate, use [optimization](optimization.md) to search for promising configurations.

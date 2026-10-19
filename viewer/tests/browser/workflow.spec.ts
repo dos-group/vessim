@@ -11,7 +11,7 @@ for (const [kind, base] of [['CLI', 'http://localhost:8721/'], ['export', 'http:
     await expect(page.locator('body')).not.toContainText('Interactive prototype')
     expect(trajectories).toHaveLength(0)
     await page.getByText('Columns', {exact: true}).click()
-    await expect(page.getByRole('group', {name:'Simulation settings',exact:true})).toContainText('seed')
+    await expect(page.getByRole('group', {name:'Fixed inputs',exact:true})).toContainText('seed')
     await expect(page.getByRole('group', {name:'Cost',exact:true})).toContainText('annual cost')
     await page.getByText('Columns', {exact: true}).click()
     await page.locator('#select-page').check()

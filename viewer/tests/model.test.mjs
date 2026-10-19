@@ -110,12 +110,11 @@ test('column groups use explicit configuration membership and metric scope', () 
   const study = fixture([r])
   const groups = columnGroups(study.columns)
   assert.deepEqual(groups.map(g => g.label), [
-    'Configuration inputs', 'Whole-system results',
+    'Whole-system results',
     'Microgrid results · site', 'Actor results · other · solar',
-    'Actor results · site · solar', 'Simulation settings',
+    'Actor results · site · solar', 'Fixed inputs',
   ])
-  assert.deepEqual(groups[0].columns.map(c => c.label), ['size'])
-  assert.deepEqual(groups.at(-1).columns.map(c => c.label), ['seed'])
+  assert.deepEqual(groups.at(-1).columns.map(c => c.label), ['seed', 'size'])
   assert.equal(groups.flatMap(g => g.columns).length, study.columns.length)
   assert.equal(columnGroups(study.columns.filter(c => c.kind === 'metric')).length, 4)
 })
@@ -127,7 +126,7 @@ test('single-microgrid labels simplify presentation without changing scoped metr
   assert.equal(study.singleMicrogrid, true)
   assert.deepEqual(study.microgrids, ['campus'])
   const groups = columnGroups(study.columns, study.singleMicrogrid)
-  assert.deepEqual(groups.slice(1, -1).map(g => g.label), ['Other results', 'Actor results · solar'])
+  assert.deepEqual(groups.slice(0, -1).map(g => g.label), ['Other results', 'Actor results · solar'])
   assert.deepEqual(groups.flatMap(g => g.columns.map(c => c.id)).sort(), study.columns.map(c => c.id).sort())
   r.metrics.microgrids.other = { custom: 9 }
   const multi = fixture([r])
@@ -136,11 +135,11 @@ test('single-microgrid labels simplify presentation without changing scoped metr
   const ids = multi.columns.filter(c => c.label === 'custom').map(c => c.id)
   assert.equal(new Set(ids).size, 4)
 })
-test('fixed seeds are settings while sampled seeds stay run inputs', () => {
+test('fixed inputs are separated while sampled seeds stay run inputs', () => {
   const a = record('1', 4), b = record('2', 8)
   a.parameters.seed = b.parameters.seed = 42
   const seedGroup = study => columnGroups(study.columns).find(g => g.columns.some(c => c.label === 'seed')).label
-  assert.equal(seedGroup(fixture([a, b])), 'Simulation settings')
+  assert.equal(seedGroup(fixture([a, b])), 'Fixed inputs')
   b.parameters.seed = 43
   assert.equal(seedGroup(fixture([a, b])), 'Run inputs')
 })

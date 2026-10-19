@@ -70,21 +70,16 @@ To use your own data, see [Actors and Signals](https://vessim.readthedocs.io/en/
 
 | Example | What you can explore |
 | --- | --- |
-| [Equipment sizing](examples/infrastructure_study.py) | Compare wind, solar, and battery configurations over a year. [View results](https://vessim.readthedocs.io/en/latest/viewer/index.html?study=infrastructure-year#results) |
+| [Exploring microgrid configurations](examples/infrastructure_study.py) | Compare wind, solar, and battery configurations over a year. [View results](https://vessim.readthedocs.io/en/latest/viewer/index.html?study=infrastructure-year#results) |
 | [Optimization](https://vessim.readthedocs.io/en/latest/concepts/optimization/) | Search for designs with different cost and emissions trade-offs. [View results](https://vessim.readthedocs.io/en/latest/viewer/index.html?study=optuna-search#results) |
 | [Dispatch strategies](examples/strategy_comparison.py) | Compare control policies across demand scenarios. [View results](https://vessim.readthedocs.io/en/latest/viewer/index.html?study=dispatch-comparison#results) |
-| [Multiple microgrids](examples/microgrid_comparison.py) | Model several sites and compare equipment choices. [View results](https://vessim.readthedocs.io/en/latest/viewer/index.html?study=multiple-microgrids#results) |
 | [Demand response](examples/demand_response.py) | Adjust workload concurrency under a flexible grid connection agreement |
 | [Custom metrics](examples/custom_metrics.py) | Calculate electricity costs, emissions, and your own study objectives |
 
+[Run the examples locally](examples/README.md) with a shared setup and reproducible commands.
+
 For [live measurements and REST control](https://vessim.readthedocs.io/en/latest/concepts/live/), install `pip install 'vessim[live]'` and use `vs.Environment.live()`.
 To [connect external simulators](https://vessim.readthedocs.io/en/latest/concepts/coupling/) through Mosaik, install `pip install 'vessim[mosaik]'`.
-
-## Contributing
-
-Share feedback, ideas, or questions on [GitHub Discussions](https://github.com/dos-group/vessim/discussions).
-For development, install `pip install -e '.[dev,docs,live,mosaik]'` from a checkout and run `make check`.
-Use `make serve-docs` to preview the documentation and example viewer.
 
 ## Publications
 
@@ -94,9 +89,9 @@ Philipp Wiesner, Ilja Behnke, Paul Kilian, Marvin Steinke, and Odej Kao.
 [**Vessim: A Testbed for Carbon-Aware Applications and Systems.**](https://dl.acm.org/doi/pdf/10.1145/3727200.3727210)
 *ACM SIGENERGY Energy Informatics Review 4 (5)*, 2024.
 
-For the software-in-the-loop methodology, see [Software-in-the-Loop Simulation for Developing and Testing Carbon-Aware Applications](https://doi.org/10.1002/spe.3275).
-More papers and applications are listed in the [documentation](https://vessim.readthedocs.io/en/latest/publications/).
+More papers are listed in the [documentation](https://vessim.readthedocs.io/en/latest/publications/)!
+
 
 ## About
 
-Vessim is developed at the [Machine Learning Systems Lab](https://mlsys.cst.cam.ac.uk/) at the [University of Cambridge](https://www.cam.ac.uk/).
+Vessim was originally developed at the research group for [Distributed and Operating Systems](https://distributedsystems.berlin/) at TU Berlin. It is now maintained at the [Machine Learning Systems Lab](https://mlsys.cst.cam.ac.uk/) at the University of Cambridge.

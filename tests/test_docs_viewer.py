@@ -31,7 +31,7 @@ def gallery(tmp_path, monkeypatch):
     record = vs.ExperimentResult.load(run)
     record.config["input_file"] = str(root / "datasets/input.csv")
     record.save(run / "experiment.json")
-    index = root / "results/viewer-proposal/example/study.json"
+    index = root / "results/gallery/example/study.json"
     index.parent.mkdir(parents=True)
     index.write_text(
         json.dumps(
@@ -58,7 +58,7 @@ def test_export_relocates_recordings_and_preserves_sources(gallery, tmp_path):
     root, source = gallery
     before = {file.name: file.read_bytes() for file in source.iterdir()}
     destination = tmp_path / "published/en/latest/viewer"
-    export_docs.export_gallery(destination, root)
+    export_docs.export_gallery(destination, root / "results/gallery", root)
     catalog = json.loads((destination / "catalog.json").read_text())
     study = json.loads((destination / catalog["studies"][0]["url"]).read_text())
     run = study["configurations"][0]["runs"][0]
@@ -81,5 +81,5 @@ def test_failed_export_preserves_existing_gallery(gallery, tmp_path):
     destination.mkdir()
     (destination / "keep.txt").write_text("previous gallery")
     with pytest.raises(ValueError, match="not complete"):
-        export_docs.export_gallery(destination, root)
+        export_docs.export_gallery(destination, root / "results/gallery", root)
     assert (destination / "keep.txt").read_text() == "previous gallery"

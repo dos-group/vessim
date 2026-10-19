@@ -22,6 +22,10 @@ class Signal(ABC):
     The environment calls start() before sampling and finalize() during cleanup.
     """
 
+    def __repr__(self) -> str:
+        """Describe custom signals without process-specific memory addresses."""
+        return f"{type(self).__name__}()"
+
     def start(self) -> None:
         """Acquire resources before the first simulation sample."""
 

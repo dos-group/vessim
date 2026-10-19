@@ -2,7 +2,8 @@
 import { summarizeTrajectories } from './uncertainty.js'
 import { human } from './model.js'
 import { inSelectionOrder } from './state.js'
-export function trajectorySeries(study, current, supported) {
+import { displayUnit, inDisplayUnit, unitOptions } from './units.js'
+function trajectorySeries(study, current, supported, spec) {
   const configColor = (config) => current.configColors[config.key]
   const color = (run) =>
     study.singleRun
@@ -27,7 +28,7 @@ export function trajectorySeries(study, current, supported) {
       s.alignment === 'elapsed'
         ? (t - time(run.record.config.environment?.sim_start)) / 3600000
         : t,
-      v,
+      inDisplayUnit(v, spec),
     ]),
   })
   if (!aggregate)
@@ -121,4 +122,88 @@ export function time(raw) {
   let s = raw.replace(' ', 'T')
   if (/^\d{4}-\d\d-\d\d$/.test(s)) s += 'T00:00:00'
   return Date.parse(/(?:Z|[+-]\d\d:?\d\d)$/.test(s) ? s : s + 'Z')
+}
+
+// Preparing points is independent of zoom and other controls, so React can
+// reuse these arrays while changing the viewport.
+export function prepareTrajectory(
+  study,
+  settings,
+  signal,
+  matches,
+  preference,
+) {
+  const supported = matches.filter((m) => m.signal)
+  const missing = matches.filter((m) => !m.signal).map((m) => m.run.key)
+  const magnitude = supported.reduce(
+    (max, m) =>
+      m.signal.points.reduce(
+        (max, p) => Math.max(max, Math.abs(p[1] || 0)),
+        max,
+      ),
+    0,
+  )
+  const spec = displayUnit(
+    signal.unit,
+    magnitude,
+    unitOptions(signal.unit).some((option) => option.unit === preference)
+      ? preference
+      : 'auto',
+  )
+  const error =
+    signal.unit === 'unknown' && supported.length > 1
+      ? 'Unit not recorded. Select a single run to inspect this signal.'
+      : settings.alignment === 'elapsed' &&
+          supported.some(
+            (m) =>
+              !Number.isFinite(
+                time(m.run.record.config.environment?.sim_start),
+              ),
+          )
+        ? 'Simulation start missing. Use recorded UTC time.'
+        : ''
+  return {
+    missing,
+    magnitude,
+    spec,
+    error,
+    ...(error
+      ? { series: [], notes: [] }
+      : trajectorySeries(study, settings, supported, spec)),
+  }
+}
+export function trajectoryOptions(series, alignment, zoom) {
+  return {
+    useUTC: true,
+    tooltip: { trigger: 'axis', renderMode: 'richText', confine: true },
+    axisPointer: { link: [{ xAxisIndex: 'all' }] },
+    grid: { top: 20, left: 80, right: 30, bottom: 75 },
+    xAxis: {
+      type: alignment === 'elapsed' ? 'value' : 'time',
+      name: alignment === 'elapsed' ? 'Hours' : 'UTC',
+      nameGap: 35,
+      nameLocation: 'middle',
+      axisLabel: {
+        hideOverlap: true,
+        showMinLabel: false,
+        showMaxLabel: false,
+      },
+    },
+    yAxis: {
+      type: 'value',
+      scale: true,
+      splitLine: { lineStyle: { color: '#e5e9e7' } },
+    },
+    dataZoom: [
+      { type: 'inside', filterMode: 'none', ...zoom },
+      {
+        type: 'slider',
+        bottom: 4,
+        height: 18,
+        filterMode: 'none',
+        ...zoom,
+      },
+    ],
+    series: series,
+  }
 }

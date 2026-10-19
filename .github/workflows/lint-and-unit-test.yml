@@ -57,3 +57,10 @@ jobs:
     # unit-testing
     - name: Run tests
       run: make test
+
+    - name: Check reproducible examples with pinned dependencies
+      if: matrix.python-version == '3.13'
+      run: >-
+        uv run --extra dev --extra live --extra mosaik
+        --with-requirements examples/requirements.txt
+        pytest tests/test_examples.py tests/test_infrastructure_study.py tests/test_microgrid_comparison.py

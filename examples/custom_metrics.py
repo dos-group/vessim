@@ -7,6 +7,10 @@ All prices and equipment figures below are illustrative assumptions.
 import numpy as np
 import pandas as pd
 
+import argparse
+from pathlib import Path
+from _common import fresh_output
+
 import vessim as vs
 
 
@@ -28,6 +32,10 @@ class HighImportDuration(vs.Metric):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path, default=Path("results/custom_metrics"))
+    args = parser.parse_args()
+    fresh_output(args.output)
     seconds = np.arange(0, 86401, 300)
     solar = vs.Trace(
         pd.Series(
@@ -55,7 +63,8 @@ def main():
         )
         recorder = env.add_controller(
             vs.Recorder(
-                "results/custom_metrics",
+                args.output,
+                run_id="custom-metrics",
                 timeseries=False,
                 parameters={"battery_capacity_wh": capacity_wh},
                 custom_metrics={
@@ -89,7 +98,7 @@ def main():
         microgrid="site",
         description="Electricity import cost less export revenue",
     )
-    result.save("results/custom_metrics/experiment.json")
+    result.save(args.output / "experiment.json")
     # Pass plain numbers to an optimizer. Weighting and constraints stay in the caller.
     objectives = [
         result.metrics["run"]["battery_capex"],

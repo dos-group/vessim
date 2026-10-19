@@ -9,6 +9,10 @@ It does not model job completion, deadlines, or the cost of pausing work.
 
 import pandas as pd
 
+import argparse
+from pathlib import Path
+from _common import fresh_output
+
 import vessim as vs
 
 
@@ -47,6 +51,10 @@ class DemandResponse(vs.Controller):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path, default=Path("results/demand_response"))
+    args = parser.parse_args()
+    fresh_output(args.output)
     datacenter = DatacenterSimulator()
     grid = vs.GridConnection(max_import=1000)
     notices = vs.Trace(pd.Series([700, 700, 1000, 1000], index=[0, 60, 120, 180]))
@@ -58,11 +66,11 @@ def main():
             grid_signals={"next_import_limit": notices},
         )
         env.add_controller(DemandResponse(datacenter, grid))
-        recorder = env.add_controller(vs.Recorder())
+        recorder = env.add_controller(vs.Recorder(args.output, run_id="demand-response"))
         env.run(240)
 
-    for now, states in recorder.log.items():
-        demand = -states["site"]["actor_states"]["datacenter"]["power"]
+    for (now, _), row in recorder.to_df().iterrows():
+        demand = -row["actor_states.datacenter.power"]
         print(f"{now:%H:%M:%S}: {demand:.0f} W")
 
 

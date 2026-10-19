@@ -72,14 +72,11 @@ vessim = "vessim._cli:main"
 requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
-[tool.hatch.build.targets.sdist.force-include]
-"vessim/_viewer_dist" = "vessim/_viewer_dist"
+[tool.hatch.build]
+artifacts = ["vessim/_viewer_dist/**"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["vessim"]
-
-[tool.hatch.build.targets.wheel.force-include]
-"vessim/_viewer_dist" = "vessim/_viewer_dist"
 
 [tool.hatch.metadata]
 allow-direct-references = true
