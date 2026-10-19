@@ -74,7 +74,14 @@ function TrajectoryChart({ signal, runs, chosen }) {
   )
   const { missing, magnitude, spec, error } = prepared
   const option = useMemo(
-    () => trajectoryOptions(prepared.series, alignment, s.zoom),
+    () =>
+      trajectoryOptions(
+        prepared.series,
+        alignment,
+        s.zoom,
+        prepared.spec,
+        prepared.magnitude,
+      ),
     [prepared, alignment, s.zoom],
   )
   return (

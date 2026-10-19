@@ -135,6 +135,12 @@ for (const [kind, base] of [
     ).toBeCloseTo(20)
     await page.getByRole('button', { name: 'Time series', exact: true }).click()
     await expect(page.locator('.time-chart canvas')).toHaveCount(2)
+    const hover = await page.locator('.time-chart').first().evaluate((el) => {
+      const chart = (window as any).echarts.getInstanceByDom(el)
+      chart.dispatchAction({ type: 'showTip', seriesIndex: 1, dataIndex: 0 })
+      return chart.getOption().tooltip[0].valueFormatter(1234.567891234)
+    })
+    expect(hover).toBe('1,234.57 W')
     await page
       .getByRole('combobox', {
         name: 'Display unit for grid / Power',

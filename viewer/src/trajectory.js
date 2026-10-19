@@ -3,6 +3,7 @@ import { summarizeTrajectories } from './uncertainty.js'
 import { human } from './model.js'
 import { inSelectionOrder } from './state.js'
 import { displayUnit, inDisplayUnit, unitOptions } from './units.js'
+import { columnNumberFormat, formatNumber } from './numbers.js'
 function trajectorySeries(study, current, supported, spec) {
   const configColor = (config) => current.configColors[config.key]
   const color = (run) =>
@@ -15,6 +16,7 @@ function trajectorySeries(study, current, supported, spec) {
     id: run.key,
     name: `${run.name}${run.record.parameters.seed == null ? '' : ` · seed ${run.record.parameters.seed}`}`,
     type: 'line',
+    encode: { x: 0, y: 1, tooltip: [1] },
     step: 'end',
     showSymbol: false,
     connectNulls: false,
@@ -64,7 +66,7 @@ function trajectorySeries(study, current, supported, spec) {
           type: 'custom',
           silent: true,
           z: 1,
-          encode: { x: [0, 3], y: [1, 2] },
+          encode: { x: [0, 3], y: [1, 2], tooltip: [1, 2] },
           data: points
             .slice(0, -1)
             .flatMap((p, i) =>
@@ -99,6 +101,7 @@ function trajectorySeries(study, current, supported, spec) {
         id: `summary-${config.key}`,
         name: `${config.name} · ${human(s.timeStat)}`,
         type: 'line',
+        encode: { x: 0, y: 1, tooltip: [1] },
         step: 'end',
         showSymbol: false,
         connectNulls: false,
@@ -172,10 +175,28 @@ export function prepareTrajectory(
       : trajectorySeries(study, settings, supported, spec)),
   }
 }
-export function trajectoryOptions(series, alignment, zoom) {
+export function trajectoryOptions(series, alignment, zoom, spec, magnitude) {
+  const tooltipUnit = displayUnit(spec.unit, magnitude / spec.factor)
+  const numberFormat = columnNumberFormat(
+    magnitude / spec.factor / tooltipUnit.factor,
+  )
+  const formatValue = (value) => {
+    const formatted = formatNumber(inDisplayUnit(value, tooltipUnit), numberFormat)
+    return ['1', 'unknown'].includes(tooltipUnit.unit)
+      ? formatted
+      : `${formatted} ${tooltipUnit.unit}`
+  }
   return {
     useUTC: true,
-    tooltip: { trigger: 'axis', renderMode: 'richText', confine: true },
+    tooltip: {
+      trigger: 'axis',
+      renderMode: 'richText',
+      confine: true,
+      valueFormatter: (value) =>
+        Array.isArray(value)
+          ? value.map(formatValue).join(' – ')
+          : formatValue(value),
+    },
     axisPointer: { link: [{ xAxisIndex: 'all' }] },
     grid: { top: 20, left: 80, right: 30, bottom: 75 },
     xAxis: {
