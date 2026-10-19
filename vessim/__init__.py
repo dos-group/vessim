@@ -1,24 +1,40 @@
 """A co-simulation testbed for microgrids and energy-aware systems."""
 
-from vessim.actor import Actor
-from vessim.controller import Controller, MemoryLogger, CsvLogger
+from vessim.actor import Actor, Consumer, Producer
+from vessim._runtime import RunResult
+from vessim.controller import Controller
+from vessim.recorder import Recorder, ExperimentResult
+from vessim.metrics import (
+    Metric,
+    ElectricityImportCost,
+    ElectricityExportRevenue,
+    GridImportEmissions,
+)
 from vessim.dispatch_policy import DispatchPolicy, DefaultDispatchPolicy
-from vessim.dispatchable import Dispatchable, Storage, SimpleBattery, ClcBattery
+from vessim.dispatchable import Dispatchable, GridConnection, Storage, SimpleBattery, ClcBattery
 from vessim.environment import Environment
 from vessim.microgrid import Microgrid, MicrogridState
-from vessim.signal import Signal, Trace, StaticSignal
+from vessim.signal import Signal, StaticSignal, Trace
 
 __all__ = [
+    "RunResult",
+    "Recorder",
+    "ExperimentResult",
+    "Metric",
+    "ElectricityImportCost",
+    "ElectricityExportRevenue",
+    "GridImportEmissions",
     "Actor",
+    "Consumer",
+    "Producer",
     "Controller",
-    "MemoryLogger",
-    "CsvLogger",
     "Microgrid",
     "MicrogridState",
     "Environment",
     "DispatchPolicy",
     "DefaultDispatchPolicy",
     "Dispatchable",
+    "GridConnection",
     "Storage",
     "SimpleBattery",
     "ClcBattery",
@@ -29,15 +45,15 @@ __all__ = [
 
 try:
     from vessim.controller import Api  # noqa: F401
-    from vessim.signal import SilSignal, WatttimeSignal, PrometheusSignal  # noqa: F401
+    from vessim.signal import LiveSignal, WatttimeSignal, PrometheusSignal  # noqa: F401
 
-    __all__.extend(["Api", "SilSignal", "WatttimeSignal", "PrometheusSignal"])
+    __all__.extend(["Api", "LiveSignal", "WatttimeSignal", "PrometheusSignal"])
 except ImportError:
-    _SIL_INSTALL_MSG = (
-        "This feature requires the 'sil' extra. Install with: pip install 'vessim[sil]'"
+    _LIVE_INSTALL_MSG = (
+        "This feature requires the 'live' extra. Install with: pip install 'vessim[live]'"
     )
 
     def __getattr__(name: str):
-        if name in ("Api", "SilSignal", "WatttimeSignal", "PrometheusSignal"):
-            raise ImportError(f"vessim.{name} is not available. {_SIL_INSTALL_MSG}")
+        if name in ("Api", "LiveSignal", "WatttimeSignal", "PrometheusSignal"):
+            raise ImportError(f"vessim.{name} is not available. {_LIVE_INSTALL_MSG}")
         raise AttributeError(f"module 'vessim' has no attribute {name!r}")

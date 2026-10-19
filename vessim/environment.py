@@ -1,73 +1,83 @@
 from __future__ import annotations
 
+import math
+import time
+from dataclasses import replace
 from datetime import datetime, timedelta
-from typing import Optional, Literal
+from typing import Any, Iterator, Literal, Optional, TypeVar
 
-import mosaik  # type: ignore
 import pandas as pd
 from loguru import logger
 
-from vessim._util import disable_rt_warnings
+from vessim._runtime import RunResult, Runtime
 from vessim.actor import Actor
 from vessim.controller import Controller
 from vessim.dispatch_policy import DispatchPolicy, DefaultDispatchPolicy
 from vessim.dispatchable import Dispatchable
 from vessim.microgrid import Microgrid
-from vessim.signal import Signal, SilSignal
+from vessim.signal import Signal, StaticSignal, LiveSignal
+
+ControllerT = TypeVar("ControllerT", bound=Controller)
 
 
 class Environment:
-    """Environment for a Vessim co-simulation.
+    """Run a simulation study or a live experiment using shared component models.
 
-    This class manages the simulation time, the interaction between different components,
-    and the execution of the [Mosaik](https://mosaik.offis.de/) co-simulation.
-
-    Two modes are supported:
-
-    - **Simulated** — `Environment(sim_start=..., step_size=...)`. The simulation
-      clock advances as fast as possible, anchored at the explicit `sim_start`.
-    - **Live** — `Environment.live(step_size=...)`. The simulation clock tracks
-      wall-clock time and `sim_start` is captured when `run()` is called (i.e.
-      defaults to "now at the moment of running"). Use this when mixing in
-      `SilSignal`s.
+    An environment runs once. Construct a fresh environment and mutable models
+    for each scenario. Immutable traces can be reused. Use as a context manager
+    when setup may acquire live resources or start external simulators.
 
     Args:
-        sim_start: The start time of the simulation. Can be a `datetime` object or a
-            string in the format "YYYY-MM-DD HH:MM:SS".
-        step_size: The step size of the simulation in seconds. Defaults to 1.
+        sim_start: Timestamp labeling tick zero. Required for studies.
+        step_size: Positive integer tick interval in seconds.
+        name: Optional experiment name.
+        backend: ``native`` (default) or ``mosaik`` for external coupling.
+        sim_config: Additional mosaik simulator configurations. Only accepted
+            with backend="mosaik".
     """
-
-    COSIM_CONFIG: mosaik.SimConfig = {
-        "Actor": {"python": "vessim.actor:_ActorSim"},
-        "Controller": {"python": "vessim.controller:_ControllerSim"},
-        "Microgrid": {"python": "vessim.microgrid:_MicrogridSim"},
-    }
 
     def __init__(
         self,
         sim_start: Optional[str | datetime] = None,
         step_size: int = 1,
         name: Optional[str] = None,
+        *,
+        backend: Literal["native", "mosaik"] = "native",
+        sim_config: Optional[dict] = None,
         _live: bool = False,
         _behind_threshold: float = 5.0,
     ):
         if not _live and sim_start is None:
             raise ValueError(
-                "sim_start is required for simulated mode. "
-                "Use Environment.live(...) for real-time experiments."
+                "sim_start is required for studies. Use Environment.live() for live runs."
             )
-        # In live mode, sim_start is purely a label (for logging / metadata).
-        # If omitted, run() will fall back to datetime.now() at start.
-        self.sim_start: pd.Timestamp | None = (
-            pd.to_datetime(sim_start) if sim_start is not None else None
-        )
+        if isinstance(step_size, bool) or not isinstance(step_size, int) or step_size <= 0:
+            raise ValueError("step_size must be a positive integer number of seconds.")
+        if backend not in ("native", "mosaik"):
+            raise ValueError("backend must be 'native' or 'mosaik'.")
+        if sim_config is not None and backend != "mosaik":
+            raise ValueError("sim_config requires backend='mosaik'.")
+        if not math.isfinite(_behind_threshold) or _behind_threshold < 0:
+            raise ValueError("behind_threshold must be finite and nonnegative.")
+        self.sim_start = pd.Timestamp(sim_start) if sim_start is not None else None
+        if self.sim_start is not None and pd.isna(self.sim_start):
+            raise ValueError("sim_start must be a valid timestamp.")
         self.step_size = step_size
         self.name = name
+        self.backend = backend
+        self.is_live = _live
+        self.behind_threshold = _behind_threshold
         self.microgrids: dict[str, Microgrid] = {}
         self.controllers: list[Controller] = []
-        self.world = mosaik.World(self.COSIM_CONFIG, skip_greetings=True)
-        self._live = _live
-        self._behind_threshold = _behind_threshold
+        self.status = "created"
+        self.until = 0.0
+        self.result: Optional[RunResult] = None
+        self._sim_config = dict(sim_config or {})
+        self._mosaik: Any = None
+        self._runtime: Optional[Runtime] = None
+        self._started_controllers: list[Controller] = []
+        self._signals: dict[int, Signal] = {}
+        self._closed = False
 
     @classmethod
     def live(
@@ -76,177 +86,333 @@ class Environment:
         step_size: int = 1,
         behind_threshold: float = 5.0,
         name: Optional[str] = None,
-    ) -> "Environment":
-        """Create an environment that advances in real-time (1× wall-clock).
-
-        The simulation clock advances 1:1 with wall-clock time, so traces start
-        replaying from `sim_start` and SiL signals stay in sync with the system
-        clock.
+        *,
+        backend: Literal["native", "mosaik"] = "native",
+        sim_config: Optional[dict] = None,
+    ) -> Environment:
+        """Create an environment that advances alongside real time.
 
         Args:
-            sim_start: Optional label used only for logging and result metadata.
-                Does not affect signal queries (which are always indexed by
-                elapsed time since `run()`). Defaults to `datetime.now()` at
-                the moment `run()` is called.
-            step_size: Step size in seconds. Defaults to 1.
-            behind_threshold: Seconds the simulation may fall behind real-time before
-                a warning is logged. Defaults to 5.
-            name: Optional name for the environment.
+            sim_start: Timestamp labeling tick zero. Defaults to the time run()
+                starts. Signals still receive elapsed seconds from tick zero.
+            step_size: Simulation interval in seconds.
+            behind_threshold: Warn when the simulation falls this many seconds
+                behind real time. No ticks are skipped.
+            name: Optional experiment name.
+            backend: "native" or "mosaik" for external simulators.
+            sim_config: Additional simulator configurations for Mosaik.
+
+        Returns:
+            An Environment configured for live simulation.
         """
         return cls(
-            sim_start=sim_start,
-            step_size=step_size,
-            name=name,
+            sim_start,
+            step_size,
+            name,
+            backend=backend,
+            sim_config=sim_config,
             _live=True,
             _behind_threshold=behind_threshold,
         )
+
+    def _require_setup(self) -> None:
+        if self._closed or self.status != "created":
+            raise RuntimeError(
+                "The scenario is frozen after prepare() or run(). Create a new one."
+            )
 
     def add_microgrid(
         self,
         actors: list[Actor],
         dispatchables: Optional[list[Dispatchable]] = None,
         policy: Optional[DispatchPolicy] = None,
-        grid_signals: Optional[dict[str, Signal]] = None,
+        grid_signals: Optional[dict[str, float | Signal]] = None,
         name: Optional[str] = None,
         coords: Optional[tuple[float, float]] = None,
     ) -> Microgrid:
-        """Add a microgrid to the environment.
+        """Create a microgrid and register it with this environment.
 
         Args:
-            actors: A list of exogenous actors (consumers/producers) in the microgrid.
-            dispatchables: Optional list of dispatchable resources (e.g., batteries,
-                generators).
-            policy: The dispatch policy that controls energy management. If None, a
-                `DefaultDispatchPolicy` is used.
-            grid_signals: Optional signals from the public grid (e.g., carbon intensity).
-            name: An optional name for the microgrid.
-            coords: Optional coordinates (latitude, longitude) for the microgrid.
+            actors: Consumers, producers, or custom actors supplying power inputs.
+            dispatchables: Controllable resources, in dispatch priority order.
+                Include a GridConnection for grid-connected operation.
+            policy: Dispatch policy. Defaults to DefaultDispatchPolicy.
+            grid_signals: Named numbers or signals, such as price or carbon intensity.
+            name: Unique microgrid name. Defaults to microgrid_0, microgrid_1, etc.
+            coords: Optional (latitude, longitude) for the viewer.
 
         Returns:
-            The created `Microgrid` instance.
-        """
-        if not actors:
-            raise ValueError("There should be at least one actor in the Microgrid.")
+            The registered Microgrid.
 
-        microgrid = Microgrid(
-            world=self.world,
-            step_size=self.step_size,
-            actors=actors,
-            dispatchables=dispatchables or [],
-            policy=policy if policy is not None else DefaultDispatchPolicy(),
-            grid_signals=grid_signals,
-            name=name,
-            coords=coords,
+        An empty actor list is supported only with mosaik, for microgrids fed
+        entirely by external power measurements. Names default to microgrid_0,
+        microgrid_1, etc. and must be unique within this environment.
+
+        Include GridConnection explicitly in dispatchables for grid-connected
+        operation. Without one, the microgrid is islanded. Every dispatch must
+        balance exactly. Unmet demand and unabsorbed surplus raise RuntimeError.
+        """
+        self._require_setup()
+        if not actors and self.backend != "mosaik":
+            raise ValueError("There should be at least one actor in a native Microgrid.")
+        name = name if name is not None else f"microgrid_{len(self.microgrids)}"
+        if not isinstance(name, str) or not name:
+            raise ValueError("Microgrid names must be nonempty strings.")
+        if name in self.microgrids:
+            raise ValueError(f"A microgrid named '{name}' already exists in this environment.")
+        grid = Microgrid(
+            self.step_size,
+            actors,
+            dispatchables or [],
+            policy if policy is not None else DefaultDispatchPolicy(),
+            grid_signals,
+            name,
+            coords,
         )
-        if microgrid.name in self.microgrids:
-            raise ValueError(
-                f"A microgrid named '{microgrid.name}' already exists in this environment."
-            )
-        self.microgrids[microgrid.name] = microgrid
-        return microgrid
+        self.microgrids[name] = grid
+        return grid
 
-    def add_controller(self, controller: Controller):
-        """Add a controller to the environment.
-
-        Args:
-            controller: The controller instance.
-        """
+    def add_controller(self, controller: ControllerT) -> ControllerT:
+        """Register a controller in execution order and return it for result access."""
+        self._require_setup()
+        if any(c is controller for c in self.controllers):
+            raise ValueError("A controller instance can only be registered once.")
         self.controllers.append(controller)
+        return controller
 
-    def _initialize_controllers(self):
-        """Initialize all controllers after all microgrids have been added."""
-        if not self.controllers:
+    def _mosaik_backend(self):
+        if self.backend != "mosaik":
+            raise RuntimeError("External simulator coupling requires backend='mosaik'.")
+        if self._closed:
+            raise RuntimeError("This environment is closed.")
+        if self._mosaik is None:
+            from vessim._mosaik import MosaikBackend
+
+            self._mosaik = MosaikBackend(self._sim_config)
+        return self._mosaik
+
+    @property
+    def world(self) -> Any:
+        """The mosaik World for starting and connecting external simulators.
+
+        Only available with backend="mosaik". Call environment.run(), not
+        world.run(), so Vessim initialization, pacing and cleanup are applied.
+        """
+        return self._mosaik_backend().world
+
+    @property
+    def entities(self) -> dict[str, Any]:
+        """Microgrid name to mosaik entity, available after prepare()."""
+        backend = self._mosaik_backend()
+        if self._runtime is None:
+            raise RuntimeError("Call prepare() before accessing mosaik entities.")
+        return dict(backend.entities)
+
+    def prepare(self) -> None:
+        """Validate and freeze the scenario, registering mosaik entities if needed.
+
+        run() calls this automatically. Call it explicitly to connect external
+        simulators to ``entities`` before running. Controllers start at run(),
+        after all connections have been established.
+        """
+        if self.status == "prepared" and not self._closed:
             return
+        self._require_setup()
+        if not self.microgrids:
+            raise ValueError("Add at least one microgrid before running.")
+        seen: set[int] = set()
+        for grid in self.microgrids.values():
+            grid._validate()
+            for component in [*grid.actors, *grid.dispatchables, grid.policy]:
+                if id(component) in seen:
+                    raise ValueError(
+                        "Mutable actors, dispatchables and policies cannot be shared "
+                        "between microgrids. Only signals may be shared."
+                    )
+                seen.add(id(component))
+        if self._contains_live_signals() and not self.is_live:
+            raise RuntimeError("Live signals detected. Use Environment.live() for live inputs.")
+        self._runtime = Runtime(self)
+        if self.backend == "mosaik":
+            self._mosaik_backend().prepare(self._runtime)
+        self.status = "prepared"
 
-        # Execute start() method on all controllers
-        for controller in self.controllers:
-            controller.start(self)
-
-        # Create one global controller simulator
-        controller_sim = self.world.start(
-            "Controller",
-            sim_start=self.sim_start,
-            step_size=self.step_size,
-        )
-        controller_entity = controller_sim.Controller(controllers=self.controllers)
-
-        # Connect global controller to all microgrids
-        for microgrid in self.microgrids.values():
-            self.world.connect(microgrid.entity, controller_entity, "p_delta")
-            self.world.connect(microgrid.entity, controller_entity, "grid_signals")
-            self.world.connect(microgrid.entity, controller_entity, "p_grid")
-            self.world.connect(microgrid.entity, controller_entity, "policy_state")
-            if microgrid.dispatchables:
-                self.world.connect(
-                    microgrid.entity, controller_entity, "dispatch_states"
-                )
-
-            # Connect actors for state
-            for actor_entity in microgrid.actor_entities.values():
-                self.world.connect(
-                    actor_entity,
-                    controller_entity,
-                    ("state", "actor_states"),
-                )
+    def _end_time(self, until: Optional[timedelta | datetime | int | float]) -> float:
+        if until is None:
+            if not self.is_live:
+                raise ValueError("Simulation studies require a finite until horizon.")
+            return math.inf
+        if isinstance(until, timedelta):
+            end = until.total_seconds()
+        elif isinstance(until, datetime):
+            assert self.sim_start is not None
+            end = (pd.Timestamp(until) - self.sim_start).total_seconds()
+        else:
+            if isinstance(until, bool) or not isinstance(until, (int, float)):
+                raise TypeError("until must be elapsed seconds, timedelta, datetime, or None.")
+            end = float(until)
+        if not math.isfinite(end) or end < 0:
+            raise ValueError("until must be finite and nonnegative (at or after sim_start).")
+        return end
 
     def run(
         self,
         until: Optional[timedelta | datetime | int | float] = None,
-        print_progress: bool | Literal["individual"] = True,
-    ):
-        """Run the simulation.
+        print_progress: bool | Literal["individual"] = False,
+    ) -> RunResult:
+        """Run once up to a horizon and return the state at that horizon.
+
+        ``until`` accepts elapsed seconds, a timedelta, or an absolute datetime.
+        Ticks are exclusive of ``until``. Dispatch and integration cover the
+        entire duration, including a partial final interval. No additional
+        controller call or signal sample occurs at the horizon.
+        Add a Recorder to retain time series or calculate metrics.
+        All owned resources are finalized on success or failure.
 
         Args:
-            until: When the simulation should end. Accepts:
+            until: Simulation horizon as elapsed seconds, a timedelta, or an
+                absolute datetime. Only live simulations may omit it to run
+                until interrupted.
+            print_progress: Show a progress bar. The value "individual" shows
+                per-simulator progress and requires the Mosaik backend.
 
-                - `int` or `float` — elapsed seconds since `sim_start`.
-                - `timedelta` — elapsed time since `sim_start`.
-                - `datetime` — absolute wall-clock end (resolved against `sim_start`).
-                - `None` — run indefinitely.
-            print_progress: Whether to print a progress bar.
+        Returns:
+            Final component states and execution timing in a RunResult.
         """
-        # Live mode: anchor sim_start to "now" if the user didn't pin one explicitly.
-        if self._live and self.sim_start is None:
-            self.sim_start = pd.to_datetime(datetime.now())
-
-        if until is None:
-            until = float("inf")  # type: ignore
-        elif isinstance(until, timedelta):
-            until = until.total_seconds()
-        elif isinstance(until, datetime):
-            assert self.sim_start is not None
-            until = (pd.to_datetime(until) - self.sim_start).total_seconds()
-            if until < 0:
-                raise ValueError("`until` must be after `sim_start`.")
-        assert until is not None
-
-        # Initialize controllers before running simulation
-        if self.name:
-            logger.info(f"Experiment: {self.name}")
-        self._initialize_controllers()
-
-        # SiL signals require live mode (otherwise they'd be polled out of sync
-        # with simulated time).
-        if self._contains_sil_signals() and not self._live:
-            raise RuntimeError(
-                "SiL signals detected but not running in live mode. "
-                "Use Environment.live(...) instead of Environment(...)."
-            )
-
-        rt_factor = 1.0 if self._live else None
-        if rt_factor:
-            disable_rt_warnings(self._behind_threshold)
+        if self._closed or self.status not in ("created", "prepared"):
+            raise RuntimeError("An Environment can only run once. Create a fresh scenario.")
+        started = time.perf_counter()
+        failure = None
         try:
-            self.world.run(until=until, rt_factor=rt_factor, print_progress=print_progress)  # type: ignore
-        except Exception:
-            for microgrid in self.microgrids.values():
-                microgrid.finalize()
-            raise
+            if self.sim_start is None:
+                self.sim_start = pd.Timestamp(datetime.now())
+            self.until = self._end_time(until)
+            if print_progress not in (False, True, "individual"):
+                raise ValueError("print_progress must be True, False or 'individual'.")
+            if self.backend == "native" and print_progress == "individual":
+                raise ValueError("Individual simulator progress requires backend='mosaik'.")
+            self.prepare()
+            assert self._runtime is not None
+            self.status = "running"
+            for controller in self.controllers:
+                self._started_controllers.append(controller)
+                controller.start(self)
+            self._start_signals()
+            self._runtime.started = time.monotonic()
+            if self.backend == "mosaik":
+                self._mosaik.run(self.until, self.is_live, print_progress)
+            else:
+                from vessim._native import run
 
-    def _contains_sil_signals(self) -> bool:
-        """Check if any microgrid contains SiL signals."""
-        for microgrid in self.microgrids.values():
-            for actor in microgrid.actors:
-                if isinstance(actor.signal, SilSignal):
-                    return True
-        return False
+                run(self._runtime, self.until, bool(print_progress))
+            if math.isfinite(self.until):
+                self._runtime.pace(self.until)
+                self._runtime.finish(self.until)
+            self.result = self._runtime.result(time.perf_counter() - started)
+            self.status = "completed"
+        except BaseException as exc:
+            failure = exc
+            self.status = "interrupted" if isinstance(exc, KeyboardInterrupt) else "failed"
+            raise
+        finally:
+            try:
+                self.close()
+            except BaseException:
+                if failure is None:
+                    self.status = "failed"
+                    raise
+                logger.exception("Cleanup also failed. Preserving the original simulation error")
+        assert self.result is not None
+        self.result = replace(self.result, wall_time=time.perf_counter() - started)
+        return self.result
+
+    def _input_signals(self) -> Iterator[Signal]:
+        for grid in self.microgrids.values():
+            for value in [*(a.signal for a in grid.actors), *(grid.grid_signals or {}).values()]:
+                if isinstance(value, Signal):
+                    yield value
+
+    def _contains_live_signals(self) -> bool:
+        return any(isinstance(signal, LiveSignal) for signal in self._input_signals())
+
+    def _start_signals(self) -> None:
+        for signal in self._input_signals():
+            # Numeric assignments create resource-free constants on each update.
+            if type(signal) is StaticSignal or id(signal) in self._signals:
+                continue
+            self._signals[id(signal)] = signal
+            if isinstance(signal, LiveSignal) and not self.is_live:
+                raise RuntimeError(
+                    "Live signals detected. Use Environment.live() for live inputs."
+                )
+            signal.start()
+
+    def close(self) -> None:
+        """Release owned resources once, including when setup never reached run().
+
+        Every cleanup is attempted even if another fails. The first cleanup
+        error is raised. An existing run error takes precedence in run().
+        """
+        if self._closed:
+            return
+        self._closed = True
+        errors: list[BaseException] = []
+        callbacks = [c.finalize for c in self._started_controllers]
+        seen: set[int] = set()
+        for grid in self.microgrids.values():
+            for actor in grid.actors:
+                if id(actor) not in seen:
+                    callbacks.append(actor.finalize)
+                    seen.add(id(actor))
+        signals = {**self._signals, **{id(s): s for s in self._input_signals()}}
+        callbacks.extend(signal.finalize for signal in signals.values())
+        if self._mosaik is not None:
+            callbacks.append(self._mosaik.close)
+        for callback in callbacks:
+            try:
+                callback()
+            except BaseException as exc:
+                errors.append(exc)
+        if self.status in ("created", "prepared"):
+            self.status = "closed"
+        if errors and self.status not in ("failed", "interrupted"):
+            self.status = "failed"
+        # Recorders collect metrics during finalize(), but must publish only after
+        # every controller, signal, and backend has had its cleanup attempted.
+        from vessim.recorder import Recorder
+
+        recorders = [c for c in self._started_controllers if isinstance(c, Recorder)]
+        publication_failed = False
+        for recorder in recorders:
+            try:
+                recorder._complete()
+            except BaseException as exc:
+                errors.append(exc)
+                publication_failed = True
+        if publication_failed:
+            if self.status != "interrupted":
+                self.status = "failed"
+            # A later writer can fail after another has published. Synchronize
+            # every result and retry publication of the final failure status.
+            for recorder in recorders:
+                try:
+                    recorder._complete()
+                except BaseException:
+                    pass  # Preserve the first error. All writers were attempted.
+        if errors:
+            raise errors[0]
+
+    def __enter__(self) -> Environment:
+        """Own resources acquired during scenario setup and execution."""
+        if self._closed:
+            raise RuntimeError("This environment is closed.")
+        return self
+
+    def __exit__(self, exc_type, exc, traceback) -> None:
+        """Close even if setup or execution was interrupted."""
+        try:
+            self.close()
+        except BaseException:
+            if exc is None:
+                raise
+            logger.exception("Cleanup failed while leaving an environment with an active error")

@@ -5,7 +5,7 @@
 Install dependencies (requires [uv](https://docs.astral.sh/uv/)):
 
 ```bash
-uv pip install -e ".[dev,sil,docs]"
+uv pip install -e ".[dev,live,docs]"
 ```
 
 ## Viewer

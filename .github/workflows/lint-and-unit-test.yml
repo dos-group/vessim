@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.9, 3.13]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
 
     steps:
     - uses: actions/checkout@v4
@@ -29,6 +29,10 @@ jobs:
       run: npm run build
       working-directory: viewer
 
+    - name: Test viewer data format
+      run: npm test
+      working-directory: viewer
+
     # Python setup
     - name: Install uv and set python version to ${{ matrix.python-version }}
       uses: astral-sh/setup-uv@v5
@@ -40,7 +44,7 @@ jobs:
       run: uv pip install hatch-vcs
 
     - name: Install dependencies
-      run: uv pip install -e ".[dev,sil]"
+      run: uv pip install -e ".[dev,live,mosaik]"
 
     # type checking
     - name: Run type checker
@@ -53,3 +57,10 @@ jobs:
     # unit-testing
     - name: Run tests
       run: make test
+
+    - name: Check reproducible examples with pinned dependencies
+      if: matrix.python-version == '3.13'
+      run: >-
+        uv run --extra dev --extra live --extra mosaik
+        --with-requirements examples/requirements.txt
+        pytest tests/test_examples.py tests/test_infrastructure_study.py tests/test_microgrid_comparison.py

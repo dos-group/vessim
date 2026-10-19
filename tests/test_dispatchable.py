@@ -4,6 +4,21 @@ import math
 import vessim as vs
 
 
+@pytest.mark.parametrize("factory", [vs.SimpleBattery, vs.ClcBattery])
+def test_battery_records_held_power(factory):
+    battery = (
+        factory("battery", initial_soc=0.5)
+        if factory is vs.ClcBattery
+        else factory("battery", 1000, initial_soc=0.5)
+    )
+    assert battery.state()["current_power"] == 0
+    for power in (1, -1, 0):
+        battery.set_power(power, 1)
+        assert battery.state()["current_power"] == power
+        battery.step(1)
+        assert battery.state()["current_power"] == power
+
+
 class TestSimpleBattery:
     @pytest.fixture
     def battery(self) -> vs.SimpleBattery:
@@ -49,9 +64,7 @@ class TestSimpleBattery:
             (-10, 30, 0, 0),
         ],
     )
-    def test_step_c_rate(
-        self, battery_c, power, duration, exp_charge_level, exp_soc
-    ):
+    def test_step_c_rate(self, battery_c, power, duration, exp_charge_level, exp_soc):
         # duration in minutes and charge_level in Wh
         battery_c.set_power(power, duration=duration * 60)
         battery_c.step(duration=duration * 60)
@@ -200,21 +213,19 @@ class TestClcBattery:
         # Large duration: limited by energy
         # For charging: (5 - 10) / (0/3.63 - 3600*0.5/3600) = -5 / -0.5 = 10W per cell
         # 10W > alpha_c=0.5, so still limited by alpha (5W per cell * 10 cells = 50W)
-        # For discharging: (5 - 0) / (0/3.63 - 3600*2/3600) = 5 / -2 = -2.5W per cell
-        # -2.5W > alpha_d=-10, so limited by energy (-25W total)
-        assert battery.feasible_range(3600) == (-25, 50)
+        # For discharging, min_soc=0.1 reserves 1 Wh per cell. With eta_d=2,
+        # only (5 - 1) / 2 = 2 Wh per cell is deliverable over this hour.
+        assert battery.feasible_range(3600) == (-20, 50)
 
     @pytest.mark.parametrize(
         "power, duration, exp_charge_level",
         [
             (1, 5, 7.583333333333333),
             (1, 15, 7.75),
-            (0.5, 45, 7.875), # energy limit for 45 min is 1.666W. 0.5W is safe.
+            (0.5, 45, 7.875),  # energy limit for 45 min is 1.666W. 0.5W is safe.
         ],
     )
-    def test_step_upper_energy_limits(
-        self, battery_u_energy, power, duration, exp_charge_level
-    ):
+    def test_step_upper_energy_limits(self, battery_u_energy, power, duration, exp_charge_level):
         # duration in minutes
         battery_u_energy.set_power(power, duration=duration * 60)
         battery_u_energy.step(duration=duration * 60)
@@ -236,9 +247,7 @@ class TestClcBattery:
             (-0.5, 45, 2.125),
         ],
     )
-    def test_step_lower_energy_limits(
-        self, battery_l_energy, power, duration, exp_charge_level
-    ):
+    def test_step_lower_energy_limits(self, battery_l_energy, power, duration, exp_charge_level):
         # duration in minutes
         battery_l_energy.set_power(power, duration=duration * 60)
         battery_l_energy.step(duration=duration * 60)
@@ -258,10 +267,6 @@ class TestDefaultDispatchPolicy:
     def policy_charge(self) -> vs.DefaultDispatchPolicy:
         return vs.DefaultDispatchPolicy(charge_power=10)
 
-    @pytest.fixture
-    def policy_islanded(self) -> vs.DefaultDispatchPolicy:
-        return vs.DefaultDispatchPolicy(mode="islanded")
-
     @pytest.mark.parametrize(
         "power, duration, exp_delta, exp_soc",
         [
@@ -277,9 +282,11 @@ class TestDefaultDispatchPolicy:
     )
     def test_apply_merit_order(self, battery, policy, power, duration, exp_delta, exp_soc):
         # duration in hours
-        p_grid = policy.apply(power, duration * 3600, [battery])
+        grid = vs.GridConnection()
+        result = policy.apply(power, duration * 3600, [battery, grid])
         battery.step(duration * 3600)
-        assert p_grid == exp_delta
+        assert result is None
+        assert grid.current_power == exp_delta
         assert math.isclose(battery.soc(), exp_soc)
 
     @pytest.mark.parametrize(
@@ -296,9 +303,11 @@ class TestDefaultDispatchPolicy:
     )
     def test_apply_charge_power(self, battery, policy_charge, power, duration, exp_delta, exp_soc):
         # duration in hours
-        p_grid = policy_charge.apply(power, duration * 3600, [battery])
+        grid = vs.GridConnection()
+        result = policy_charge.apply(power, duration * 3600, [battery, grid])
         battery.step(duration * 3600)
-        assert p_grid == exp_delta
+        assert result is None
+        assert grid.current_power == exp_delta
         assert math.isclose(battery.soc(), exp_soc)
 
     @pytest.mark.parametrize(
@@ -308,17 +317,17 @@ class TestDefaultDispatchPolicy:
             (0, 1000, 0, 0.8),
             # Charge
             (5, 2, 0, 0.9),
-            (100, 4, 0, 1),
             # Discharge
             (-5, 2, 0, 0.7),
             (-10, 7, 0, 0.1),
         ],
     )
-    def test_apply_islanded(self, battery, policy_islanded, power, duration, exp_delta, exp_soc):
+    def test_apply_islanded(self, battery, policy, power, duration, exp_delta, exp_soc):
         # duration in hours
-        p_grid = policy_islanded.apply(power, duration * 3600, [battery])
+        result = policy.apply(power, duration * 3600, [battery])
         battery.step(duration * 3600)
-        assert p_grid == exp_delta
+        assert result is None
+        assert battery.current_power == power
         assert math.isclose(battery.soc(), exp_soc)
 
     @pytest.mark.parametrize(
@@ -330,14 +339,69 @@ class TestDefaultDispatchPolicy:
         ],
     )
     def test_apply_no_dispatchables(self, policy, power, duration):
-        # With no dispatchables, all power goes to grid
-        p_grid = policy.apply(power, duration, [])
-        assert p_grid == power
+        if power == 0:
+            assert policy.apply(power, duration, []) is None
+        else:
+            with pytest.raises(RuntimeError, match="dispatch must balance exactly"):
+                policy.apply(power, duration, [])
 
-    def test_apply_fails_if_no_power_in_islanded(self, battery, policy_islanded):
-        with pytest.raises(RuntimeError):
-            policy_islanded.apply(-1, 71 * 3600, [battery])
+    def test_apply_rejects_unmet_demand(self, battery, policy):
+        with pytest.raises(RuntimeError, match="Unmet demand"):
+            policy.apply(-1, 71 * 3600, [battery])
+        assert battery.current_power == 0
 
-    def test_apply_fails_if_no_power_in_islanded_without_dispatchables(self, policy_islanded):
-        with pytest.raises(RuntimeError):
-            policy_islanded.apply(-1, 1, [])
+    def test_apply_rejects_surplus(self, battery, policy):
+        with pytest.raises(RuntimeError, match="Unabsorbed surplus"):
+            policy.apply(100, 4 * 3600, [battery])
+        assert battery.current_power == 0
+
+
+@pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf])
+@pytest.mark.parametrize("parameter", ["capacity", "initial_soc", "min_soc", "c_rate"])
+def test_simple_battery_rejects_nonfinite_parameters(parameter, value):
+    with pytest.raises(ValueError, match="finite"):
+        vs.SimpleBattery("battery", **{"capacity": 100, parameter: value})
+
+
+@pytest.mark.parametrize("capacity", [0, -1])
+def test_simple_battery_requires_positive_capacity(capacity):
+    with pytest.raises(ValueError, match="capacity.*positive"):
+        vs.SimpleBattery("battery", capacity)
+
+
+@pytest.mark.parametrize(
+    "factory", [lambda: vs.SimpleBattery("battery", 100), lambda: vs.ClcBattery("battery")]
+)
+@pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf])
+def test_invalid_setpoints_and_durations_do_not_change_battery(factory, value):
+    battery = factory()
+    original = battery.state()
+    with pytest.raises(ValueError, match="finite"):
+        battery.set_power(value, 60)
+    with pytest.raises(ValueError, match="finite"):
+        battery.step(value)
+    with pytest.raises(ValueError, match="finite"):
+        battery.feasible_range(value)
+    assert battery.current_power == 0
+    assert battery.state() == original
+
+
+@pytest.mark.parametrize(
+    "parameter",
+    [
+        "nom_voltage",
+        "u_1",
+        "v_1",
+        "u_2",
+        "v_2",
+        "alpha_d",
+        "alpha_c",
+        "eta_d",
+        "eta_c",
+        "charging_current_cutoff",
+        "discharging_current_cutoff",
+    ],
+)
+def test_clc_battery_rejects_nonfinite_parameters(parameter):
+    with pytest.raises(ValueError, match="finite"):
+        vs.ClcBattery("battery", **{parameter: math.nan})

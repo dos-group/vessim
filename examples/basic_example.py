@@ -1,60 +1,62 @@
-"""This example accompanies the "Getting Started" walkthrough.
+"""Three days of constant demand and Berlin solar generation from a bundled CSV.
 
-https://vessim.readthedocs.io/en/latest/getting_started/
+Run: python examples/basic_example.py
+View: python -m vessim view results/basic_example
+Walkthrough: https://vessim.readthedocs.io/en/latest/getting_started/
 """
-import os
+
+import argparse
+from pathlib import Path
+
+from _common import fresh_output, write_study
 
 import vessim as vs
 
-DATASETS = f"{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/datasets"
 
-# The Environment manages simulation time and the synchronization between simulators.
-# We step every 5 minutes (300 s).
-environment = vs.Environment(sim_start="2026-05-05", step_size=300)
+def run(output):
+    # Scale the normalized solar profile to a 2.4 kW installation.
+    solar = vs.Trace.from_csv(
+        Path(__file__).resolve().parents[1] / "datasets/solar_example.csv",
+        column="Berlin",
+        scale=2400,
+    )
 
-# A microgrid combines actors (consumers/producers), optional dispatchables (batteries,
-# diesel/gas generators, ...), and optional grid signals (electricity price, carbon
-# intensity, curtailment, demand response, ...).
-# Call add_microgrid() multiple times to simulate geo-distributed sites in parallel.
-environment.add_microgrid(
-    name="datacenter",
-    actors=[
-        # Actors represent energy consumers or producers.
-        # Vessim convention: consumption is negative (here done by consumer=True), and
-        # production is positive.
-        vs.Actor(name="server", signal=vs.StaticSignal(value=700), consumer=True),
+    env = vs.Environment(sim_start="2026-01-01", step_size=5 * 60)
+    env.add_microgrid(
+        name="site",
+        actors=[
+            vs.Consumer("load", signal=700),
+            vs.Producer("solar", signal=solar),
+        ],
+        dispatchables=[vs.SimpleBattery("battery", capacity=1000), vs.GridConnection()],
+    )
+    recorder = env.add_controller(vs.Recorder(output, run_id="basic-example"))
+    env.run(until=3 * 24 * 3600)
 
-        # Trace replays a time series. The CSV is offset-indexed (first column =
-        # seconds since the trace start). Solar data is normalized 0..1; we
-        # scale it to a 5 kW peak.
-        vs.Actor(
-            name="solar_panel",
-            signal=vs.Trace.from_csv(
-                f"{DATASETS}/solar_example.csv",
-                column="Berlin",
-                scale=5000,
-            ),
+    metrics = recorder.metrics["microgrids"]["site"]
+    print(f"Grid import: {metrics['grid_import'] / 1000:.2f} kWh")
+    print(f"Grid export: {metrics['grid_export'] / 1000:.2f} kWh")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path, default=Path("results/basic_example"))
+    args = parser.parse_args()
+    run(fresh_output(args.output))
+    write_study(
+        args.output,
+        "getting-started",
+        "Getting started",
+        [("basic-example", "Basic example", ["."])],
+        description=(
+            "A small microgrid supplies steady demand with solar power, a battery, "
+            "and a grid connection. "
+            "Three days of solar data show the battery charging during sunny periods and "
+            "supplying demand when generation falls. "
+            "Open the time series to follow how power flows through the system."
         ),
-    ],
-    # Dispatchables are controllable resources. The default DispatchPolicy charges on
-    # surplus, discharges on deficit, and exchanges any remainder with the public grid.
-    dispatchables=[
-        vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3)
-    ],
-    # Grid signals provide contextual information that custom policies and controllers
-    # can react to. They are also plotted by the experiment viewer. The watttime CSV
-    # is datetime-indexed, so we pass anchor= to mark which row maps to offset=0.
-    grid_signals={
-        "carbon_intensity": vs.Trace.from_csv(
-            f"{DATASETS}/watttime_example.csv",
-            anchor="2023-06-08 00:00:00",
-        )
-    },
-)
+    )
 
-# CsvLogger writes metadata.yaml + timeseries.csv to the output directory. View the
-# results in your browser with: `vessim view results/basic_example`
-environment.add_controller(vs.CsvLogger(outdir="results/basic_example"))
 
-# Run the simulation for 24 hours (24 * 3600 seconds).
-environment.run(until=24 * 3600)
+if __name__ == "__main__":
+    main()

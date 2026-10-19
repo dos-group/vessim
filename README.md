@@ -2,80 +2,96 @@
     <img alt="Vessim Logo" src="docs/assets/logo.png" width="250" />
 </p>
 
-Vessim is a **co-simulation testbed for microgrids**\*
+Vessim is a Python library for simulating datacenter energy systems.
 
-Vessim lets you model how loads, (renewable) generation, energy storage, and the public grid interact, and test control and dispatch strategies against them, in pure simulation or with **real software and hardware** in the loop.
+Vessim models the interaction between datacenter demand and energy infrastructure, helping you understand how design and control decisions affect cost, carbon emissions, and resilience.
 
-*\*By "microgrid" we mean any local energy system that combines loads, generation, and storage behind a grid connection. Grids can scale from small battery-constrained systems to a GW-scale datacenter campus.*
+[Documentation](https://vessim.readthedocs.io/en/latest/) · [Getting started](https://vessim.readthedocs.io/en/latest/getting_started/) · [Explore example results](https://vessim.readthedocs.io/en/latest/vessim_viewer/)
 
-Check out the [website and documentation](https://vessim.readthedocs.io/en/latest/)!
+- **Simulation studies:** Compare infrastructure and control strategies across demand, weather, and operating scenarios.
+  Explore design choices through parameter sweeps, optimization, or probabilistic simulations.
+- **Live modeling:** Connect real applications to a simulated energy system through REST APIs.
+  Test how a scheduler or controller responds to changing power availability.
+- **Digital twins:** Model an energy system alongside the real installation using live measurements.
+  Explore possible futures, such as prolonged low renewable generation or a grid outage.
 
-## What can I do with Vessim?
+## Getting started
 
-Vessim helps you understand and optimize how loads, energy sources, and storage interact.
-It was originally designed for energy-aware and carbon-aware data centers, but has also been used for other use cases such as battery price arbitrage and demand response for cooling warehouses.
+Install Vessim with Python 3.9 to 3.15:
 
-- **Control and dispatch strategies**: Test battery charging/discharging, load-shifting, and price- or carbon-driven dispatch.
-- **Demand response and power outages**: Simulate demand response signals or power outages to understand your system's flexibility and test mitigation strategies.
-- **Microgrid composition**: Experiment with adding solar panels, wind turbines, or batteries to see how they would affect your energy costs and carbon emissions.
-- **Energy- and carbon-aware computing**: Develop applications that adapt their energy consumption to the carbon intensity and price of electricity.
+```console
+python -m pip install vessim
+```
 
-Vessim can simulate multiple distributed microgrids in parallel and easily integrates historical datasets and new simulators. 
-Vessim’s software-in-the-loop capabilities let you run real systems against simulated microgrids. Connect live data sources like Prometheus and interact through REST APIs.
+This example models three days of datacenter demand, solar generation, and battery operation.
+Surplus solar power charges the battery, which supplies demand when solar generation falls.
+The grid supplies any remaining deficit and receives surplus power once the battery is full.
 
-
-## Simple Example
-
-The scenario below simulates a microgrid with a computing system drawing 700W, a solar panel, and a 1.5 kWh battery.
+Download [solar_example.csv](https://raw.githubusercontent.com/dos-group/vessim/main/datasets/solar_example.csv) into your working directory, then run:
 
 ```python
 import vessim as vs
 
-environment = vs.Environment(sim_start="2022-06-09", step_size=300)
+# Scale the solar profile to a 2.4 kW installation.
+solar = vs.Trace.from_csv("solar_example.csv", column="Berlin", scale=2400)
 
-environment.add_microgrid(
-    name="datacenter",
+env = vs.Environment(sim_start="2026-01-01", step_size=5 * 60)
+env.add_microgrid(
+    name="site",
     actors=[
-        vs.Actor(name="server", signal=vs.StaticSignal(value=700), consumer=True),
-        vs.Actor(name="solar_panel", signal=vs.Trace.from_csv(
-            "datasets/solar_example.csv", column="Berlin", scale=5000
-        )),
+        vs.Consumer("load", signal=700),
+        vs.Producer("solar", signal=solar),
     ],
-    dispatchables=[
-        vs.SimpleBattery(name="battery", capacity=1500, initial_soc=0.8, min_soc=0.3)
-    ],
+    dispatchables=[vs.SimpleBattery("battery", capacity=1000), vs.GridConnection()],
 )
+recorder = env.add_controller(vs.Recorder("results/basic_example"))
+env.run(until=3 * 24 * 3600)
 
-environment.add_controller(vs.CsvLogger("results/my_experiment"))
-environment.run(until=24 * 3600)
+metrics = recorder.metrics["microgrids"]["site"]
+print(f"Grid import: {metrics['grid_import'] / 1000:.2f} kWh")
+print(f"Grid export: {metrics['grid_export'] / 1000:.2f} kWh")
 ```
 
-Check out the [Getting Started walkthrough](https://vessim.readthedocs.io/en/latest/getting_started/) and [`examples/`](examples/) for software-in-the-loop simulations.
-
-
-## Installation
-
-You can install the [latest release](https://pypi.org/project/vessim/) of Vessim
-via [pip](https://pip.pypa.io/en/stable/quickstart/):
-
-```
-pip install vessim
+```text
+Grid import: 26.71 kWh
+Grid export: 11.08 kWh
 ```
 
-If you require software-in-the-loop capabilities, install the `sil` extension:
+[Explore this example in your browser](https://vessim.readthedocs.io/en/latest/viewer/index.html?study=getting-started#results), or open your saved results locally:
 
+```console
+python -m vessim view results/basic_example
 ```
-pip install vessim[sil]
-```
+
+The [Getting Started walkthrough](https://vessim.readthedocs.io/en/latest/getting_started/) explains how the components work together.
+To use your own data, see [Actors and Signals](https://vessim.readthedocs.io/en/latest/concepts/signals/).
+
+## Explore further
+
+| Example | What you can explore |
+| --- | --- |
+| [Exploring microgrid configurations](examples/infrastructure_study.py) | Compare wind, solar, and battery configurations over a year. [View results](https://vessim.readthedocs.io/en/latest/viewer/index.html?study=infrastructure-year#results) |
+| [Optimization](https://vessim.readthedocs.io/en/latest/concepts/optimization/) | Search for designs with different cost and emissions trade-offs. [View results](https://vessim.readthedocs.io/en/latest/viewer/index.html?study=optuna-search#results) |
+| [Dispatch strategies](examples/strategy_comparison.py) | Compare control policies across demand scenarios. [View results](https://vessim.readthedocs.io/en/latest/viewer/index.html?study=dispatch-comparison#results) |
+| [Demand response](examples/demand_response.py) | Adjust workload concurrency under a flexible grid connection agreement |
+| [Custom metrics](examples/custom_metrics.py) | Calculate electricity costs, emissions, and your own study objectives |
+
+[Run the examples locally](examples/README.md) with a shared setup and reproducible commands.
+
+For [live measurements and REST control](https://vessim.readthedocs.io/en/latest/concepts/live/), install `pip install 'vessim[live]'` and use `vs.Environment.live()`.
+To [connect external simulators](https://vessim.readthedocs.io/en/latest/concepts/coupling/) through Mosaik, install `pip install 'vessim[mosaik]'`.
 
 ## Publications
 
-If you use Vessim in your research, please cite our paper:
+If you use Vessim in your research, please cite:
 
-- Philipp Wiesner, Ilja Behnke, Paul Kilian, Marvin Steinke, and Odej Kao. "[Vessim: A Testbed for Carbon-Aware Applications and Systems.](https://dl.acm.org/doi/pdf/10.1145/3727200.3727210)" _ACM SIGENERGY Energy Informatics Review 4 (5)_. 2024.
+Philipp Wiesner, Ilja Behnke, Paul Kilian, Marvin Steinke, and Odej Kao.
+[**Vessim: A Testbed for Carbon-Aware Applications and Systems.**](https://dl.acm.org/doi/pdf/10.1145/3727200.3727210)
+*ACM SIGENERGY Energy Informatics Review 4 (5)*, 2024.
 
-For details in Vessim's software-in-the-loop simulation methodology, refer to:
+More papers are listed in the [documentation](https://vessim.readthedocs.io/en/latest/publications/)!
 
-- Philipp Wiesner, Marvin Steinke, Henrik Nickel, Yazan Kitana, and Odej Kao. "[Software-in-the-Loop Simulation for Developing and Testing Carbon-Aware Applications.](https://doi.org/10.1002/spe.3275)" _Software: Practice and Experience, 53 (12)_. 2023.
 
-For more related papers and concrete use cases, please refer to the [documentation](https://vessim.readthedocs.io/en/latest/publications).
+## About
+
+Vessim was originally developed at the research group for [Distributed and Operating Systems](https://distributedsystems.berlin/) at TU Berlin. It is now maintained at the [Machine Learning Systems Lab](https://mlsys.cst.cam.ac.uk/) at the University of Cambridge.

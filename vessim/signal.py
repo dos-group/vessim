@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import math
 import time
+from copy import copy
+from threading import Event, Thread, current_thread
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from pathlib import Path
@@ -9,9 +12,22 @@ from typing import Any, Optional, Literal
 import numpy as np
 import pandas as pd
 
+from vessim._util import require_finite
+
 
 class Signal(ABC):
-    """Abstract base class for signals."""
+    """A numeric simulation input sampled at elapsed time.
+
+    Use for actor power or contextual data such as prices and carbon intensity.
+    The environment calls start() before sampling and finalize() during cleanup.
+    """
+
+    def __repr__(self) -> str:
+        """Describe custom signals without process-specific memory addresses."""
+        return f"{type(self).__name__}()"
+
+    def start(self) -> None:
+        """Acquire resources before the first simulation sample."""
 
     @abstractmethod
     def at(self, elapsed: Optional[timedelta | float] = None) -> float:
@@ -26,18 +42,27 @@ class Signal(ABC):
 
 
 class StaticSignal(Signal):
-    def __init__(self, value: float) -> None:
-        self._v = value
+    """A constant numeric input, also used for numeric actor input shorthand.
 
-    def __repr__(self):
-        """Returns a string representation for the Vessim viewer."""
-        return f"StaticSignal({self._v})"
+    Args:
+        value: A finite number. Units are determined by the input using it.
+    """
+
+    def __init__(self, value: float) -> None:
+        self.set_value(value)
+
+    def __repr__(self) -> str:
+        """Describe the constant input in experiment configuration."""
+        return f"StaticSignal({self._value})"
 
     def set_value(self, value: float) -> None:
-        self._v = value
+        """Change the value returned by subsequent samples."""
+        require_finite(value, "StaticSignal value")
+        self._value = value
 
-    def at(self, elapsed: Optional[timedelta | float] = None):
-        return self._v
+    def at(self, elapsed: Optional[timedelta | float] = None) -> float:
+        """Return the current value, independent of elapsed time."""
+        return self._value
 
 
 class Trace(Signal):
@@ -55,16 +80,17 @@ class Trace(Signal):
       as-is. Must start at offset=0. `anchor` must not be provided. This is
       the canonical form.
     - `DatetimeIndex`: a convenience for calendar-stamped data. `anchor` is
-      required and must match an existing row exactly; that row is rebased
+      required and must match an existing row exactly. That row is rebased
       to offset=0 and earlier rows are dropped.
 
     For loading offset-indexed or datetime-indexed CSVs, use `Trace.from_csv`.
 
     Args:
         data: A pandas `Series` or `DataFrame`. See above for accepted index
-            types. Each column represents one zone of data; the column name
+            types. Each column represents one zone of data. The column name
             is the zone name. Between samples, values are interpolated using
-            `fill_method` (`ffill` or `bfill`).
+            `fill_method` (`ffill` or `bfill`). Values must be finite and
+            timestamps unique. Handle missing data explicitly before loading.
         anchor: Required when `data` has a `DatetimeIndex`. Must be a value
             present in the index. The matching row is rebased to offset=0.
             Forbidden for `TimedeltaIndex` and numeric indices (which are
@@ -92,6 +118,8 @@ class Trace(Signal):
                 f"on_overflow={on_overflow!r} is not yet supported. Only 'raise' is available."
             )
 
+        if fill_method not in ("ffill", "bfill"):
+            raise ValueError("fill_method must be 'ffill' or 'bfill'.")
         self._fill_method = fill_method
         self._on_overflow = on_overflow
         self.default_column = column
@@ -101,6 +129,10 @@ class Trace(Signal):
             raise ValueError(f"Incompatible type {type(data)} for 'data'.")
 
         raw_index = data.index
+        if raw_index.hasnans:
+            raise ValueError("Trace timestamps must not contain missing values (NaN or NaT).")
+        if raw_index.has_duplicates:
+            raise ValueError("Trace timestamps must be unique; resolve duplicate rows first.")
         if isinstance(raw_index, pd.DatetimeIndex):
             if anchor is None:
                 raise ValueError(
@@ -115,22 +147,18 @@ class Trace(Signal):
                 )
             data = data.loc[raw_index >= anchor_ts]
             assert isinstance(data.index, pd.DatetimeIndex)
-            offsets_array = (data.index - anchor_ts).to_numpy().astype(
-                "timedelta64[ns]"
-            )
+            offsets_array = (data.index - anchor_ts).to_numpy().astype("timedelta64[ns]")
         elif isinstance(raw_index, pd.TimedeltaIndex):
             if anchor is not None:
-                raise ValueError(
-                    "anchor is only valid for datetime-indexed data."
-                )
+                raise ValueError("anchor is only valid for datetime-indexed data.")
             offsets_array = raw_index.to_numpy().astype("timedelta64[ns]")
         elif pd.api.types.is_numeric_dtype(raw_index):
             if anchor is not None:
-                raise ValueError(
-                    "anchor is only valid for datetime-indexed data."
-                )
-            offsets_array = pd.to_timedelta(raw_index, unit="s").to_numpy().astype(
-                "timedelta64[ns]"
+                raise ValueError("anchor is only valid for datetime-indexed data.")
+            if not np.isfinite(raw_index.to_numpy()).all():
+                raise ValueError("Trace offsets must be finite numbers of seconds.")
+            offsets_array = (
+                pd.to_timedelta(raw_index, unit="s").to_numpy().astype("timedelta64[ns]")
             )
         else:
             raise TypeError(
@@ -140,26 +168,65 @@ class Trace(Signal):
 
         if offsets_array.size == 0:
             raise ValueError("Trace data cannot be empty.")
+        if np.isnat(offsets_array).any():
+            raise ValueError("Trace timestamps must be valid and within the supported range.")
 
         sorter = np.argsort(offsets_array)
         offsets_ns = offsets_array[sorter]
+        if np.any(offsets_ns[1:] == offsets_ns[:-1]):
+            raise ValueError("Trace timestamps must be unique at nanosecond resolution.")
 
         if offsets_ns[0] != np.timedelta64(0, "ns"):
             raise ValueError(
                 f"Trace must start at offset=0, but starts at {_td(offsets_ns[0])}. "
-                f"To delay a trace, pad the beginning of your data with zeros or NaNs."
+                f"To delay a trace, pad the beginning of your data with zeros."
             )
 
         self._offsets: dict[str, tuple[np.ndarray, np.ndarray]] = {}
-        if isinstance(data, pd.Series):
-            values = data.to_numpy(dtype=float, copy=True)[sorter]
-            mask = ~np.isnan(values)
-            self._offsets[str(data.name)] = (offsets_ns[mask], values[mask])
-        else:
-            for col in data.columns:
-                values = data[col].to_numpy(dtype=float, copy=True)[sorter]
-                mask = ~np.isnan(values)
-                self._offsets[str(col)] = (offsets_ns[mask], values[mask])
+        columns = [(data.name, data)] if isinstance(data, pd.Series) else list(data.items())
+        if not columns:
+            raise ValueError("Trace needs at least one value column.")
+        for col, series in columns:
+            name = str(col)
+            if name in self._offsets:
+                raise ValueError(f"Trace column names must be unique; duplicate {name!r}.")
+            try:
+                values = series.to_numpy(dtype=float, copy=True)[sorter]
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"Trace column {name!r} must contain numeric values.") from exc
+            invalid = np.flatnonzero(~np.isfinite(values))
+            if invalid.size:
+                raise ValueError(
+                    f"Trace column {name!r} has a missing or nonfinite value at "
+                    f"offset {_td(offsets_ns[invalid[0]])}. "
+                    "Fill or remove missing values explicitly before creating a Trace."
+                )
+            self._offsets[name] = (offsets_ns, values)
+
+        if column is not None:
+            _get_column_name(self._offsets, column)
+
+        for name, (offsets, values) in self._offsets.items():
+            offsets = offsets.view("i8")
+            offsets.setflags(write=False)
+            values.setflags(write=False)
+            self._offsets[name] = (offsets, values)
+        offsets = offsets_ns.view("i8")
+        spacing = np.diff(offsets)
+        self._regular_step = (
+            int(spacing[0]) if spacing.size and np.all(spacing == spacing[0]) else None
+        )
+
+    def select(self, column: str) -> Trace:
+        """Return a column view sharing immutable arrays with this trace.
+
+        Load a multi-column CSV once and use views for different actors or
+        scenarios. Sampling is stateless. No per-run cursor is stored here.
+        """
+        _get_column_name(self._offsets, column)
+        selected = copy(self)
+        selected.default_column = column
+        return selected
 
     def __repr__(self):
         """Returns a string representation for the Vessim viewer."""
@@ -183,12 +250,12 @@ class Trace(Signal):
 
         As a utility, datetime-indexed CSVs are also accepted and converted on
         load: pass `anchor=<timestamp>` to mark which row corresponds to
-        offset=0. See [Signals and Datasets](../concepts/signals.md) for the
-        full schema and recipes for fetching data from public APIs.
+        offset=0. See [Actors and signals](../concepts/signals.md#trace-signals)
+        for pandas and CSV examples.
 
         Args:
             path: Path to the CSV file.
-            anchor: Required if the first column is a datetime; must match a
+            anchor: Required if the first column is a datetime. Must match a
                 row in the data exactly. That row becomes `offset=0` and
                 earlier rows are dropped. Forbidden if the first column is
                 already numeric.
@@ -197,12 +264,19 @@ class Trace(Signal):
             on_overflow: See `Trace`.
             fill_method: See `Trace`.
         """
+        require_finite(scale, "Trace scale")
         df = pd.read_csv(path, index_col=0)
         if scale != 1.0:
             df = df.astype(float) * scale
 
         if not pd.api.types.is_numeric_dtype(df.index):
-            df.index = pd.to_datetime(df.index)
+            try:
+                df.index = pd.to_datetime(df.index)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"The first column of {str(path)!r} must contain offsets in seconds "
+                    "or valid timestamps."
+                ) from exc
 
         return cls(
             df,
@@ -240,30 +314,40 @@ class Trace(Signal):
         if elapsed is None:
             raise ValueError("Argument elapsed cannot be None.")
         if not isinstance(elapsed, timedelta):
-            elapsed = timedelta(seconds=elapsed)
+            require_finite(elapsed, "Trace elapsed time")
+        if isinstance(elapsed, timedelta):
+            np_at = (
+                (elapsed.days * 86400 + elapsed.seconds) * 1_000_000 + elapsed.microseconds
+            ) * 1000
+        elif isinstance(elapsed, int):
+            np_at = elapsed * 1_000_000_000
+        else:
+            # Preserve timedelta's microsecond resolution for fractional seconds.
+            np_at = round(elapsed * 1_000_000) * 1000
         if column is None:
             column = self.default_column
 
         resolved = _get_column_name(self._offsets, column)
         offsets, values = self._offsets[resolved]
-        np_at = np.timedelta64(elapsed)
 
+        if np_at < offsets[0] or np_at > offsets[-1]:
+            boundary = "before the start" if np_at < offsets[0] else "after the end"
+            raise ValueError(
+                f"Elapsed time {elapsed} is {boundary} of column '{resolved}' "
+                f"(trace covers {_td(offsets[0])} to {_td(offsets[-1])} since sim_start). "
+                "Extend the input data or shorten the simulation."
+            )
+
+        if self._regular_step is not None:
+            position, remainder = divmod(np_at, self._regular_step)
+            if self._fill_method == "bfill" and remainder:
+                position += 1
+            return values[position]
         if self._fill_method == "ffill":
             index = offsets.searchsorted(np_at, side="right") - 1
-            if index >= 0:
-                return values[index]
-            raise ValueError(
-                f"Elapsed time {elapsed} is before the start of column '{resolved}' "
-                f"(trace covers {_td(offsets[0])} to {_td(offsets[-1])} since sim_start)."
-            )
         else:
             index = offsets.searchsorted(np_at, side="left")
-            if index < offsets.size:
-                return values[index]
-            raise ValueError(
-                f"Elapsed time {elapsed} is after the end of column '{resolved}' "
-                f"(trace covers {_td(offsets[0])} to {_td(offsets[-1])} since sim_start)."
-            )
+        return values[index]
 
 
 def _get_column_name(data: dict[str, Any], column: Optional[str]) -> str:
@@ -273,7 +357,7 @@ def _get_column_name(data: dict[str, Any], column: Optional[str]) -> str:
         raise ValueError("Column needs to be specified.")
     if column in data:
         return column
-    raise ValueError(f"Cannot retrieve data for column '{column}'.")
+    raise ValueError(f"Unknown trace column {column!r}. Available columns: {list(data)}.")
 
 
 def _td(value: np.timedelta64) -> timedelta:
@@ -281,8 +365,8 @@ def _td(value: np.timedelta64) -> timedelta:
     return pd.Timedelta(value).to_pytimedelta()
 
 
-class SilSignal(Signal):
-    """Base class for Software-in-the-Loop signals with background polling.
+class LiveSignal(Signal):
+    """Base class for live signals with background polling.
 
     This class provides common functionality for signals that need to periodically
     fetch data from external sources (APIs, databases, etc.) and cache the results.
@@ -293,21 +377,33 @@ class SilSignal(Signal):
     """
 
     def __init__(self, update_interval: float = 5.0, timeout: float = 10.0):
-        try:
-            from threading import Timer
-        except ImportError:
-            raise ImportError("SilSignal requires threading support")
-
-        self.Timer = Timer
+        if (
+            not math.isfinite(update_interval)
+            or not math.isfinite(timeout)
+            or update_interval <= 0
+            or timeout <= 0
+        ):
+            raise ValueError("update_interval and timeout must be finite and positive.")
         self.update_interval = update_interval
         self.timeout = timeout
-
         self._last_update: Optional[float] = None
         self._cached_value: float = 0.0
-        self._stop_polling = False
+        self._stop = Event()
+        self._thread: Optional[Thread] = None
 
-        # Start background polling
-        self._start_background_polling()
+    def start(self) -> None:
+        """Start background polling when the environment starts using this signal."""
+        if self._stop.is_set():
+            raise RuntimeError("A closed live signal cannot be reused. Create a new signal.")
+        if self._thread is None:
+            self._initialize()
+            self._thread = Thread(
+                target=self._poll, daemon=True, name=f"vessim-{type(self).__name__}"
+            )
+            self._thread.start()
+
+    def _initialize(self) -> None:
+        """Prepare the external source before starting a polling worker."""
 
     def __repr__(self):
         """Returns a string representation for the Vessim viewer."""
@@ -327,22 +423,15 @@ class SilSignal(Signal):
             Exception: Any exception that occurs during data fetching
         """
 
-    def _start_background_polling(self) -> None:
-        """Start background polling in a separate thread."""
-
-        def poll():
-            if not self._stop_polling:
-                try:
-                    self._cached_value = self._fetch_current_value()
-                    self._last_update = time.time()
-                except Exception:
-                    pass  # Keep using cached value
-                # Schedule next poll
-                # TODO: daemonize the Timer threads so a forgotten finalize()
-                # cannot keep the interpreter alive after main returns.
-                self.Timer(self.update_interval, poll).start()
-
-        self.Timer(0, poll).start()  # Start immediately
+    def _poll(self) -> None:
+        while not self._stop.is_set():
+            try:
+                self._cached_value = self._fetch_current_value()
+                self._last_update = time.time()
+            except Exception:
+                pass  # Retain the last observation if a source is temporarily unavailable.
+            if self._stop.wait(self.update_interval):
+                break
 
     def at(self, elapsed: Optional[timedelta | float] = None) -> float:
         """Return the current cached value.
@@ -357,10 +446,12 @@ class SilSignal(Signal):
 
     def finalize(self) -> None:
         """Stop background polling and clean up resources."""
-        self._stop_polling = True
+        self._stop.set()
+        if self._thread is not None and current_thread() is not self._thread:
+            self._thread.join(timeout=self.timeout + 0.1)
 
 
-class PrometheusSignal(SilSignal):
+class PrometheusSignal(LiveSignal):
     """Signal that pulls energy usage data from a Prometheus instance.
 
     Args:
@@ -400,9 +491,9 @@ class PrometheusSignal(SilSignal):
         if username and password:
             self._auth = requests.auth.HTTPBasicAuth(username, password)
 
-        # Initialize parent class (starts background polling)
         super().__init__(update_interval=update_interval, timeout=timeout)
 
+    def _initialize(self) -> None:
         self._validate_connection()
 
     def _validate_connection(self) -> None:
@@ -447,7 +538,7 @@ class PrometheusSignal(SilSignal):
         return f"PrometheusSignal({self.query})"
 
 
-class WatttimeSignal(SilSignal):
+class WatttimeSignal(LiveSignal):
     """Real-time carbon intensity signal from WattTime API.
 
     This signal fetches real-time marginal carbon intensity data from the WattTime API.
@@ -483,7 +574,7 @@ class WatttimeSignal(SilSignal):
         except ImportError:
             raise ImportError(
                 "WatttimeSignal requires 'requests' package. "
-                "Install with: pip install 'vessim[sil]'"
+                "Install with: pip install 'vessim[live]'"
             )
 
         # Validate that not both region and location are provided
@@ -497,25 +588,23 @@ class WatttimeSignal(SilSignal):
         self._username = username
         self._password = password
         self._base_url = base_url
+        self.timeout = timeout
         self._token: Optional[str] = None
         self._token_expires: Optional[float] = None
 
-        # Try to get initial token (will auto-register if needed)
-        self._get_token()
-
-        # Determine region from coordinates if location is provided
-        if location is not None:
-            self._region = self._get_region_from_location(location)
-        else:
-            # region is guaranteed to be not None due to validation above
-            assert region is not None
-            self._region = region
-
-        # Initialize parent class (starts background polling)
+        self._region = region
+        self._location = location
         super().__init__(update_interval=update_interval, timeout=timeout)
+
+    def _initialize(self) -> None:
+        self._get_token()
+        if self._location is not None:
+            self._region = self._get_region_from_location(self._location)
 
     def __repr__(self):
         """Returns a string representation for the Vessim viewer."""
+        if self._location is not None:
+            return f"WatttimeSignal(location={self._location})"
         return f"WatttimeSignal(region={self._region})"
 
     def _get_token(self) -> str:
@@ -529,7 +618,7 @@ class WatttimeSignal(SilSignal):
         # Try to get new token
         login_url = f"{self._base_url}/login"
         try:
-            response = self._requests.get(login_url, auth=self._auth)
+            response = self._requests.get(login_url, auth=self._auth, timeout=self.timeout)
             response.raise_for_status()
 
             self._token = response.json()["token"]
@@ -543,7 +632,7 @@ class WatttimeSignal(SilSignal):
                 # Login failed, try to register
                 self._register_user()
                 # Retry login after registration
-                response = self._requests.get(login_url, auth=self._auth)
+                response = self._requests.get(login_url, auth=self._auth, timeout=self.timeout)
                 response.raise_for_status()
 
                 self._token = response.json()["token"]
@@ -580,7 +669,7 @@ class WatttimeSignal(SilSignal):
             "email": email,
         }
 
-        response = self._requests.post(register_url, json=registration_data)
+        response = self._requests.post(register_url, json=registration_data, timeout=self.timeout)
         response.raise_for_status()
 
         print("✓ Registration successful!")
@@ -595,7 +684,9 @@ class WatttimeSignal(SilSignal):
             "signal_type": "co2_moer",
         }
 
-        response = self._requests.get(region_url, headers=headers, params=params)
+        response = self._requests.get(
+            region_url, headers=headers, params=params, timeout=self.timeout
+        )
         response.raise_for_status()
 
         data = response.json()

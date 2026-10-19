@@ -30,6 +30,10 @@ jobs:
       run: npm run build
       working-directory: viewer
 
+    - name: Check viewer
+      run: npm run lint && npm test
+      working-directory: viewer
+
     - name: Install uv
       uses: astral-sh/setup-uv@v5
       with:
@@ -37,6 +41,29 @@ jobs:
 
     - name: Build package
       run: uv build
+
+    - name: Install built package for browser validation
+      run: |
+        uv venv .venv
+        uv pip install dist/*.whl
+        .venv/bin/python viewer/tests/prepare.py
+
+    - name: Generate the published examples from scratch
+      run: |
+        uv pip install -r examples/requirements.txt
+        .venv/bin/python examples/build_gallery.py --output results/gallery
+        .venv/bin/python viewer/export_docs.py --source results/gallery --output results/viewer-release/gallery
+
+    - name: Install browser
+      run: npx playwright install --with-deps chromium
+      working-directory: viewer
+
+    - name: Verify local viewer and portable report
+      run: npm run test:browser
+      working-directory: viewer
+      env:
+        PLAYWRIGHT_CHANNEL: chromium
+        VIEWER_GALLERY_URL: http://127.0.0.1:8722/gallery/index.html
 
     - name: Upload dist
       uses: actions/upload-artifact@v4

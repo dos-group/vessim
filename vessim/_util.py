@@ -1,49 +1,40 @@
-from __future__ import annotations
+import math
+from numbers import Real
+from typing import Any
+from collections.abc import Iterable
 
-import sys
-from datetime import datetime
-from typing import Union, Any
-
-import numpy as np
-from loguru import logger
-
-DatetimeLike = Union[str, datetime, np.datetime64]
+from numpy import float64
 
 
-def disable_rt_warnings(behind_threshold: float):
-    """Disables Mosaik's rt_check warnings.
+_REAL_SCALARS = (float, int, float64)
 
-    Mosaik's current implementation of the real-time checks are faulty and a new
-    implementation is already outlined in
-    https://gitlab.com/mosaik/mosaik/-/issues/172. As this issue was opened in
-    June 2023, it is unlikely that the issue will be resolved soon. Therefore,
-    we disable the warnings with a threshold after which these offsets are
-    logged.
 
-    Args:
-        behind_threshold: Time the simulation is allowed to be behind schedule.
-    """
+def require_finite(value: float, name: str) -> None:
+    """Reject invalid physical inputs before they enter simulation arithmetic."""
+    if (
+        type(value) not in _REAL_SCALARS
+        and (isinstance(value, bool) or not isinstance(value, Real))
+    ) or not math.isfinite(value):
+        raise ValueError(f"{name} must be a finite number, got {value!r}.")
 
-    def filter_record(record):
-        is_warning = record["level"].name == "WARNING"
-        is_mosaik_log = record["name"].startswith("mosaik")
-        is_user_warning = record["function"] == "user_warning"
-        try:
-            message_parts = record["message"].split(" - ")[1].split("s")[0]
-            is_below_threshold = float(message_parts) < behind_threshold
-        except IndexError:
-            return False
-        return not (is_warning and is_mosaik_log and is_user_warning and is_below_threshold)
 
-    # Add the filter to the logger
-    logger.remove()
-    logger.add(sys.stdout, filter=filter_record)
+def require_balanced(p_delta: float, powers: Iterable[float]) -> None:
+    """Require an exactly zero residual after subtracting powers in dispatch order."""
+    remaining = p_delta
+    for power in powers:
+        remaining -= power
+    require_finite(remaining, "Remaining power delta")
+    if remaining != 0:
+        reason = "Unmet demand" if remaining < 0 else "Unabsorbed surplus"
+        raise RuntimeError(f"{reason} of {abs(remaining):g} W: dispatch must balance exactly.")
 
 
 def flatten_dict(d: dict, parent_key: str = "") -> dict:
     items: list[tuple[str, Any]] = []
     for k, v in d.items():
-        new_key = parent_key + "." + k if parent_key else k
+        # Escape path separators and the escape character to preserve distinct keys.
+        key = k.replace("%", "%25").replace(".", "%2E")
+        new_key = parent_key + "." + key if parent_key else key
         if isinstance(v, dict):
             items.extend(flatten_dict(v, str(new_key)).items())
         else:

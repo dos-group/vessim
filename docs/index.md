@@ -1,67 +1,92 @@
+---
+hide:
+  - toc
+---
+
 #
 
 <div style="text-align: center; margin-top: -50px">
     <img alt="Vessim Logo" src="assets/logo.png" width="300" />
 </div>
 
-Vessim is a **co-simulation testbed for microgrids**\*
+Vessim is a Python library for simulating datacenter energy systems.
 
-Vessim lets you model how loads, (renewable) generation, energy storage, and the public grid interact, and test control and dispatch strategies against them, in pure simulation or with **real software and hardware** in the loop.
+Vessim models the interaction between datacenter demand and energy infrastructure, helping you understand how design and control decisions affect cost, carbon emissions, and resilience.
 
-*\*By "microgrid" we mean any local energy system that combines loads, generation, and storage behind a grid connection. Grids can scale from small battery-constrained systems to a GW-scale datacenter campus.*
+<div class="vessim-use-cases" markdown="1">
 
+<div class="vessim-use-case" markdown="1">
 
-## What can I do with Vessim?
+### Simulation studies
 
-Vessim helps you understand and optimize how loads, energy sources, and storage interact.
-It was originally designed for energy-aware and carbon-aware data centers, but has also been used for other use cases such as battery price arbitrage and demand response for cooling warehouses.
+Evaluate configurations and control strategies across variations in operating conditions.
+Use parameter sweeps, what-if scenarios, and probabilistic inputs to explore design choices and assess their sensitivity to uncertainty.
 
-- **Control and dispatch strategies**: test battery charging/discharging, load-shifting, and price- or carbon-driven dispatch.
-- **Demand response and power outages**: simulate demand response signals or power outages to understand your system's flexibility and test mitigation strategies.
-- **Microgrid composition**: experiment with adding solar panels, wind turbines, or batteries to see how they would affect your energy costs and carbon emissions.
-- **Energy- and carbon-aware computing**: develop applications that adapt their energy consumption to the carbon intensity and price of electricity.
+[Explore example results](viewer/index.html?study=optuna-search&view=%7B%22v%22%3A1%2C%22pareto%22%3Atrue%7D#results){ .md-button }
+</div>
 
-Vessim can simulate multiple distributed microgrids in parallel and easily integrates historical datasets and new simulators.
-Vessim's [software-in-the-loop](concepts/sil.md) capabilities let you run real systems against simulated microgrids. 
+<div class="vessim-use-case" markdown="1">
 
+### Live modeling
 
-## How Vessim Works
+Connect real applications to Vessim as they would connect to a physical energy system.
+Through REST APIs and software-in-the-loop simulation, applications can observe and control simulated components in real time.
 
-Vessim simulates local energy systems, called *microgrids*, that combine loads (such as computing equipment, cooling, or charging) with energy sources, dispatchable resources like batteries, and a connection to the public grid.
+</div>
 
-![Vessim Overview](assets/vessim_overview.png)
+<div class="vessim-use-case" markdown="1">
 
-Vessim is built on [Mosaik](https://mosaik.offis.de), a general-purpose co-simulation framework.
-Each hexagon in the diagram is a Mosaik component that can be simulated or run as real software (software-in-the-loop).
-A microgrid is composed of three kinds of building blocks:
+### Digital twins
 
-- [Actors](concepts/signals.md) (red): exogenous consumers and producers whose power is determined by a [`Signal`](api_reference/signal.md). Their sum at each step is the microgrid's *power delta*.
-- [Dispatchables](concepts/dispatchables.md) (gray): controllable resources like batteries or generators. A [`DispatchPolicy`](api_reference/dispatch_policy.md) decides how to distribute the power delta across them; any remainder is exchanged with the public grid.
-- [Controllers](concepts/controllers.md) (yellow): observe the simulation each step. Built-in loggers record the state, and custom controllers can adjust dispatch parameters or expose the simulation via APIs.
+Model your energy system alongside the real installation, using live measurements and updating parameters as conditions change.
+Explore future scenarios such as prolonged low renewable generation or a complete grid outage.
 
+</div>
 
-## Try it now
+</div>
 
-Head to [Getting Started](getting_started.md) for a step-by-step walkthrough that builds a complete microgrid in a few lines of code.
+<section class="vessim-news" markdown="1">
 
-You can also explore a finished simulation in your browser: [open the Experiment Viewer beta](viewer/index.html){target="_blank"} to see the interactive dashboard for the Getting Started run.
+## News
 
+<div class="vessim-news-item" markdown="1">
 
-## Installation
+<time datetime="2026-10">October 2026</time>
 
-Install the [latest release](https://pypi.org/project/vessim/) via [pip](https://pip.pypa.io/en/stable/getting-started/):
+Vessim 0.16.0 is out!
+See the [release notes](https://github.com/dos-group/vessim/releases) for what’s new.
 
-```console
-pip install vessim
-```
+</div>
 
-For [software-in-the-loop](concepts/sil.md) capabilities, install the `sil` extra:
+<div class="vessim-news-item" markdown="1">
 
-```console
-pip install vessim[sil]
-```
+<time datetime="2026-04">April 2026</time>
 
+Philipp Wiesner gave a keynote on [“Co-Simulating Computing and Energy Systems”](https://tdis.gitlab.io/tdis26/) at the TDIS workshop at [EuroSys'26](https://2026.eurosys.org/) in Edinburgh.
 
-## Contact
+</div>
 
-Please reach out via [GitHub Discussions](https://github.com/dos-group/vessim/discussions) in case of questions.
+<div class="vessim-news-item" markdown="1">
+
+<time datetime="2026-02">February 2026</time>
+
+Together with [Exalsius](https://www.exalsius.ai/) and [Deep Science Ventures](https://www.deepscienceventures.com/), we presented a prototype for [distributed LLM pretraining during renewable curtailment windows](https://arxiv.org/abs/2602.22760).
+Vessim was used to model geographically distributed energy systems.
+
+</div>
+
+</section>
+
+<div class="vessim-project" markdown="1">
+
+Vessim is developed at the [University of Cambridge](https://www.cam.ac.uk/).
+
+<div class="vessim-project-links" markdown="1">
+
+- [Examples](https://github.com/dos-group/vessim/tree/main/examples)
+- [Discussions](https://github.com/dos-group/vessim/discussions)
+- [About & contact](about.md)
+
+</div>
+
+</div>
