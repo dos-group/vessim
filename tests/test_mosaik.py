@@ -8,8 +8,11 @@ pytest.importorskip("mosaik")
 import vessim as vs
 
 SIMULATOR = Path(__file__).parent / "simulators/power_source.py"
-# Importable in-process and separately executable using the same simulator API.
-sys.path.insert(0, str(SIMULATOR.parent))
+
+
+@pytest.fixture(autouse=True)
+def simulator_import_path(monkeypatch):
+    monkeypatch.syspath_prepend(str(SIMULATOR.parent))
 
 
 @pytest.mark.parametrize("live", [False, True])

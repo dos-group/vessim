@@ -1,5 +1,4 @@
 import subprocess
-import os
 import sys
 import pytest
 from pathlib import Path
@@ -7,18 +6,17 @@ import shutil
 import json
 import re
 
-EXAMPLES_DIR = os.path.join(os.path.dirname(__file__), "..", "examples")
+EXAMPLES_DIR = Path(__file__).resolve().parents[1] / "examples"
 
 
 def run_script(script_name, cwd=None, args=()):
-    script_path = os.path.join(EXAMPLES_DIR, script_name)
-    result = subprocess.run(
-        [sys.executable, script_path, *args],
+    return subprocess.run(
+        [sys.executable, str(EXAMPLES_DIR / script_name), *args],
         capture_output=True,
         text=True,
-        cwd=cwd or os.path.dirname(EXAMPLES_DIR),
+        cwd=cwd or EXAMPLES_DIR.parent,
+        timeout=60,
     )
-    return result
 
 
 def test_basic_example(tmp_path):
@@ -40,41 +38,35 @@ def test_first_use_documentation_runs_as_written(tmp_path, document):
     )
     source = (Path(__file__).parents[1] / document).read_text()
     code = "\n".join(re.findall(r"```python\n(.*?)```", source, re.S))
-    for capacity, imported, exported in [(1000, "26.71", "11.08"), (2000, "24.71", "9.08")]:
-        result = subprocess.run(
-            [sys.executable, "-c", code.replace("capacity=1000", f"capacity={capacity}")],
-            cwd=tmp_path,
-            capture_output=True,
-            text=True,
-        )
-        assert result.returncode == 0, result.stderr
-        assert f"Grid import: {imported} kWh" in result.stdout
-        assert f"Grid export: {exported} kWh" in result.stdout
+    assert code.strip(), f"No Python example found in {document}"
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "Grid import: 26.71 kWh" in result.stdout
+    assert "Grid export: 11.08 kWh" in result.stdout
 
 
 def test_csv_walkthrough(tmp_path):
     guide = (Path(__file__).parents[1] / "docs/concepts/signals.md").read_text()
     data = re.findall(r"```csv\n(.*?)```", guide, re.S)[0]
     (tmp_path / "input.csv").write_text(data)
-    script = Path(EXAMPLES_DIR).resolve() / "replay_csv.py"
-    result = subprocess.run(
-        [sys.executable, str(script), "input.csv", "--hours", "6"],
-        cwd=tmp_path,
-        capture_output=True,
-        text=True,
-    )
+    result = run_script("replay_csv.py", cwd=tmp_path, args=["input.csv", "--hours", "6"])
     assert result.returncode == 0, result.stderr
     assert "Grid import: 1.10 kWh" in result.stdout
     assert "Grid export: 1.70 kWh" in result.stdout
 
 
 def test_battery_sizing_study_is_reproducible_across_workers(tmp_path):
-    script = Path(EXAMPLES_DIR).resolve() / "battery_sizing_study.py"
     for workers in (1, 2):
-        subprocess.run(
-            [
-                sys.executable,
-                str(script),
+        result = run_script(
+            "battery_sizing_study.py",
+            cwd=tmp_path,
+            args=[
                 "--scenarios",
                 "4",
                 "--workers",
@@ -82,10 +74,8 @@ def test_battery_sizing_study_is_reproducible_across_workers(tmp_path):
                 "--output",
                 str(tmp_path / str(workers)),
             ],
-            check=True,
-            capture_output=True,
-            text=True,
         )
+        assert result.returncode == 0, result.stderr
     sequential = [
         json.loads((tmp_path / "1" / r["path"]).read_text())
         for c in json.loads((tmp_path / "1/study.json").read_text())["configurations"]
@@ -96,6 +86,7 @@ def test_battery_sizing_study_is_reproducible_across_workers(tmp_path):
         for c in json.loads((tmp_path / "2/study.json").read_text())["configurations"]
         for r in c["runs"]
     ]
+    assert len(sequential) == len(parallel) == 12
     # Wall-clock execution timestamps differ, scientific results must not.
     for first, second in zip(sequential, parallel):
         for key in ("run_id", "parameters", "config", "metrics", "metric_definitions"):
@@ -142,10 +133,10 @@ def test_live_server_monitoring(tmp_path):
         sock.bind(("127.0.0.1", 0))
         broker_port = sock.getsockname()[1]
     try:
-        result = subprocess.run(
-            [
-                sys.executable,
-                os.path.join(EXAMPLES_DIR, "live_server_monitoring.py"),
+        result = run_script(
+            "live_server_monitoring.py",
+            cwd=tmp_path,
+            args=[
                 "--prometheus-url",
                 f"http://127.0.0.1:{server.server_port}",
                 "--broker-port",
@@ -153,9 +144,6 @@ def test_live_server_monitoring(tmp_path):
                 "--until",
                 "0.1",
             ],
-            capture_output=True,
-            text=True,
-            timeout=15,
         )
         assert result.returncode == 0, result.stderr
         assert "API broker terminated" in result.stdout

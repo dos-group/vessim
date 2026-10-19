@@ -1,7 +1,6 @@
 """Canonical study loading, missing records, lazy artifacts and portable exports."""
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -51,11 +50,10 @@ def test_file_directory_collection_and_summary_only(tmp_path):
         assert "configurations" not in catalog.payload()["studies"][0]
 
 
-def test_study_preserves_grouping_and_relative_origins_without_reading_csv(tmp_path, monkeypatch):
+def test_study_preserves_grouping_and_loads_csv_only_when_requested(tmp_path):
     save(tmp_path / "records/a/experiment.json", record("power.csv", "a"))
     save(tmp_path / "records/b/experiment.json", record(run_id="b"))
     csv = tmp_path / "records/a/power.csv"
-    csv.write_text("microgrid,time,p_grid\nsite,2026-01-01,-1\n")
     index = save(
         tmp_path / "indexes/study.json",
         study(
@@ -71,15 +69,14 @@ def test_study_preserves_grouping_and_relative_origins_without_reading_csv(tmp_p
             ]
         ),
     )
-    original = Path.read_bytes
-    monkeypatch.setattr(Path, "read_bytes", lambda _: pytest.fail("Trajectory read eagerly"))
+    # The index must load even when the trajectory is not available yet.
     catalog = Catalog(index)
     group = catalog.study("0")["configurations"][0]
     assert group["name"] == "Candidate"
     assert [r["run_id"] for r in group["runs"]] == ["a", "b"]
     assert not catalog.errors
     assert catalog.study("0")["run_parameters"] == ["seed"]
-    monkeypatch.setattr(Path, "read_bytes", original)
+    csv.write_text("microgrid,time,p_grid\nsite,2026-01-01,-1\n")
     assert catalog.trajectory("0")[0] == csv.read_bytes()
 
 

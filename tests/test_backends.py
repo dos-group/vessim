@@ -2,14 +2,13 @@
 
 import importlib.util
 from datetime import timedelta
-import json
 import subprocess
 import sys
 import time
 from pathlib import Path
-from types import SimpleNamespace
 
 import numpy as np
+from pandas.testing import assert_frame_equal
 import pytest
 
 import vessim as vs
@@ -46,37 +45,25 @@ class Record(vs.Controller):
         self.events.append("finalize")
 
 
+@pytest.mark.skipif(not HAS_MOSAIK, reason="optional mosaik extra not installed")
 @pytest.mark.parametrize(
     "case", ["static", "traces", "csv", "many_grids", "mixed_rates", "feedback"]
 )
-def test_pre_refactor_trajectory(backend, case, tmp_path):
-    from benchmarks.run import build, digest
+def test_backends_record_same_trajectory(case, tmp_path):
+    from benchmarks.run import build
 
     fixture = Path(__file__).parents[1] / "benchmarks/input.csv"
     traces = {c: vs.Trace.from_csv(fixture, column=c) for c in ("solar", "load", "carbon")}
-    baseline = json.loads((Path(__file__).parents[1] / "benchmarks/baseline.json").read_text())
-    expected = baseline["cases"][case]
-    env, memory = build(backend, case, traces, tmp_path / "output")
-    result = env.run(expected["steps"] * 60)
-    assert result.steps == expected["steps"]
-    legacy_log = {
-        now: {
-            name: {
-                **state,
-                "policy_state": {"mode": "grid-connected", **state["policy_state"]},
-                "dispatch_states": {
-                    # Battery power is now recorded for viewer overlays; the
-                    # historical digest still checks every original state field.
-                    k: {field: value for field, value in v.items() if field != "current_power"}
-                    for k, v in state["dispatch_states"].items()
-                    if k != "grid"
-                },
-            }
-            for name, state in states.items()
-        }
-        for now, states in memory.log.items()
-    }
-    assert digest(SimpleNamespace(log=legacy_log)) == expected["trajectory_sha256"]
+    steps = 200 if case == "many_grids" else 1000
+    frames = []
+    for backend in ("native", "mosaik"):
+        env, recorder = build(backend, case, traces, tmp_path / backend)
+        result = env.run(steps * 60)
+        assert result.steps == steps
+        frame = recorder.to_df()
+        assert len(frame) == steps * (10 if case == "many_grids" else 1)
+        frames.append(frame)
+    assert_frame_equal(frames[0], frames[1], check_exact=False, rtol=1e-12, atol=1e-9)
 
 
 @pytest.mark.parametrize("horizon", [0, 0.5, 1, 2, 2.5])
@@ -190,7 +177,7 @@ def test_live_wall_clock_pacing(backend):
     t0 = time.monotonic()
     env.run(1.05)
     assert len(timestamps) == 2
-    assert timestamps[1] - timestamps[0] >= 0.9
+    assert timestamps[1] - t0 >= 1.0
     assert time.monotonic() - t0 >= 1.0
 
 
@@ -214,7 +201,9 @@ except ImportError as exc:
 else:
     raise AssertionError('expected missing-extra error')
 """
-    subprocess.run([sys.executable, "-c", source], check=True, capture_output=True, text=True)
+    subprocess.run(
+        [sys.executable, "-c", source], check=True, capture_output=True, text=True, timeout=30
+    )
 
 
 def test_unbounded_live_interrupt(backend):

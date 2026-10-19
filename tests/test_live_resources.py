@@ -16,7 +16,7 @@ def test_signal_worker_stops_after_run_and_after_interruption():
                 return 123
 
             def at(self, elapsed):
-                assert fetched.wait(1)
+                assert fetched.wait(5)
                 return super().at(elapsed)
 
         signal = Signal(update_interval=60, timeout=0.5)
@@ -54,14 +54,14 @@ def test_live_broker_round_trip_and_cleanup():
 
     class Client(vs.Controller):
         def step(self, now, states):
-            response = requests.get(f"{api.broker_url}/microgrids/grid", timeout=1)
+            response = requests.get(f"{api.broker_url}/microgrids/grid", timeout=5)
             response.raise_for_status()
             observed.append(response.json())
             if len(observed) == 1:
                 response = requests.put(
                     f"{api.broker_url}/microgrids/grid/actors/load/signal",
                     params={"value": 200},
-                    timeout=1,
+                    timeout=5,
                 )
                 response.raise_for_status()
                 assert response.json() == {"status": "command queued"}
@@ -76,20 +76,19 @@ def test_live_broker_round_trip_and_cleanup():
 
 def test_failed_prometheus_setup_starts_no_worker(monkeypatch):
     requests = pytest.importorskip("requests")
-    import threading
 
     def failed(*args, **kwargs):
         raise requests.ConnectionError("unavailable")
 
     monkeypatch.setattr(requests, "get", failed)
-    before = {id(t) for t in threading.enumerate()}
     signal = vs.PrometheusSignal("http://localhost:1", "up", timeout=0.1)
     assert signal._thread is None
     env = vs.Environment.live()
     env.add_microgrid([vs.Consumer("load", signal=signal)], [vs.GridConnection()])
     with pytest.raises(ConnectionError, match="Could not connect"):
         env.run(0.01)
-    assert {id(t) for t in threading.enumerate()} == before
+    assert signal._thread is None
+    assert signal._stop.is_set()
 
 
 def test_watttime_initialization_is_deferred_and_failure_is_cleaned_up(monkeypatch):

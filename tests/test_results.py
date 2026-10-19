@@ -331,12 +331,23 @@ def test_memory_observations_stay_out_of_serialized_summary(tmp_path):
     rec = env.add_controller(vs.Recorder())
     env.run(120)
     assert len(rec.log) == 2
-    assert len(rec.to_df()) == 4
+    frame = rec.to_df()
+    assert len(frame) == 4
+    assert frame.index.names == ["time", "microgrid"]
+    assert frame.loc[(slice(None), "load"), "p_grid"].tolist() == [-120, -120]
     rec.result.save(tmp_path / "summary.json")
     result = vs.ExperimentResult.load(tmp_path / "summary.json")
     assert result.timeseries is None
     assert result.metrics == rec.metrics
     assert list(tmp_path.iterdir()) == [tmp_path / "summary.json"]
+
+
+def test_no_trajectory_means_no_dataframe():
+    env = environment()
+    recorder = env.add_controller(vs.Recorder(timeseries=False))
+    env.run(1)
+    with pytest.raises(RuntimeError, match="disabled"):
+        recorder.to_df()
 
 
 @pytest.mark.parametrize("failure_source", ["controller", "signal", "metric"])

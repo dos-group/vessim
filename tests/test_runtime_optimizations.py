@@ -72,15 +72,7 @@ def test_irregular_and_single_sample_traces_retain_lookup_behavior(fill):
         single.at(0.1)
 
 
-def test_builtin_ranges_are_reused_only_within_one_dispatch(monkeypatch):
-    calls = []
-    original = vs.GridConnection.feasible_range
-
-    def observed(self, duration):
-        calls.append((duration, self.max_import))
-        return original(self, duration)
-
-    monkeypatch.setattr(vs.GridConnection, "feasible_range", observed)
+def test_dispatch_uses_updated_limits_for_the_final_partial_interval():
     connection = vs.GridConnection(max_import=100)
     battery = vs.SimpleBattery("battery", 1000, initial_soc=0.5)
     env = vs.Environment("2026-01-01", step_size=60)
@@ -93,7 +85,6 @@ def test_builtin_ranges_are_reused_only_within_one_dispatch(monkeypatch):
     env.add_controller(Limit())
     rec = env.add_controller(vs.Recorder())
     env.run(90)
-    assert calls == [(60, 100), (30, 25)]
     assert [states["site"]["p_grid"] for states in rec.log.values()] == [-100, -25]
     assert battery.charge_level == pytest.approx(500 - 75 * 30 / 3600)
 

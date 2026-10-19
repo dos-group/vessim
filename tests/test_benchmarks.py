@@ -16,6 +16,7 @@ def run_benchmark(script, *args):
         cwd=ROOT,
         capture_output=True,
         text=True,
+        timeout=60,
     )
     assert result.returncode == 0, result.stderr
 

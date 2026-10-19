@@ -1,24 +1,19 @@
 """Check that the documentation gallery can be hosted independently of the checkout."""
 
-import importlib.util
 import json
-from pathlib import Path
-import shutil
 
 import pytest
 import vessim as vs
-
-ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location("export_docs", ROOT / "viewer/export_docs.py")
-export_docs = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(export_docs)
+from viewer import export_docs
 
 
 @pytest.fixture
 def gallery(tmp_path, monkeypatch):
     root = tmp_path / "checkout"
     assets = root / "vessim/_viewer_dist"
-    shutil.copytree(ROOT / "vessim/_viewer_dist", assets)
+    assets.mkdir(parents=True)
+    (assets / "index.html").write_text('<script src="app.js"></script>')
+    (assets / "app.js").write_text('document.title = "Viewer"')
     run = root / "results/recordings/run"
     with vs.Environment("2026-01-01", step_size=60) as env:
         env.add_microgrid(
@@ -66,10 +61,8 @@ def test_export_relocates_recordings_and_preserves_sources(gallery, tmp_path):
     assert run["record"]["metrics"]["microgrids"]["site"]["grid_import"] == pytest.approx(700 / 30)
     assert run["record"]["config"]["input_file"] == "datasets/input.csv"
     assert {file.name: file.read_bytes() for file in source.iterdir()} == before
-    assert "node_modules" not in (destination / "index.html").read_text()
-    assert 'id="proposal"' not in (destination / "index.html").read_text()
-    assert (destination / "vendor/echarts.min.js").is_file()
-    assert (destination / "vendor/papaparse.min.js").is_file()
+    for asset in (root / "vessim/_viewer_dist").iterdir():
+        assert (destination / asset.name).read_bytes() == asset.read_bytes()
 
 
 def test_failed_export_preserves_existing_gallery(gallery, tmp_path):

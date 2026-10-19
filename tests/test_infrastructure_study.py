@@ -1,6 +1,6 @@
 """Check the example's accounting and reproducible evaluation contract."""
 
-import importlib.util
+import importlib
 from pathlib import Path
 import subprocess
 import sys
@@ -12,13 +12,16 @@ import pytest
 from vessim import ExperimentResult
 
 SCRIPT = Path(__file__).resolve().parents[1] / "examples/infrastructure_study.py"
-spec = importlib.util.spec_from_file_location("infrastructure_study", SCRIPT)
-scenario = importlib.util.module_from_spec(spec)
-sys.path.insert(0, str(SCRIPT.parent))
-spec.loader.exec_module(scenario)
 
 
-def test_annual_inputs_and_shared_realization():
+@pytest.fixture(scope="module")
+def scenario():
+    with pytest.MonkeyPatch.context() as patch:
+        patch.syspath_prepend(str(SCRIPT.parent))
+        yield importlib.import_module("infrastructure_study")
+
+
+def test_annual_inputs_and_shared_realization(scenario):
     annual = scenario.inputs()
     assert len(annual) == 8760
     assert annual.index[-1] == 365 * 86400 - 3600
@@ -34,7 +37,7 @@ def test_annual_inputs_and_shared_realization():
         scenario.inputs(step_seconds=2500)
 
 
-def test_grid_baseline_matches_input_integrals_and_preserves_output(tmp_path):
+def test_grid_baseline_matches_input_integrals_and_preserves_output(tmp_path, scenario):
     result = scenario.run_scenario(tmp_path, "baseline", 0, 0, 0, days=2, timeseries=False)
     frame = scenario.inputs(days=2)
     metrics = result.metrics["microgrids"]["Microgrid 1"]
@@ -58,7 +61,7 @@ def test_grid_baseline_matches_input_integrals_and_preserves_output(tmp_path):
         scenario.objective_values(result)
 
 
-def test_storage_energy_balance_and_recorded_emissions(tmp_path):
+def test_storage_energy_balance_and_recorded_emissions(tmp_path, scenario):
     result = scenario.run_scenario(tmp_path, "storage", 1500, 4000, 8000, days=3, timeseries=True)
     frame = pd.read_csv(tmp_path / "storage/timeseries.csv")
     imports = (-frame.p_grid).clip(lower=0)
@@ -81,7 +84,7 @@ def test_storage_energy_balance_and_recorded_emissions(tmp_path):
     assert len(frame) == 72
 
 
-def test_optuna_records_objectives_and_preserves_existing_output(tmp_path):
+def test_optuna_records_objectives_and_preserves_existing_output(tmp_path, scenario):
     optuna = pytest.importorskip("optuna")
     command = [
         sys.executable,
@@ -93,7 +96,7 @@ def test_optuna_records_objectives_and_preserves_existing_output(tmp_path):
         "--trials",
         "2",
     ]
-    result = subprocess.run(command, capture_output=True, text=True)
+    result = subprocess.run(command, capture_output=True, text=True, timeout=60)
     assert result.returncode == 0, result.stderr
     storage = optuna.storages.RDBStorage(f"sqlite:///{tmp_path / 'optuna.db'}")
     try:
@@ -109,13 +112,13 @@ def test_optuna_records_objectives_and_preserves_existing_output(tmp_path):
         assert trial.values == list(scenario.objective_values(record))
     before = (tmp_path / "study.json").read_bytes()
     command[command.index("--days") + 1] = "2"
-    rejected = subprocess.run(command, capture_output=True, text=True)
+    rejected = subprocess.run(command, capture_output=True, text=True, timeout=60)
     assert rejected.returncode != 0
     assert "Output is not empty" in rejected.stderr
     assert (tmp_path / "study.json").read_bytes() == before
 
 
-def test_financial_metrics_match_recorded_cashflows_and_annual_allocation(tmp_path):
+def test_financial_metrics_match_recorded_cashflows_and_annual_allocation(tmp_path, scenario):
     result = scenario.run_scenario(
         tmp_path,
         "financial",

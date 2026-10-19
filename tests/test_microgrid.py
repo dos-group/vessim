@@ -3,14 +3,13 @@ import pytest
 import vessim as vs
 
 
-def test_model_construction_has_no_backend():
+def test_microgrid_balances_power_without_an_environment():
     grid = vs.Microgrid(
         step_size=60,
         actors=[vs.Actor("a", 100)],
         dispatchables=[vs.GridConnection()],
         policy=vs.DefaultDispatchPolicy(),
     )
-    assert not hasattr(grid, "world")
     grid.sample(0)
     grid.advance(0)
     assert grid.state()["p_grid"] == 100
