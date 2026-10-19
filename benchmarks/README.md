@@ -27,10 +27,10 @@ python benchmarks/run.py --output results/benchmarks/native.json --profile resul
 python -m pstats results/benchmarks/profiles/traces.prof
 ```
 
-The fixed `input.csv` and historical `baseline.json` are also used by backend regression tests.
-Keep them unchanged when measuring performance.
-The historical baseline predates the current recording format, so its checksums are compared through the compatibility projection in `tests/test_backends.py`.
-Other historical timing reports remain available in Git history.
+The fixed `input.csv` is also used to compare native and Mosaik trajectories in `tests/test_backends.py`.
+The tests compare every timestamp and recorded field, allowing floating-point roundoff in numeric values.
+Separate behavioral tests check power balance, battery state, sampling, and controller ordering against expected results.
+Historical timing reports remain available in Git history.
 
 ## Study throughput and memory
 

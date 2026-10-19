@@ -1,87 +1,60 @@
 # Simulation studies
 
-How much battery storage does your datacenter need, and does that change with its workload?
-Simulation studies let you compare infrastructure and control strategies across demand, weather, and operating scenarios.
-You might test a few designs against thousands of possible conditions, or explore a wide range of configurations.
+Define scenarios in Python and compare their [recorded metrics](results.md) and time series in the [viewer](../vessim_viewer.md).
+These three examples use synthetic inputs. Follow the [setup instructions](https://github.com/dos-group/vessim/blob/main/examples/README.md) to run them locally.
 
-Use `vs.Environment` to run each scenario as fast as computation allows, then compare its [recorded metrics](results.md).
+## Exploring microgrid configurations
 
-## Compare battery sizes
+Adding wind, solar, and battery storage can reduce a datacenter's grid imports, but manufacturing the equipment also causes emissions.
+We compare eight setups over a full year to see how equipment choices affect grid dependence and emissions.
 
-A battery that works well for one workload may be too small for another.
-This example tests three capacities against four synthetic demand profiles, producing twelve runs.
-Each capacity faces the same demand profiles and solar trace, so differences in grid imports reflect the storage choice.
+The setups include grid-only supply, solar, wind, a wind–solar mix, and four combinations with storage, all facing the same demand and weather.
+Compare their energy and emissions metrics, then overlay time series to see when batteries charge and grid supply is needed.
 
-```python
-import numpy as np
-import pandas as pd
-import vessim as vs
-
-seconds = [hour * 3600 for hour in range(7)]
-solar = vs.Trace(pd.Series([0, 1200, 2400, 1200, 0, 0, 0], index=seconds))
-rows = []
-
-for seed in range(4):
-    rng = np.random.default_rng(seed)
-    load = vs.Trace(pd.Series(rng.uniform(500, 900, len(seconds)), index=seconds))
-    for capacity in (1000, 2000, 3000):
-        run_id = f"battery-{capacity}-seed-{seed}"
-        with vs.Environment("2026-01-01", step_size=1800) as env:
-            env.add_microgrid(
-                name="site",
-                actors=[vs.Consumer("load", signal=load), vs.Producer("solar", signal=solar)],
-                dispatchables=[vs.SimpleBattery("battery", capacity), vs.GridConnection()],
-            )
-            recorder = env.add_controller(vs.Recorder(
-                f"results/study/{run_id}",
-                timeseries=False,
-                run_id=run_id,
-                parameters={"capacity_wh": capacity, "seed": seed},
-            ))
-            env.run(6 * 3600)
-        rows.append({
-            "capacity_wh": capacity,
-            "seed": seed,
-            "grid_import_wh": recorder.metrics["microgrids"]["site"]["grid_import"],
-        })
-
-print(pd.DataFrame(rows).groupby("capacity_wh")["grid_import_wh"].agg(["mean", "max"]))
-```
-
-## Compare the results
-
-The table shows average and maximum grid imports for each capacity across the four demand scenarios.
-Here, increasing capacity from 1 to 2 kWh reduces imports, but 3 kWh provides no further reduction over these six-hour scenarios.
-
-Open the saved runs together to explore the comparison:
+[Explore the results](../viewer/index.html?study=infrastructure-year#results) or run the [infrastructure example](https://github.com/dos-group/vessim/blob/main/examples/infrastructure_study.py):
 
 ```console
-python -m vessim view results/study
+python examples/infrastructure_study.py
+python -m vessim view results/infrastructure-study
 ```
 
-Each run records its battery capacity and scenario seed, so you can identify the conditions behind a result.
-To investigate when a battery filled or ran out, enable time series by removing `timeseries=False` from the recorder.
+## Optimization with Optuna
 
-Explore [microgrid configurations](../viewer/index.html?study=infrastructure-year#results) or the [probabilistic dispatch study](../viewer/index.html?study=dispatch-comparison#results) in the viewer.
+Design spaces can be very large, while we often only need configurations that perform well against specific metrics.
+Optuna uses results from previous simulations to guide the search toward promising designs without evaluating every possible combination.
 
-## Extend the study
+Here, we optimize wind, solar, and battery sizing to minimize annual cost and grid-import emissions.
+Optuna selects 100 candidates, Vessim simulates each for a year, and the viewer shows their cost–emissions trade-offs and time series.
 
-Replace the synthetic demand with your own workload traces, add weather years, or compare dispatch policies.
-For probabilistic studies, sample uncertain inputs and look at the distribution of outcomes, such as the fraction of scenarios that meet your import target.
-Reuse the same scenarios and starting conditions across designs to make the comparison meaningful.
+<figure class="vessim-figure" markdown="1">
 
-Independent runs can execute in parallel.
-The [battery-sizing example](https://github.com/dos-group/vessim/blob/main/examples/battery_sizing_study.py) shows how to distribute scenarios across worker processes.
-The [infrastructure example](https://github.com/dos-group/vessim/blob/main/examples/infrastructure_study.py) compares wind, solar, and storage over a full year.
+  ![Scatter plot of annual cost and export revenue for configurations evaluated during the Optuna search](../assets/optuna-search-results.png)
 
-Run the battery study with the same demand scenarios for each capacity:
+  <figcaption>Annual cost and export revenue for the evaluated configurations, shown in the Vessim viewer.</figcaption>
+</figure>
+
+[Explore the results](../viewer/index.html?study=optuna-search#results) or run:
 
 ```console
-python examples/battery_sizing_study.py --scenarios 100 --workers 4
-python -m vessim view results/battery-sizing
+python examples/infrastructure_study.py --financial --trials 100 --output results/infrastructure-search
+python -m vessim view results/infrastructure-search
 ```
 
-Each configuration has its own group of recorded runs, so the viewer can show distributions and summary statistics.
-See the [example setup instructions](https://github.com/dos-group/vessim/blob/main/examples/README.md) to run the examples locally.
+See [Optimization](optimization.md) for defining an objective function and using Optuna Dashboard to inspect the search.
 
-When the design space is too large to enumerate, use [optimization](optimization.md) to search for promising configurations.
+## Probabilistic studies
+
+Demand, weather, and electricity prices are uncertain.
+Monte Carlo sampling lets us evaluate configurations across possible realizations of these inputs and examine how their outcomes vary.
+
+This example samples demand and compares three battery strategies: self-consumption, peak shaving, and carbon-aware charging.
+Each faces the same five daily demand samples. Compare individual runs or aggregate them to see the variation in costs, emissions, and peak grid imports.
+
+[Explore the results](../viewer/index.html?study=dispatch-comparison#results) or run the [dispatch example](https://github.com/dos-group/vessim/blob/main/examples/strategy_comparison.py):
+
+```console
+python examples/strategy_comparison.py
+python -m vessim view results/strategy-comparison
+```
+
+We are working on better functionality for planning, executing, and visualizing probabilistic studies.

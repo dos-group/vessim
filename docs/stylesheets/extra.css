@@ -2,6 +2,18 @@
   background-color: #2c4a3c;
 }
 
+.md-typeset .vessim-figure p {
+  margin: 0;
+}
+
+.md-typeset .vessim-figure img {
+  display: block;
+}
+
+.md-typeset .vessim-figure figcaption {
+  margin: 0.25rem auto 0;
+}
+
 
 .md-header .md-header__title {
     margin-left: 0;
@@ -28,6 +40,10 @@
 
 .md-typeset .vessim-use-case p {
   margin: 0;
+}
+
+.md-typeset .vessim-use-case .md-button {
+  margin-top: 0.6rem;
 }
 
 .md-typeset .vessim-actions p {
