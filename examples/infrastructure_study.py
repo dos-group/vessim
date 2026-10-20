@@ -320,18 +320,12 @@ def main():
             upfront, operational = objective_values(result)
             print(f"{name}: upfront {upfront:,.0f}; operating {operational:,.0f} kgCO2e")
     if args.trials:
-        objectives = (
-            "annual electricity and equipment costs against grid emissions"
-            if args.financial
-            else "upfront equipment emissions against grid emissions"
-        )
         description = (
-            'Building on "Exploring microgrid configurations", this example explores '
-            f"{args.trials} wind, solar, and battery configurations using [Optuna](https://optuna.org/).\n"
-            f"Each candidate faces the same {args.days} days of synthetic demand and weather.\n\n"
-            f"Compare {objectives}.\n"
-            "Select the Pareto front to highlight configurations where improving one objective "
-            "comes at the expense of the other."
+            "Building on [Exploring microgrid configurations]"
+            "(https://vessim.readthedocs.io/en/latest/viewer/?study=infrastructure-year#results), "
+            f"this example explores {args.trials} wind, solar, and battery configurations "
+            "using [Optuna](https://optuna.org/). "
+            f"Each candidate faces the same {args.days} days of synthetic demand and weather."
         )
     else:
         description = (
