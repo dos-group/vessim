@@ -326,17 +326,20 @@ def main():
             else "upfront equipment emissions against grid emissions"
         )
         description = (
-            f"Based on the \"Exploring Microgrid Configurations\" study, this example we explores {args.trials} wind, solar, and battery configurations using [Optuna](https://optuna.org/)."
-            "You can weigh {objectives}. "
-            f"\nEach candidate faces the same {args.days} days of synthetic demand and weather. "
-            "You can select the Pareto front to highlight configurations where improving one objective comes at the expense of the other."
+            'Building on "Exploring microgrid configurations", this example explores '
+            f"{args.trials} wind, solar, and battery configurations using [Optuna](https://optuna.org/).\n"
+            f"Each candidate faces the same {args.days} days of synthetic demand and weather.\n\n"
+            f"Compare {objectives}.\n"
+            "Select the Pareto front to highlight configurations where improving one objective "
+            "comes at the expense of the other."
         )
     else:
         description = (
             "We explore eight microgrid configurations that supply the same datacenter "
             f"over {args.days} days of synthetic demand and weather. "
-            "\nYou can compare how wind, solar, and battery sizing affect grid dependence and the balance "
-            "between upfront equipment emissions and emissions from grid electricity. "
+            "\nYou can compare how wind, solar, and battery sizing affect grid dependence "
+            "and the balance between upfront equipment emissions "
+            "and emissions from grid electricity. "
             "\nThe concept is based on our paper "
             "[Optimizing Microgrid Composition for Sustainable Data Centers](https://arxiv.org/abs/2508.04284)."
         )
