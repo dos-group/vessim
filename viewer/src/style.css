@@ -443,6 +443,7 @@ article code {
   font-size: 13px;
   margin: -8px 0 22px;
   max-width: 95ch;
+  white-space: pre-line;
 }
 .inline-label {
   display: flex;
