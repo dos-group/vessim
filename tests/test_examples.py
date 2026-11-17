@@ -175,6 +175,30 @@ def test_demand_response_example(tmp_path):
     ]
 
 
+def test_criticality_aware_shedding_example(tmp_path):
+    pytest.importorskip("networkx")
+    result = run_script("criticality_aware_shedding.py", cwd=tmp_path, args=["--days", "1"])
+    assert result.returncode == 0, result.stderr
+    lines = result.stdout.splitlines()
+    assert lines[0].split() == ["workload", "policy", "useful", "broken", "paused", "overflow"]
+    runs = sorted(p.parent.name for p in tmp_path.rglob("experiment.json"))
+    assert runs == [
+        "microservices-count",
+        "microservices-criticality",
+        "pipelines-count",
+        "pipelines-criticality",
+    ]
+    for workload in ("pipelines", "microservices"):
+        totals = []
+        for policy in ("count", "criticality"):
+            run = tmp_path / f"results/criticality-aware-shedding/{workload}-{policy}"
+            site = json.loads((run / "experiment.json").read_text())["metrics"]["microgrids"]
+            parts = ("useful_energy", "broken_energy", "paused_energy")
+            totals.append(sum(site["site"][part] for part in parts))
+        # Both policies face the same job demand. They only split it differently.
+        assert totals[0] == pytest.approx(totals[1])
+
+
 @pytest.mark.parametrize(
     "script, options",
     [
@@ -182,6 +206,7 @@ def test_demand_response_example(tmp_path):
         ("replay_csv.py", []),
         ("custom_metrics.py", []),
         ("demand_response.py", []),
+        ("criticality_aware_shedding.py", ["--days", "1"]),
         ("strategy_comparison.py", ["--scenarios", "2"]),
         ("microgrid_comparison.py", ["--days", "1"]),
         ("infrastructure_study.py", ["--days", "1", "--trials", "12"]),
@@ -190,6 +215,8 @@ def test_demand_response_example(tmp_path):
 def test_examples_reproduce_recorded_results_and_keep_existing_output(tmp_path, script, options):
     if "--trials" in options:
         pytest.importorskip("optuna")
+    if script == "criticality_aware_shedding.py":
+        pytest.importorskip("networkx")
     outputs = [tmp_path / "first", tmp_path / "second"]
     for output in outputs:
         result = run_script(script, cwd=tmp_path, args=[*options, "--output", str(output)])
