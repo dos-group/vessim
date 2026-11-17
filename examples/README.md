@@ -32,6 +32,7 @@ Open any saved run or study with `python -m vessim view PATH`.
 | Annual optimization | `python examples/infrastructure_study.py --financial --trials 100 --output results/infrastructure-search` | `results/infrastructure-search` |
 | Probabilistic dispatch | `python examples/strategy_comparison.py` | `results/strategy-comparison` |
 | Demand response | `python examples/demand_response.py` | `results/demand_response` |
+| Dependency-aware load shedding | `python examples/criticality_aware_shedding.py` | `results/criticality-aware-shedding` |
 | Custom metrics | `python examples/custom_metrics.py` | `results/custom_metrics` |
 
 CSV replay uses a bundled sample by default.
